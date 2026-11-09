@@ -1,0 +1,362 @@
+{
+  "_note": "팀별 수동 보정값 (명성 rep 1~5, 자본 fin 1~5, 대표색, 스타일 태그). 키는 Leaguepedia 팀 페이지명.",
+  "teams": {
+    "BNK FEARX": {
+      "rep": 3,
+      "fin": 3,
+      "color": "#f4c400",
+      "tags": [
+        "후반 집중",
+        "오브젝트 우선"
+      ]
+    },
+    "DN SOOPers": {
+      "rep": 2,
+      "fin": 2,
+      "color": "#4b6cd8",
+      "tags": [
+        "오브젝트 우선",
+        "시야 장악"
+      ]
+    },
+    "Dplus Kia": {
+      "rep": 4,
+      "fin": 4,
+      "color": "#0ec7b5",
+      "tags": [
+        "스플릿 운영",
+        "운영 중심"
+      ]
+    },
+    "Gen.G": {
+      "rep": 5,
+      "fin": 5,
+      "color": "#aa8a00",
+      "tags": [
+        "운영 중심",
+        "초반 주도"
+      ]
+    },
+    "HANJIN BRION": {
+      "rep": 2,
+      "fin": 2,
+      "color": "#1f6b4f",
+      "tags": [
+        "오브젝트 우선",
+        "바텀 캐리"
+      ]
+    },
+    "Hanwha Life Esports": {
+      "rep": 4,
+      "fin": 5,
+      "color": "#f37321",
+      "tags": [
+        "한타 지향",
+        "초반 주도"
+      ]
+    },
+    "Kiwoom DRX": {
+      "rep": 3,
+      "fin": 2,
+      "color": "#5a8dee",
+      "tags": [
+        "탑 캐리",
+        "초반 주도"
+      ]
+    },
+    "KT Rolster": {
+      "rep": 4,
+      "fin": 4,
+      "color": "#ff0a07",
+      "tags": [
+        "후반 집중",
+        "탑 캐리"
+      ]
+    },
+    "Nongshim RedForce": {
+      "rep": 2,
+      "fin": 3,
+      "color": "#de2027",
+      "tags": [
+        "탑 캐리",
+        "운영 중심"
+      ]
+    },
+    "T1": {
+      "rep": 5,
+      "fin": 5,
+      "color": "#e2012d",
+      "tags": [
+        "바텀 캐리",
+        "오브젝트 우선"
+      ]
+    },
+    "Anyone's Legend": {
+      "rep": 4,
+      "fin": 4,
+      "color": "#e4c87a",
+      "tags": [
+        "후반 집중",
+        "초반 주도"
+      ]
+    },
+    "Bilibili Gaming": {
+      "rep": 5,
+      "fin": 5,
+      "color": "#00a1d6",
+      "tags": [
+        "바텀 캐리",
+        "탑 캐리"
+      ]
+    },
+    "EDward Gaming": {
+      "rep": 3,
+      "fin": 4,
+      "color": "#2b2b2b",
+      "tags": [
+        "초반 주도",
+        "한타 지향"
+      ]
+    },
+    "Invictus Gaming": {
+      "rep": 3,
+      "fin": 4,
+      "color": "#a8a9ad",
+      "tags": [
+        "한타 지향",
+        "스플릿 운영"
+      ]
+    },
+    "JD Gaming": {
+      "rep": 4,
+      "fin": 5,
+      "color": "#c8102e",
+      "tags": [
+        "초반 주도",
+        "탑 캐리"
+      ]
+    },
+    "LGD Gaming": {
+      "rep": 2,
+      "fin": 2,
+      "color": "#b8860b",
+      "tags": [
+        "탑 캐리",
+        "미드-정글 연계"
+      ]
+    },
+    "LNG Esports": {
+      "rep": 3,
+      "fin": 4,
+      "color": "#2ec4b6",
+      "tags": [
+        "초반 주도",
+        "바텀 캐리"
+      ]
+    },
+    "Ninjas in Pyjamas.CN": {
+      "rep": 3,
+      "fin": 3,
+      "color": "#d6d6d6",
+      "tags": [
+        "초반 주도",
+        "바텀 캐리"
+      ]
+    },
+    "Team WE": {
+      "rep": 2,
+      "fin": 3,
+      "color": "#d4202a",
+      "tags": [
+        "오브젝트 우선",
+        "운영 중심"
+      ]
+    },
+    "ThunderTalk Gaming": {
+      "rep": 1,
+      "fin": 2,
+      "color": "#f2b705",
+      "tags": [
+        "스플릿 운영",
+        "바텀 캐리"
+      ]
+    },
+    "Top Esports": {
+      "rep": 4,
+      "fin": 5,
+      "color": "#ff6a00",
+      "tags": [
+        "미드-정글 연계",
+        "초반 주도"
+      ]
+    },
+    "Weibo Gaming": {
+      "rep": 4,
+      "fin": 4,
+      "color": "#e6162d",
+      "tags": [
+        "스플릿 운영",
+        "시야 장악"
+      ]
+    },
+    "Fnatic": {
+      "rep": 4,
+      "fin": 4,
+      "color": "#ff5900",
+      "tags": [
+        "초반 주도",
+        "시야 장악"
+      ]
+    },
+    "G2 Esports": {
+      "rep": 5,
+      "fin": 5,
+      "color": "#e2212a",
+      "tags": [
+        "시야 장악",
+        "초반 주도"
+      ]
+    },
+    "GIANTX": {
+      "rep": 3,
+      "fin": 3,
+      "color": "#ff4f7b",
+      "tags": [
+        "초반 주도",
+        "후반 집중"
+      ]
+    },
+    "Karmine Corp": {
+      "rep": 4,
+      "fin": 4,
+      "color": "#3f8cff",
+      "tags": [
+        "한타 지향",
+        "초반 주도"
+      ]
+    },
+    "Movistar KOI": {
+      "rep": 4,
+      "fin": 4,
+      "color": "#8a5cf6",
+      "tags": [
+        "시야 장악",
+        "초반 주도"
+      ]
+    },
+    "Natus Vincere": {
+      "rep": 2,
+      "fin": 3,
+      "color": "#ffe500",
+      "tags": [
+        "운영 중심",
+        "탑 캐리"
+      ]
+    },
+    "Shifters": {
+      "rep": 2,
+      "fin": 2,
+      "color": "#4fd1c5",
+      "tags": [
+        "미드-정글 연계",
+        "운영 중심"
+      ]
+    },
+    "SK Gaming": {
+      "rep": 2,
+      "fin": 3,
+      "color": "#9aa0a6",
+      "tags": [
+        "미드-정글 연계",
+        "탑 캐리"
+      ]
+    },
+    "Team Heretics": {
+      "rep": 3,
+      "fin": 3,
+      "color": "#e8c76a",
+      "tags": [
+        "한타 지향",
+        "바텀 캐리"
+      ]
+    },
+    "Team Vitality": {
+      "rep": 3,
+      "fin": 4,
+      "color": "#f6d50f",
+      "tags": [
+        "바텀 캐리",
+        "오브젝트 우선"
+      ]
+    },
+    "Cloud9": {
+      "rep": 4,
+      "fin": 5,
+      "color": "#1d9bf0",
+      "tags": [
+        "오브젝트 우선",
+        "탑 캐리"
+      ]
+    },
+    "Dignitas": {
+      "rep": 2,
+      "fin": 3,
+      "color": "#f4c300",
+      "tags": [
+        "후반 집중",
+        "미드-정글 연계"
+      ]
+    },
+    "Disguised": {
+      "rep": 1,
+      "fin": 2,
+      "color": "#9b59b6",
+      "tags": [
+        "오브젝트 우선",
+        "초반 주도"
+      ]
+    },
+    "FlyQuest": {
+      "rep": 4,
+      "fin": 4,
+      "color": "#1f8a4c",
+      "tags": [
+        "한타 지향",
+        "운영 중심"
+      ]
+    },
+    "LYON (2024 American Team)": {
+      "rep": 3,
+      "fin": 3,
+      "color": "#e74c3c",
+      "tags": [
+        "바텀 캐리",
+        "오브젝트 우선"
+      ]
+    },
+    "Sentinels": {
+      "rep": 2,
+      "fin": 3,
+      "color": "#d0021b",
+      "tags": []
+    },
+    "Shopify Rebellion": {
+      "rep": 3,
+      "fin": 4,
+      "color": "#95bf47",
+      "tags": [
+        "한타 지향",
+        "스플릿 운영"
+      ]
+    },
+    "Team Liquid": {
+      "rep": 4,
+      "fin": 5,
+      "color": "#0a2240",
+      "tags": [
+        "한타 지향",
+        "시야 장악"
+      ]
+    }
+  }
+}

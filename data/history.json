@@ -1,0 +1,20 @@
+{
+  "meta": {
+    "source": "Leaguepedia (lol.fandom.com) Cargo API",
+    "season": "2026",
+    "scrapedAt": "2026-11-09T15:25:18.918Z"
+  },
+  "worldsLogos": {
+    "Fnatic": "https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/6/61/Fnaticlogo_profile.png/revision/latest?cb=20260112184526",
+    "Taipei Assassins": "https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/a/af/Taipei_Assassinslogo_square.png/revision/latest?cb=20260202174927",
+    "SK Telecom T1": "https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/5/59/SK_Telecom_T1logo_square.png/revision/latest?cb=20221015010024",
+    "Samsung White": "https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/7/7f/Samsung_Whitelogo_profile.png/revision/latest?cb=20210907122144",
+    "Samsung Galaxy": "https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/c/c2/Samsung_Galaxylogo_profile.png/revision/latest?cb=20210907114657",
+    "Invictus Gaming": "https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/7/7f/Invictus_Gaminglogo_profile.png/revision/latest?cb=20260109134935",
+    "FunPlus Phoenix": "https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/b/b1/FunPlus_Phoenixlogo_square.png/revision/latest?cb=20230426040632",
+    "DAMWON Gaming": "https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/6/6d/DAMWON_Gaminglogo_square.png/revision/latest?cb=20200224094730",
+    "EDward Gaming": "https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/5/56/EDward_Gaminglogo_square.png/revision/latest?cb=20260109115903",
+    "DRX": "https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/d/d3/DRXlogo_square.png/revision/latest?cb=20260114035215",
+    "T1": "https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/7/78/T1logo_profile.png/revision/latest?cb=20221015004607"
+  }
+}

@@ -100,10 +100,10 @@ Screens.team = {
         <div class="panel-title">이사회 기대</div>
         <div class="td-goal">${t.boardGoal}</div>
       </div>
-      <div class="td-sec">
+      ${t.tags.length ? `<div class="td-sec">
         <div class="panel-title">팀 스타일</div>
         <div class="tags">${t.tags.map(x => `<span>${x}</span>`).join('')}</div>
-      </div>
+      </div>` : ''}
       <div class="td-sec">
         <div class="panel-title">로스터</div>
         <table class="roster">
@@ -111,6 +111,11 @@ Screens.team = {
           <tbody>${rows}</tbody>
         </table>
       </div>
+      ${(t.staff || []).length ? `<div class="td-sec">
+        <div class="panel-title">코칭스태프</div>
+        <div class="staff">${t.staff.map(s => `<div class="pl-cell">${UI.img(s.photo, 'pl-ph', initial(s))}
+          <div><b>${UI.esc(s.name)}</b>${s.realName ? `<small class="pl-real">${UI.esc(s.nativeName || s.realName)}</small>` : ''}</div></div>`).join('')}</div>
+      </div>` : ''}
       <div class="td-foot"><button class="btn-primary" id="td-start">이 팀으로 커리어 시작 →</button></div>`;
     $('#td-start').onclick = () => this.confirmStart(t);
   },

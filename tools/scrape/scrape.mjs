@@ -137,14 +137,25 @@ async function main() {
     rows.forEach(r => roster.push({ ...r, league: lg }));
   }
 
+  // 리그별 "본 대회" 중 가장 최근 것을 현재 로스터로 본다.
+  // 참가 팀 수가 리그 최대치의 80% 미만인 페이지(쇼매치, 올스타, 플레이오프 일부)는 제외한다.
   const latest = {};
-  for (const r of roster) {
-    const cur = latest[r.Team];
-    if (!cur || (r.DateStart || '') > cur.date) latest[r.Team] = { date: r.DateStart || '', page: r.Page, league: r.league };
+  for (const lg of LEAGUES) {
+    const pages = {};
+    for (const r of roster.filter(x => x.league === lg)) {
+      const pg = pages[r.Page] || (pages[r.Page] = { teams: new Set(), date: r.DateStart || '' });
+      pg.teams.add(r.Team);
+    }
+    const max = Math.max(...Object.values(pages).map(p => p.teams.size));
+    const [page, info] = Object.entries(pages)
+      .filter(([, p]) => p.teams.size >= max * 0.8)
+      .sort((x, y) => y[1].date.localeCompare(x[1].date))[0];
+    log(`  ${lg} 기준 대회: ${page} (${info.teams.size}팀)`);
+    for (const t of info.teams) latest[t] = { date: info.date, page, league: lg };
   }
   const current = roster.filter(r => latest[r.Team] && latest[r.Team].page === r.Page);
   const teamNames = Object.keys(latest);
-  log(`팀 ${teamNames.length}개, 선수 ${current.length}명`);
+  log(`팀 ${teamNames.length}개, 인원 ${current.length}명`);
 
   // 2) 팀 정보 (로고, 팀 사진)
   const teamRows = [];
@@ -167,16 +178,34 @@ async function main() {
     }));
   }
 
+  // 3-1) 선수 프로필 사진: 프로필 지정 이미지 → 없으면 가장 최근 연도 이미지
+  const imageRows = [];
+  for (const group of chunks(links, 100)) {
+    imageRows.push(...await cargo({
+      tables: 'PlayerImages',
+      fields: 'FileName,Link,Tournament,IsProfileImage,SortDate',
+      where: inList('Link', group),
+    }));
+  }
+  const year = r => Math.max(0, ...(`${r.Tournament} ${r.FileName}`.match(/20\d\d/g) || []).map(Number));
+  const rank = r => [r.IsProfileImage === '1' ? 1 : 0, year(r), r.SortDate || ''];
+  const better = (x, y) => { const a = rank(x), b = rank(y); return a[0] - b[0] || a[1] - b[1] || a[2].localeCompare(b[2]); };
+  const photoFile = {};
+  for (const r of imageRows) if (!photoFile[r.Link] || better(r, photoFile[r.Link]) > 0) photoFile[r.Link] = r;
+
   // 4) 역대 월즈 우승팀 로고
   const historyNames = ['Fnatic', 'Taipei Assassins', 'SK Telecom T1', 'Samsung White', 'Samsung Galaxy', 'Invictus Gaming', 'FunPlus Phoenix', 'DAMWON Gaming', 'EDward Gaming', 'DRX', 'T1'];
+  // 이름이 바뀐 팀은 Teams 표에 옛 이름 페이지가 없으므로 파일명을 직접 지정한다
+  const historyFiles = { 'DAMWON Gaming': 'DAMWON Gaminglogo square.png', DRX: 'DRXlogo square.png' };
   const historyTeams = await cargo({ tables: 'Teams', fields: 'Name,OverviewPage,Image,RosterPhoto', where: inList('OverviewPage', historyNames) });
 
   // 5) 이미지 URL
   log('이미지 URL 조회');
   const files = [
     ...teamRows.flatMap(t => [t.Image, t.RosterPhoto]),
-    ...playerRows.map(p => p.Image),
+    ...Object.values(photoFile).map(r => r.FileName),
     ...historyTeams.map(t => t.Image),
+    ...Object.values(historyFiles),
   ];
   const urls = await imageUrls(files);
 
@@ -206,17 +235,17 @@ async function main() {
       name: p.ID || r.Link,
       realName: p.Name || '',
       nativeName: p.NativeName || '',
-      role: ROLE[r.Role] || ROLE[p.Role] || r.Role || '',
+      role: ROLE[r.Role] || (/coach/i.test(r.Role) ? 'COACH' : ROLE[p.Role] || r.Role || ''),
       nation: p.NationalityPrimary || p.Country || '',
       birthdate: p.Birthdate || null,
       contractEnd: p.Contract || null,
-      photo: urls[p.Image] || null,
+      photo: urls[(photoFile[r.Link] || {}).FileName] || null,
       sourcePage: r.Link,
     };
   });
 
   const histByPage = Object.fromEntries(historyTeams.map(t => [t.OverviewPage, t]));
-  const history = { worldsLogos: Object.fromEntries(historyNames.map(n => [n, urls[(histByPage[n] || {}).Image] || null])) };
+  const history = { worldsLogos: Object.fromEntries(historyNames.map(n => [n, urls[historyFiles[n] || (histByPage[n] || {}).Image] || null])) };
 
   const meta = { source: 'Leaguepedia (lol.fandom.com) Cargo API', season: SEASON, scrapedAt: new Date().toISOString() };
   await writeFile(path.join(OUT, 'teams.json'), JSON.stringify({ meta, teams }, null, 2));

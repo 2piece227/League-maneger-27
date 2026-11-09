@@ -33,11 +33,13 @@ const Data = {
       };
       team.boardGoal = MOCK.boardGoals[team.rep];
       team.budget = MOCK.budgetLabel(team.league, team.fin);
-      team.players = players.filter(p => p.team === t.id).map(p => ({
+      const people = players.filter(p => p.team === t.id).map(p => ({
         ...p,
         age: p.birthdate ? this.ageOn(p.birthdate, '2027-01-01') : null,
         sub: false,
       }));
+      team.staff = people.filter(p => p.role === 'COACH');
+      team.players = people.filter(p => p.role !== 'COACH');
       MOCK.markSubs(team.players);
       return team;
     });
