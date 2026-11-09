@@ -6,27 +6,28 @@ const canvas = document.getElementById('trophy-3d');
 const titleScreen = document.getElementById('screen-title');
 
 const v = (x, y) => new THREE.Vector2(x, y);
-const lathe = (pts, seg = 160) => new THREE.LatheGeometry(pts, seg);
+// 6각 단면(각진 면)으로 깎은 회전체
+const hex = pts => new THREE.LatheGeometry(pts, 6);
+const TAU = Math.PI * 2;
 
-// 띠에 새겨진 문양 텍스처
-function engraveTexture() {
+// 정면 문장: 파란 법랑 방패
+function emblemTexture() {
   const c = document.createElement('canvas');
-  c.width = 2048; c.height = 128;
+  c.width = 256; c.height = 320;
   const g = c.getContext('2d');
-  g.fillStyle = '#c9ced8';
-  g.fillRect(0, 0, c.width, c.height);
-  g.strokeStyle = '#3a3f4a';
-  g.lineWidth = 5;
-  const w = 64;
-  for (let x = 0; x < c.width; x += w) {
+  const shield = () => {
     g.beginPath();
-    g.moveTo(x, 64); g.lineTo(x + w / 2, 10); g.lineTo(x + w, 64); g.lineTo(x + w / 2, 118); g.closePath();
-    g.stroke();
-    g.fillStyle = '#3a3f4a';
-    g.beginPath(); g.arc(x + w / 2, 64, 7, 0, Math.PI * 2); g.fill();
-  }
-  g.fillRect(0, 0, c.width, 6);
-  g.fillRect(0, c.height - 6, c.width, 6);
+    g.moveTo(22, 22); g.lineTo(234, 22); g.lineTo(234, 150); g.lineTo(128, 298); g.lineTo(22, 150); g.closePath();
+  };
+  const grad = g.createLinearGradient(0, 0, 256, 320);
+  grad.addColorStop(0, '#2d6bff'); grad.addColorStop(0.55, '#123fb8'); grad.addColorStop(1, '#0a2470');
+  shield(); g.fillStyle = grad; g.fill();
+  g.lineWidth = 16; g.strokeStyle = '#eef1f6'; g.stroke();
+  // 후드를 쓴 인물 실루엣
+  g.fillStyle = 'rgba(235,240,255,.92)';
+  g.beginPath(); g.moveTo(128, 70); g.lineTo(78, 236); g.lineTo(128, 205); g.lineTo(178, 236); g.closePath(); g.fill();
+  g.fillStyle = '#123fb8';
+  g.beginPath(); g.arc(128, 118, 20, 0, TAU); g.fill();
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   t.anisotropy = 8;
@@ -34,42 +35,71 @@ function engraveTexture() {
 }
 
 function build() {
-  const silver = new THREE.MeshPhysicalMaterial({ color: 0xe8ebf0, metalness: 1, roughness: 0.24, clearcoat: 0.4, clearcoatRoughness: 0.1, side: THREE.DoubleSide });
-  const inner = new THREE.MeshPhysicalMaterial({ color: 0xaab0bb, metalness: 1, roughness: 0.3, side: THREE.DoubleSide });
-  const gold = new THREE.MeshPhysicalMaterial({ color: 0xd8b25a, metalness: 1, roughness: 0.22 });
-  const lacquer = new THREE.MeshPhysicalMaterial({ color: 0x0d0f14, metalness: 0.2, roughness: 0.3, clearcoat: 1, clearcoatRoughness: 0.05 });
-  const band = new THREE.MeshPhysicalMaterial({ color: 0xffffff, map: engraveTexture(), metalness: 1, roughness: 0.28, side: THREE.DoubleSide });
+  const chrome = new THREE.MeshPhysicalMaterial({ color: 0xf5f7fa, metalness: 1, roughness: 0.04, flatShading: true, side: THREE.DoubleSide });
+  const lacquer = new THREE.MeshPhysicalMaterial({ color: 0x0d0f14, metalness: 0.3, roughness: 0.25, clearcoat: 1, flatShading: true });
+  const gem = new THREE.MeshPhysicalMaterial({ color: 0x1e4bd2, metalness: 0, roughness: 0.04, clearcoat: 1, flatShading: true });
+  const enamel = new THREE.MeshPhysicalMaterial({ map: emblemTexture(), transparent: true, alphaTest: 0.5, metalness: 0, roughness: 0.12, clearcoat: 1, side: THREE.DoubleSide });
 
   const cup = new THREE.Group();
+  const hexCyl = (r1, r2, h, y, m) => new THREE.Mesh(new THREE.CylinderGeometry(r1, r2, h, 6).translate(0, y, 0), m);
 
-  // 볼 바깥면 → 입술 → 안쪽면
-  cup.add(new THREE.Mesh(lathe([
-    v(0, 1.97), v(0.2, 2.0), v(0.5, 2.12), v(0.85, 2.35), v(1.1, 2.65), v(1.25, 2.95),
-    v(1.32, 3.25), v(1.345, 3.45), v(1.35, 3.5),
-  ]), silver));
-  cup.add(new THREE.Mesh(lathe([
-    v(1.35, 3.5), v(1.3, 3.5), v(1.285, 3.35), v(1.2, 3.0), v(1.03, 2.7), v(0.72, 2.45), v(0.32, 2.3), v(0, 2.27),
-  ]), inner));
-  cup.add(new THREE.Mesh(new THREE.TorusGeometry(1.33, 0.035, 24, 200).rotateX(Math.PI / 2).translate(0, 3.5, 0), silver));
+  // 받침: 6각 2단 + 검은 테
+  cup.add(hexCyl(1.08, 1.2, 0.42, 0.21, chrome));
+  cup.add(hexCyl(0.98, 1.02, 0.08, 0.46, chrome));
+  cup.add(hexCyl(0.93, 0.93, 0.03, 0.515, lacquer));
 
-  // 문양 띠 + 금색 테
-  cup.add(new THREE.Mesh(lathe([v(1.262, 2.93), v(1.29, 3.05), v(1.315, 3.17), v(1.333, 3.27)]), band));
-  cup.add(new THREE.Mesh(new THREE.TorusGeometry(1.262, 0.022, 16, 200).rotateX(Math.PI / 2).translate(0, 2.93, 0), gold));
-  cup.add(new THREE.Mesh(new THREE.TorusGeometry(1.333, 0.022, 16, 200).rotateX(Math.PI / 2).translate(0, 3.27, 0), gold));
+  // 기둥: 아래가 넓고 위로 좁아지는 6각 기둥 + 모서리의 검은 홈
+  cup.add(new THREE.Mesh(hex([v(0.9, 0.53), v(0.72, 0.75), v(0.55, 1.05), v(0.42, 1.35), v(0.36, 1.58)]), chrome));
+  for (let k = 0; k < 6; k++) {
+    const a = k * TAU / 6;
+    const groove = new THREE.Mesh(new THREE.BoxGeometry(0.05, 1.02, 0.02), lacquer);
+    groove.position.set(Math.sin(a) * 0.6, 1.05, Math.cos(a) * 0.6);
+    groove.rotation.order = 'YXZ';
+    groove.rotation.y = a;
+    groove.rotation.x = -Math.atan2(0.54, 1.05);
+    cup.add(groove);
+  }
 
-  // 목 · 손잡이 마디 · 줄기
-  cup.add(new THREE.Mesh(lathe([
-    v(0.62, 0.5), v(0.56, 0.54), v(0.38, 0.66), v(0.22, 0.9), v(0.15, 1.2), v(0.15, 1.42),
-    v(0.28, 1.47), v(0.31, 1.55), v(0.28, 1.63), v(0.16, 1.7), v(0.16, 1.85), v(0.22, 2.0),
-  ]), silver));
-  cup.add(new THREE.Mesh(new THREE.TorusGeometry(0.3, 0.025, 16, 120).rotateX(Math.PI / 2).translate(0, 1.55, 0), gold));
+  // 칼라: 6각 고리 + 모서리마다 파란 보석
+  cup.add(hexCyl(0.46, 0.4, 0.16, 1.62, chrome));
+  for (let k = 0; k < 6; k++) {
+    const a = k * TAU / 6;
+    const g = new THREE.Mesh(new THREE.OctahedronGeometry(0.07), gem);
+    g.scale.set(1, 1.35, 1);
+    g.position.set(Math.sin(a) * 0.48, 1.62, Math.cos(a) * 0.48);
+    cup.add(g);
+  }
 
-  // 받침대
-  const cyl = (r1, r2, h, y, m) => new THREE.Mesh(new THREE.CylinderGeometry(r1, r2, h, 160).translate(0, y, 0), m);
-  cup.add(cyl(0.66, 0.74, 0.1, 0.45, silver));
-  cup.add(cyl(0.86, 0.9, 0.3, 0.25, lacquer));
-  cup.add(new THREE.Mesh(new THREE.TorusGeometry(0.885, 0.012, 12, 200).rotateX(Math.PI / 2).translate(0, 0.3, 0), gold));
-  cup.add(cyl(0.98, 1.0, 0.1, 0.05, silver));
+  // 컵 몸통 (각진 6면)
+  cup.add(new THREE.Mesh(hex([
+    v(0.38, 1.68), v(0.68, 1.95), v(0.92, 2.4), v(1.06, 2.9), v(1.1, 3.15), v(0.95, 3.15), v(0.85, 3.05), v(0, 3.02),
+  ]), chrome));
+  const finial = new THREE.Mesh(new THREE.OctahedronGeometry(0.09), chrome);
+  finial.position.y = 3.25;
+  cup.add(finial);
+
+  // 문장 3개 (번갈아 가는 면)
+  for (let k = 0; k < 3; k++) {
+    const a = TAU / 12 + k * TAU / 3;
+    const e = new THREE.Mesh(new THREE.PlaneGeometry(0.72, 0.9), enamel);
+    e.rotation.order = 'YXZ';
+    e.rotation.y = a;
+    e.rotation.x = 0.28;
+    e.position.set(Math.sin(a) * 0.9, 2.64, Math.cos(a) * 0.9);
+    cup.add(e);
+  }
+
+  // 발톱처럼 솟은 6개의 납작한 날 (긴 날·짧은 날 교대)
+  const tall = [[0.44, 1.66], [0.82, 1.9], [1.14, 2.35], [1.34, 2.9], [1.44, 3.45], [1.46, 3.95]];
+  const short = [[0.44, 1.66], [0.77, 1.88], [1.06, 2.3], [1.24, 2.8], [1.32, 3.25], [1.32, 3.6]];
+  const blade = new THREE.Shape();
+  blade.moveTo(-0.035, -0.1); blade.lineTo(0.035, -0.1); blade.lineTo(0.035, 0.1); blade.lineTo(-0.035, 0.1); blade.closePath();
+  for (let k = 0; k < 6; k++) {
+    const a = k * TAU / 6;
+    const pts = (k % 2 ? short : tall).map(([r, y]) => new THREE.Vector3(Math.sin(a) * r, y, Math.cos(a) * r));
+    const geo = new THREE.ExtrudeGeometry(blade, { steps: 90, bevelEnabled: false, extrudePath: new THREE.CatmullRomCurve3(pts) });
+    cup.add(new THREE.Mesh(geo, chrome));
+  }
 
   return cup;
 }
@@ -90,7 +120,7 @@ function init() {
   const pos = dome.attributes.position;
   for (let i = 0; i < pos.count; i++) {
     const t = pos.getY(i) / 30;
-    const c = new THREE.Color(0x1a2238).lerp(new THREE.Color(0x8d97ad), Math.max(0, t * 0.5 + 0.5) ** 1.6);
+    const c = new THREE.Color(0x262c3c).lerp(new THREE.Color(0xd4dbe8), Math.min(1, Math.max(0, t * 1.2 + 0.45)) ** 1.5);
     col.push(c.r, c.g, c.b);
   }
   dome.setAttribute('color', new THREE.Float32BufferAttribute(col, 3));
@@ -120,8 +150,8 @@ function init() {
   scene.add(cup);
 
   const camera = new THREE.PerspectiveCamera(28, 300 / 420, 0.1, 100);
-  camera.position.set(0, 2.3, 9.2);
-  camera.lookAt(0, 1.78, 0);
+  camera.position.set(0, 2.6, 10.2);
+  camera.lookAt(0, 2.0, 0);
 
   function resize() {
     const w = wrap.clientWidth, h = Math.round(w * 420 / 300);

@@ -275,10 +275,11 @@ button { cursor: pointer; }
 #screen-title.play .main-menu button:nth-child(4) { animation-delay: 2.66s; }
 #screen-title.play .version { animation: fade 1s ease 2.9s forwards; }
 #screen-title.play .winners-strip { animation: fade 1.4s ease 2.6s forwards; }
-#screen-title.instant * { animation-delay: 0s !important; animation-duration: .01s; }
-#screen-title.instant .trophy, #screen-title.instant .trophy-shadow { animation-duration: 6s; }
-#screen-title.instant .rays { animation-duration: 90s; }
-#screen-title.instant .winners-track { animation-duration: 60s; }
+/* 두 번째 진입부터는 등장 연출 없이 바로 표시 (반복 애니메이션은 건드리지 않는다) */
+#screen-title.instant .title-bg, #screen-title.instant .logo-block, #screen-title.instant .main-menu button,
+#screen-title.instant .version, #screen-title.instant .trophy-wrap, #screen-title.instant .winners-strip {
+  animation: none; opacity: 1;
+}
 @keyframes fade { to { opacity: 1; } }
 @keyframes trophyIn { from { opacity: 0; transform: translateY(30px) scale(.94); filter: brightness(.3); } to { opacity: 1; transform: none; filter: none; } }
 
