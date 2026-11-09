@@ -1,6 +1,6 @@
 // Leaguepedia(Cargo API) 수집 스크립트 — 로컬에서 실행: node tools/scrape/scrape.mjs
 // 결과: data/teams.json, data/players.json, data/history.json
-// 익명 cargoquery는 레이트리밋이 빡빡하므로 요청 간 대기 + 백오프 재시도를 한다.
+// 익명 cargoquery는 레이트리밋이 빡빡하므로 봇 비밀번호(.env)로 로그인하고, 대기 + 재시도를 한다.
 
 import { writeFile, readFile, mkdir } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
@@ -18,6 +18,46 @@ const CACHE = path.join(HERE, '.cache');
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const log = (...a) => console.log(new Date().toISOString().slice(11, 19), ...a);
 
+// 봇 비밀번호 로그인 (tools/scrape/.env의 LP_USER / LP_PASS). 로그인하면 레이트리밋이 크게 완화된다.
+let cookie = '';
+async function readEnv() {
+  try {
+    const text = await readFile(path.join(HERE, '.env'), 'utf8');
+    return Object.fromEntries(text.split(/\r?\n/).filter(l => l.includes('=')).map(l => {
+      const i = l.indexOf('=');
+      return [l.slice(0, i).trim(), l.slice(i + 1).trim()];
+    }));
+  } catch { return {}; }
+}
+function keepCookies(res) {
+  const jar = Object.fromEntries(cookie.split('; ').filter(Boolean).map(c => c.split(/=(.*)/s).slice(0, 2)));
+  for (const c of res.headers.getSetCookie()) {
+    const [kv] = c.split(';');
+    const [k, v] = kv.split(/=(.*)/s);
+    jar[k] = v;
+  }
+  cookie = Object.entries(jar).map(([k, v]) => `${k}=${v}`).join('; ');
+}
+async function login() {
+  const { LP_USER, LP_PASS } = await readEnv();
+  if (!LP_USER || !LP_PASS) { log('로그인 정보 없음 → 익명으로 진행 (느림)'); return false; }
+  const headers = () => ({ 'User-Agent': UA, Cookie: cookie });
+  const t = await fetch(API + '?action=query&meta=tokens&type=login&format=json', { headers: headers() });
+  keepCookies(t);
+  const token = (await t.json()).query.tokens.logintoken;
+  const r = await fetch(API, {
+    method: 'POST',
+    headers: { ...headers(), 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({ action: 'login', format: 'json', lgname: LP_USER, lgpassword: LP_PASS, lgtoken: token }),
+  });
+  keepCookies(r);
+  const result = (await r.json()).login;
+  if (result.result !== 'Success') throw new Error('로그인 실패: ' + (result.reason || result.result));
+  log(`로그인 성공: ${result.lgusername}`);
+  return true;
+}
+let loggedIn = false;
+
 // 응답은 .cache/에 저장해서 중단 후 다시 돌려도 받은 부분은 건너뛴다
 async function api(params) {
   const url = API + '?' + new URLSearchParams({ format: 'json', ...params });
@@ -25,9 +65,9 @@ async function api(params) {
   try { return JSON.parse(await readFile(file, 'utf8')); } catch {}
 
   for (let attempt = 1; attempt <= 60; attempt++) {
-    await sleep(attempt === 1 ? 5000 : 90000);
+    await sleep(attempt === 1 ? (loggedIn ? 1000 : 5000) : (loggedIn ? 20000 : 90000));
     try {
-      const res = await fetch(url, { headers: { 'User-Agent': UA } });
+      const res = await fetch(url, { headers: { 'User-Agent': UA, Cookie: cookie } });
       const json = await res.json();
       if (json.error) {
         log(`  ${json.error.code} (시도 ${attempt})`);
@@ -81,6 +121,7 @@ async function imageUrls(files) {
 async function main() {
   await mkdir(OUT, { recursive: true });
   await mkdir(CACHE, { recursive: true });
+  loggedIn = await login();
 
   // 1) 시즌 대회 로스터: 팀별로 가장 최근 대회의 로스터를 현재 로스터로 본다
   const roster = [];
