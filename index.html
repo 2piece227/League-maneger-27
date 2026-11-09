@@ -1,0 +1,204 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>LM 27</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Noto+Sans+KR:wght@400;500;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/main.css">
+</head>
+<body>
+<div id="app">
+
+  <!-- ============ 인트로: 고지 ============ -->
+  <section id="screen-intro" class="screen">
+    <div class="intro-box">
+      <div class="intro-badge">NOTICE</div>
+      <h2 class="intro-head">시작하기 전에</h2>
+      <ul class="intro-lines">
+        <li>LM 27은 팬이 만든 <b>비영리 팬게임</b>입니다. 광고, 후원, 유료 기능이 없으며 어떠한 수익도 창출하지 않습니다.</li>
+        <li>이 게임은 <b>Riot Games의 보증이나 후원을 받지 않았으며</b>, Riot Games 및 각 리그·구단과 공식적인 관계가 없습니다.</li>
+        <li>팀·선수 명칭, 로고, 사진 등 모든 권리는 각 권리자에게 있으며, 게임 내 선수 능력치와 특성은 실제 평가가 아닌 게임용 해석입니다.</li>
+        <li>권리자의 요청이나 정책 변경에 따라 <b>예고 없이 서비스가 중단되거나 내용이 변경될 수 있습니다.</b></li>
+      </ul>
+      <p class="intro-en">LM 27 was created under Riot Games' "Legal Jibber Jabber" policy using assets owned by Riot Games. Riot Games does not endorse or sponsor this project.</p>
+      <div class="intro-prompt">클릭하거나 아무 키나 눌러 계속</div>
+    </div>
+  </section>
+
+  <!-- ============ 메인 타이틀 ============ -->
+  <section id="screen-title" class="screen">
+    <div class="title-bg"><div class="rays"></div><div class="vignette"></div></div>
+    <div class="title-layout">
+      <div class="title-left">
+        <div class="logo-block">
+          <div class="logo-main">LM <span>27</span></div>
+          <div class="logo-sub">League of Legends Manager 27</div>
+        </div>
+        <nav class="main-menu">
+          <button data-action="new"><b>새 게임</b><span>감독 프로필을 만들고 커리어를 시작합니다</span></button>
+          <button data-action="load"><b>불러오기</b><span>저장된 커리어를 이어서 진행합니다</span></button>
+          <button data-action="settings"><b>설정</b><span>화면, 시뮬레이션, 데이터 옵션</span></button>
+          <button data-action="quit"><b>게임 종료</b><span>게임을 닫습니다</span></button>
+        </nav>
+        <div class="version">v0.0.1 · 레이아웃 프로토타입</div>
+      </div>
+
+      <div class="title-center">
+        <div class="trophy-wrap">
+          <svg class="trophy" viewBox="0 0 300 420" aria-label="우승 트로피">
+            <defs>
+              <linearGradient id="metal" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="300" y2="0" spreadMethod="repeat">
+                <stop offset="0" stop-color="#5b6372"/>
+                <stop offset=".16" stop-color="#cfd5df"/>
+                <stop offset=".28" stop-color="#ffffff"/>
+                <stop offset=".42" stop-color="#9aa3b2"/>
+                <stop offset=".6" stop-color="#454c5a"/>
+                <stop offset=".8" stop-color="#b9c0cc"/>
+                <stop offset="1" stop-color="#5b6372"/>
+                <animateTransform attributeName="gradientTransform" type="translate" from="0 0" to="300 0" dur="7s" repeatCount="indefinite"/>
+              </linearGradient>
+              <linearGradient id="shade" x1="0" x2="1" y1="0" y2="0">
+                <stop offset="0" stop-color="#000" stop-opacity=".6"/>
+                <stop offset=".22" stop-color="#000" stop-opacity="0"/>
+                <stop offset=".78" stop-color="#000" stop-opacity="0"/>
+                <stop offset="1" stop-color="#000" stop-opacity=".65"/>
+              </linearGradient>
+              <linearGradient id="inner" x1="0" x2="0" y1="0" y2="1">
+                <stop offset="0" stop-color="#1a1e26"/>
+                <stop offset="1" stop-color="#4a5262"/>
+              </linearGradient>
+              <radialGradient id="glow">
+                <stop offset="0" stop-color="#f0d58a" stop-opacity=".35"/>
+                <stop offset=".5" stop-color="#c8a24a" stop-opacity=".12"/>
+                <stop offset="1" stop-color="#c8a24a" stop-opacity="0"/>
+              </radialGradient>
+              <pattern id="engrave" width="30" height="26" patternUnits="userSpaceOnUse">
+                <path d="M0 13 L15 1 L30 13 L15 25 Z" fill="none" stroke="#2b313c" stroke-width="1.6"/>
+                <circle cx="15" cy="13" r="2.2" fill="#2b313c"/>
+                <animateTransform attributeName="patternTransform" type="translate" from="0 0" to="30 0" dur="2.4s" repeatCount="indefinite"/>
+              </pattern>
+              <clipPath id="bowlClip"><path d="M40,60 C40,150 100,192 135,200 L165,200 C200,192 260,150 260,60 Z"/></clipPath>
+            </defs>
+            <ellipse cx="150" cy="170" rx="150" ry="190" fill="url(#glow)"/>
+            <!-- bowl -->
+            <path d="M40,60 C40,150 100,192 135,200 L165,200 C200,192 260,150 260,60 Z" fill="url(#metal)"/>
+            <rect x="30" y="80" width="240" height="30" fill="url(#engrave)" clip-path="url(#bowlClip)" opacity=".85"/>
+            <path d="M40,80 L260,80 M40,110 L260,110" stroke="#2b313c" stroke-width="1.4" clip-path="url(#bowlClip)"/>
+            <path d="M40,60 C40,150 100,192 135,200 L165,200 C200,192 260,150 260,60 Z" fill="url(#shade)"/>
+            <ellipse cx="150" cy="60" rx="110" ry="18" fill="url(#metal)" stroke="#3a404c" stroke-width="1.5"/>
+            <ellipse cx="150" cy="61" rx="99" ry="13" fill="url(#inner)"/>
+            <!-- neck / knob / stem -->
+            <path d="M135,200 L165,200 L160,240 L140,240 Z" fill="url(#metal)"/>
+            <path d="M135,200 L165,200 L160,240 L140,240 Z" fill="url(#shade)"/>
+            <ellipse cx="150" cy="248" rx="24" ry="11" fill="url(#metal)"/>
+            <ellipse cx="150" cy="248" rx="24" ry="11" fill="url(#shade)"/>
+            <path d="M140,256 C136,298 122,318 104,336 L196,336 C178,318 164,298 160,256 Z" fill="url(#metal)"/>
+            <path d="M140,256 C136,298 122,318 104,336 L196,336 C178,318 164,298 160,256 Z" fill="url(#shade)"/>
+            <!-- base -->
+            <rect x="90" y="336" width="120" height="14" rx="3" fill="url(#metal)"/>
+            <rect x="80" y="350" width="140" height="26" fill="#262b36"/>
+            <rect x="80" y="361" width="140" height="2" fill="#c8a24a" opacity=".8"/>
+            <rect x="72" y="376" width="156" height="14" rx="3" fill="url(#metal)"/>
+            <rect x="72" y="376" width="156" height="14" rx="3" fill="url(#shade)"/>
+          </svg>
+          <div class="trophy-shadow"></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="winners-strip">
+      <div class="winners-label">HALL OF CHAMPIONS</div>
+      <div class="winners-viewport"><div class="winners-track" id="winners-track"></div></div>
+    </div>
+  </section>
+
+  <!-- ============ 감독 프로필 생성 ============ -->
+  <section id="screen-profile" class="screen">
+    <header class="screen-head">
+      <button class="btn-ghost" data-nav="title">← 메인으로</button>
+      <div class="step-dots"><span class="on">1 감독 프로필</span><span>2 리그·팀 선택</span></div>
+    </header>
+    <div class="profile-layout">
+      <div class="avatar-panel panel">
+        <div class="avatar-stage" id="avatar-preview"></div>
+        <div class="avatar-namecard">
+          <div class="nc-name" id="nc-name">이름 없음</div>
+          <div class="nc-meta" id="nc-meta">감독</div>
+        </div>
+        <button class="btn-ghost" id="avatar-random">🎲 랜덤 외형</button>
+      </div>
+
+      <div class="profile-form panel">
+        <h3 class="panel-title">기본 정보</h3>
+        <div class="form-grid">
+          <label class="field"><span>이름 <em>*</em></span><input id="pf-name" maxlength="16" placeholder="감독 이름"></label>
+          <label class="field"><span>국적</span>
+            <select id="pf-nation">
+              <option value="KR">대한민국</option><option value="CN">중국</option><option value="EU">유럽</option><option value="NA">북미</option><option value="ETC">기타</option>
+            </select>
+          </label>
+          <label class="field"><span>나이</span><input id="pf-age" type="number" min="25" max="70" value="34"></label>
+          <label class="field"><span>경력 배경</span>
+            <select id="pf-bg">
+              <option value="ex-pro">전직 프로게이머</option><option value="analyst">분석관 출신</option><option value="coach">코치 출신</option><option value="none">신인 감독</option>
+            </select>
+          </label>
+        </div>
+
+        <h3 class="panel-title">외형</h3>
+        <div class="avatar-options" id="avatar-options"></div>
+
+        <div class="form-foot">
+          <span class="hint" id="pf-hint"></span>
+          <button class="btn-primary" id="pf-next">다음: 리그 선택 →</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ============ 리그 / 팀 선택 ============ -->
+  <section id="screen-team" class="screen">
+    <header class="screen-head">
+      <button class="btn-ghost" data-nav="profile">← 프로필 수정</button>
+      <div class="step-dots"><span class="done">1 감독 프로필</span><span class="on">2 리그·팀 선택</span></div>
+      <div class="mgr-chip" id="mgr-chip"></div>
+    </header>
+    <div class="league-tabs" id="league-tabs"></div>
+    <div class="league-info" id="league-info"></div>
+    <div class="team-layout">
+      <div class="team-list" id="team-list"></div>
+      <aside class="team-detail panel" id="team-detail"></aside>
+    </div>
+  </section>
+
+  <!-- ============ 게임 본편 (자리만) ============ -->
+  <section id="screen-game" class="screen">
+    <div class="placeholder-box panel">
+      <h2>메인 게임 화면</h2>
+      <p>다음 단계에서 레이아웃이 들어갈 자리입니다.</p>
+      <pre id="game-summary"></pre>
+      <button class="btn-ghost" data-nav="title">메인으로</button>
+    </div>
+  </section>
+</div>
+
+<div id="modal-root"></div>
+
+<footer class="legal">
+  LM 27 was created under Riot Games' "Legal Jibber Jabber" policy using assets owned by Riot Games. Riot Games does not endorse or sponsor this project.
+</footer>
+
+<script src="js/mock-data.js"></script>
+<script src="js/stubs.js"></script>
+<script src="js/ui.js"></script>
+<script src="js/avatar.js"></script>
+<script src="js/screens/intro.js"></script>
+<script src="js/screens/title.js"></script>
+<script src="js/screens/profile.js"></script>
+<script src="js/screens/team.js"></script>
+<script src="js/app.js"></script>
+</body>
+</html>
