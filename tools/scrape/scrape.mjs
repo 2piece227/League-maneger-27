@@ -2,7 +2,8 @@
 // 결과: data/teams.json, data/players.json, data/history.json
 // 익명 cargoquery는 레이트리밋이 빡빡하므로 요청 간 대기 + 백오프 재시도를 한다.
 
-import { writeFile, mkdir } from 'node:fs/promises';
+import { writeFile, readFile, mkdir } from 'node:fs/promises';
+import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import path from 'node:path';
 
@@ -10,26 +11,33 @@ const API = 'https://lol.fandom.com/api.php';
 const UA = 'LM27-fan-project/0.1 (local data script)';
 const SEASON = process.env.LM_SEASON || '2026';
 const LEAGUES = ['LCK', 'LPL', 'LEC', 'LCS'];
-const OUT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../data');
+const HERE = path.dirname(fileURLToPath(import.meta.url));
+const OUT = path.resolve(HERE, '../../data');
+const CACHE = path.join(HERE, '.cache');
 
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const log = (...a) => console.log(new Date().toISOString().slice(11, 19), ...a);
 
+// 응답은 .cache/에 저장해서 중단 후 다시 돌려도 받은 부분은 건너뛴다
 async function api(params) {
   const url = API + '?' + new URLSearchParams({ format: 'json', ...params });
-  for (let attempt = 0; attempt < 12; attempt++) {
-    await sleep(attempt === 0 ? 3000 : Math.min(30000 * attempt, 180000));
+  const file = path.join(CACHE, createHash('sha1').update(url).digest('hex') + '.json');
+  try { return JSON.parse(await readFile(file, 'utf8')); } catch {}
+
+  for (let attempt = 1; attempt <= 60; attempt++) {
+    await sleep(attempt === 1 ? 5000 : 90000);
     try {
       const res = await fetch(url, { headers: { 'User-Agent': UA } });
       const json = await res.json();
       if (json.error) {
-        log(`  ${json.error.code} (재시도 ${attempt + 1})`);
+        log(`  ${json.error.code} (시도 ${attempt})`);
         if (json.error.code === 'ratelimited') continue;
         throw new Error(json.error.info);
       }
+      await writeFile(file, JSON.stringify(json));
       return json;
     } catch (e) {
-      log(`  요청 실패: ${e.message} (재시도 ${attempt + 1})`);
+      log(`  요청 실패: ${e.message} (시도 ${attempt})`);
     }
   }
   throw new Error('재시도 초과: ' + url);
@@ -72,6 +80,7 @@ async function imageUrls(files) {
 
 async function main() {
   await mkdir(OUT, { recursive: true });
+  await mkdir(CACHE, { recursive: true });
 
   // 1) 시즌 대회 로스터: 팀별로 가장 최근 대회의 로스터를 현재 로스터로 본다
   const roster = [];
@@ -98,7 +107,7 @@ async function main() {
 
   // 2) 팀 정보 (로고, 팀 사진)
   const teamRows = [];
-  for (const group of chunks(teamNames, 40)) {
+  for (const group of chunks(teamNames, 100)) {
     teamRows.push(...await cargo({
       tables: 'Teams',
       fields: 'Name,OverviewPage,Short,Location,Region,Image,RosterPhoto',
@@ -109,7 +118,7 @@ async function main() {
   // 3) 선수 정보 (실명, 사진, 국적, 생일)
   const links = [...new Set(current.map(r => r.Link))];
   const playerRows = [];
-  for (const group of chunks(links, 40)) {
+  for (const group of chunks(links, 100)) {
     playerRows.push(...await cargo({
       tables: 'Players',
       fields: 'ID,OverviewPage,Image,Name,NativeName,Country,NationalityPrimary,Birthdate,Role,Contract',
