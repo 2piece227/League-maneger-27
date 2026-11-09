@@ -8,6 +8,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@600;800&family=Noto+Sans+KR:wght@400;500;700&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
 <link rel="stylesheet" href="css/main.css">
+<link rel="stylesheet" href="css/portal.css">
 </head>
 <body>
 <div id="app">
@@ -175,14 +176,23 @@
     </div>
   </section>
 
-  <!-- ============ 게임 본편 (자리만) ============ -->
+  <!-- ============ 메인 게임 화면 ============ -->
   <section id="screen-game" class="screen">
-    <div class="placeholder-box panel">
-      <h2>메인 게임 화면</h2>
-      <p>다음 단계에서 레이아웃이 들어갈 자리입니다.</p>
-      <pre id="game-summary"></pre>
-      <button class="btn-ghost" data-nav="title">메인으로</button>
-    </div>
+    <header class="topbar">
+      <div class="tb-hist">
+        <button class="icon-btn" id="nav-back" title="뒤로" disabled><svg viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2"/></svg></button>
+        <button class="icon-btn" id="nav-fwd" title="앞으로" disabled><svg viewBox="0 0 24 24"><path d="M9 5l7 7-7 7" fill="none" stroke="currentColor" stroke-width="2"/></svg></button>
+      </div>
+      <button class="icon-btn tb-burger" id="nav-burger" title="메뉴"><svg viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16" fill="none" stroke="currentColor" stroke-width="2"/></svg></button>
+      <div class="tb-badge" id="tb-badge"></div>
+      <nav class="tb-menu" id="tb-menu"></nav>
+      <div class="tb-clock">
+        <span class="tb-date num"></span>
+        <button class="btn-continue">계속 <svg viewBox="0 0 24 24"><path d="M8 5l8 7-8 7z" fill="currentColor"/></svg></button>
+      </div>
+    </header>
+    <nav class="subtabs" id="subtabs"></nav>
+    <main class="game-body" id="game-body"></main>
   </section>
 </div>
 
@@ -201,6 +211,9 @@
 <script src="js/screens/title.js"></script>
 <script src="js/screens/profile.js"></script>
 <script src="js/screens/team.js"></script>
+<script src="js/router.js"></script>
+<script src="js/nav.js"></script>
+<script src="js/portal.js"></script>
 <script src="js/app.js"></script>
 <script type="importmap">
 { "imports": {

@@ -448,9 +448,6 @@ input:focus, select:focus { outline: none; border-color: var(--gold); }
 .tags span { font-size: 12px; padding: 3px 9px; border-radius: 999px; background: var(--panel-2); border: 1px solid var(--line); }
 .td-foot { margin-top: auto; padding: 16px 20px; display: flex; justify-content: flex-end; }
 
-/* ---------- 게임 자리 ---------- */
-.placeholder-box { margin: auto; padding: 28px; width: min(560px, calc(100% - 32px)); }
-.placeholder-box pre { background: #0a101d; padding: 12px; border-radius: 6px; font-size: 12px; max-height: 240px; overflow: auto; }
 
 /* ---------- 반응형 ---------- */
 @media (max-width: 900px) {

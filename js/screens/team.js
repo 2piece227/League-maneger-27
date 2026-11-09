@@ -130,7 +130,6 @@ Screens.team = {
           label: '시작', primary: true,
           onClick: () => {
             Game.start(App.state.manager, t);
-            $('#game-summary').textContent = JSON.stringify({ manager: { ...App.state.manager, avatar: '…' }, team: t.id }, null, 2);
             App.show('game');
           },
         },

@@ -83,3 +83,19 @@ const Game = {
     window.close();
   },
 };
+
+// 메인 게임 화면(포털)의 버튼 자리
+const GameStubs = {
+  // TODO: 기능 연결 — 다음 일정까지 날짜 진행
+  advanceDay() {
+    console.info('[stub] GameStubs.advanceDay');
+  },
+  // TODO: 기능 연결 — 메시지 읽음 상태 저장
+  markAllRead() {
+    console.info('[stub] GameStubs.markAllRead');
+  },
+  // TODO: 기능 연결 — 할 일 메시지에서 해당 화면/처리로 이동
+  handleMessageTask(id) {
+    console.info('[stub] GameStubs.handleMessageTask', id);
+  },
+};
