@@ -216,6 +216,9 @@ button { cursor: pointer; }
 .title-center { display: flex; justify-content: center; }
 .trophy-wrap { position: relative; width: min(34vw, 46vh, 380px); }
 .trophy { width: 100%; display: block; animation: float 6s ease-in-out infinite; filter: drop-shadow(0 10px 30px rgba(0, 0, 0, .6)); }
+#trophy-3d { display: none; width: 100%; aspect-ratio: 300 / 420; animation: float 6s ease-in-out infinite; }
+.three-ready #trophy-3d { display: block; }
+.three-ready .trophy { display: none; }
 .trophy-shadow {
   width: 60%; height: 18px; margin: -6px auto 0;
   background: radial-gradient(ellipse, rgba(0, 0, 0, .7), transparent 70%);

@@ -48,6 +48,7 @@
 
       <div class="title-center">
         <div class="trophy-wrap">
+          <canvas id="trophy-3d" aria-label="우승 트로피"></canvas>
           <svg class="trophy" viewBox="0 0 300 420" aria-label="우승 트로피">
             <defs>
               <linearGradient id="metal" gradientUnits="userSpaceOnUse" x1="0" y1="0" x2="300" y2="0" spreadMethod="repeat">
@@ -200,5 +201,12 @@
 <script src="js/screens/profile.js"></script>
 <script src="js/screens/team.js"></script>
 <script src="js/app.js"></script>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.164.1/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.164.1/examples/jsm/"
+} }
+</script>
+<script type="module" src="js/trophy3d.js"></script>
 </body>
 </html>
