@@ -119,16 +119,13 @@ const MOCK = (() => {
       used.add(n);
       return n;
     };
-    const base = 8 + team.rep * 1.7;
     const player = (role, sub) => {
-      const ovr = Math.max(6, Math.min(19, Math.round(base + (r() * 4 - 2) - (sub ? 3 : 0))));
       return {
         id: `${team.id}_${role.toLowerCase()}${sub ? '_s' : ''}`,
         name: name(),
         role,
         age: 17 + Math.floor(r() * (sub ? 4 : 10)),
         nation: pick(r, nationPool[team.league]),
-        ovr,
         sub,
       };
     };
@@ -177,12 +174,6 @@ const MOCK = (() => {
     [2025, 'T1', 'KR', '#e2012d'],
   ].map(([year, team, region, color]) => ({ year, team, region, color }));
 
-  // 수집 데이터에 아직 능력치가 없을 때 쓰는 임시 OVR
-  function placeholderOvr(id, rep) {
-    const r = rng(hash(id));
-    return Math.max(6, Math.min(19, Math.round(8 + rep * 1.7 + (r() * 4 - 2))));
-  }
-
   // 포지션별 첫 선수만 주전, 나머지는 후보
   function markSubs(players) {
     const seen = new Set();
@@ -190,5 +181,5 @@ const MOCK = (() => {
     players.sort((a, b) => a.sub - b.sub || ROLES.indexOf(a.role) - ROLES.indexOf(b.role));
   }
 
-  return { leagues, teams, worldsHistory, ROLES, boardGoals, budgetLabel, placeholderOvr, markSubs };
+  return { leagues, teams, worldsHistory, ROLES, boardGoals, budgetLabel, markSubs };
 })();

@@ -13,6 +13,11 @@ const Data = {
     } catch (e) {
       console.info('[data] 수집 데이터 없음 → 목업 사용', e.message);
     }
+    // 능력치가 없는 선수는 기본값(전원 동일)으로 채운다. TODO: 기록 기반 변환
+    db.teams.forEach(t => t.players.forEach(p => {
+      p.attributes = p.attributes || Attributes.create(p.role);
+      p.ovr = Attributes.overall(p.attributes);
+    }));
     return db;
   },
 
@@ -31,8 +36,6 @@ const Data = {
       team.players = players.filter(p => p.team === t.id).map(p => ({
         ...p,
         age: p.birthdate ? this.ageOn(p.birthdate, '2027-01-01') : null,
-        // TODO: 기록 기반 능력치 변환 전까지 임시 OVR
-        ovr: MOCK.placeholderOvr(p.id, team.rep),
         sub: false,
       }));
       MOCK.markSubs(team.players);
