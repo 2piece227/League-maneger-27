@@ -5,8 +5,7 @@ const Career = {
   guest() {
     return {
       name: '감독', displayName: '감독', nation: 'South Korea', birthdate: '1992-06-15', age: 34, languages: ['ko'],
-      background: { type: 'coach' }, coachYears: 3, style: { philosophy: 'flex', training: 'scrim', manage: 'flexible', media: 'calm' },
-      attrs: { ...Manager.BASE.coach }, reputation: 26, avatar: Avatar.defaults(), createdAt: '2026-11-10',
+      background: { type: 'coach' }, coachYears: 3, reputation: 26, avatar: Avatar.defaults(), createdAt: '2026-11-10',
     };
   },
   team() { return Roster.team(); },
@@ -19,21 +18,21 @@ const Career = {
     const v = pay[1][t.rep || 2] * (0.8 + m.reputation / 100);
     return { from: m.createdAt || '2026-11-10', to: '2028-11-30', salary: `연 ${v.toFixed(1)}억 원` };
   },
+  // 관계 수치: 배경·평판 기준 출발점. TODO: 기능 연결 — 성적·인터뷰·선수 면담으로 변동
   relations(m) {
-    const a = m.attrs, bg = m.background.type;
+    const bg = m.background.type;
     const c = v => Math.max(5, Math.min(95, Math.round(v)));
     return [
       ['이사회 신뢰', c(50 + m.reputation * .3)],
-      ['선수단 신뢰', c(40 + a.manage * 1.5 + a.motivate + (bg === 'ex-pro' ? 10 : bg === 'analyst' ? -6 : 0))],
+      ['선수단 신뢰', c(55 + m.reputation * .2 + (bg === 'ex-pro' ? 10 : bg === 'analyst' ? -6 : 0))],
       ['팬 지지', c(35 + m.reputation * .5 + (bg === 'caster' ? 12 : 0))],
-      ['미디어 관계', c(30 + a.media * 3 + (m.style.media === 'open' ? 6 : m.style.media === 'guarded' ? -8 : 0))],
+      ['미디어 관계', c(45 + m.reputation * .2 + (bg === 'caster' ? 15 : 0))],
     ];
   },
   meter(label, v, cls = '') {
     const tone = v >= 70 ? 'good' : v >= 45 ? 'mid' : 'bad';
     return `<div class="cr-meter ${cls}"><span>${label}</span><div class="cr-bar"><i class="${tone}" style="width:${v}%"></i></div><b class="num">${v}</b></div>`;
   },
-  attrV(v) { return `<span class="attr-v ${v >= 16 ? 'a4' : v >= 11 ? 'a3' : v >= 6 ? 'a2' : 'a1'}">${v}</span>`; },
   ymd(s) { return (s || '').replace(/-/g, '.'); },
   head(title, sub) {
     return `<div class="card rs-head"><div class="rs-title"><h2>${title}</h2>${sub ? `<span>${sub}</span>` : ''}</div></div>`;
@@ -79,14 +78,7 @@ const Career = {
           </div>
 
           <div class="card">
-            <div class="card-head"><h3>감독 능력치</h3><small class="cr-todo">1~20 · 경력으로 성장</small></div>
-            <div class="cr-attrs">${Manager.ATTRS.map(([k, l, d]) => `<div title="${d}"><span>${l}</span>${this.attrV(m.attrs[k])}</div>`).join('')}</div>
-          </div>
-
-          <div class="card">
-            <div class="card-head"><h3>지도 스타일</h3></div>
-            <div class="cr-styles">${Object.entries(Manager.STYLES).map(([k, [l]]) => `<div><span>${l}</span><b>${Manager.styleLabel(k, m.style[k])}</b></div>`).join('')}</div>
-            <div class="card-head" style="margin-top:16px"><h3>경력 배경</h3></div>
+            <div class="card-head"><h3>경력 배경</h3></div>
             <p class="cr-bg"><b>${bg.label}</b> — ${bg.desc}</p>
             ${m.background.type === 'ex-pro' ? `<p class="cr-bg">선수 시절 ${G.ROLE_KO[m.background.role]} · ${m.background.years}년 · ${Manager.PRO_PEAK[m.background.peak][0]}${m.background.formerTeam ? ' · ' + UI.esc((Schedule.team(m.background.formerTeam) || {}).name || '') : ''}</p>` : ''}
             <p class="cr-bg">지도자 경력 ${m.coachYears ? m.coachYears + '년' : '없음'}</p>
@@ -305,7 +297,7 @@ const Career = {
             <select id="cv-motive"><option>우승에 도전하고 싶습니다</option><option>팀을 재건할 자신이 있습니다</option><option>유망주를 키워 강팀으로 만들겠습니다</option><option>이 리그에서 새로운 도전을 하고 싶습니다</option></select>
           </label>
           <label class="field"><span>강조할 점</span>
-            <select id="cv-pitch">${Object.entries(Manager.STYLES).map(([k, [l]]) => `<option value="${k}">${l}: ${Manager.styleLabel(k, m.style[k])}</option>`).join('')}<option value="attrs">강점 능력치</option></select>
+            <select id="cv-pitch"><option value="career">경력·이력</option><option value="rep">평판</option><option value="vision">팀 운영 비전</option><option value="youth">유망주 육성 계획</option></select>
           </label>
           <p class="cr-note">예상 가능성: <b>${ch}</b> · 답변은 메시지로 옵니다. 지원 사실은 현 구단에 알려질 수 있습니다.</p>
         </div>`,

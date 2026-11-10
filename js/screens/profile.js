@@ -1,7 +1,6 @@
-// 감독 생성: 기본 정보 · 경력 · 지도 스타일 · 능력치(포인트 분배) · 외형
+// 감독 생성: 기본 정보 · 경력 · 외형
 Screens.profile = {
-  SECS: ['basic', 'career', 'style', 'attrs', 'look'],
-  FREE_POINTS: 10,
+  SECS: ['basic', 'career', 'look'],
   sec: 'basic',
 
   init() {
@@ -21,7 +20,6 @@ Screens.profile = {
       if (i < this.SECS.length - 1) this.go(this.SECS[i + 1]); else this.submit();
     };
     $('#avatar-random').onclick = () => { this.m.avatar = Avatar.random(); this.renderLook(); this.update(); };
-    $('#pf-attr-reset').onclick = () => { this.m.attrs = { ...Manager.BASE[this.m.background.type] }; this.renderAttrs(); this.update(); };
 
     const bind = (sel, fn) => $(sel).addEventListener('input', () => { fn($(sel).value); this.update(); });
     bind('#pf-name', v => this.m.name = v.trim());
@@ -42,8 +40,6 @@ Screens.profile = {
     bind('#pf-coach', v => this.m.coachYears = +v);
 
     this.renderBg();
-    this.renderStyle();
-    this.renderAttrs();
     this.renderLook();
     this.renderLangs();
   },
@@ -54,8 +50,6 @@ Screens.profile = {
       languages: ['ko', 'en'],
       background: { type: 'coach', role: 'MID', years: 4, peak: 'first', formerTeam: null },
       coachYears: 5,
-      style: { philosophy: 'flex', training: 'scrim', manage: 'flexible', media: 'calm' },
-      attrs: { ...Manager.BASE.coach },
       avatar: Avatar.defaults(),
     };
   },
@@ -91,40 +85,11 @@ Screens.profile = {
       </button>`).join('');
     $$('#pf-bg .bg-card').forEach(c => c.onclick = () => {
       this.m.background.type = c.dataset.bg;
-      this.m.attrs = { ...Manager.BASE[c.dataset.bg] };
       if (c.dataset.bg === 'amateur') this.m.coachYears = 0;
       $('#pf-coach').value = this.m.coachYears;
-      this.renderBg(); this.renderAttrs(); this.update();
+      this.renderBg(); this.update();
     });
     $('#pf-pro').style.display = this.m.background.type === 'ex-pro' ? '' : 'none';
-  },
-
-  renderStyle() {
-    $('#pf-style').innerHTML = Object.entries(Manager.STYLES).map(([key, [label, opts]]) => `
-      <div class="field"><span>${label}</span><div class="opt-row">${opts.map(([v, l]) =>
-        `<button class="opt-btn ${this.m.style[key] === v ? 'on' : ''}" data-k="${key}" data-v="${v}">${l}</button>`).join('')}</div></div>`).join('');
-    $$('#pf-style button').forEach(b => b.onclick = () => { this.m.style[b.dataset.k] = b.dataset.v; this.renderStyle(); this.update(); });
-  },
-
-  pool() {
-    const base = Manager.BASE[this.m.background.type];
-    const spent = Manager.ATTRS.reduce((s, [k]) => s + this.m.attrs[k] - base[k], 0);
-    return this.FREE_POINTS - spent;
-  },
-
-  renderAttrs() {
-    $('#pf-pool').textContent = this.pool();
-    $('#pf-attrs').innerHTML = Manager.ATTRS.map(([k, label, desc]) => {
-      const v = this.m.attrs[k];
-      return `
-        <div class="attr-row">
-          <div><b>${label}</b><small>${desc}</small></div>
-          <button class="attr-btn" data-k="${k}" data-d="-1" ${v <= Manager.ATTR_MIN ? 'disabled' : ''}>−</button>
-          <span class="attr-v ${v >= 16 ? 'a4' : v >= 11 ? 'a3' : v >= 6 ? 'a2' : 'a1'}">${v}</span>
-          <button class="attr-btn" data-k="${k}" data-d="1" ${v >= Manager.ATTR_MAX || this.pool() <= 0 ? 'disabled' : ''}>+</button>
-        </div>`;
-    }).join('');
-    $$('#pf-attrs .attr-btn').forEach(b => b.onclick = () => { this.m.attrs[b.dataset.k] += +b.dataset.d; this.renderAttrs(); this.update(); });
   },
 
   renderLook() {
@@ -159,11 +124,9 @@ Screens.profile = {
     const age = Store.ageOn(m.birthdate, '2026-11-10');
     $('#nc-meta').innerHTML = `${G.flag(m.nation)} ${G.nationName(m.nation)} · ${age}세 · ${Manager.BACKGROUNDS[m.background.type].label}`;
     const rep = Manager.startRep(m);
-    const top = [...Manager.ATTRS].sort((a, b) => m.attrs[b[0]] - m.attrs[a[0]]).slice(0, 3);
     $('#pf-summary').innerHTML = `
       <div class="pfs-row"><span>시작 평판</span><b>${Manager.repLabel(rep)}</b>${UI.stars(Manager.repStars(rep))}</div>
-      <div class="pfs-row"><span>강점</span><b>${top.map(a => a[1]).join(' · ')}</b></div>
-      <div class="pfs-row"><span>운영 철학</span><b>${Manager.styleLabel('philosophy', m.style.philosophy)}</b></div>
+      <div class="pfs-row"><span>지도자 경력</span><b>${m.coachYears ? m.coachYears + '년' : '없음'}</b></div>
       <div class="pfs-row"><span>사용 언어</span><b>${Manager.langs(m).join(', ')}</b></div>`;
     $('#pf-hint').textContent = '';
   },
@@ -173,7 +136,6 @@ Screens.profile = {
     if (!m.name) { this.go('basic'); $('#pf-hint').textContent = '감독 이름을 입력해 주세요.'; $('#pf-name').focus(); return; }
     const age = Store.ageOn(m.birthdate, '2026-11-10');
     if (!(age >= 25 && age <= 70)) { this.go('basic'); $('#pf-hint').textContent = '나이는 25~70세 사이로 정해 주세요.'; return; }
-    if (this.pool() > 0) { this.go('attrs'); $('#pf-hint').textContent = `능력치 포인트 ${this.pool()}점이 남았습니다.`; return; }
     App.state.manager = JSON.parse(JSON.stringify({
       ...m, age, displayName: this.displayName(m), reputation: Manager.startRep(m), createdAt: '2026-11-10',
     }));
