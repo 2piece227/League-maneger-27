@@ -13,7 +13,7 @@ const Manager = {
   BACKGROUNDS: {
     'ex-pro': { label: '전직 프로게이머', desc: '선수 시절의 감각과 인맥. 선수단 장악력이 높다.', points: 92, rep: 20 },
     coach: { label: '코치 출신', desc: '프로팀 코치로 다년간 일했다. 균형 잡힌 지도자.', points: 98, rep: 26 },
-    analyst: { label: '분석관 출신', desc: '데이터와 밴픽에 강하지만 선수단과의 거리는 멀다.', points: 94, rep: 18 },
+    analyst: { label: '분석관 출신', desc: '데이터와 메타 분석에 강하지만 선수단과의 거리는 멀다.', points: 94, rep: 18 },
     caster: { label: '해설·방송인 출신', desc: '미디어와 팬에게 친숙하다. 현장 지도 경험은 적다.', points: 86, rep: 24 },
     amateur: { label: '아마추어·일반인', desc: '무명에서 시작한다. 모든 것을 증명해야 한다.', points: 80, rep: 4 },
   },
@@ -31,7 +31,6 @@ const Manager = {
   // FM 감독 능력치 (1~20)
   ATTRS: [
     ['tactics', '전술 지식', '운영·한타 설계와 경기 중 판단'],
-    ['draft', '밴픽 이해', '밴픽 설계와 상대 밴픽 읽기'],
     ['meta', '메타 해석', '패치 변화를 빠르게 읽고 적용'],
     ['develop', '선수 육성', '유망주와 어린 선수의 성장 속도'],
     ['judge', '재능 판단', '선수의 현재 실력과 잠재력 평가'],
@@ -43,11 +42,11 @@ const Manager = {
   ],
   // 배경별 기본 능력치 (포인트 분배 전 출발점)
   BASE: {
-    'ex-pro': { tactics: 11, draft: 9, meta: 11, develop: 9, judge: 10, motivate: 11, manage: 10, discipline: 8, media: 7, negotiate: 6 },
-    coach: { tactics: 11, draft: 11, meta: 10, develop: 11, judge: 10, motivate: 10, manage: 10, discipline: 10, media: 7, negotiate: 8 },
-    analyst: { tactics: 12, draft: 13, meta: 13, develop: 8, judge: 11, motivate: 6, manage: 7, discipline: 8, media: 7, negotiate: 9 },
-    caster: { tactics: 9, draft: 9, meta: 10, develop: 7, judge: 9, motivate: 9, manage: 8, discipline: 7, media: 13, negotiate: 5 },
-    amateur: { tactics: 9, draft: 8, meta: 9, develop: 8, judge: 8, motivate: 8, manage: 8, discipline: 8, media: 7, negotiate: 7 },
+    'ex-pro': { tactics: 11, meta: 11, develop: 9, judge: 10, motivate: 11, manage: 10, discipline: 8, media: 7, negotiate: 6 },
+    coach: { tactics: 11, meta: 10, develop: 11, judge: 10, motivate: 10, manage: 10, discipline: 10, media: 7, negotiate: 8 },
+    analyst: { tactics: 12, meta: 13, develop: 8, judge: 11, motivate: 6, manage: 7, discipline: 8, media: 7, negotiate: 9 },
+    caster: { tactics: 9, meta: 10, develop: 7, judge: 9, motivate: 9, manage: 8, discipline: 7, media: 13, negotiate: 5 },
+    amateur: { tactics: 9, meta: 9, develop: 8, judge: 8, motivate: 8, manage: 8, discipline: 8, media: 7, negotiate: 7 },
   },
   ATTR_MIN: 3,
   ATTR_MAX: 16, // 생성 단계 상한. 이후 경력으로 20까지 성장 (TODO: 기능 연결)
