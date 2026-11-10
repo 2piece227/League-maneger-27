@@ -31,7 +31,9 @@ const Career = {
     ];
   },
   meter(label, v, cls = '') {
-    const tone = v >= 70 ? 'good' : v >= 45 ? 'mid' : 'bad';
+    // cls에 inv가 있으면 낮을수록 좋은 수치 (피로도 등)
+    const g = cls.includes('inv') ? 100 - v : v;
+    const tone = g >= 70 ? 'good' : g >= 45 ? 'mid' : 'bad';
     return `<div class="cr-meter ${cls}"><span>${label}</span><div class="cr-bar"><i class="${tone}" style="width:${v}%"></i></div><b class="num">${v}</b></div>`;
   },
   ymd(s) { return (s || '').replace(/-/g, '.'); },

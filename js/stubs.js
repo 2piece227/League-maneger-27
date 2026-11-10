@@ -74,19 +74,20 @@ const GameStubs = {
     if (SaveSystem.autosave()) UI.toast('자동 저장했습니다');
   },
   // TODO: 기능 연결 — 메시지 읽음 상태 저장
-  markAllRead() {
-    console.info('[stub] GameStubs.markAllRead');
-  },
+  markAllRead() {},
   // TODO: 기능 연결 — 할 일 메시지에서 해당 화면/처리로 이동
+  // 할 일 메시지 → 관련 화면으로 (메시지 제목 키워드 기준)
   handleMessageTask(id) {
-    console.info('[stub] GameStubs.handleMessageTask', id);
+    const m = (Portal.data.messages || []).find(x => x.id === id);
+    const s = m ? m.subject + ' ' + m.body : '';
+    const map = [[/예산|재정/, 'club-finance'], [/계약 만료|재계약|면담/, 'roster-contracts'], [/FA|영입|스카우트/, 'recruit-fa'],
+      [/로스터 등록/, 'roster-first-team'], [/결산|리포트/, 'match-history'], [/콜업|유망주|2군/, 'roster-challengers'],
+      [/스폰서/, 'club-sponsors'], [/패치/, 'match-meta'], [/루머|상대/, 'match-opponent']];
+    const hit = map.find(([re]) => re.test(s));
+    Router.go(hit ? hit[1] : 'portal-messages');
   },
   // TODO: 기능 연결 — 선수 프로필 화면으로 이동
-  openPlayerProfile(id) {
-    console.info('[stub] GameStubs.openPlayerProfile', id);
-  },
+  openPlayerProfile(id) { Player.open(id); },
   // TODO: 기능 연결 — 재계약 협상 화면
-  openContractTalks(id) {
-    console.info('[stub] GameStubs.openContractTalks', id);
-  },
+  openContractTalks(id) { Player.contractModal(id); },
 };
