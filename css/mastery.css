@@ -1,0 +1,65 @@
+/* 로스터 > 챔피언 숙련도 */
+.ms-page { display: grid; grid-template-columns: minmax(0, 1fr) 420px; gap: 16px; max-width: 1440px; margin: 0 auto; align-items: start; }
+.ms-main { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+
+.ms-legend { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 11px; color: var(--muted); align-items: center; }
+.ms-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.ms-legend .ms-m { font-style: normal; min-width: 30px; }
+
+.ms-list { display: flex; flex-direction: column; gap: 8px; }
+.ms-row { display: grid; grid-template-columns: 190px minmax(0, 1fr); gap: 14px; align-items: center; padding: 10px 14px; cursor: pointer; }
+.ms-row:hover { border-color: #3a4a6c; }
+.ms-row.sel { border-color: var(--gold); background: linear-gradient(90deg, rgba(200, 162, 74, .1), var(--panel) 60%); }
+.ms-pl { display: flex; align-items: center; gap: 10px; min-width: 0; }
+.ms-pl .pl-ph { width: 44px; height: 44px; }
+.ms-pl b { font-size: 15px; }
+.ms-pl-pos { display: flex; align-items: center; gap: 8px; margin-top: 2px; }
+.ms-pl-pos small { font-size: 11px; color: var(--muted); }
+.ms-chips { display: flex; gap: 8px; overflow-x: auto; padding: 4px 2px; scrollbar-width: thin; }
+.ms-none { font-size: 12px; color: #5f6b84; }
+
+.ms-chip { position: relative; display: flex; flex-direction: column; align-items: center; gap: 3px; flex: none; }
+.ms-ic { position: relative; width: 44px; height: 44px; }
+.ms-ic img { width: 100%; height: 100%; border-radius: 6px; display: block; border: 1px solid var(--line); background: #1c2640; }
+.ms-chip.sig .ms-ic img { border: 2px solid var(--gold); box-shadow: 0 0 10px rgba(240, 213, 138, .55); }
+.ms-sig {
+  position: absolute; left: 50%; bottom: -5px; transform: translateX(-50%);
+  font-style: normal; font-family: var(--f-ui); font-weight: 700; font-size: 9px; letter-spacing: .06em; line-height: 1;
+  padding: 2px 4px; border-radius: 3px; background: linear-gradient(#f0d58a, #c8a24a); color: #1a1406;
+}
+.ms-sig.static { position: static; transform: none; margin-left: 6px; vertical-align: 1px; }
+.ms-chip.sig .ms-m { margin-top: 3px; }
+
+.ms-m { display: inline-block; font-family: var(--f-ui); font-weight: 700; font-size: 13px; min-width: 24px; text-align: center; padding: 0 4px; border-radius: 3px; }
+.ms-m.m4 { color: #1a1406; background: var(--gold-2); }
+.ms-m.m3 { color: #3fbf7f; background: rgba(63, 191, 127, .14); }
+.ms-m.m2 { color: #d8dde8; background: rgba(255, 255, 255, .08); }
+.ms-m.m1 { color: #8a96ad; background: rgba(255, 255, 255, .04); }
+
+.ms-chip.big .ms-ic { width: 60px; height: 60px; }
+.ms-chip.big span { font-size: 12px; }
+
+.ms-detail { position: sticky; top: 0; max-height: calc(100vh - 170px); overflow: hidden auto; scrollbar-width: thin; }
+.ms-d-head { display: flex; align-items: center; gap: 12px; }
+.ms-d-head .pl-ph { width: 56px; height: 56px; }
+.ms-d-head h3 { margin: 0; font-size: 20px; }
+.ms-detail h4 { font-size: 13px; margin: 16px 0 8px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+.ms-detail h4 small { color: var(--muted); font-weight: 400; margin-left: 4px; }
+.ms-sigs { display: flex; gap: 16px; }
+.ms-table td { padding: 5px 8px; }
+.ms-table th { padding: 7px 8px; }
+.ms-c { display: flex; align-items: center; gap: 8px; }
+.ms-c img { width: 26px; height: 26px; border-radius: 4px; }
+.ms-table .good { color: #3fbf7f; }
+.ms-table .bad { color: #e2575c; }
+.ms-table .dim { color: var(--muted); }
+.ms-table tbody tr { cursor: default; }
+
+@media (max-width: 1023px) {
+  .ms-page { grid-template-columns: 1fr; }
+  .ms-detail { position: static; max-height: none; }
+}
+@media (max-width: 767px) {
+  .ms-row { grid-template-columns: 1fr; gap: 8px; }
+  .ms-ic { width: 38px; height: 38px; }
+}
