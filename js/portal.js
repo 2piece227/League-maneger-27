@@ -23,7 +23,7 @@ const Portal = {
   },
 
   async _setTeam(team) {
-    const raw = await this.load();
+    const [raw] = await Promise.all([this.load(), Schedule.load()]);
     this.raw = this.raw || JSON.parse(JSON.stringify(raw));
     this.data = team ? this.localize(this.raw, team) : JSON.parse(JSON.stringify(this.raw));
     this.openId = null;
@@ -50,7 +50,14 @@ const Portal = {
       return { rank: i + 1, team: t, w: r.w, l: r.l, setDiff: r.setDiff };
     });
     const others = sorted.filter(t => t.id !== team.id);
-    const opp = others[1] || others[0], opp2 = others.find(t => t !== opp) || opp;
+    // 다음 경기: 시즌 일정에서 내 팀의 첫 경기
+    const nm = team.id && Schedule.matches.length ? Schedule.next(team.id, d.date) : null;
+    const opp = (nm && Schedule.opponent(nm, team.id)) || others[1] || others[0];
+    const opp2 = others.find(t => t !== opp) || opp;
+    if (nm) {
+      const ev = Schedule.eventOf(nm);
+      Object.assign(d.nextMatch, { datetime: nm.t, competition: `${ev.label}${nm.tab ? ' · ' + nm.tab : ''} · Bo${nm.bo}`, home: nm.t1 === team.id, matchId: nm.id });
+    }
     const scrim = others.filter(t => t !== opp && t !== opp2);
     d.nextMatch.opponent = { ...opp, rank: sorted.indexOf(opp) + 1 };
 

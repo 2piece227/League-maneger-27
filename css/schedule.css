@@ -1,0 +1,102 @@
+/* 포털 > 경기 일정 · 캘린더 */
+.fx-page { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; max-width: 1440px; margin: 0 auto; align-items: start; }
+.fx-main { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+
+.fx-list { display: flex; flex-direction: column; }
+.fx-month { font-size: 14px; margin: 16px 0 6px; color: var(--gold-2); }
+.fx-month:first-child { margin-top: 0; }
+.fx-row {
+  display: grid; grid-template-columns: 44px 46px 150px minmax(0, 1fr) 90px 40px auto; gap: 10px; align-items: center;
+  padding: 7px 12px; background: var(--panel); border: 1px solid var(--line); border-top: 0; font-size: 13px;
+}
+.fx-month + .fx-row { border-top: 1px solid var(--line); border-radius: 8px 8px 0 0; }
+.fx-row.mine { background: linear-gradient(90deg, rgba(58, 160, 255, .1), var(--panel) 70%); }
+.fx-row.next { box-shadow: inset 3px 0 0 var(--gold); }
+.fx-day { display: flex; align-items: baseline; gap: 4px; }
+.fx-day b { font-family: var(--f-ui); font-size: 18px; }
+.fx-day span { font-size: 11px; color: var(--muted); }
+.fx-time { color: #b3bccd; }
+.fx-ev { font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; justify-self: start; max-width: 100%; }
+.fx-ev.reg { background: rgba(58, 160, 255, .15); color: #8cc8ff; }
+.fx-ev.po { background: rgba(200, 162, 74, .18); color: var(--gold-2); }
+.fx-ev.intl { background: rgba(167, 112, 255, .18); color: #c4a2ff; }
+.fx-ev.evt { background: #1f2a44; color: var(--muted); }
+.fx-ev.stove { background: rgba(63, 191, 127, .15); color: #4fd690; }
+.fx-vs { display: grid; grid-template-columns: 1fr auto 1fr; gap: 10px; align-items: center; min-width: 0; }
+.fx-vs i { font-style: normal; font-size: 11px; color: #5f6b84; }
+.fx-team { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+.fx-team.l { justify-self: end; flex-direction: row-reverse; }
+.fx-team b { font-family: var(--f-ui); font-size: 14px; }
+.fx-team .team-logo, .fx-team .team-badge { width: 22px; height: 22px; }
+.fx-team.tbd b { color: #5f6b84; font-weight: 500; }
+.fx-tbd { font-style: normal; display: inline-flex; width: 22px; height: 22px; align-items: center; justify-content: center; border-radius: 50%; border: 1px dashed #3a4a6c; color: #5f6b84; font-size: 11px; }
+.fx-tab { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.fx-bo { font-family: var(--f-ui); font-size: 12px; color: var(--muted); }
+.fx-next { font-size: 10px; font-weight: 700; padding: 2px 6px; border-radius: 3px; background: var(--gold); color: #1a1406; }
+
+.fx-side { position: sticky; top: 0; max-height: calc(100vh - 170px); overflow: hidden auto; scrollbar-width: thin; }
+.fx-side-h { margin: 0 0 12px; font-size: 15px; }
+.fx-side h4 { font-size: 13px; margin: 16px 0 8px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+.fx-side h4 small { color: var(--muted); font-weight: 400; margin-left: 4px; }
+.fx-tl { display: flex; flex-direction: column; position: relative; }
+.fx-tl::before { content: ''; position: absolute; left: 5px; top: 6px; bottom: 6px; width: 2px; background: var(--line); }
+.fx-tl-row { display: grid; grid-template-columns: 12px 1fr; gap: 10px; padding: 6px 0; position: relative; }
+.fx-tl-row b { display: block; font-size: 12px; }
+.fx-tl-row span { font-size: 11px; color: var(--muted); }
+.fx-tl-row em { font-style: normal; color: #4fd690; font-weight: 700; }
+.fx-tl-row.done { opacity: .45; }
+.fx-tl-row.now b { color: var(--gold-2); }
+.fx-dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--bg); margin-top: 2px; position: relative; z-index: 1; }
+.fx-dot.reg, .fx-bar.reg { background: #3aa0ff; }
+.fx-dot.po, .fx-bar.po { background: var(--gold); }
+.fx-dot.intl, .fx-bar.intl { background: #a770ff; }
+.fx-dot.evt, .fx-bar.evt { background: #5f6b84; }
+.fx-dot.stove, .fx-bar.stove { background: #3fbf7f; }
+
+/* 캘린더 */
+.cal-head { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; padding: 12px 16px; }
+.cal-title { margin: 0; font-size: 20px; min-width: 120px; text-align: center; }
+.cal-nav { width: 32px; height: 32px; border-radius: 8px; background: var(--panel-2); border: 1px solid var(--line); font-size: 18px; line-height: 1; }
+.cal-today { padding: 6px 12px; font-size: 12px; }
+.cal-legend { margin-left: auto; display: flex; gap: 12px; flex-wrap: wrap; font-size: 11px; color: var(--muted); }
+.cal-legend span { display: inline-flex; align-items: center; gap: 5px; }
+.cal-legend .fx-dot { width: 10px; height: 10px; border: 0; margin: 0; }
+.cal-my-dot { width: 10px; height: 10px; border-radius: 2px; background: rgba(58, 160, 255, .4); border: 1px solid #3aa0ff; }
+.cal-grid-wrap { padding: 8px; }
+.cal-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 4px; }
+.cal-dow { text-align: center; font-size: 11px; color: var(--muted); padding: 4px 0; }
+.cal-dow:nth-child(6) { color: #7fa6d8; }
+.cal-dow:nth-child(7) { color: #d88a8c; }
+.cal-cell { min-height: 92px; border-radius: 6px; background: var(--panel-2); padding: 5px 6px; cursor: pointer; display: flex; flex-direction: column; gap: 3px; border: 1px solid transparent; min-width: 0; }
+.cal-cell:hover { border-color: #3a4a6c; }
+.cal-cell.empty { background: transparent; cursor: default; }
+.cal-cell.past { opacity: .5; }
+.cal-cell.today { border-color: var(--gold); }
+.cal-cell.today .cal-d { background: var(--gold); color: #1a1406; border-radius: 4px; padding: 0 5px; }
+.cal-cell.sel { border-color: var(--gold-2); background: rgba(200, 162, 74, .1); }
+.cal-d { font-family: var(--f-ui); font-size: 13px; font-weight: 700; align-self: flex-start; }
+.cal-bars { display: flex; flex-direction: column; gap: 2px; }
+.fx-bar { display: block; height: 3px; border-radius: 2px; }
+.cal-my { display: flex; align-items: center; gap: 4px; padding: 2px 4px; border-radius: 4px; background: rgba(58, 160, 255, .18); border: 1px solid rgba(58, 160, 255, .5); font-size: 11px; min-width: 0; }
+.cal-my .team-logo, .cal-my .team-badge { width: 16px; height: 16px; flex: none; }
+.cal-my span { font-family: var(--f-ui); font-weight: 700; overflow: hidden; text-overflow: ellipsis; }
+.cal-my small { margin-left: auto; color: var(--muted); font-size: 10px; }
+.cal-lg { font-size: 10px; color: var(--muted); margin-top: auto; }
+.cal-evs { display: flex; flex-direction: column; gap: 6px; }
+.cal-evs > div { display: flex; align-items: center; gap: 8px; font-size: 11px; color: var(--muted); }
+.fx-row.compact { grid-template-columns: 44px minmax(0, 1fr) 36px; border: 1px solid var(--line); border-radius: 6px; margin-bottom: 4px; }
+
+@media (max-width: 1023px) {
+  .fx-page { grid-template-columns: 1fr; }
+  .fx-side { position: static; max-height: none; }
+}
+@media (max-width: 767px) {
+  .fx-row { grid-template-columns: 36px 40px minmax(0, 1fr) 34px; gap: 6px; padding: 7px 8px; }
+  .fx-row .fx-ev, .fx-row .fx-tab, .fx-row .fx-next { display: none; }
+  .fx-row.compact { grid-template-columns: 40px minmax(0, 1fr) 34px; }
+  .fx-team b { font-size: 12px; }
+  .cal-cell { min-height: 64px; padding: 3px; }
+  .cal-my span, .cal-my small, .cal-lg { display: none; }
+  .cal-my { justify-content: center; padding: 2px; }
+  .cal-legend { margin-left: 0; }
+}
