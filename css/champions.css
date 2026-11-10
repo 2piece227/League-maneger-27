@@ -1,0 +1,88 @@
+/* 경기 > 챔피언 도감 */
+.champ-page { display: grid; grid-template-columns: minmax(0, 1fr) 400px; gap: 16px; max-width: 1440px; margin: 0 auto; align-items: start; }
+.ch-main { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+
+.ch-head { display: flex; align-items: center; gap: 16px; padding: 14px 18px; flex-wrap: wrap; }
+.ch-search {
+  margin-left: auto; width: 260px; max-width: 100%; padding: 8px 12px; border-radius: 8px;
+  background: var(--bg); border: 1px solid var(--line); color: var(--text); font-size: 13px;
+}
+.ch-search:focus { outline: none; border-color: var(--gold); }
+
+.ch-bar { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ch-bar .seg { flex-wrap: wrap; }
+.ch-bar .seg button { padding: 6px 12px; display: inline-flex; align-items: center; gap: 5px; }
+.ch-bar .seg .pos-ic svg { width: 15px; height: 15px; }
+.ch-sort { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 7px 10px; font-size: 13px; }
+.ch-count { margin-left: auto; font-size: 12px; color: var(--muted); }
+
+.ch-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(92px, 1fr)); gap: 8px; }
+.ch-card {
+  position: relative; display: flex; flex-direction: column; align-items: center; gap: 6px;
+  padding: 8px 4px 10px; border-radius: 8px; background: var(--panel); border: 1px solid var(--line);
+  font-family: inherit; color: var(--text); transition: border-color .15s, transform .15s;
+}
+.ch-card:hover { border-color: #3a4a6c; transform: translateY(-2px); }
+.ch-card.sel { border-color: var(--gold); background: rgba(200, 162, 74, .1); }
+.ch-card img { width: 64px; height: 64px; border-radius: 6px; display: block; background: #1c2640; }
+.ch-card b { font-size: 12px; font-weight: 500; line-height: 1.2; text-align: center; word-break: keep-all; }
+.ch-card-pos { position: absolute; top: 4px; right: 4px; display: flex; flex-direction: column; gap: 2px; }
+.ch-card-pos .pos-ic { background: rgba(7, 11, 20, .85); border-radius: 3px; padding: 1px; }
+.ch-card-pos .pos-ic svg { width: 13px; height: 13px; display: block; }
+.ch-empty { color: var(--muted); grid-column: 1 / -1; text-align: center; padding: 40px 0; }
+
+.ch-detail { padding: 0; overflow: hidden auto; position: sticky; top: 0; max-height: calc(100vh - 170px); scrollbar-width: thin; }
+.ch-splash { height: 210px; background: #111 center 20% / cover; position: relative; }
+.ch-splash::after { content: ''; position: absolute; inset: 0; background: linear-gradient(transparent 35%, var(--panel)); }
+.ch-splash-txt { position: absolute; left: 16px; right: 16px; bottom: 8px; z-index: 1; }
+.ch-splash-txt span { font-size: 12px; color: var(--gold-2); }
+.ch-splash-txt h3 { margin: 2px 0 0; font-size: 26px; }
+.ch-splash-txt h3 small { font-family: var(--f-ui); font-size: 14px; color: var(--muted); font-weight: 500; margin-left: 4px; }
+.ch-detail > :not(.ch-splash) { margin-left: 16px; margin-right: 16px; }
+
+.ch-tags { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
+.ch-tag { display: inline-flex; align-items: center; gap: 4px; font-size: 11px; padding: 3px 8px; border-radius: 4px; background: #1f2a44; }
+.ch-tag.pos { background: rgba(200, 162, 74, .15); color: var(--gold-2); }
+.ch-tag.pos .pos-ic svg { width: 13px; height: 13px; }
+.ch-tag.dim { background: transparent; border: 1px solid var(--line); color: var(--muted); }
+.ch-tag.warn { background: rgba(240, 165, 74, .15); color: #f0a54a; }
+
+.ch-info { display: grid; gap: 6px; margin-top: 14px; }
+.ch-info > div { display: grid; grid-template-columns: 44px 1fr 20px; align-items: center; gap: 8px; font-size: 12px; }
+.ch-info span { color: var(--muted); }
+.ch-info-bar { height: 6px; border-radius: 3px; background: #1c2640; overflow: hidden; }
+.ch-info-bar i { display: block; height: 100%; }
+.ch-info-bar .attack { background: #e2575c; }
+.ch-info-bar .defense { background: #3fbf7f; }
+.ch-info-bar .magic { background: #3aa0ff; }
+.ch-info-bar .difficulty { background: var(--gold); }
+.ch-info b { text-align: right; }
+
+.ch-detail h4 { font-size: 13px; margin-top: 18px; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+.ch-detail h4 small { font-weight: 400; color: var(--muted); font-size: 11px; margin-left: 4px; }
+.ch-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 16px; font-size: 12px; }
+.ch-stats > div { display: flex; justify-content: space-between; padding: 3px 0; }
+.ch-stats span { color: var(--muted); }
+.ch-stats small { color: #5f6b84; font-size: 10px; margin-left: 4px; font-weight: 400; }
+
+.ch-skills { display: flex; flex-direction: column; gap: 10px; }
+.ch-skill { display: grid; grid-template-columns: 40px 1fr; gap: 10px; }
+.ch-skill img { width: 40px; height: 40px; border-radius: 5px; border: 1px solid var(--line); }
+.ch-sk-head { display: flex; align-items: baseline; gap: 6px; flex-wrap: wrap; }
+.ch-sk-head i { font-style: normal; font-family: var(--f-ui); font-weight: 700; font-size: 11px; color: var(--gold); }
+.ch-sk-head b { font-size: 13px; }
+.ch-sk-head span { font-size: 11px; color: var(--muted); margin-left: auto; }
+.ch-skill p { margin: 3px 0 0; font-size: 12px; line-height: 1.55; color: #b3bccd; white-space: pre-line; }
+.ch-lore { font-size: 12px; line-height: 1.6; color: #b3bccd; margin-bottom: 16px; }
+
+@media (max-width: 1023px) {
+  .champ-page { grid-template-columns: 1fr; }
+  .ch-detail { position: static; order: 2; max-height: none; }
+}
+@media (max-width: 767px) {
+  .ch-search { width: 100%; margin-left: 0; }
+  .ch-grid { grid-template-columns: repeat(auto-fill, minmax(72px, 1fr)); gap: 6px; }
+  .ch-card img { width: 52px; height: 52px; }
+  .ch-card b { font-size: 11px; }
+  .ch-count { margin-left: 0; }
+}
