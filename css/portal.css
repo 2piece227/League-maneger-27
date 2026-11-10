@@ -286,3 +286,9 @@
 }
 .card-head .dday { margin-left: auto; margin-right: 10px; font-family: var(--f-ui); font-weight: 700; font-size: 13px; color: var(--gold-2); padding: 1px 8px; border-radius: 4px; background: rgba(200, 162, 74, .14); }
 .card-head h3 small { font-size: 11px; font-weight: 400; color: var(--muted); margin-left: 6px; }
+
+/* 다음 경기: 일정 발표 전 */
+.nm-pending { display: flex; flex-direction: column; gap: 4px; padding: 6px 0 2px; }
+.nm-pending b { font-size: 16px; }
+.nm-pending span { font-size: 13px; color: #b3bccd; }
+.nm-pending small { font-size: 12px; color: var(--muted); }

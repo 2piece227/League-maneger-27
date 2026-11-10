@@ -100,3 +100,22 @@
   .cal-my { justify-content: center; padding: 2px; }
   .cal-legend { margin-left: 0; }
 }
+
+/* 일정 발표 */
+.fx-ord { display: block; font-size: 10px; color: var(--muted); line-height: 1.1; }
+.fx-time { line-height: 1.15; }
+.fx-empty { display: flex; flex-direction: column; gap: 6px; padding: 22px 24px; }
+.fx-empty b { font-size: 16px; }
+.fx-empty span { font-size: 13px; color: #b3bccd; line-height: 1.5; }
+.fx-empty em { font-style: normal; color: var(--gold-2); font-weight: 700; }
+.fx-empty small { font-size: 12px; color: var(--muted); }
+.fx-tl-row small { display: block; font-size: 10px; margin-top: 1px; }
+.fx-tl-row small.rel { color: #4fd690; }
+.fx-tl-row small.unrel { color: #5f6b84; }
+.fx-bar.unrel { background: transparent !important; border-top: 2px dashed; height: 0; opacity: .7; }
+.fx-bar.reg.unrel { border-color: #3aa0ff; }
+.fx-bar.po.unrel { border-color: var(--gold); }
+.fx-bar.intl.unrel { border-color: #a770ff; }
+.fx-bar.evt.unrel { border-color: #5f6b84; }
+.cal-pub { font-size: 10px; color: var(--gold-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+@media (max-width: 767px) { .cal-pub { font-size: 0; } .cal-pub::first-letter { font-size: 12px; } }

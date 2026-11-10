@@ -56,7 +56,11 @@ const Portal = {
     const opp2 = others.find(t => t !== opp) || opp;
     if (nm) {
       const ev = Schedule.eventOf(nm);
-      Object.assign(d.nextMatch, { datetime: nm.t, competition: `${ev.label}${nm.tab ? ' · ' + nm.tab : ''} · Bo${nm.bo}`, home: nm.t1 === team.id, matchId: nm.id });
+      const ord = Schedule.orderLabel(nm);
+      Object.assign(d.nextMatch, { datetime: nm.t, competition: `${ev.label}${nm.tab ? ' · ' + nm.tab : ''}${ord ? ' · ' + ord : ''} · Bo${nm.bo}`, home: nm.t1 === team.id, matchId: nm.id });
+    } else if (Schedule.events.length) {
+      // 아직 공개된 경기가 없음: 첫 대회와 일정 발표 예정일
+      d.nextMatch.pending = { event: Schedule.firstEvent(team.league), release: Schedule.nextRelease(team.league, d.date) };
     }
     const scrim = others.filter(t => t !== opp && t !== opp2);
     d.nextMatch.opponent = { ...opp, rank: sorted.indexOf(opp) + 1 };
@@ -214,6 +218,18 @@ const Portal = {
   cardNextMatch(d) {
     const n = d.nextMatch;
     if (!n) return '';
+    if (n.pending) {
+      const e = n.pending.event, r = n.pending.release;
+      return `
+      <div class="card">
+        <div class="card-head"><h3>다음 경기</h3>${e ? `<span class="dday num">개막 D-${Fmt.daysBetween(d.date, e.start)}</span>` : ''}<a href="#portal-fixtures">일정</a></div>
+        <div class="nm-pending">
+          <b>일정 발표 전</b>
+          ${e ? `<span>${UI.esc(e.label)} · ${Fmt.dayLabel(e.start)} 개막</span>` : ''}
+          ${r ? `<small>${UI.esc(r.short)} 대진·일정은 ${Fmt.dayLabel(r.pub)}경 발표 예정</small>` : ''}
+        </div>
+      </div>`;
+    }
     return `
       <div class="card">
         <div class="card-head"><h3>다음 경기</h3><span class="dday num">D-${Fmt.daysBetween(d.date, n.datetime)}</span><a href="#match-next">자세히</a></div>

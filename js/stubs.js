@@ -56,6 +56,8 @@ const Data = {
 const Game = {
   // TODO: 커리어 생성 → 시즌 캘린더/메인 화면으로 진입
   start(manager, team) {
+    // 커리어 시드: 대진 추첨 등 커리어마다 달라지는 값의 기준. 저장에 함께 남는다.
+    App.state.seed = `${Date.now().toString(36)}-${Math.floor(Math.random() * 1e9).toString(36)}`;
     console.info('[stub] Game.start', manager, team.id);
   },
   // TODO: 브라우저에서는 창을 닫을 수 없는 경우가 많다. 데스크톱 래핑 시 교체.
