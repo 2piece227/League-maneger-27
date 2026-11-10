@@ -6,38 +6,38 @@
   "messages": [
     {
       "id": "m01", "date": "2027-01-14", "time": "10:20",
-      "from": { "name": "샘플 수석코치", "role": "coach" },
-      "subject": "다음 경기 밴픽 추천: vs 젠지",
+      "from": { "name": "{coach} 코치", "role": "coach" },
+      "subject": "다음 경기 밴픽 추천: vs {opp}",
       "priority": "todo", "read": false, "isNew": true,
-      "body": "젠지전 블루 진영 기준 1페이즈 밴 후보를 정리했습니다.\n\n상대 미드의 최근 10경기 챔피언 폭이 좁아 미드 집중 밴을 추천합니다. 정글은 초반 교전형 픽에 대비가 필요합니다.\n\n밴픽 준비 화면에서 최종안을 확정해 주세요."
+      "body": "{opp}전 블루 진영 기준 1페이즈 밴 후보를 정리했습니다.\n\n상대 미드의 최근 10경기 챔피언 폭이 좁아 미드 집중 밴을 추천합니다. 정글은 초반 교전형 픽에 대비가 필요합니다.\n\n밴픽 준비 화면에서 최종안을 확정해 주세요."
     },
     {
       "id": "m02", "date": "2027-01-14", "time": "09:45",
       "from": { "name": "샘플 분석관", "role": "analyst" },
-      "subject": "상대 분석 리포트: 한화생명",
+      "subject": "상대 분석 리포트: {opp2}",
       "priority": "normal", "read": false, "isNew": true,
-      "body": "한화생명의 최근 5경기 오브젝트 운영 패턴을 분석했습니다.\n\n첫 드래곤 선택률이 높고, 15분 이전 바텀 다이브 빈도가 리그 평균보다 높습니다."
+      "body": "{opp2}의 최근 5경기 오브젝트 운영 패턴을 분석했습니다.\n\n첫 드래곤 선택률이 높고, 15분 이전 바텀 다이브 빈도가 리그 평균보다 높습니다."
     },
     {
       "id": "m03", "date": "2027-01-14", "time": "09:10",
       "from": { "name": "샘플 의무 트레이너", "role": "coach" },
-      "subject": "샘플A 손목 통증 보고",
+      "subject": "{pMID} 손목 통증 보고",
       "priority": "urgent", "read": false, "isNew": true,
-      "body": "샘플A 선수가 연습 후 손목 통증을 호소했습니다.\n\n이번 주 솔로 랭크 시간을 줄이고 경기 전 상태를 다시 확인하겠습니다. 출전 여부는 내일 오전에 보고드리겠습니다."
+      "body": "{pMID} 선수가 연습 후 손목 통증을 호소했습니다.\n\n이번 주 솔로 랭크 시간을 줄이고 경기 전 상태를 다시 확인하겠습니다. 출전 여부는 내일 오전에 보고드리겠습니다."
     },
     {
       "id": "m04", "date": "2027-01-14", "time": "08:30",
-      "from": { "name": "LCK 운영사무국", "role": "media" },
+      "from": { "name": "{league} 운영사무국", "role": "media" },
       "subject": "경기 전 미디어 인터뷰 일정",
       "priority": "todo", "read": true, "isNew": true,
       "body": "1월 15일 경기 시작 90분 전 사전 인터뷰가 예정되어 있습니다. 감독 1인과 선수 1인이 참석해야 합니다."
     },
     {
       "id": "m05", "date": "2027-01-13", "time": "18:05",
-      "from": { "name": "샘플 2군 감독", "role": "coach" },
+      "from": { "name": "{coach2} 코치", "role": "coach" },
       "subject": "챌린저스 콜업 추천",
       "priority": "normal", "read": false, "isNew": false,
-      "body": "챌린저스 정글러 샘플C가 최근 3경기 연속 좋은 경기력을 보였습니다. 1군 스크림 합류를 추천합니다."
+      "body": "챌린저스 정글러 {sub}가 최근 3경기 연속 좋은 경기력을 보였습니다. 1군 스크림 합류를 추천합니다."
     },
     {
       "id": "m06", "date": "2027-01-13", "time": "15:40",
@@ -62,7 +62,7 @@
     },
     {
       "id": "m09", "date": "2027-01-12", "time": "20:30",
-      "from": { "name": "샘플B", "role": "player" },
+      "from": { "name": "{pTOP}", "role": "player" },
       "subject": "개인 훈련 일정 조정 요청",
       "priority": "normal", "read": true, "isNew": false,
       "body": "라인전 연습 비중을 늘리고 싶습니다. 이번 주 개인 훈련 일정을 조정해 주실 수 있을까요?"
@@ -78,14 +78,14 @@
 
   "nextMatch": {
     "opponent": { "id": "gen", "short": "GEN", "name": "Gen.G", "color": "#aa8a00", "rank": 2 },
-    "competition": "LCK 2027 정규 시즌 1라운드",
+    "competition": "{league} 2027 정규 시즌 1라운드",
     "datetime": "2027-01-15T17:00",
     "home": true,
     "form": ["W", "W", "L", "W", "W"]
   },
 
   "standings": {
-    "competition": "LCK 2027 정규 시즌",
+    "competition": "{league} 2027 정규 시즌",
     "rows": [
       { "rank": 1, "team": { "id": "hle", "short": "HLE", "name": "한화생명", "color": "#f37321" }, "w": 2, "l": 0, "setDiff": 4 },
       { "rank": 2, "team": { "id": "gen", "short": "GEN", "name": "Gen.G", "color": "#aa8a00" }, "w": 2, "l": 0, "setDiff": 3 },
@@ -109,17 +109,17 @@
   ],
 
   "challengers": {
-    "lastResult": { "competition": "LCK CL", "opponent": "GEN.CL", "score": "2:1", "win": true, "date": "2027-01-12" },
+    "lastResult": { "competition": "{cl}", "opponent": "{opp2Short} 2군", "score": "2:1", "win": true, "date": "2027-01-12" },
     "callUp": { "player": "샘플C", "role": "JGL", "reason": "최근 3경기 KDA 6.2" }
   },
 
   "week": [
     { "date": "2027-01-11", "events": [{ "type": "training", "label": "팀 훈련" }] },
-    { "date": "2027-01-12", "events": [{ "type": "scrim", "label": "스크림 vs DK" }] },
-    { "date": "2027-01-13", "events": [{ "type": "scrim", "label": "스크림 vs KT" }, { "type": "event", "label": "스폰서 미팅" }] },
+    { "date": "2027-01-12", "events": [{ "type": "scrim", "label": "스크림 vs {s1}" }] },
+    { "date": "2027-01-13", "events": [{ "type": "scrim", "label": "스크림 vs {s2}" }, { "type": "event", "label": "스폰서 미팅" }] },
     { "date": "2027-01-14", "events": [{ "type": "training", "label": "밴픽 회의" }, { "type": "event", "label": "미디어 데이" }] },
-    { "date": "2027-01-15", "events": [{ "type": "match", "label": "vs GEN" }] },
+    { "date": "2027-01-15", "events": [{ "type": "match", "label": "vs {oppShort}" }] },
     { "date": "2027-01-16", "events": [] },
-    { "date": "2027-01-17", "events": [{ "type": "match", "label": "vs HLE" }] }
+    { "date": "2027-01-17", "events": [{ "type": "match", "label": "vs {opp2Short}" }] }
   ]
 }

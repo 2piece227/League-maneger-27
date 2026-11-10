@@ -98,4 +98,12 @@ const GameStubs = {
   handleMessageTask(id) {
     console.info('[stub] GameStubs.handleMessageTask', id);
   },
+  // TODO: 기능 연결 — 선수 프로필 화면으로 이동
+  openPlayerProfile(id) {
+    console.info('[stub] GameStubs.openPlayerProfile', id);
+  },
+  // TODO: 기능 연결 — 재계약 협상 화면
+  openContractTalks(id) {
+    console.info('[stub] GameStubs.openContractTalks', id);
+  },
 };

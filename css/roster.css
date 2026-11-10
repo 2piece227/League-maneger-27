@@ -1,0 +1,155 @@
+/* 로스터 > 1군 */
+.roster-page { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 16px; max-width: 1440px; margin: 0 auto; align-items: start; }
+.rs-main { display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+
+.rs-head { display: flex; align-items: center; gap: 16px; padding: 14px 18px; flex-wrap: wrap; }
+.rs-title h2 { margin: 0; font-size: 22px; }
+.rs-title h2 small { font-size: 13px; color: var(--gold); font-weight: 500; margin-left: 4px; }
+.rs-title span { font-size: 12px; color: var(--muted); }
+.rs-stats { margin-left: auto; display: flex; gap: 22px; flex-wrap: wrap; }
+.rs-stats > div { display: flex; flex-direction: column; align-items: flex-end; }
+.rs-stats .k { font-size: 11px; color: var(--muted); }
+.rs-stats b { font-family: var(--f-ui); font-size: 22px; font-weight: 700; line-height: 1.1; }
+.rs-stats b.warn { color: #f0a54a; }
+
+.rs-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+.seg { display: inline-flex; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 3px; }
+.seg button { background: transparent; border: 0; cursor: pointer; font-family: inherit; padding: 6px 16px; border-radius: 6px; color: var(--muted); font-size: 13px; font-weight: 700; }
+.seg button.on { background: var(--panel-2); color: var(--gold-2); box-shadow: inset 0 0 0 1px var(--gold); }
+.rs-note { margin-left: auto; font-size: 11px; color: #5f6b84; }
+
+.rs-table-wrap { overflow-x: auto; }
+.rs-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+.rs-table th {
+  position: sticky; top: 0; background: var(--panel-2); z-index: 1;
+  text-align: left; font-weight: 500; font-size: 11px; color: var(--muted); padding: 9px 10px; white-space: nowrap;
+  border-bottom: 1px solid var(--line);
+}
+.rs-table th.sortable { cursor: pointer; user-select: none; }
+.rs-table th.sortable:hover { color: var(--text); }
+.rs-table th.asc::after { content: ' ▲'; color: var(--gold); font-size: 9px; }
+.rs-table th.desc::after { content: ' ▼'; color: var(--gold); font-size: 9px; }
+.rs-table td { padding: 8px 10px; border-top: 1px solid #172036; white-space: nowrap; }
+.rs-table .num { text-align: right; }
+.rs-table tbody tr { cursor: pointer; }
+.rs-table tbody tr:hover td { background: rgba(255, 255, 255, .03); }
+.rs-table tbody tr.sel td { background: rgba(200, 162, 74, .12); }
+.rs-table tbody tr.sub td { color: #b3bccd; }
+.rs-table tbody tr.sub + tr:not(.sub) td, .rs-table tbody tr:not(.sub) + tr.sub td { border-top-color: #2a3550; }
+.rs-table .pl-cell { display: flex; align-items: center; gap: 10px; }
+.rs-table .pl-cell b { font-size: 14px; }
+.rs-table .pl-ph { width: 36px; height: 36px; }
+.pl-real { display: block; font-size: 11px; color: var(--muted); }
+.sub-tag { font-style: normal; font-size: 10px; padding: 1px 5px; margin-left: 6px; border-radius: 3px; background: #26324d; color: var(--muted); vertical-align: 2px; }
+.ovr-v { font-family: var(--f-ui); font-size: 16px; color: var(--gold-2); }
+
+.nat { display: inline-flex; align-items: center; gap: 6px; font-size: 12px; }
+.flag { width: 20px; height: 14px; border-radius: 2px; object-fit: cover; box-shadow: 0 0 0 1px rgba(255, 255, 255, .12); flex: none; }
+.flag.none { display: inline-block; background: #26324d; }
+
+.cond { display: inline-flex; align-items: center; gap: 8px; }
+.cond-bar { width: 60px; height: 6px; border-radius: 3px; background: #1c2640; overflow: hidden; }
+.cond-bar i { display: block; height: 100%; background: #3fbf7f; }
+.cond-bar i.warn { background: #f0a54a; }
+.cond .num { font-size: 12px; width: 34px; }
+
+.form-pts { display: inline-flex; gap: 3px; }
+.form-pts i {
+  font-style: normal; font-family: var(--f-ui); font-weight: 700; font-size: 11px;
+  min-width: 28px; text-align: center; padding: 1px 0; border-radius: 3px;
+}
+.form-pts .hi { background: rgba(63, 191, 127, .22); color: #7fe0ae; }
+.form-pts .md { background: rgba(255, 255, 255, .07); color: #c9d1e0; }
+.form-pts .lo { background: rgba(226, 87, 92, .2); color: #ff9a9e; }
+
+.morale { display: inline-flex; align-items: center; gap: 5px; font-size: 12px; }
+.morale svg { width: 15px; height: 15px; }
+.morale.bad { color: #ff8a8e; }
+.morale.mid { color: #c9d1e0; }
+.morale.ok { color: #9fd8b8; }
+.morale.good { color: #6fdca4; }
+.morale.best { color: var(--gold-2); }
+
+.attr-v {
+  display: inline-block; min-width: 28px; text-align: center; padding: 2px 0; border-radius: 4px;
+  font-family: var(--f-ui); font-weight: 700; font-size: 14px;
+}
+.attr-v.a1 { background: rgba(226, 87, 92, .2); color: #ff9a9e; }
+.attr-v.a2 { background: rgba(255, 255, 255, .07); color: #dfe5ef; }
+.attr-v.a3 { background: rgba(63, 191, 127, .2); color: #7fe0ae; }
+.attr-v.a4 { background: rgba(200, 162, 74, .25); color: var(--gold-2); }
+
+.ct { font-size: 12px; }
+.ct.soon { color: #f0a54a; }
+.ct.exp { color: #ff8a8e; font-weight: 700; }
+.ct.none { color: #5f6b84; }
+.btn-xs { padding: 3px 10px; font-size: 12px; }
+
+.rs-staff { padding: 14px 16px; }
+.staff-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(220px, 1fr)); gap: 10px; }
+.staff-card { display: flex; align-items: center; gap: 10px; padding: 8px; border-radius: 8px; background: var(--panel-2); }
+.staff-card b { display: block; font-size: 14px; }
+.staff-card small { display: block; font-size: 11px; color: var(--muted); }
+.pl-ph.md { width: 44px; height: 44px; }
+
+/* 오른쪽 선수 요약 */
+.rs-side { position: sticky; top: 0; }
+.rs-side-empty {
+  display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center;
+  padding: 40px 20px; color: var(--muted); font-size: 13px;
+  border: 1px dashed var(--line); border-radius: 10px;
+}
+.rs-side-empty svg { width: 32px; height: 32px; opacity: .5; }
+.rs-card { position: relative; background: var(--panel); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; }
+.rs-x { position: absolute; top: 8px; right: 8px; z-index: 2; font-size: 13px; }
+.rs-hero {
+  display: flex; gap: 14px; align-items: flex-end; padding: 18px 16px 14px;
+  background: linear-gradient(160deg, color-mix(in srgb, var(--c) 45%, transparent), transparent 75%);
+  border-bottom: 1px solid var(--line);
+}
+.rs-photo { width: 96px; height: 96px; border-radius: 10px; object-fit: cover; object-position: top; background: #1c2843; flex: none; }
+.rs-photo.pl-ph-empty { display: flex; align-items: center; justify-content: center; font-size: 32px; font-family: var(--f-ui); color: var(--muted); }
+.rs-id { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.rs-id h3 { margin: 0; font-size: 24px; line-height: 1.1; }
+.rs-id small { color: var(--muted); font-size: 12px; }
+.rs-facts { display: grid; grid-template-columns: repeat(4, 1fr); gap: 1px; background: var(--line); border-bottom: 1px solid var(--line); }
+.rs-facts > div { background: var(--panel); padding: 10px 8px; display: flex; flex-direction: column; align-items: center; gap: 1px; }
+.rs-facts > div.wide { grid-column: 1 / -1; flex-direction: row; justify-content: space-between; padding: 10px 14px; }
+.rs-facts .k { font-size: 11px; color: var(--muted); }
+.rs-facts b { font-family: var(--f-ui); font-size: 17px; }
+.rs-facts small { font-size: 10px; color: #5f6b84; }
+.rs-attrs { display: grid; grid-template-columns: 1fr 1fr; gap: 12px 16px; padding: 14px 16px; }
+.attr-grp h4 { margin: 0 0 6px; font-size: 11px; letter-spacing: .1em; color: var(--gold); font-family: var(--f-ui); }
+.attr-row { display: flex; justify-content: space-between; align-items: center; padding: 2px 0; font-size: 12px; }
+.attr-row .attr-v { font-size: 13px; min-width: 26px; }
+.rs-actions { display: flex; gap: 8px; padding: 0 16px 16px; }
+.rs-actions button { flex: 1; }
+
+/* 태블릿: 요약 패널을 표 아래로 */
+@media (max-width: 1023px) {
+  .roster-page { grid-template-columns: minmax(0, 1fr); }
+  .rs-side { position: static; order: -1; }
+  .roster-page:not(.has-sel) .rs-side { display: none; }
+  .rs-stats { margin-left: 0; width: 100%; justify-content: space-between; }
+  .rs-stats > div { align-items: flex-start; }
+}
+
+/* 모바일: 표를 압축 행으로 */
+@media (max-width: 767px) {
+  .rs-head { padding: 12px; gap: 12px; }
+  .rs-stats { gap: 10px; }
+  .rs-stats b { font-size: 18px; }
+  .rs-note { width: 100%; margin: 0; }
+  .seg { width: 100%; }
+  .seg button { flex: 1; }
+  .rs-table th.c-nation, .rs-table td.c-nation,
+  .rs-table th.c-form, .rs-table td.c-form,
+  .rs-table th.c-morale, .rs-table td.c-morale,
+  .rs-table th.c-age, .rs-table td.c-age { display: none; }
+  .view-contract th.c-age, .view-contract td.c-age { display: table-cell; }
+  .rs-table td, .rs-table th { padding: 8px 6px; }
+  .rs-table .pos-ic b { display: none; }
+  .rs-table .pl-ph { width: 30px; height: 30px; }
+  .cond-bar { width: 36px; }
+  .rs-attrs { grid-template-columns: 1fr 1fr; }
+}
