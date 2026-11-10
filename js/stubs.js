@@ -35,7 +35,7 @@ const Data = {
       team.budget = MOCK.budgetLabel(team.league, team.fin);
       const people = players.filter(p => p.team === t.id).map(p => ({
         ...p,
-        age: p.birthdate ? this.ageOn(p.birthdate, '2026-11-10') : null,
+        age: p.birthdate ? this.ageOn(p.birthdate, Clock.today()) : null,
         sub: false,
       }));
       team.staff = people.filter(p => p.role === 'COACH');

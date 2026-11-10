@@ -57,7 +57,7 @@ const SoloQ = {
     return lang === 'ko' ? `${this.pick(r, N.a)}${this.pick(r, N.b)}${r() < .4 ? num : ''}` : `${this.pick(r, N.a)}${this.pick(r, N.b)}${r() < .5 ? num : ''}`;
   },
 
-  today() { return (Portal.data && Portal.data.date) || '2026-11-10'; },
+  today() { return Clock.today(); },
   practice() { return (App.state.practice ||= {}); },
   offers() { return (App.state.testOffers ||= {}); },
 
@@ -179,7 +179,7 @@ const SoloQ = {
           <div class="card rs-head">
             <div class="rs-title">
               <h2>솔랭 순위 <small>${this.SERVER[team.league]} 서버 상위 100</small></h2>
-              <span>${this.today().replace(/-/g, '.')} 기준 · 2027 시즌 프리시즌</span>
+              <span>${this.today().replace(/-/g, '.')} 기준 · ${Schedule.season()} 시즌 ${UI.esc((Schedule.eventsOn(team.league, this.today()).find(e => !e.past) || { short: '' }).short)}</span>
             </div>
             <div class="rs-stats">
               <div><span class="k">우리 팀 최고 순위</span><b>${mine.length ? mine[0].rank + '위' : '-'}</b></div>

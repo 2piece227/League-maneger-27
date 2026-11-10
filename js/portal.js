@@ -11,7 +11,7 @@ const Portal = {
       this.data = await fetch('data/mock/portal.json').then(r => r.json());
     } catch (e) {
       console.warn('[portal] 목업 로드 실패', e);
-      this.data = { date: '2026-11-10', team: { short: '?', color: '#555' }, messages: [], week: [], standings: { rows: [] }, soloRank: [] };
+      this.data = { date: Clock.START, team: { short: '?', color: '#555' }, messages: [], week: [], standings: { rows: [] }, soloRank: [] };
     }
     return this.data;
   },
@@ -41,6 +41,7 @@ const Portal = {
   // TODO: 기능 연결 — 실제 시즌 진행 데이터로 교체
   localize(raw, team) {
     const d = JSON.parse(JSON.stringify(raw));
+    d.date = Clock.today();
     const league = App.db.teams.filter(t => t.league === team.league);
     const order = raw.standings.rows.map(r => r.team.short);
     const rank = t => { const i = order.indexOf(t.short); return i < 0 ? 99 : i; };
@@ -82,12 +83,14 @@ const Portal = {
       pTOP: byRole('TOP').name, pMID: byRole('MID').name,
       sub: sub ? sub.name : '유망주',
       coach: (staff[0] || {}).name || '수석', coach2: (staff[1] || staff[0] || {}).name || '2군',
+      season: Schedule.season(), prevSeason: Schedule.season() - 1,
       league: team.league, cl: { LCK: 'LCK CL', LPL: 'LDL', LEC: 'EMEA Masters', LCS: 'NACL' }[team.league] || '2군 리그',
     };
     const fill = o => JSON.parse(JSON.stringify(o).replace(/\{(\w+)\}/g, (m, k) => k in tok ? JSON.stringify(String(tok[k])).slice(1, -1) : m));
     d.messages = fill(d.messages);
     d.week = fill(d.week);
     d.nextMatch.competition = fill(d.nextMatch.competition);
+    d.standings.competition = fill(d.standings.competition || '');
     d.challengers.lastResult = fill(d.challengers.lastResult);
     d.messages.forEach(m => {
       if (m.from.role === 'player') m.from.photo = (team.players.find(p => p.name === m.from.name) || {}).photo;

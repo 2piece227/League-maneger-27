@@ -72,7 +72,7 @@ const Mastery = {
           <div class="card rs-head">
             <div class="rs-title">
               <h2>챔피언 숙련도 <small>${UI.esc(t.name)}</small></h2>
-              <span>${from}~2026 프로 공식 경기 기록 기준 · 숙련도 0~20 · 단계가 오를수록 필요한 경험이 커짐</span>
+              <span>${from}~${(this.meta.scrapedAt || '').slice(0, 4)} 프로 공식 경기 기록 기준 · 숙련도 0~20 · 단계가 오를수록 필요한 경험이 커짐</span>
             </div>
             <div class="rs-stats">
               <div><span class="k">시그니처</span><b>${sigs.length}</b></div>
@@ -128,7 +128,7 @@ const Mastery = {
       <h4>챔피언 풀 <small>${pool.length}개</small></h4>
       ${pool.length ? `
       <div class="ms-table-wrap"><table class="rs-table ms-table">
-        <thead><tr><th>챔피언</th>${th('m', '숙련도')}<th>다음 단계</th>${th('g', '판수')}${th('wr', '승률')}<th class="num">KDA</th>${th('g26', '2026')}</tr></thead>
+        <thead><tr><th>챔피언</th>${th('m', '숙련도')}<th>다음 단계</th>${th('g', '판수')}${th('wr', '승률')}<th class="num">KDA</th>${th('g26', (this.meta.recentFrom || '').slice(0, 4) || '최근')}</tr></thead>
         <tbody>${pool.map(e => {
           const c = Champions.byId[e.c];
           return `<tr>

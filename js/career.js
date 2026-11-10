@@ -5,18 +5,19 @@ const Career = {
   guest() {
     return {
       name: '감독', displayName: '감독', nation: 'South Korea', birthdate: '1992-06-15', age: 34, languages: ['ko'],
-      background: { type: 'coach' }, coachYears: 3, reputation: 26, avatar: Avatar.defaults(), createdAt: '2026-11-10',
+      background: { type: 'coach' }, coachYears: 3, reputation: 26, avatar: Avatar.defaults(), createdAt: Clock.START,
     };
   },
   team() { return Roster.team(); },
-  today() { return (Portal.data && Portal.data.date) || '2026-11-10'; },
+  today() { return Clock.today(); },
   apps() { return (App.state.applications ||= {}); },
 
   // 목업 계약·관계 수치. TODO: 기능 연결 — 계약 협상·이사회·여론 시스템
   contract(m, t) {
     const pay = { LCK: ['원', [0, 1.2, 2, 3.5, 5.5, 8]], LPL: ['원', [0, 1.5, 2.5, 4, 6.5, 9]], LEC: ['원', [0, .8, 1.3, 2, 3, 4.5]], LCS: ['원', [0, .9, 1.4, 2.2, 3.2, 4.8]] }[t.league];
     const v = pay[1][t.rep || 2] * (0.8 + m.reputation / 100);
-    return { from: m.createdAt || '2026-11-10', to: '2028-11-30', salary: `연 ${v.toFixed(1)}억 원` };
+    const from = m.createdAt || Clock.START;
+    return { from, to: `${Clock.year(from) + 2}-11-30`, salary: `연 ${v.toFixed(1)}억 원` };
   },
   // 관계 수치: 배경·평판 기준 출발점. TODO: 기능 연결 — 성적·인터뷰·선수 면담으로 변동
   relations(m) {
@@ -100,7 +101,7 @@ const Career = {
     const lv = Manager.REP_LEVELS;
     const next = lv.find(([min]) => min > m.reputation);
     // 평판 변화 기록. TODO: 기능 연결 — 경기 결과·우승·인터뷰·이적 등으로 쌓기
-    const log = [[m.createdAt || '2026-11-10', `${t.name} 감독 부임`, +2]];
+    const log = [[m.createdAt || Clock.START, `${t.name} 감독 부임`, +2]];
     if (m.background.type === 'ex-pro') log.push(['경력', `선수 시절 ${Manager.PRO_PEAK[m.background.peak][0]}`, Manager.PRO_PEAK[m.background.peak][1]]);
     if (m.coachYears) log.push(['경력', `지도자 경력 ${m.coachYears}년`, Math.min(10, m.coachYears * 2)]);
     log.push(['경력', `${Manager.BACKGROUNDS[m.background.type].label} 출신`, Manager.BACKGROUNDS[m.background.type].rep]);
@@ -144,7 +145,7 @@ const Career = {
     await Portal.ready;
     const m = this.m(), t = this.team();
     const y = +this.today().slice(0, 4);
-    const rows = [[`${this.ymd(m.createdAt || '2026-11-10')} –`, t, '감독', '현재', '2027 시즌 준비 중']];
+    const rows = [[`${this.ymd(m.createdAt || Clock.START)} –`, t, '감독', '현재', `${Schedule.season()} 시즌 진행 중`]];
     if (m.coachYears) rows.push([`${y - m.coachYears} – ${y}`, null, '코칭스태프', `${m.coachYears}년`, '-']);
     if (m.background.type === 'ex-pro') {
       const end = y - (m.coachYears || 0) - 1, start = end - m.background.years + 1;
@@ -171,7 +172,7 @@ const Career = {
         </div>
         <div class="card">
           <div class="card-head"><h3>시즌별 기록</h3></div>
-          <p class="ms-none">아직 치른 시즌이 없습니다. 2027 시즌이 끝나면 순위·플레이오프·국제대회 성적이 여기에 남습니다.</p>
+          <p class="ms-none">아직 치른 시즌이 없습니다. ${Schedule.season()} 시즌이 끝나면 순위·플레이오프·국제대회 성적이 여기에 남습니다.</p>
         </div>
       </div>`;
   },

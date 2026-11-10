@@ -6,7 +6,7 @@ const Fixtures = {
   selDay: null,
 
   team() { return Roster.team(); },
-  today() { return (Portal.data && Portal.data.date) || '2026-11-10'; },
+  today() { return Clock.today(); },
 
   side(id, cls = '', m = null) {
     const t = Schedule.team(id);
@@ -37,8 +37,8 @@ const Fixtures = {
         <div class="fx-main">
           <div class="card rs-head">
             <div class="rs-title">
-              <h2>경기 일정 <small>${UI.esc(t.name)} · ${Schedule.YEAR} 시즌</small></h2>
-              <span>2026 실제 ${t.league} 일정 틀 · 한국 시간 · 일정은 실제와 비슷한 시기에 단계별로 발표됩니다</span>
+              <h2>경기 일정 <small>${UI.esc(t.name)} · ${Schedule.season()} 시즌</small></h2>
+              <span>${Schedule.BASE} 실제 ${t.league} 일정 틀 · 한국 시간 · 일정은 실제와 비슷한 시기에 단계별로 발표됩니다</span>
             </div>
             <div class="rs-stats">
               <div><span class="k">확정 경기</span><b>${mine.length}</b></div>
@@ -106,7 +106,7 @@ const Fixtures = {
     return `<div class="card fx-empty">
       <b>아직 발표된 경기 일정이 없습니다</b>
       ${first ? `<span>${UI.esc(first.label)}은 ${Fmt.dayLabel(first.start)} 개막합니다.</span>` : ''}
-      ${rel ? `<span>${UI.esc(rel.short)} 대진·일정은 <em>${Fmt.dayLabel(rel.pub)}경</em> 발표 예정입니다. (실제 2026년에는 개막 ${rel.lead}일 전에 공개)</span>` : ''}
+      ${rel ? `<span>${UI.esc(rel.short)} 대진·일정은 <em>${Fmt.dayLabel(rel.pub)}경</em> 발표 예정입니다. (실제 ${Schedule.BASE}년에는 개막 ${rel.lead}일 전에 공개)</span>` : ''}
       <small>멀리 있는 대회는 기간만 정해져 있고, 대진은 발표일이 되어야 나옵니다.</small>
     </div>`;
   },
@@ -114,9 +114,9 @@ const Fixtures = {
   // 시즌 흐름: 리그 단계 + 국제대회
   timeline(league) {
     const today = this.today();
-    const evs = Schedule.eventsFor(league).filter(e => e.kind !== 'event' || e.league === league).sort((a, b) => a.start.localeCompare(b.start));
+    const evs = Schedule.seasonEvents(league).filter(e => e.kind !== 'event' || e.league === league).sort((a, b) => a.start.localeCompare(b.start));
     return `
-      <h3 class="fx-side-h">${Schedule.YEAR} 시즌 흐름</h3>
+      <h3 class="fx-side-h">${Schedule.season()} 시즌 흐름</h3>
       <div class="fx-tl">${evs.map(e => {
         const state = e.end < today ? 'done' : e.start <= today ? 'now' : '';
         const [kind, cls] = Schedule.KIND[e.kind];
@@ -171,9 +171,11 @@ const Fixtures = {
   },
 
   shiftMonth(ym, n) {
+    ym = ym || this.today().slice(0, 7);
     const d = new Date(+ym.slice(0, 4), +ym.slice(5, 7) - 1 + n, 1);
     const out = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
-    return out < '2026-11' ? '2026-11' : out > '2027-12' ? '2027-12' : out;
+    const [lo, hi] = Schedule.range();
+    return out < lo ? lo : out > hi ? hi : out;
   },
 
   drawMonth(el) {

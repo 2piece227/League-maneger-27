@@ -121,7 +121,7 @@ Screens.profile = {
     $('#pf-pro').style.display = m.background.type === 'ex-pro' ? '' : 'none';
     $('#avatar-preview').innerHTML = Avatar.render(m.avatar);
     $('#nc-name').textContent = this.displayName(m) || '이름 없음';
-    const age = Store.ageOn(m.birthdate, '2026-11-10');
+    const age = Store.ageOn(m.birthdate, Clock.today());
     $('#nc-meta').innerHTML = `${G.flag(m.nation)} ${G.nationName(m.nation)} · ${age}세 · ${Manager.BACKGROUNDS[m.background.type].label}`;
     const rep = Manager.startRep(m);
     $('#pf-summary').innerHTML = `
@@ -134,10 +134,10 @@ Screens.profile = {
   submit() {
     const m = this.m;
     if (!m.name) { this.go('basic'); $('#pf-hint').textContent = '감독 이름을 입력해 주세요.'; $('#pf-name').focus(); return; }
-    const age = Store.ageOn(m.birthdate, '2026-11-10');
+    const age = Store.ageOn(m.birthdate, Clock.today());
     if (!(age >= 25 && age <= 70)) { this.go('basic'); $('#pf-hint').textContent = '나이는 25~70세 사이로 정해 주세요.'; return; }
     App.state.manager = JSON.parse(JSON.stringify({
-      ...m, age, displayName: this.displayName(m), reputation: Manager.startRep(m), createdAt: '2026-11-10',
+      ...m, age, displayName: this.displayName(m), reputation: Manager.startRep(m), createdAt: Clock.today(),
     }));
     App.show('team');
   },

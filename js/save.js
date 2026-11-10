@@ -39,7 +39,7 @@ const SaveSystem = {
     return {
       version: this.VERSION,
       savedAt: new Date().toISOString(),
-      date: (Portal.data && Portal.data.date) || '2026-11-10',
+      date: Clock.today(),
       label: `${m.displayName || m.name || '감독'} · ${team ? team.name : '팀 없음'}`,
       team: team ? { id: team.id, short: team.short, logo: team.logo, league: team.league } : null,
       state: JSON.parse(JSON.stringify(state)),

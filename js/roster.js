@@ -6,7 +6,7 @@ const Roster = {
   selId: null,
 
   team() { return App.db.teams.find(t => t.id === App.state.teamId) || App.db.teams[0]; },
-  today() { return (Portal.data && Portal.data.date) || '2026-11-10'; },
+  today() { return Clock.today(); },
 
   // 목업 상태값. 같은 선수는 항상 같은 값. TODO: 기능 연결 — 훈련·경기 시뮬레이션 결과로 교체
   status(p) {
