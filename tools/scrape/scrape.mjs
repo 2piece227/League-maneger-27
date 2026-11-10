@@ -250,7 +250,9 @@ async function main() {
   const meta = { source: 'Leaguepedia (lol.fandom.com) Cargo API', season: SEASON, scrapedAt: new Date().toISOString() };
   await writeFile(path.join(OUT, 'teams.json'), JSON.stringify({ meta, teams }, null, 2));
   await writeFile(path.join(OUT, 'players.json'), JSON.stringify({ meta, players }, null, 2));
-  await writeFile(path.join(OUT, 'history.json'), JSON.stringify({ meta, ...history }, null, 2));
+  // worlds-photos.mjs가 넣은 우승 사진은 유지
+  const prev = await readFile(path.join(OUT, 'history.json'), 'utf8').then(JSON.parse).catch(() => ({}));
+  await writeFile(path.join(OUT, 'history.json'), JSON.stringify({ meta, ...history, worldsPhotos: prev.worldsPhotos }, null, 2));
   log(`완료: 팀 ${teams.length}, 선수 ${players.length} → ${OUT}`);
 }
 

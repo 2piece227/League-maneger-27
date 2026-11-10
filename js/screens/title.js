@@ -18,15 +18,24 @@ Screens.title = {
   },
 
   renderWinners() {
-    const cards = App.db.history.worlds.map(w => `
+    const worlds = App.db.history.worlds;
+    const logo = w => w.logo ? `<img class="win-logo" src="${w.logo}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : '';
+    const cards = worlds.map(w => w.photo ? `
+      <div class="win-card photo" style="--c:${w.color}">
+        <img class="win-photo" src="${w.photo}" alt="${UI.esc(w.team)} ${w.year}" referrerpolicy="no-referrer" onerror="this.closest('.win-card').classList.remove('photo');this.remove()">
+        ${logo(w)}
+        <div class="win-head"><div class="win-year">${w.year}</div><div class="win-team">${UI.esc(w.team)}</div></div>
+        <div class="win-meta">WORLD CHAMPION · ${w.region}</div>
+      </div>` : `
       <div class="win-card" style="--c:${w.color}">
-        ${w.logo ? `<img class="win-logo" src="${w.logo}" alt="" referrerpolicy="no-referrer" onerror="this.remove()">` : ''}
+        ${logo(w)}
         <div class="win-year">${w.year}</div>
         <div>
           <div class="win-team">${UI.esc(w.team)}</div>
           <div class="win-meta">WORLD CHAMPION · ${w.region}</div>
         </div>
       </div>`).join('');
+    $('.winners-strip', this.el).classList.toggle('has-photos', worlds.some(w => w.photo));
     // 끊김 없는 루프를 위해 두 번 반복
     $('#winners-track').innerHTML = cards + cards;
   },

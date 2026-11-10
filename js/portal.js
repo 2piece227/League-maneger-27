@@ -11,7 +11,7 @@ const Portal = {
       this.data = await fetch('data/mock/portal.json').then(r => r.json());
     } catch (e) {
       console.warn('[portal] 목업 로드 실패', e);
-      this.data = { date: '2027-01-14', team: { short: '?', color: '#555' }, messages: [], week: [], standings: { rows: [] }, soloRank: [] };
+      this.data = { date: '2026-11-10', team: { short: '?', color: '#555' }, messages: [], week: [], standings: { rows: [] }, soloRank: [] };
     }
     return this.data;
   },
@@ -46,10 +46,9 @@ const Portal = {
     const rank = t => { const i = order.indexOf(t.short); return i < 0 ? 99 : i; };
     const sorted = [...league].sort((a, b) => rank(a) - rank(b) || b.rep - a.rep);
     d.standings.rows = sorted.map((t, i) => {
-      const r = raw.standings.rows[i] || { w: 0, l: 2, setDiff: -5 };
+      const r = raw.standings.rows[i] || { w: 2, l: 16, setDiff: -26 };
       return { rank: i + 1, team: t, w: r.w, l: r.l, setDiff: r.setDiff };
     });
-    d.standings.competition = `${team.league} 2027 정규 시즌`;
     const others = sorted.filter(t => t.id !== team.id);
     const opp = others[1] || others[0], opp2 = others.find(t => t !== opp) || opp;
     const scrim = others.filter(t => t !== opp && t !== opp2);
@@ -61,7 +60,12 @@ const Portal = {
     d.soloRank = d.soloRank.map(s => ({ ...s, p: byRole(s.role), player: byRole(s.role).name }));
     if (sub) d.challengers.callUp = { ...d.challengers.callUp, player: sub.name, role: sub.role, p: sub };
     const staff = team.staff || [];
+    // 스토브: 30일 안에 계약이 끝나는 선수
+    const soon = Fmt.parse(d.date).getTime() + 30 * 864e5;
+    const expiring = team.players.filter(p => p.contractEnd && Fmt.parse(p.contractEnd).getTime() <= soon);
     const tok = {
+      exp1: (expiring[0] || byRole('TOP')).name, expN: expiring.length,
+      expList: expiring.length ? expiring.map(p => `· ${p.name} (${p.role}) — ${p.contractEnd.replace(/-/g, '.')} 만료`).join('\n') : '· 해당 선수 없음',
       opp: opp.name, oppShort: opp.short, opp2: opp2.name, opp2Short: opp2.short,
       s1: (scrim[0] || opp).short, s2: (scrim[1] || opp2).short,
       pTOP: byRole('TOP').name, pMID: byRole('MID').name,
@@ -205,7 +209,7 @@ const Portal = {
     if (!n) return '';
     return `
       <div class="card">
-        <div class="card-head"><h3>다음 경기</h3><a href="#match-next">자세히</a></div>
+        <div class="card-head"><h3>다음 경기</h3><span class="dday num">D-${Fmt.daysBetween(d.date, n.datetime)}</span><a href="#match-next">자세히</a></div>
         <div class="nm-body">
           ${this.badge(n.opponent, 'lg')}
           <div class="nm-info">
@@ -228,7 +232,7 @@ const Portal = {
     const list = mine && !top.includes(mine) ? [...top, null, mine] : top;
     return `
       <div class="card">
-        <div class="card-head"><h3>리그 순위</h3><a href="#match-standings">전체 보기</a></div>
+        <div class="card-head"><h3>리그 순위 <small>${UI.esc(d.standings.competition || '')}</small></h3><a href="#match-standings">전체 보기</a></div>
         <table class="mini-table">
           <thead><tr><th>#</th><th>팀</th><th>승</th><th>패</th><th>득실</th></tr></thead>
           <tbody>${list.map(r => r ? `
@@ -296,6 +300,7 @@ const Fmt = {
   dow(s) { return this.DOW[this.parse(s).getDay()]; },
   date(s) { return `${s.slice(0, 4)}.${s.slice(5, 7)}.${s.slice(8, 10)} (${this.dow(s)})`; },
   dayLabel(s) { const d = this.parse(s); return `${d.getMonth() + 1}월 ${d.getDate()}일 (${this.dow(s)})`; },
+  daysBetween(a, b) { return Math.round((this.parse(b) - this.parse(a)) / 864e5); },
   dateTime(s) { return `${this.dayLabel(s)} ${s.slice(11, 16)}`; },
 };
 

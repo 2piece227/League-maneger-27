@@ -8,7 +8,7 @@ const Data = {
       const get = f => fetch('data/' + f).then(r => { if (!r.ok) throw new Error(f); return r.json(); });
       const [t, p, h, o] = await Promise.all([get('teams.json'), get('players.json'), get('history.json'), get('overrides.json').catch(() => ({}))]);
       db.teams = this.mergeTeams(t.teams, p.players, o.teams || {});
-      db.history.worlds = MOCK.worldsHistory.map(w => ({ ...w, logo: (h.worldsLogos || {})[w.page || w.team] || null }));
+      db.history.worlds = MOCK.worldsHistory.map(w => ({ ...w, logo: (h.worldsLogos || {})[w.page || w.team] || null, photo: (h.worldsPhotos || {})[w.year] || null }));
       db.source = 'scraped';
     } catch (e) {
       console.info('[data] 수집 데이터 없음 → 목업 사용', e.message);
@@ -35,7 +35,7 @@ const Data = {
       team.budget = MOCK.budgetLabel(team.league, team.fin);
       const people = players.filter(p => p.team === t.id).map(p => ({
         ...p,
-        age: p.birthdate ? this.ageOn(p.birthdate, '2027-01-01') : null,
+        age: p.birthdate ? this.ageOn(p.birthdate, '2026-11-10') : null,
         sub: false,
       }));
       team.staff = people.filter(p => p.role === 'COACH');

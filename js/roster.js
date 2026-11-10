@@ -6,7 +6,7 @@ const Roster = {
   selId: null,
 
   team() { return App.db.teams.find(t => t.id === App.state.teamId) || App.db.teams[0]; },
-  today() { return (Portal.data && Portal.data.date) || '2027-01-14'; },
+  today() { return (Portal.data && Portal.data.date) || '2026-11-10'; },
 
   // 목업 상태값. 같은 선수는 항상 같은 값. TODO: 기능 연결 — 훈련·경기 시뮬레이션 결과로 교체
   status(p) {
@@ -18,6 +18,10 @@ const Roster = {
     };
   },
   MORALE: [['낮음', 'bad'], ['보통', 'mid'], ['좋음', 'ok'], ['매우 좋음', 'good'], ['최상', 'best']],
+
+  days(p) {
+    return p.contractEnd ? Fmt.daysBetween(this.today(), p.contractEnd) : null;
+  },
 
   months(p) {
     if (!p.contractEnd) return null;
@@ -90,7 +94,9 @@ const Roster = {
       case 'left': {
         const m = this.months(p);
         if (m == null) return '<span class="ct none">정보 없음</span>';
-        if (m <= 0) return '<span class="ct exp">만료</span>';
+        const dd = this.days(p);
+        if (dd < 0) return '<span class="ct exp">만료 (FA)</span>';
+        if (dd <= 60) return `<span class="ct exp">D-${dd} · FA 예정</span>`;
         return `<span class="ct ${m <= 12 ? 'soon' : ''}">${m >= 12 ? Math.floor(m / 12) + '년 ' : ''}${m % 12 ? (m % 12) + '개월' : ''}</span>`;
       }
       case 'act': return `<button class="btn-ghost btn-xs" data-renew="${p.id}">재계약</button>`;
@@ -107,7 +113,7 @@ const Roster = {
     const ages = ps.filter(p => p.age);
     const home = this.homeNation(t);
     const foreign = home ? ps.filter(p => p.nation && p.nation !== home).length : '-';
-    const expiring = ps.filter(p => { const m = this.months(p); return m != null && m <= 12; }).length;
+    const expiring = ps.filter(p => { const dd = this.days(p); return dd != null && dd <= 60; }).length;
     const avg = (arr, f) => arr.length ? (arr.reduce((a, p) => a + f(p), 0) / arr.length).toFixed(1) : '-';
     const cols = this.COLS[this.view];
 
@@ -122,7 +128,7 @@ const Roster = {
               <div><span class="k">평균 나이</span><b class="num">${avg(ages, p => p.age)}</b></div>
               <div><span class="k">평균 OVR</span><b class="num">${avg(ps, p => p.ovr)}</b></div>
               <div><span class="k">외국인</span><b class="num">${foreign}</b></div>
-              <div><span class="k">1년 내 계약 만료</span><b class="num ${expiring ? 'warn' : ''}">${expiring}</b></div>
+              <div><span class="k">FA 예정 (60일 내)</span><b class="num ${expiring ? 'warn' : ''}">${expiring}</b></div>
             </div>
           </div>
 
