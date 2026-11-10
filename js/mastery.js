@@ -22,15 +22,17 @@ const Mastery = {
     for (const list of Object.values(this.pools)) {
       list.forEach(e => {
         const r = M.calc(e);
-        e.solo = r.solo; e.pro = r.pro; e.mv = r.total; e.m = Math.round(r.total); e.sig = false;
+        e.xp = r.xp; e.mv = r.value; e.m = r.level; e.next = r.next; e.need = r.need; e.sig = false;
       });
       list.sort((a, b) => b.mv - a.mv || b.g - a.g);
-      list.filter(e => e.m >= M.SIG_MIN && e.g >= M.SIG_GAMES).slice(0, M.SIG_MAX).forEach(e => { e.sig = true; });
+      list.filter(e => e.m >= M.SIG_MIN).slice(0, M.SIG_MAX).forEach(e => { e.sig = true; });
     }
   },
 
-  split(e) {
-    return `<div class="ms-split" title="솔랭 ${e.solo.toFixed(1)} + 대회 ${e.pro.toFixed(1)}"><i class="s" style="width:${e.solo * 5}%"></i><i class="p" style="width:${e.pro * 5}%"></i></div>`;
+  // 다음 단계까지 진행도
+  progress(e) {
+    if (e.m >= MasteryModel.MAX) return '<div class="ms-next max"><i style="width:100%"></i></div>';
+    return `<div class="ms-next" title="다음 단계(${e.m + 1})까지 ${Math.round(e.next * 100)}% · 대회 약 ${Math.max(1, Math.ceil(e.need / MasteryModel.PRO_XP))}판 필요"><i style="width:${Math.round(e.next * 100)}%"></i></div>`;
   },
 
   // 다른 화면(프로필·밴픽)에서도 쓰는 조회 함수
@@ -70,7 +72,7 @@ const Mastery = {
           <div class="card rs-head">
             <div class="rs-title">
               <h2>챔피언 숙련도 <small>${UI.esc(t.name)}</small></h2>
-              <span>${from}~2026 프로 공식 경기 기록 기준 · 숙련도 0~20 = 솔랭(최대 10) + 대회 경험(최대 10)</span>
+              <span>${from}~2026 프로 공식 경기 기록 기준 · 숙련도 0~20 · 단계가 오를수록 필요한 경험이 커짐</span>
             </div>
             <div class="rs-stats">
               <div><span class="k">시그니처</span><b>${sigs.length}</b></div>
@@ -80,8 +82,7 @@ const Mastery = {
           <div class="ms-legend">
             <span><i class="ms-m m4">17+</i>최상급</span><span><i class="ms-m m3">13+</i>숙련</span>
             <span><i class="ms-m m2">9+</i>사용 가능</span><span><i class="ms-m m1">~8</i>미숙</span>
-            <span class="ms-leg-split"><i class="ms-split"><i class="s" style="width:50%"></i><i class="p" style="width:30%"></i></i>솔랭 · 대회</span>
-            <span><i class="ms-sig static">SIG</i>시그니처 — 리그 최상급 장인 챔피언 (숙련도 19+·대회 20판+, 선수당 최대 2개)</span>
+            <span><i class="ms-sig static">SIG</i>시그니처 — 리그 최상급 장인 챔피언 (숙련도 18+, 선수당 최대 2개)</span>
           </div>
           <div class="ms-list">${ps.map(p => {
             const pool = this.pool(p.id);
@@ -127,13 +128,13 @@ const Mastery = {
       <h4>챔피언 풀 <small>${pool.length}개</small></h4>
       ${pool.length ? `
       <div class="ms-table-wrap"><table class="rs-table ms-table">
-        <thead><tr><th>챔피언</th>${th('m', '숙련도')}<th>솔랭 · 대회</th>${th('g', '판수')}${th('wr', '승률')}<th class="num">KDA</th>${th('g26', '2026')}</tr></thead>
+        <thead><tr><th>챔피언</th>${th('m', '숙련도')}<th>다음 단계</th>${th('g', '판수')}${th('wr', '승률')}<th class="num">KDA</th>${th('g26', '2026')}</tr></thead>
         <tbody>${pool.map(e => {
           const c = Champions.byId[e.c];
           return `<tr>
             <td><div class="ms-c"><img src="${c.icon}" alt="" loading="lazy">${UI.esc(c.name)}${e.sig ? '<i class="ms-sig static">SIG</i>' : ''}</div></td>
             <td class="num"><b class="ms-m ${this.tier(e.m)}">${e.m}</b></td>
-            <td>${this.split(e)}</td>
+            <td>${this.progress(e)}</td>
             <td class="num">${e.g}</td>
             <td class="num ${this.wr(e) >= 60 ? 'good' : this.wr(e) < 45 ? 'bad' : ''}">${this.wr(e)}%</td>
             <td class="num">${this.kda(e)}</td>

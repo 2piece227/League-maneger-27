@@ -64,9 +64,7 @@
   .ms-ic { width: 38px; height: 38px; }
 }
 
-/* 솔랭(파랑) + 대회(금색) 숙련 막대: 전체 폭 = 20 */
-.ms-split { display: flex; width: 80px; height: 6px; border-radius: 3px; background: #1c2640; overflow: hidden; }
-.ms-split i { display: block; height: 100%; }
-.ms-split .s { background: #3aa0ff; }
-.ms-split .p { background: var(--gold); }
-.ms-leg-split .ms-split { width: 40px; }
+/* 다음 단계까지 진행도 */
+.ms-next { width: 80px; height: 6px; border-radius: 3px; background: #1c2640; overflow: hidden; }
+.ms-next i { display: block; height: 100%; background: linear-gradient(90deg, #8a6a2a, var(--gold-2)); }
+.ms-next.max i { background: var(--gold-2); box-shadow: 0 0 6px var(--gold-2); }
