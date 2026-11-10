@@ -89,12 +89,15 @@ Screens.title = {
     },
 
     load() {
-      const slots = SaveSystem.list().map((s, i) => `
-        <div class="save-slot"><span>슬롯 ${i + 1}</span><span>${s ? UI.esc(s.label) : '비어 있음'}</span></div>`).join('');
-      UI.modal({
+      const all = [...SaveSystem.list().map((d, i) => [SaveSystem.SLOTS[i], `슬롯 ${i + 1}`, d]), ['auto', '자동 저장', SaveSystem.auto()]];
+      const back = UI.modal({
         title: '불러오기',
-        body: slots + '<p style="color:var(--muted);font-size:12px;margin:8px 0 0">저장 기능은 아직 구현되지 않았습니다.</p>',
+        body: all.map(([id, l, d]) => `
+          <button class="save-slot ${d ? '' : 'empty'}" data-slot="${id}" ${d ? '' : 'disabled'}>
+            <span>${l}</span><span>${d ? `${UI.esc(d.label)} · ${d.date.replace(/-/g, '.')}` : '비어 있음'}</span>
+          </button>`).join(''),
       });
+      $$('.save-slot[data-slot]', back).forEach(b => b.onclick = () => { $('.modal-foot button', back).click(); SaveSystem.load(b.dataset.slot); });
     },
 
     settings() {

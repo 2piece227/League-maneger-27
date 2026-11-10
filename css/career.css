@@ -1,0 +1,158 @@
+/* 커리어 화면 */
+.cr-page { display: flex; flex-direction: column; gap: 14px; max-width: 1280px; margin: 0 auto; }
+.cr-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px; align-items: start; }
+.cr-todo, .cr-dim { font-size: 11px; color: #5f6b84; font-weight: 400; }
+.cr-note { font-size: 12px; color: var(--muted); line-height: 1.5; margin: 10px 0 0; }
+
+/* 신분증 카드 */
+.cr-id { display: flex; align-items: center; gap: 20px; padding: 18px 22px; background: linear-gradient(120deg, #172340, var(--panel) 60%); }
+.cr-av { width: 120px; height: 132px; border-radius: 10px; overflow: hidden; flex: none; background: radial-gradient(circle at 50% 35%, #2a3a60, #0d1424 75%); border: 1px solid var(--line); }
+.cr-av svg { width: 100%; height: 100%; display: block; }
+.cr-id-main h2 { margin: 0; font-size: 28px; }
+.cr-nick { font-family: var(--f-ui); color: var(--gold-2); font-size: 16px; }
+.cr-id-meta { color: var(--muted); font-size: 13px; margin-top: 6px; display: flex; align-items: center; gap: 6px; }
+.cr-job { display: flex; align-items: center; gap: 10px; margin-top: 12px; }
+.cr-job .team-logo, .cr-job .team-badge { width: 36px; height: 36px; }
+.cr-job b { display: block; font-size: 15px; }
+.cr-job small { font-size: 12px; color: var(--muted); }
+.cr-id-rep { margin-left: auto; text-align: right; display: flex; flex-direction: column; gap: 4px; align-items: flex-end; }
+.cr-id-rep span { font-size: 11px; color: var(--muted); }
+.cr-id-rep b { font-size: 20px; color: var(--gold-2); }
+
+.cr-dl { display: grid; grid-template-columns: 96px 1fr; gap: 7px 12px; margin: 0; font-size: 13px; }
+.cr-dl dt { color: var(--muted); }
+.cr-dl dd { margin: 0; display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+.cr-dl small { color: var(--muted); }
+.cr-attrs { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 20px; }
+.cr-attrs > div { display: flex; justify-content: space-between; align-items: center; padding: 5px 0; border-bottom: 1px solid #172036; font-size: 13px; cursor: help; }
+.cr-styles { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.cr-styles > div { background: var(--panel-2); border-radius: 8px; padding: 8px 10px; }
+.cr-styles span { display: block; font-size: 11px; color: var(--muted); }
+.cr-styles b { font-size: 13px; }
+.cr-bg { font-size: 13px; color: #b3bccd; margin: 0 0 6px; line-height: 1.5; }
+
+.cr-meter { display: grid; grid-template-columns: 90px 1fr 30px; align-items: center; gap: 10px; font-size: 13px; padding: 5px 0; }
+.cr-meter span { color: var(--muted); }
+.cr-meter.cur span { color: var(--gold-2); font-weight: 700; }
+.cr-bar { height: 7px; border-radius: 4px; background: #1c2640; overflow: hidden; }
+.cr-bar i { display: block; height: 100%; }
+.cr-bar .good { background: #3fbf7f; }
+.cr-bar .mid { background: var(--gold); }
+.cr-bar .bad { background: #e2575c; }
+.cr-meter b { text-align: right; }
+
+/* 평판 */
+.cr-rep-main { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; grid-row: span 2; }
+.cr-rep-k { font-size: 12px; color: var(--muted); }
+.cr-rep-l { font-size: 30px; color: var(--gold-2); }
+.cr-rep-main .stars { font-size: 20px; }
+.cr-rep-main > small { font-size: 12px; color: var(--muted); }
+.cr-ladder { width: 100%; position: relative; margin: 16px 0 8px; }
+.cr-ladder-bar { height: 10px; border-radius: 5px; background: #1c2640; overflow: hidden; }
+.cr-ladder-bar i { display: block; height: 100%; background: linear-gradient(90deg, #8a6a2a, var(--gold-2)); }
+.cr-ladder-ticks span { position: absolute; top: -3px; width: 2px; height: 16px; background: #3a4a6c; }
+.cr-ladder-ticks span.on { background: var(--gold-2); }
+.cr-log { display: flex; flex-direction: column; gap: 6px; }
+.cr-log > div { display: grid; grid-template-columns: 80px 1fr 40px; gap: 10px; font-size: 13px; align-items: center; }
+.cr-log span { color: var(--muted); font-size: 12px; }
+.cr-log b { font-weight: 500; }
+.cr-log i { font-style: normal; font-family: var(--f-ui); font-weight: 700; text-align: right; }
+.cr-log i.up { color: #3fbf7f; }
+.cr-log i.down { color: #e2575c; }
+
+/* 기록 */
+.cr-tiles { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; }
+.cr-tiles .card { padding: 12px 14px; }
+.cr-tiles span { display: block; font-size: 11px; color: var(--muted); }
+.cr-tiles b { font-family: var(--f-ui); font-size: 26px; }
+.cr-trophies { display: grid; grid-template-columns: repeat(auto-fill, minmax(120px, 1fr)); gap: 10px; }
+.cr-trophy { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 14px 8px; border-radius: 8px; background: var(--panel-2); text-align: center; }
+.cr-trophy i { font-style: normal; font-size: 30px; }
+.cr-trophy.locked i { filter: grayscale(1) brightness(.4); }
+.cr-trophy b { font-size: 12px; }
+.cr-trophy small { font-size: 11px; color: #5f6b84; }
+.cr-table td, .cr-table th { white-space: normal; }
+.cr-table tbody tr { cursor: default; }
+
+/* 다른 팀 보기 */
+.ot-table td { padding: 7px 10px; }
+.ot-table tr.mine td { background: rgba(58, 160, 255, .07); }
+.ot-goal { font-size: 12px; color: #b3bccd; white-space: normal !important; max-width: 220px; }
+.ot-st { font-size: 11px; font-weight: 700; padding: 2px 7px; border-radius: 4px; white-space: nowrap; margin-right: 4px; }
+.ot-st.vacant { background: rgba(226, 87, 92, .18); color: #ff8a8e; }
+.ot-st.seeking { background: rgba(63, 191, 127, .16); color: #4fd690; }
+.ot-st.unstable { background: rgba(240, 165, 74, .16); color: #f0a54a; }
+.ot-st.stable { background: #1f2a44; color: var(--muted); }
+.ot-st.mine { background: rgba(58, 160, 255, .16); color: #8cc8ff; }
+.ot-ch { font-size: 12px; font-weight: 700; }
+.ot-ch.hi { color: #3fbf7f; }
+.ot-ch.mid { color: var(--gold-2); }
+.ot-ch.lo { color: #f0a54a; }
+.ot-ch.no { color: #e2575c; }
+.ot-head { display: flex; align-items: center; gap: 12px; margin-bottom: 12px; }
+.ot-head .team-logo, .ot-head .team-badge { width: 52px; height: 52px; }
+.ot-head h3 { margin: 0; font-size: 18px; }
+.ot-head span { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.ot-status { background: var(--panel-2); border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; }
+.ot-status p { margin: 6px 0 0; font-size: 12px; color: #b3bccd; line-height: 1.5; }
+.ot-side h4 { font-size: 13px; margin: 16px 0 8px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+.ot-roster { display: flex; flex-direction: column; gap: 6px; }
+.ot-roster > div { display: flex; align-items: center; gap: 8px; font-size: 13px; }
+.ot-roster .pl-ph { width: 30px; height: 30px; }
+.ot-roster .pos-ic { margin-left: auto; }
+.ot-apply { margin-top: 16px; display: flex; flex-direction: column; gap: 6px; }
+.ot-apply button { width: 100%; padding: 10px; }
+.ot-apply button:disabled { opacity: .45; cursor: default; }
+.ot-applied { background: rgba(58, 160, 255, .1); border: 1px solid rgba(58, 160, 255, .4); border-radius: 8px; padding: 10px 12px; }
+.ot-applied b { display: block; font-size: 13px; color: #8cc8ff; }
+.ot-applied span { font-size: 12px; color: var(--muted); }
+.ot-cv { display: flex; flex-direction: column; gap: 12px; min-width: min(420px, 80vw); }
+.ot-cv-head { display: flex; align-items: center; gap: 10px; }
+.ot-cv-head .mini-av { width: 46px; height: 46px; border-radius: 50%; overflow: hidden; background: #1c2843; flex: none; }
+.ot-cv-head .mini-av svg { width: 100%; height: 100%; display: block; }
+.ot-cv-head b { display: block; }
+.ot-cv-head small { color: var(--muted); font-size: 12px; }
+
+/* 설정·저장 */
+.sv-slots { display: flex; flex-direction: column; gap: 8px; }
+.sv-slot { display: flex; align-items: center; gap: 12px; padding: 10px 12px; border-radius: 8px; background: var(--panel-2); border: 1px solid var(--line); }
+.sv-slot.empty { border-style: dashed; background: transparent; }
+.sv-slot-ic { width: 38px; height: 38px; border-radius: 8px; background: #0a101d; display: flex; align-items: center; justify-content: center; flex: none; overflow: hidden; }
+.sv-slot-ic img { width: 30px; height: 30px; object-fit: contain; }
+.sv-slot-ic span { font-family: var(--f-ui); font-weight: 700; color: var(--muted); }
+.sv-slot-main { min-width: 0; }
+.sv-slot-main b { display: block; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sv-slot-main small { font-size: 11px; color: var(--muted); }
+.sv-slot-act { margin-left: auto; display: flex; gap: 6px; flex: none; }
+.sv-slot-act button { padding: 5px 10px; font-size: 12px; }
+.sv-slot-act button:disabled { opacity: .35; cursor: default; }
+.sv-h { font-size: 13px; margin: 18px 0 8px; }
+.sv-toggle { display: flex; align-items: center; gap: 12px; cursor: pointer; margin-bottom: 10px; }
+.sv-toggle input { display: none; }
+.sv-toggle > span { width: 40px; height: 22px; border-radius: 11px; background: #26324d; position: relative; flex: none; transition: background .2s; }
+.sv-toggle > span::after { content: ''; position: absolute; left: 3px; top: 3px; width: 16px; height: 16px; border-radius: 50%; background: #dfe5ef; transition: transform .2s; }
+.sv-toggle input:checked + span { background: var(--gold); }
+.sv-toggle input:checked + span::after { transform: translateX(18px); }
+.sv-toggle b { display: block; font-size: 13px; }
+.sv-toggle small { font-size: 11px; color: var(--muted); }
+.sv-foot { margin-top: 16px; display: flex; justify-content: flex-end; }
+button.save-slot { width: 100%; font: inherit; background: transparent; cursor: pointer; }
+button.save-slot:not(:disabled):hover { border-color: var(--gold); color: var(--text); }
+button.save-slot:disabled { cursor: default; opacity: .6; }
+
+@media (max-width: 1023px) {
+  .cr-grid { grid-template-columns: 1fr; }
+  .cr-rep-main { grid-row: auto; }
+  .cr-tiles { grid-template-columns: repeat(3, 1fr); }
+}
+@media (max-width: 767px) {
+  .cr-id { flex-wrap: wrap; padding: 14px; }
+  .cr-av { width: 84px; height: 92px; }
+  .cr-id-main h2 { font-size: 22px; }
+  .cr-id-rep { margin-left: 0; align-items: flex-start; text-align: left; }
+  .cr-attrs { grid-template-columns: 1fr; }
+  .cr-tiles { grid-template-columns: repeat(2, 1fr); }
+  .ot-table th:nth-child(5), .ot-table td:nth-child(5), .ot-table th:nth-child(6), .ot-table td:nth-child(6) { display: none; }
+  .sv-slot { flex-wrap: wrap; }
+  .sv-slot-act { margin-left: 50px; }
+}

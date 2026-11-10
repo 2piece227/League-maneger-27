@@ -521,3 +521,58 @@ input:focus, select:focus { outline: none; border-color: var(--gold); }
   .ceremony-cap { display: none; }
 }
 @media (prefers-reduced-motion: reduce) { .cer-slide.on { animation: none; } }
+
+/* 토스트 알림 */
+.toast {
+  position: fixed; left: 50%; bottom: calc(var(--footer-h) + 70px); transform: translate(-50%, 12px); opacity: 0;
+  background: var(--panel-2); border: 1px solid var(--gold); color: var(--gold-2); padding: 9px 18px; border-radius: 8px;
+  font-size: 13px; z-index: 200; transition: opacity .25s, transform .25s; pointer-events: none;
+}
+.toast.on { opacity: 1; transform: translate(-50%, 0); }
+
+/* ---------- 감독 생성 (섹션형) ---------- */
+.pf-tabs { display: flex; gap: 4px; border-bottom: 1px solid var(--line); margin-bottom: 18px; overflow-x: auto; }
+.pf-tabs button { background: none; border: 0; padding: 10px 14px; color: var(--muted); font-weight: 700; font-size: 14px; border-bottom: 2px solid transparent; white-space: nowrap; }
+.pf-tabs button.on { color: var(--gold-2); border-bottom-color: var(--gold); }
+.pf-sec { display: none; flex-direction: column; gap: 16px; }
+.pf-sec.on { display: flex; }
+.pf-sec .form-grid { margin-bottom: 0; }
+.field > span small { color: #5f6b84; margin-left: 4px; }
+.field input, .field select { background: #0a101d; border: 1px solid var(--line); border-radius: 6px; padding: 9px 10px; font-size: 14px; }
+.field input:focus, .field select:focus { outline: none; border-color: var(--gold); }
+.bg-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 8px; }
+.bg-card { text-align: left; display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border-radius: 8px; background: #0a101d; border: 1px solid var(--line); }
+.bg-card b { font-size: 14px; }
+.bg-card span { font-size: 12px; color: #b3bccd; line-height: 1.45; }
+.bg-card small { font-size: 11px; color: var(--gold); margin-top: 2px; }
+.bg-card.on { border-color: var(--gold); background: rgba(200, 162, 74, .1); }
+.style-grid { display: grid; gap: 16px; }
+.pf-pool { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; font-size: 13px; color: var(--muted); }
+.pf-pool b { font-family: var(--f-ui); font-size: 22px; color: var(--gold-2); }
+.pf-pool small { font-size: 11px; color: #5f6b84; }
+.pf-pool button { margin-left: auto; padding: 5px 12px; font-size: 12px; }
+.attr-edit { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 20px; }
+.attr-row { display: grid; grid-template-columns: minmax(0, 1fr) 28px 34px 28px; align-items: center; gap: 6px; padding: 6px 0; border-bottom: 1px solid #172036; }
+.attr-row b { display: block; font-size: 13px; }
+.attr-row small { font-size: 11px; color: #5f6b84; }
+.attr-btn { width: 28px; height: 28px; border-radius: 6px; background: #0a101d; border: 1px solid var(--line); font-size: 16px; line-height: 1; }
+.attr-btn:disabled { opacity: .3; cursor: default; }
+.attr-row .attr-v { text-align: center; font-size: 16px; }
+.pf-summary { width: 100%; display: flex; flex-direction: column; gap: 6px; border-top: 1px solid var(--line); padding-top: 12px; }
+.pfs-row { display: flex; align-items: center; gap: 8px; font-size: 12px; }
+.pfs-row span { color: var(--muted); width: 64px; flex: none; }
+.pfs-row b { font-weight: 500; }
+.pfs-row .stars { margin-left: auto; }
+.nc-meta .flag { vertical-align: -2px; }
+#pf-prev { margin-left: auto; }
+@media (max-width: 900px) {
+  .attr-edit { grid-template-columns: 1fr; }
+}
+@media (max-width: 900px) {
+  .profile-layout { display: flex; flex-direction: column; gap: 12px; }
+  .avatar-panel { flex-direction: row; flex-wrap: wrap; align-items: center; padding: 14px; gap: 12px; }
+  .avatar-stage { width: 96px; flex: none; }
+  .avatar-namecard { text-align: left; flex: 1; min-width: 0; }
+  .profile-form { overflow: visible; padding: 16px; }
+  .form-foot { flex-wrap: wrap; }
+}

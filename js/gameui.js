@@ -36,7 +36,7 @@ const G = {
     Croatia: ['hr', '크로아티아'], Portugal: ['pt', '포르투갈'], 'Czech Republic': ['cz', '체코'],
     'United Kingdom': ['gb', '영국'], 'United States': ['us', '미국'], Canada: ['ca', '캐나다'],
     Ukraine: ['ua', '우크라이나'], Turkey: ['tr', '튀르키예'], Poland: ['pl', '폴란드'], Slovenia: ['si', '슬로베니아'],
-    Norway: ['no', '노르웨이'], Lithuania: ['lt', '리투아니아'], Australia: ['au', '호주'], Argentina: ['ar', '아르헨티나'],
+    Norway: ['no', '노르웨이'], Lithuania: ['lt', '리투아니아'], Australia: ['au', '호주'], Japan: ['jp', '일본'], Argentina: ['ar', '아르헨티나'],
   },
   nationName(n) { return (this.NATION[n] || [null, n || '-'])[1]; },
   flag(n) {

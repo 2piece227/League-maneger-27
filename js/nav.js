@@ -6,7 +6,7 @@ const NAV = [
   { id: 'match', label: '경기', tabs: [['next', '다음 경기'], ['draft', '밴픽 준비'], ['opponent', '상대 분석'], ['history', '경기 기록'], ['meta', '메타·패치 노트'], ['champions', '챔피언'], ['standings', '순위표']] },
   { id: 'training', label: '훈련', tabs: [['schedule', '팀 훈련 일정'], ['individual', '개인 훈련'], ['soloq', '솔랭 순위'], ['scrims', '스크림']] },
   { id: 'club', label: '구단', tabs: [['finance', '재정'], ['salary-cap', '샐러리캡'], ['staff', '코칭스태프'], ['sponsors', '스폰서'], ['board', '이사회 기대치'], ['history', '구단 역사']] },
-  { id: 'career', label: '커리어', tabs: [['profile', '감독 프로필'], ['reputation', '평판'], ['record', '커리어 기록'], ['other-leagues', '다른 리그 보기'], ['settings', '설정·저장']] },
+  { id: 'career', label: '커리어', tabs: [['profile', '감독 프로필'], ['reputation', '평판'], ['record', '커리어 기록'], ['other-teams', '다른 팀 보기'], ['settings', '설정·저장']] },
 ];
 
 const Nav = {

@@ -2,7 +2,7 @@ const App = {
   db: null,
   current: null,
   state: {
-    settings: { ...Settings.defaults },
+    settings: Settings.load(),
     manager: null,
     leagueId: 'LCK',
     teamId: null,

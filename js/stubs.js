@@ -51,27 +51,7 @@ const Data = {
   },
 };
 
-const SaveSystem = {
-  // TODO: localStorage / 파일 내보내기 기반 저장 슬롯
-  list() {
-    return [null, null, null];
-  },
-  load(slot) {
-    console.info('[stub] SaveSystem.load', slot);
-  },
-};
-
-const Settings = {
-  defaults: {
-    skipIntro: false,
-    simSpeed: 'normal',
-    volume: 70,
-  },
-  // TODO: 설정 영구 저장
-  save(settings) {
-    console.info('[stub] Settings.save', settings);
-  },
-};
+// SaveSystem · Settings 는 js/save.js
 
 const Game = {
   // TODO: 커리어 생성 → 시즌 캘린더/메인 화면으로 진입
@@ -89,6 +69,7 @@ const GameStubs = {
   // TODO: 기능 연결 — 다음 일정까지 날짜 진행
   advanceDay() {
     console.info('[stub] GameStubs.advanceDay');
+    if (SaveSystem.autosave()) UI.toast('자동 저장했습니다');
   },
   // TODO: 기능 연결 — 메시지 읽음 상태 저장
   markAllRead() {
