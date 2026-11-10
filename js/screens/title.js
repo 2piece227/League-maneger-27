@@ -15,6 +15,48 @@ Screens.title = {
     this.el.classList.add('play');
     if (this.played) this.el.classList.add('instant');
     this.played = true;
+    this.startCeremony();
+  },
+
+  leave() {
+    clearInterval(this.cerTimer);
+  },
+
+  // 트로피 뒤 우승 세레머니 사진. year가 없으면 팀명만 표시한다.
+  CEREMONY: [
+    ['2016-skt', 2016, 'SK Telecom T1'],
+    ['2017-ssg', 2017, 'Samsung Galaxy'],
+    ['2018-ig', 2018, 'Invictus Gaming'],
+    ['2019-fpx', 2019, 'FunPlus Phoenix'],
+    ['2020-dwg', 2020, 'DAMWON Gaming'],
+    ['2021-edg', 2021, 'EDward Gaming'],
+    ['2022-drx', 2022, 'DRX'],
+    ['t1', null, 'T1'],
+  ],
+
+  startCeremony() {
+    const box = $('#ceremony');
+    const cap = $('#ceremony-cap');
+    if (!box.children.length) {
+      box.innerHTML = this.CEREMONY.map(([f]) => `<div class="cer-slide" style="background-image:url('assets/ceremony/${f}.webp')"></div>`).join('');
+    }
+    const slides = [...box.children];
+    const show = i => {
+      slides.forEach((s, j) => s.classList.toggle('on', j === i));
+      const [, year, team] = this.CEREMONY[i];
+      cap.classList.add('hide');
+      setTimeout(() => {
+        cap.innerHTML = `${year ? `<b>${year}</b>` : ''}${UI.esc(team)} · WORLD CHAMPION`;
+        cap.classList.remove('hide');
+      }, 900);
+    };
+    clearInterval(this.cerTimer);
+    this.cerIndex = this.cerIndex ?? Math.floor(Math.random() * slides.length);
+    show(this.cerIndex);
+    this.cerTimer = setInterval(() => {
+      this.cerIndex = (this.cerIndex + 1) % slides.length;
+      show(this.cerIndex);
+    }, 7000);
   },
 
   renderWinners() {
