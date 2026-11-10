@@ -31,7 +31,8 @@ Screens.title = {
     ['2020-dwg', 2020, 'DAMWON Gaming'],
     ['2021-edg', 2021, 'EDward Gaming'],
     ['2022-drx', 2022, 'DRX'],
-    ['t1', null, 'T1'],
+    ['2024-t1', 2024, 'T1'],
+    ['2025-t1', 2025, 'T1'],
   ],
 
   startCeremony() {
