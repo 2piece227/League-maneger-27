@@ -49,37 +49,22 @@ const winMap = Object.fromEntries(wins.map(r => [key(r), +r.G]));
 const recentMap = Object.fromEntries(recent.map(r => [key(r), +r.G]));
 const unknown = new Set();
 
-// 숙련도 1~20: 경험(판수, 로그) + 승률(표본 보정) + KDA
-function mastery(g, w, k, d, a) {
-  const exp = Math.min(1, Math.log1p(g) / Math.log1p(50));
-  const wr = (w + 5) / (g + 10);
-  const kda = (k + a) / Math.max(1, d);
-  const v = 5 + exp * 11 + (wr - 0.5) * 12 + Math.max(-1.5, Math.min(1.5, (kda - 3) * 0.5));
-  return Math.max(1, Math.min(20, Math.round(v)));
-}
-
+// 원본 기록만 저장한다. 숙련도·시그니처는 게임 안에서 js/mastery-model.js 로 계산 (솔랭·대회로 계속 변하므로)
 const pools = {};
 for (const r of all) {
   const pid = byLink[r.Link];
   const cid = champId[norm(r.Champion)];
   if (!pid) continue;
   if (!cid) { unknown.add(r.Champion); continue; }
-  const g = +r.G, w = winMap[key(r)] || 0, k = +r.K, d = +r.D, a = +r.A;
-  (pools[pid] ||= []).push({ c: cid, g, w, k, d, a, g26: recentMap[key(r)] || 0, m: mastery(g, w, k, d, a) });
+  (pools[pid] ||= []).push({ c: cid, g: +r.G, w: winMap[key(r)] || 0, k: +r.K, d: +r.D, a: +r.A, g26: recentMap[key(r)] || 0 });
 }
-
-// 시그니처: 리그 최상급만 — 숙련도 19 이상·20판 이상 중 선수당 상위 2개
-let sigCount = 0;
-for (const list of Object.values(pools)) {
-  list.sort((x, y) => y.m - x.m || y.g - x.g);
-  list.filter(e => e.m >= 19 && e.g >= 20).slice(0, 2).forEach(e => { e.sig = true; sigCount++; });
-}
+Object.values(pools).forEach(l => l.sort((x, y) => y.g - x.g));
 if (unknown.size) console.warn('매칭 안 된 챔피언:', [...unknown].join(', '));
 
 const noData = players.filter(p => !pools[p.id]).map(p => p.name);
 await writeFile(path.join(OUT, 'champion-pools.json'), JSON.stringify({
-  meta: { source: 'Leaguepedia ScoreboardPlayers', from: FROM, recentFrom: RECENT, scrapedAt: new Date().toISOString(), players: Object.keys(pools).length, signatures: sigCount },
+  meta: { source: 'Leaguepedia ScoreboardPlayers', from: FROM, recentFrom: RECENT, scrapedAt: new Date().toISOString(), players: Object.keys(pools).length },
   pools,
 }));
-log(`선수 ${Object.keys(pools).length}명, 시그니처 ${sigCount}개, 기록 없음 ${noData.length}명`);
+log(`선수 ${Object.keys(pools).length}명, 기록 없음 ${noData.length}명`);
 if (noData.length) console.log('기록 없음:', noData.join(', '));
