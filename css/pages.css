@@ -345,3 +345,14 @@
 .ng-bonus label { flex-direction: row; align-items: center; gap: 4px; color: #dfe5ef; }
 .ng-act { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 8px; }
 @media (max-width: 760px) { .ng { grid-template-columns: 1fr; height: calc(100vh - 32px); } .ng-side { display: none; } .ng-form { grid-template-columns: 1fr 1fr; } }
+
+/* ---------- 팀 검색 ---------- */
+.tf-table tbody tr { cursor: pointer; }
+.tf-table tr.tf-me td { background: rgba(212, 175, 55, .06); }
+.tf-pow { font-family: var(--f-ui); font-size: 16px; color: var(--gold-2); }
+.tf-pl { display: flex; align-items: center; gap: 6px; min-width: 0; }
+.tf-pl .pl-ph { width: 28px; height: 28px; }
+.tf-pl b { display: block; font-size: 12px; white-space: nowrap; }
+.tf-s { font-size: 11px; font-weight: 700; }
+.tf-s.hi { color: #7fe0ae; } .tf-s.mid { color: #dfe5ef; } .tf-s.lo { color: #ff9a9e; }
+@media (max-width: 760px) { .tf-table th:nth-child(n+9), .tf-table td:nth-child(n+9) { display: none; } }

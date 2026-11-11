@@ -164,6 +164,57 @@ const Recruit = {
     draw();
   },
 
+  // ---------- 팀 검색: 다른 팀 전력 한눈에 ----------
+  tf: { league: 'ALL', q: '', sort: 'power' },
+  teamPower(t) {
+    const line = G.ROLES.map(r => { const ps = t.players.filter(p => p.role === r); const p = ps.find(x => !x.sub) || ps[0]; return { r, p, s: p ? Contract.score(p, t) : 0 }; });
+    return { line, power: line.reduce((a, x) => a + x.s, 0) / 5, sig: t.players.reduce((a, p) => a + Mastery.signatures(p.id).length, 0), pay: Club.payroll(t), value: t.players.reduce((a, p) => a + Player.value(p, t), 0) };
+  },
+  async teams(el) {
+    await Promise.all([Portal.ready, Mastery.load(), Traits.load(), Results.load()]);
+    const sel = (k, opts) => `<select class="ch-sort" data-tf="${k}">${opts.map(([v, l]) => `<option value="${v}" ${this.tf[k] === v ? 'selected' : ''}>${l}</option>`).join('')}</select>`;
+    el.innerHTML = `
+      <div class="cr-page">
+        ${Career.head('팀 검색', '모든 팀의 주전 전력. 전력은 주전 5명의 평가 점수 평균입니다. 행을 누르면 상대 분석, 선수를 누르면 프로필로 갑니다.')}
+        <div class="ch-bar">
+          <input class="ch-search tf-q" type="search" placeholder="팀·선수 이름 검색" value="${UI.esc(this.tf.q)}">
+          ${sel('league', [['ALL', '모든 리그'], ['LCK', 'LCK'], ['LPL', 'LPL'], ['LEC', 'LEC'], ['LCS', 'LCS']])}
+          ${sel('sort', [['power', '전력순'], ['value', '선수단 가치순'], ['pay', '연봉 총액순'], ['sig', '시그니처순'], ['rep', '명성순']])}
+          <span class="ch-count tf-count"></span>
+        </div>
+        <div class="card rs-table-wrap" style="padding:0">
+          <table class="rs-table tf-table"><thead><tr><th class="num">#</th><th>팀</th><th class="num">전력</th>${G.ROLES.map(r => `<th>${G.pos(r)}</th>`).join('')}<th class="num">가치</th><th class="num">연봉</th><th class="num">SIG</th><th class="num">명성</th></tr></thead><tbody></tbody></table>
+        </div>
+      </div>`;
+    const my = Player.team();
+    const draw = () => {
+      const f = this.tf, q = f.q.toLowerCase();
+      const rows = App.db.teams.filter(t => (f.league === 'ALL' || t.league === f.league)
+        && (!q || t.name.toLowerCase().includes(q) || t.short.toLowerCase().includes(q) || t.players.some(p => p.name.toLowerCase().includes(q))))
+        .map(t => ({ t, ...this.teamPower(t) }))
+        .sort((a, b) => f.sort === 'rep' ? (b.t.rep || 2) - (a.t.rep || 2) || b.power - a.power : b[f.sort] - a[f.sort]);
+      const cell = x => x.p ? `<td><div class="tf-pl" data-pid="${x.p.id}">${G.face(x.p, 'pl-ph')}<div><b>${UI.esc(x.p.name)}</b><small class="tf-s ${x.s >= 85 ? 'hi' : x.s >= 70 ? 'mid' : 'lo'}">${Math.round(x.s)}</small></div></div></td>` : '<td><span class="cr-dim">공석</span></td>';
+      $('.tf-table tbody', el).innerHTML = rows.map((x, i) => `
+        <tr data-tid="${x.t.id}" class="${x.t.id === my.id ? 'tf-me' : ''}">
+          <td class="num">${i + 1}</td>
+          <td><div class="pl-cell">${G.team(x.t, 'sm')}<div><b>${UI.esc(x.t.name)}</b><small class="pl-real">${x.t.league}${x.t.id === my.id ? ' · 우리 팀' : ''}</small></div></div></td>
+          <td class="num"><b class="tf-pow">${x.power.toFixed(1)}</b></td>
+          ${x.line.map(cell).join('')}
+          <td class="num">${Player.money(x.value)}</td><td class="num">${Player.money(x.pay)}</td><td class="num">${x.sig}</td><td class="num">${UI.stars(x.t.rep || 2)}</td>
+        </tr>`).join('') || '<tr><td colspan="13" class="ms-none" style="text-align:center;padding:30px">해당하는 팀이 없습니다.</td></tr>';
+      $('.tf-count', el).textContent = `${rows.length}팀`;
+    };
+    $$('[data-tf]', el).forEach(s => s.onchange = () => { this.tf[s.dataset.tf] = s.value; draw(); });
+    $('.tf-q', el).oninput = e => { this.tf.q = e.target.value; draw(); };
+    $('.tf-table tbody', el).onclick = e => {
+      const pl = e.target.closest('[data-pid]'); if (pl) { Player.open(pl.dataset.pid); return; }
+      const tr = e.target.closest('tr[data-tid]'); if (!tr) return;
+      if (tr.dataset.tid === my.id) { Router.go('roster-first-team'); return; }
+      Match.oppId = tr.dataset.tid; Router.go('match-opponent');
+    };
+    draw();
+  },
+
   // ---------- 이적 제안 ----------
   async offers(el) {
     await Promise.all([Portal.ready, Mastery.load()]);
@@ -220,4 +271,5 @@ Views['recruit-shortlist'] = el => Recruit.shortlist(el);
 Views['recruit-reports'] = el => Recruit.reports(el);
 Views['recruit-fa'] = el => Recruit.fa(el);
 Views['recruit-offers'] = el => Recruit.offers(el);
+Views['recruit-teams'] = el => Recruit.teams(el);
 Views['recruit-assignments'] = el => Recruit.assignments(el);
