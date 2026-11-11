@@ -102,27 +102,8 @@ const Player = {
 
   // 재계약 협상 → js/negotiate.js (1군급은 에이전트 채팅, 2군·아카데미는 계약서)
   contractModal(id) { Neg.open(id, 'renew'); },
-  inquiryModal(id) {
-    const { p, t } = this.find(id);
-    if (p.free || (this.days(p) != null && this.days(p) < 0)) { Neg.open(id, 'fa'); return; }
-    UI.modal({
-      title: `${p.name} — 영입 문의`,
-      body: `
-        <div class="neg">
-          <div class="neg-row"><span>소속</span><b>${UI.esc(t.name)}</b></div>
-          <div class="neg-row"><span>계약 만료</span><b>${p.contractEnd ? p.contractEnd.replace(/-/g, '.') : '-'}</b></div>
-          <div class="neg-row"><span>예상 이적료</span><b>${this.days(p) != null && this.days(p) < 0 ? '없음 (FA)' : this.money(this.value(p, t)) + ' 원'}</b></div>
-          <label class="field"><span>문의 방식</span><select><option>구단에 이적 문의</option><option>임대 문의</option><option>계약 만료 후 FA 접촉 예약</option></select></label>
-          <p class="cr-note">문의는 영입 › 이적 제안에 기록됩니다.</p>
-        </div>`,
-      actions: [{ label: '취소' }, {
-        label: '문의 보내기', primary: true, onClick: () => {
-          (App.state.offers ||= []).push({ id: p.id, team: t.id, date: this.today(), status: '답변 대기' }); // TODO: 기능 연결 — 구단 응답
-          UI.toast('영입 문의를 보냈습니다');
-        },
-      }],
-    });
-  },
+  // 영입 문의: FA는 바로 협상, 계약 중이면 원 소속 구단과 이적료 협상 (js/transfer.js)
+  inquiryModal(id) { Transfer.open(id); },
 
   // ---------- 로스터 > 선수 비교 ----------
   cmp: [null, null],

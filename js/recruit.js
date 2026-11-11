@@ -165,37 +165,23 @@ const Recruit = {
   // ---------- 이적 제안 ----------
   async offers(el) {
     await Promise.all([Portal.ready, Mastery.load()]);
-    const t = Player.team();
-    const sent = (App.state.offers || []).map(o => ({ ...o, hit: Player.find(o.id) })).filter(o => o.hit);
-    // 받은 제안: 다른 구단이 우리 선수에게 관심 (목업). TODO: 기능 연결 — AI 구단 제안
-    const others = App.db.teams.filter(x => x.id !== t.id);
-    const recv = t.players.filter(p => G.rand(p.id, 'offer:' + this.today().slice(0, 7)) > .7).map(p => {
-      const from = others[Math.floor(G.rand(p.id, 'from') * others.length)];
-      return { p, from, fee: Player.value(p, t) * (0.8 + G.rand(p.id, 'fee') * .5) };
-    });
+    const ST = { talk: ['협상 중', 'seeking'], agreed: ['구단 합의 · 개인 조건 남음', 'stable'], pending: ['답변 대기', 'seeking'], rejected: ['결렬', 'vacant'], done: ['완료', 'stable'] };
+    const tm = id => App.db.teams.find(t => t.id === id) || { short: id, name: id };
+    const row = b => { const hit = Player.find(b.pid); if (!hit) return ''; const o = tm(b.dir === 'in' ? b.from : b.to), st = ST[b.status] || [b.status, ''];
+      return `<div class="of-row" data-pid="${b.pid}" data-dir="${b.dir}">${G.face(hit.p, 'pl-ph')}<div><b>${UI.esc(hit.p.name)}</b><span>${G.team(o, 'xs')} ${UI.esc(o.name)} · ${b.date.replace(/-/g, '.')}</span></div>
+        <div class="of-fee"><b>${b.fee ? Player.money(b.fee) : b.ask ? Player.money(b.ask) : '-'}</b><small>${b.fee ? '이적료' : '구단 요구'}</small></div><span class="ot-st ${st[1]}">${st[0]}</span></div>`; };
+    const all = Transfer.bids().slice().reverse(), recv = all.filter(b => b.dir === 'out'), sent = all.filter(b => b.dir === 'in');
     el.innerHTML = `
       <div class="cr-page">
-        ${Career.head('이적 제안', '받은 제안과 보낸 영입 문의')}
+        ${Career.head('이적 제안', '받은 제안은 메시지함에서 답합니다. 보낸 제안은 눌러서 협상을 이어갈 수 있습니다.')}
         <div class="cr-grid">
-          <div class="card">
-            <div class="card-head"><h3>받은 제안 <small>${recv.length}</small></h3></div>
-            ${recv.length ? recv.map(({ p, from, fee }) => `
-              <div class="of-row" data-pid="${p.id}">${G.face(p, 'pl-ph')}<div><b>${UI.esc(p.name)}</b><span>${G.team(from, 'xs')} ${UI.esc(from.name)}의 이적 제안</span></div>
-                <div class="of-fee"><b>${Player.money(fee)}</b><small>제시 이적료</small></div>
-                <div class="of-act"><button class="btn-ghost" data-act="reject">거절</button><button class="btn-ghost" data-act="counter">역제안</button><button class="btn-primary" data-act="accept">수락</button></div>
-              </div>`).join('') : '<p class="ms-none">받은 제안이 없습니다.</p>'}
-          </div>
-          <div class="card">
-            <div class="card-head"><h3>보낸 문의 <small>${sent.length}</small></h3></div>
-            ${sent.length ? sent.map(o => `
-              <div class="of-row" data-pid="${o.id}">${G.face(o.hit.p, 'pl-ph')}<div><b>${UI.esc(o.hit.p.name)}</b><span>${G.team(o.hit.t, 'xs')} ${UI.esc(o.hit.t.name)} · ${o.date.replace(/-/g, '.')}</span></div><span class="ot-st seeking">${o.status}</span></div>`).join('') : '<p class="ms-none">보낸 문의가 없습니다. 선수 프로필에서 "영입 문의"를 보낼 수 있습니다.</p>'}
-          </div>
+          <div class="card"><div class="card-head"><h3>받은 제안 <small>${recv.length}</small></h3></div>${recv.map(row).join('') || '<p class="ms-none">받은 제안이 없습니다.</p>'}</div>
+          <div class="card"><div class="card-head"><h3>보낸 제안 <small>${sent.length}</small></h3></div>${sent.map(row).join('') || '<p class="ms-none">보낸 제안이 없습니다. 선수 프로필에서 "영입 문의"를 누르면 원 소속 구단과 이적료 협상을 시작합니다.</p>'}</div>
         </div>
       </div>`;
     el.querySelector('.cr-grid').addEventListener('click', e => {
-      const b = e.target.closest('[data-act]');
-      if (b) { e.stopPropagation(); UI.toast({ reject: '제안을 거절했습니다', counter: '역제안 기능 준비 중', accept: '이적 처리 기능 준비 중' }[b.dataset.act]); return; } // TODO: 기능 연결 — 이적 처리
-      const r = e.target.closest('[data-pid]'); if (r) Player.open(r.dataset.pid);
+      const r = e.target.closest('[data-pid]'); if (!r) return;
+      if (r.dataset.dir === 'in' && Transfer.open$(r.dataset.pid)) Transfer.open(r.dataset.pid); else if (r.dataset.dir === 'out') Router.go('portal-messages'); else Player.open(r.dataset.pid);
     });
   },
 

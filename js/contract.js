@@ -13,6 +13,8 @@ const Contract = {
   st() { const m = (App.state.market ||= {}); m.contracts ||= {}; m.moves ||= {}; m.neg ||= {}; return m; },
   r1: v => Math.round(v * 10) / 10,
   endDay(t) { return t && t.league === 'LPL' ? '11-17' : '11-16'; },
+  // 계약 기간 계산 기준일: 9월 이후(오프시즌) 계약은 올해 만료일부터, 시즌 중 계약은 작년 만료일부터 센다 → 1년 계약 = 다음 만료일까지
+  seasonEnd(t) { const e = `${Clock.year()}-${this.endDay(t)}`; return +Clock.today().slice(5, 7) >= 9 ? e : this.addYears(e, -1); },
   addYears(ymd, n) { return `${+ymd.slice(0, 4) + n}${ymd.slice(4)}`; },
 
   // ---------- 가치 ----------
@@ -97,6 +99,7 @@ const Contract = {
     M.contracts[pid] = { ...c, signed: Clock.today() };
     if (hit && hit.t.id !== teamId) M.moves[pid] = teamId;
     if (hit && hit.p._o && hit.p._o.team === teamId) delete M.moves[pid];
+    if (teamId !== App.state.teamId) delete Squad.moves()[pid];
     Squad.apply();
   },
   release(pid) {

@@ -36,7 +36,7 @@ const Neg = {
     if (old && !old.done && !old.cool && Fmt.daysBetween(old.date, Clock.today()) <= 3 && old.mode === mode) return old;
     const A = this.agent(p), W = this.wants(p), K = this.KIND[A.kind];
     const hit = Player.find(p.id), cur = hit && !p.free ? Contract.of(p, hit.t) : null;
-    const rivals = mode === 'renew' ? Math.floor(G.rand(p.id + Clock.year(), 'riv') * (W.s >= 75 ? 4 : 2)) : 1 + Math.floor(G.rand(p.id + Clock.year(), 'riv') * (W.s >= 75 ? 4 : 2));
+    const rivals = mode === 'transfer' ? 0 : mode === 'renew' ? Math.floor(G.rand(p.id + Clock.year(), 'riv') * (W.s >= 75 ? 4 : 2)) : 1 + Math.floor(G.rand(p.id + Clock.year(), 'riv') * (W.s >= 75 ? 4 : 2));
     let ask = Contract.pay(p, W.s, my.league) * (1 + K[2] * 3 + .12 + rivals * .04);
     if (p.nation === 'South Korea' && my.league !== 'LCK') ask *= 1 + W.w.home * .8;           // 한국 선수가 해외로 가려면 더 받아야
     if (mode === 'renew') ask *= 1 - W.w.loyal * .15;                                            // 재계약 의리 할인
@@ -44,7 +44,7 @@ const Neg = {
     ask = Contract.r1(Math.max(Contract.MIN.first, ask));
     const S = M.neg[p.id] = { pid: p.id, mode, date: Clock.today(), patience: K[1], max: K[1], ask, ask0: ask, rivals, asked: {}, log: [], rounds: 0 };
     const opening = `${my.name} 측 연락 감사합니다. ${p.name} 선수 에이전트 ${A.name}(${A.agency})입니다.\n\n`
-      + (mode === 'renew' ? `선수는 ${my.short}에 남는 걸 긍정적으로 보고 있지만, 그에 맞는 대우를 원합니다. ` : `선수는 새 팀을 찾고 있고, ${rivals}개 팀과 이야기 중입니다. `)
+      + (mode === 'renew' ? `선수는 ${my.short}에 남는 걸 긍정적으로 보고 있지만, 그에 맞는 대우를 원합니다. ` : mode === 'transfer' ? `구단 간 합의 소식 들었습니다. 선수도 ${my.short} 이적에 관심이 있습니다. ` : `선수는 새 팀을 찾고 있고, ${rivals}개 팀과 이야기 중입니다. `)
       + `연봉은 최소 ${Player.money(ask)} 원, 계약 기간은 ${W.years}년을 생각하고 있습니다.${W.role === 'starter' && W.s >= 65 ? ' 주전으로 뛰는 것도 중요합니다.' : ''}`;
     S.log.push({ who: 'agent', text: opening });
     return S;
@@ -98,6 +98,7 @@ const Neg = {
     S.patience -= low ? 2 : 1;
     if (S.patience <= 0) {
       S.cool = Store.addDays(Clock.today(), 7);
+      if (S.mode === 'transfer') { const b = Transfer.open$(p.id); if (b) b.status = 'rejected'; }
       S.log.push({ who: 'agent', text: this.say.quit[0] + '\n\n(7일 동안 다시 협상할 수 없습니다)' });
       if (Player.isMine(Player.find(p.id).t)) { const m = World.morale(); m[p.id] = (m[p.id] || 0) - 2; }
       return 'quit';
@@ -134,6 +135,7 @@ const Neg = {
   // ---------- 채팅 창 ----------
   can(p, mode) {
     const hit = Player.find(p.id); if (!hit) return '선수를 찾을 수 없습니다.';
+    if (mode === 'transfer') { const b = Transfer.open$(p.id); if (!b || b.status !== 'agreed') return '먼저 원 소속 구단과 이적료를 합의해야 합니다.'; }
     if (mode === 'fa' && !p.free && !(Player.days(p) < 0)) return `계약 기간 중인 선수입니다. 계약이 끝나는 ${p.contractEnd ? p.contractEnd.replace(/-/g, '.') : '-'} 이후에 협상할 수 있습니다.`;
     const S = Contract.st().neg[p.id];
     if (S && S.cool && S.cool > Clock.today()) return `협상이 결렬됐습니다. ${S.cool.replace(/-/g, '.')}부터 다시 협상할 수 있습니다.`;
@@ -167,7 +169,7 @@ const Neg = {
           <div class="ng-pat"><span>인내심</span><div class="ng-pbar"></div></div>
         </aside>
         <section class="ng-main">
-          <div class="ng-head">${mode === 'renew' ? '재계약 협상' : 'FA 계약 협상'} <small>${UI.esc(my.name)}</small></div>
+          <div class="ng-head">${({ renew: '재계약 협상', fa: 'FA 계약 협상', transfer: '이적 개인 조건 협상' })[mode]} <small>${UI.esc(my.name)}</small></div>
           <div class="ng-log"></div>
           <div class="ng-qs"></div>
           <form class="ng-form">
@@ -216,8 +218,9 @@ const Neg = {
   // 사인: 계약 기록 · 계약금 장부 · 메시지
   finish(p, t, S, mode) {
     const my = Roster.team(), o = S.deal, cur = !p.free ? Contract.of(p, t) : null;
-    const startEnd = mode === 'renew' && cur && cur.end && cur.end >= Clock.today() ? cur.end : `${Clock.year() - (Clock.today().slice(5) < Contract.endDay(my) ? 1 : 0)}-${Contract.endDay(my)}`;
+    const startEnd = mode === 'renew' && cur && cur.end && cur.end >= Clock.today() ? cur.end : Contract.seasonEnd(my);
     const end = Contract.addYears(startEnd, o.years);
+    if (mode === 'transfer') Transfer.complete(p.id);
     Contract.sign(p.id, my.id, { salary: o.salary, end, option: o.option, buyout: o.buyout, promise: o.promise, bonus: o.bonus, signing: o.signing, years: o.years });
     if (o.signing) World.ledger().push({ date: Clock.today(), label: `${p.name} 계약금`, amount: -Math.round(o.signing * 1e8) });
     if (o.promise === 'starter' || o.promise === 'rotation') (App.state.promises ||= []).push({ pid: p.id, kind: o.promise, date: Clock.today(), due: end, src: 'contract' });
@@ -246,7 +249,7 @@ const Neg = {
         label: '계약서 보내기', primary: true, onClick: back => {
           const sal = Contract.r1(+$('.sh-sal', back).value || 0), yrs = +$('.sh-yrs', back).value;
           if (sal < ask * .97) { UI.toast(`${p.name} 측이 거절했습니다. ${Player.money(ask)} 원은 받아야 한다고 합니다.`, 3200); return false; }
-          const start = cur && cur.end && cur.end >= Clock.today() ? cur.end : `${Clock.year()}-${Contract.endDay(my)}`;
+          const start = mode === 'renew' && cur && cur.end && cur.end >= Clock.today() ? cur.end : Contract.seasonEnd(my);
           const end = p.gen ? Store.addDays(Clock.today(), 365 * yrs) : Contract.addYears(start, yrs);
           if (p.gen) { Squad.gen()[p.id].contractEnd = end; Squad.apply(); }
           else Contract.sign(p.id, my.id, { salary: sal, end, years: yrs, option: null, bonus: [] });
