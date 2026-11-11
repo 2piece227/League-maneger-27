@@ -35,28 +35,49 @@ const SoloQ = {
     return items[items.length - 1][0];
   },
 
-  // 가상 닉네임 (실존 인물과 무관)
+  // 가상 닉네임: 실제 상위 랭커 닉네임에서 흔한 형태(키보드 난타+숫자, 이름+생일, 짧은 단어·문장)를 흉내 낸다.
   NICK: {
+    keys: 'qwertasdfgzxcvbhjklnmuiopy',
     ko: {
-      a: ['새벽', '고독한', '침착한', '배고픈', '조용한', '미친', '느긋한', '불타는', '차가운', '행복한', '졸린', '전설의', '무명의', '잠못드는', '비오는날'],
-      b: ['정글러', '탑신', '미드왕', '원딜러', '서폿충', '라이너', '갱킹러', '한타왕', '캐리머신', '소환사', '야간반', '수험생', '직장인', '대학생', '고3'],
-      str: ['방송하는', '생방', 'TV', '채널', '라이브'],
+      names: ['jun', 'min', 'hyun', 'seo', 'woo', 'jin', 'hoon', 'sung', 'jae', 'yoon', 'dong', 'ho', 'kyu', 'won', 'tae', 'gyu', 'han', 'joon', 'sang', 'ji'],
+      words: ['밤하늘', '감자칩', '돌고래', '새벽세시', '귤', '한강', '여름밤', '고양이', '라면', '파도', '별빛', '구름', '소나기', '초코', '복숭아', '겨울잠', '노을', '연필', '모래성', '바람'],
+      phrases: ['한판만 더', '오늘은 이긴다', '잠은 죽어서', '롤 접을까', '아 진짜', '조용히 캐리', '천천히 가자', '내일 출근', '그냥 하는 사람', '배고프다', '마지막 판', '집에 가고싶다'],
+      jamo: ['ㅇㅇ', 'ㅁㄴㅇㄹ', 'ㅎㅎ', 'ㅋㅋㅋ', 'ㅂㅂ', 'ㄱㄱ'],
     },
     en: {
-      a: ['Silent', 'Lucky', 'Frozen', 'Crimson', 'Lazy', 'Rapid', 'Lonely', 'Golden', 'Shadow', 'Night', 'Wild', 'Tiny', 'Brave', 'Hollow', 'Neon'],
-      b: ['Wolf', 'Fox', 'Raven', 'Tiger', 'Ghost', 'Blade', 'Storm', 'Comet', 'Panda', 'Viper', 'Knight', 'Owl', 'Shark', 'Moth', 'Lynx'],
-      str: ['TTV', 'Live', 'OnAir', 'Stream', 'Cast'],
+      names: ['alex', 'leo', 'max', 'theo', 'nico', 'luca', 'kai', 'sam', 'finn', 'jay', 'noah', 'eli', 'oscar', 'milo', 'ryan', 'ivan', 'hugo', 'adam', 'enzo', 'tom'],
+      words: ['velvet', 'mango', 'orbit', 'pluto', 'echo', 'lumen', 'cobalt', 'drift', 'nova', 'ember', 'cactus', 'pixel', 'zephyr', 'onyx', 'koi', 'tofu', 'atlas', 'juno', 'sable', 'quartz'],
+      phrases: ['sleep is luxury', 'no flash no fun', 'one more game', 'just vibing', 'i hate this game', 'lag spike', 'quiet carry', 'not a smurf', 'why am i here', 'gg go next'],
+      jamo: ['xx', 'zz', 'qq', 'ez'],
     },
+  },
+
+  // 같은 형태라도 한두 글자를 바꿔 비슷하지만 다른 이름으로
+  tweak(r, s) {
+    if (r() < .5) return s;
+    const i = Math.floor(r() * s.length), c = s[i];
+    if (/\d/.test(c)) return s.slice(0, i) + ((+c + 1 + Math.floor(r() * 8)) % 10) + s.slice(i + 1);
+    if (/[a-z]/.test(c)) return s.slice(0, i) + this.NICK.keys[Math.floor(r() * this.NICK.keys.length)] + s.slice(i + 1);
+    return s;
   },
 
   nick(r, lang, type, champ) {
-    const N = this.NICK[lang];
-    const num = Math.floor(r() * 990) + 10;
-    if (type === 'otp') return lang === 'ko' ? `${champ.name}장인${r() < .5 ? num : ''}` : `${champ.nameEn.replace(/[^A-Za-z]/g, '')}OTP${num}`;
-    if (type === 'streamer') return lang === 'ko' ? `${this.pick(r, N.a)}${this.pick(r, N.str)}` : `${this.pick(r, N.str)} ${this.pick(r, N.a)}${this.pick(r, N.b)}`;
-    return lang === 'ko' ? `${this.pick(r, N.a)}${this.pick(r, N.b)}${r() < .4 ? num : ''}` : `${this.pick(r, N.a)}${this.pick(r, N.b)}${r() < .5 ? num : ''}`;
+    const N = this.NICK[lang], K = this.NICK.keys;
+    const digits = n => Array.from({ length: n }, () => Math.floor(r() * 10)).join('');
+    const mash = n => Array.from({ length: n }, () => K[Math.floor(r() * K.length)]).join('');
+    const yy = () => String(r() < .5 ? 95 + Math.floor(r() * 5) : Math.floor(r() * 10)).padStart(2, '0');
+    const mmdd = () => String(1 + Math.floor(r() * 12)).padStart(2, '0') + String(1 + Math.floor(r() * 28)).padStart(2, '0');
+    if (type === 'otp' && r() < .3) return this.tweak(r, `${champ.nameEn.replace(/[^A-Za-z]/g, '').toLowerCase().slice(0, 6)}${digits(2 + Math.floor(r() * 2))}`);
+    const kind = this.weighted(r, [['mash', 30], ['name', 22], ['word', 18], ['phrase', 14], ['jamo', 4], ['short', 12]]);
+    let s;
+    if (kind === 'mash') s = mash(3 + Math.floor(r() * 4)) + (r() < .8 ? digits(1 + Math.floor(r() * 3)) : '');
+    else if (kind === 'name') s = this.pick(r, N.names) + (r() < .5 ? this.pick(r, N.names) : '') + (r() < .5 ? mmdd() : yy());
+    else if (kind === 'word') s = this.pick(r, N.words) + (r() < .35 ? digits(1 + Math.floor(r() * 2)) : '');
+    else if (kind === 'phrase') s = this.pick(r, N.phrases);
+    else if (kind === 'jamo') s = this.pick(r, N.jamo) + (r() < .6 ? digits(1 + Math.floor(r() * 3)) : '');
+    else s = mash(2 + Math.floor(r() * 2)).toUpperCase() + (r() < .5 ? digits(1) : '');
+    return this.tweak(r, s);
   },
-
   today() { return Clock.today(); },
   practice() { return (App.state.practice ||= {}); },
   offers() { return (App.state.testOffers ||= {}); },
