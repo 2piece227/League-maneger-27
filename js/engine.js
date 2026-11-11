@@ -78,6 +78,9 @@ const Engine = {
   daily: [],       // 매일 실행할 처리 (fn(today) → 멈출 이유 문자열 또는 없음)
   MAX_DAYS: 7,     // 아무 일이 없어도 한 번에 최대 일주일까지만
   busy: false,
+  // 처리 연출 시간(ms): 시작 로딩 · 하루당 · 멈출 때 결과를 보여주는 시간
+  DELAY: { start: 900, day: 1300, stop: 1800 },
+  delay(k) { return this.DELAY[k] * ({ slow: 1.6, normal: 1, fast: .45 }[App.state.settings.simSpeed] || 1); },
 
   on(fn) { this.daily.push(fn); },
   clockTime() { const r = G.rand(App.state.seed + Clock.today(), 'time' + this.today.length); return `${String(9 + Math.floor(r * 10)).padStart(2, '0')}:${String(Math.floor(r * 6) * 10).padStart(2, '0')}`; },
@@ -101,13 +104,14 @@ const Engine = {
       await Promise.all([Portal.ready, Events.load(), Mastery.load(), Champions.load(), Results.load()]);
       Inbox.list().forEach(m => m.isNew = false);
       await Proc.open();
+      await new Promise(r => setTimeout(r, this.delay('start'))); // 패널이 뜬 뒤 첫 처리까지 잠깐 로딩
       while (!reason && days < this.MAX_DAYS && !this.stopReq) {
         reason = this.step();
         days++;
         got.unshift(...[...this.today].reverse());
         $$('.tb-date').forEach(el => el.textContent = Fmt.date(Clock.today()));
         await Proc.day(got, days, reason);
-        await new Promise(r => setTimeout(r, reason ? 900 : 450));
+        await new Promise(r => setTimeout(r, this.delay(reason ? 'stop' : 'day')));
       }
     } finally {
       this.busy = false;
