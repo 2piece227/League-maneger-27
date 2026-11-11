@@ -36,7 +36,7 @@ const Neg = {
     if (old && !old.done && !old.cool && Fmt.daysBetween(old.date, Clock.today()) <= 3 && old.mode === mode) return old;
     const A = this.agent(p), W = this.wants(p), K = this.KIND[A.kind];
     const hit = Player.find(p.id), cur = hit && !p.free ? Contract.of(p, hit.t) : null;
-    const rivals = mode === 'transfer' ? 0 : mode === 'renew' ? Math.floor(G.rand(p.id + Clock.year(), 'riv') * (W.s >= 75 ? 4 : 2)) : 1 + Math.floor(G.rand(p.id + Clock.year(), 'riv') * (W.s >= 75 ? 4 : 2));
+    const rivals = mode === 'transfer' ? 0 : mode === 'fa' && Market.rivals(p.id) ? Market.rivals(p.id) : mode === 'renew' ? Math.floor(G.rand(p.id + Clock.year(), 'riv') * (W.s >= 75 ? 4 : 2)) : 1 + Math.floor(G.rand(p.id + Clock.year(), 'riv') * (W.s >= 75 ? 4 : 2));
     let ask = Contract.pay(p, W.s, my.league) * (1 + K[2] * 3 + .12 + rivals * .04);
     if (p.nation === 'South Korea' && my.league !== 'LCK') ask *= 1 + W.w.home * .8;           // 한국 선수가 해외로 가려면 더 받아야
     if (mode === 'renew') ask *= 1 - W.w.loyal * .15;                                            // 재계약 의리 할인

@@ -23,7 +23,7 @@ const Contract = {
     if (p._sc != null) return p._sc;
     let s;
     if (this.stars[p.id]) s = this.stars[p.id];
-    else if (p.level === 'cl' || p.level === 'academy' || p.gen || p.made) s = 26 + (p.ca || 8) * 2.2;
+    else if (p.ca != null || p.level === 'cl' || p.level === 'academy' || p.gen || p.made) s = 26 + (p.ca || 8) * 2.2; // 2군 출신은 현재 기량으로
     else if (p.role === 'COACH') s = 52 + ((t.rep || 2) - 2) * 5;
     else {
       const pool = (typeof Mastery !== 'undefined' && Mastery.pools) ? Mastery.pool(p.id) : [];
@@ -85,10 +85,11 @@ const Contract = {
     Object.entries(M.moves).forEach(([pid, to]) => {
       const hit = byId.get(pid); if (!hit) return;
       const [p, from] = hit, dest = to === 'free' ? free : db.teams.find(x => x.id === to);
-      if (!dest || dest === from || p.role === 'COACH') return;
+      if (!dest || p.role === 'COACH') return;
+      if (dest === from) { if (from.cl && from.cl.includes(p)) { from.cl = from.cl.filter(x => x !== p); from.players.push(p); p.level = 'first'; } return; } // 같은 팀 2군 → 1군 콜업
       from.players = from.players.filter(x => x !== p); if (from.cl) from.cl = from.cl.filter(x => x !== p);
       p.team = dest.id; p.free = to === 'free'; p.sub = false;
-      if (p.free) p.contractEnd = null;
+      if (p.free) p.contractEnd = null; else p.level = 'first';
       dest.players.push(p);
     });
     Object.entries(M.contracts).forEach(([pid, c]) => { const hit = byId.get(pid); if (hit && !hit[0].free) hit[0].contractEnd = c.end; });
