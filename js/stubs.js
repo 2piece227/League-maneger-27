@@ -35,6 +35,7 @@ const Data = {
       team.budget = MOCK.budgetLabel(team.league, team.fin);
       const people = players.filter(p => p.team === t.id).map(p => ({
         ...p,
+        contractEnd: p.contractEnd || this.guessContract(p, t),
         age: p.birthdate ? this.ageOn(p.birthdate, Clock.today()) : null,
         sub: false,
       }));
@@ -43,6 +44,13 @@ const Data = {
       MOCK.markSubs(team.players);
       return team;
     });
+  },
+
+  // 계약 정보가 공개되지 않은 선수: 선수별로 고정된 값으로 채운다 (올해 40% · 내년 40% · 2년 뒤 20%)
+  guessContract(p, t) {
+    const r = G.rand(p.id, 'contract');
+    const y = 2026 + (r < .4 ? 0 : r < .8 ? 1 : 2);
+    return `${y}-${t.league === 'LPL' ? '11-17' : '11-16'}`;
   },
 
   ageOn(birth, date) {
