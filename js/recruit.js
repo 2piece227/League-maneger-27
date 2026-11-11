@@ -46,7 +46,7 @@ const Recruit = {
           ${sel('league', [['ALL', '모든 리그'], ['LCK', 'LCK'], ['LPL', 'LPL'], ['LEC', 'LEC'], ['LCS', 'LCS']])}
           ${sel('role', [['ALL', '모든 포지션'], ...G.ROLES.map(r => [r, G.ROLE_KO[r]])])}
           ${sel('age', [['ALL', '모든 나이'], ['u21', '21세 이하'], ['22-25', '22~25세'], ['26+', '26세 이상']])}
-          ${sel('nat', [['ALL', '모든 국적'], ['home', '내 리그 자국 선수'], ['foreign', '외국인']])}
+          ${sel('nat', [['ALL', '모든 선수'], ['home', '자국 선수'], ['foreign', '외국 선수']])}
           ${sel('contract', [['ALL', '모든 계약'], ['soon', '1년 이내 만료'], ['fa', '만료 임박·FA']])}
           ${sel('sort', [['value', '시장 가치순'], ['sig', '시그니처순'], ['age', '나이 어린 순'], ['contract', '계약 만료 빠른 순']])}
           <span class="ch-count rc-count"></span>
@@ -57,11 +57,13 @@ const Recruit = {
       </div>`;
     const draw = () => {
       const f = this.f, myLeague = Player.team().league;
-      const homeN = { LCK: 'South Korea', LPL: 'China', LCS: 'United States' }[myLeague];
+      // 자국 선수 = 그 선수가 뛰는 리그의 현지 선수 (LEC는 유럽 국적, LCS는 미국·캐나다). 무소속은 내 리그 기준
+      const EU = ['France', 'Spain', 'Germany', 'Poland', 'Denmark', 'Sweden', 'United Kingdom', 'Belgium', 'Netherlands', 'Italy', 'Portugal', 'Czech Republic', 'Slovakia', 'Slovenia', 'Croatia', 'Serbia', 'Bosnia and Herzegovina', 'Bulgaria', 'Romania', 'Greece', 'Hungary', 'Austria', 'Switzerland', 'Norway', 'Finland', 'Ireland', 'Lithuania', 'Latvia', 'Estonia', 'Ukraine', 'Belarus', 'Russia', 'Turkey', 'Israel', 'Cyprus', 'Malta', 'Iceland', 'Luxembourg', 'Albania', 'North Macedonia', 'Montenegro', 'Kosovo', 'Moldova'];
+      const isHome = (p, lg) => ({ LCK: n => n === 'South Korea', LPL: n => n === 'China' || n === 'Taiwan' || n === 'Hong Kong', LEC: n => EU.includes(n), LCS: n => n === 'United States' || n === 'Canada' }[lg || myLeague] || (() => false))(p.nation);
       let rows = this.pool().filter(({ p, t }) => t.id !== this.mineId() &&
         (f.league === 'ALL' || t.league === f.league) && (f.role === 'ALL' || p.role === f.role) &&
         (f.age === 'ALL' || (f.age === 'u21' ? p.age <= 21 : f.age === '22-25' ? p.age >= 22 && p.age <= 25 : p.age >= 26)) &&
-        (f.nat === 'ALL' || (f.nat === 'home' ? p.nation === homeN : p.nation !== homeN)) &&
+        (f.nat === 'ALL' || (f.nat === 'home') === isHome(p, t.league)) &&
         (f.contract === 'ALL' || p.free || (() => { const d = Player.days(p); return d != null && (f.contract === 'fa' ? d <= 60 : d <= 365); })()) &&
         (!f.q || p.name.toLowerCase().includes(f.q.toLowerCase()) || (p.nativeName || '').includes(f.q)));
       const by = {
