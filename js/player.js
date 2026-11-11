@@ -35,7 +35,7 @@ const Player = {
 
   // ---------- 프로필 창 ----------
   async open(id) {
-    await Promise.all([Portal.ready, Mastery.load()]);
+    await Promise.all([Portal.ready, Mastery.load(), Traits.load()]);
     const hit = this.find(id);
     if (!hit) return;
     const { p, t } = hit;
@@ -76,6 +76,7 @@ const Player = {
             ${sq ? `<h4>솔랭</h4><p class="pp-line">${SoloQ.SERVER[t.league]} 서버 <b>${sq.rank}위</b> · ${sq.lpNow.toLocaleString()} LP · 승률 ${SoloQ.wr(sq)}%</p>` : ''}
           </div>
           <div class="pp-col">
+            ${p.role !== 'COACH' ? `<h4>특성</h4>${Traits.rows(p.id)}` : ''}
             ${p.role !== 'COACH' ? `<h4>챔피언 폭 <small>최근 3시즌 프로 경기</small></h4>
               ${pool.length ? `<div class="ms-sigs pp-pool">${pool.slice(0, 8).map(e => Mastery.chip(e, true)).join('')}</div>` : '<p class="ms-none">프로 경기 기록이 없습니다.</p>'}
               <a class="pp-link" href="#roster-mastery">숙련도 자세히 →</a>` : `<h4>코칭 정보</h4><p class="ms-none">직책 구분 정보가 아직 없습니다.</p>`}
@@ -145,7 +146,7 @@ const Player = {
   // ---------- 로스터 > 선수 비교 ----------
   cmp: [null, null],
   async compare(el) {
-    await Promise.all([Portal.ready, Mastery.load()]);
+    await Promise.all([Portal.ready, Mastery.load(), Traits.load()]);
     const mine = this.team().players;
     if (!this.cmp[0]) this.cmp = [mine[0]?.id, mine[1]?.id];
     const opts = sel => App.db.teams.map(t => `<optgroup label="${UI.esc(t.name)}">${t.players.map(p => `<option value="${p.id}" ${p.id === sel ? 'selected' : ''}>${UI.esc(p.name)} (${p.role})</option>`).join('')}</optgroup>`).join('');
@@ -169,6 +170,7 @@ const Player = {
             <dt>솔랭</dt><dd>${sq ? `${sq.rank}위 · ${SoloQ.wr(sq)}%` : '100위 밖'}</dd>
           </dl>
           ${Career.meter('컨디션', st.condition)}
+          <h4>특성</h4>${Traits.chips(p.id, '<span class="ms-none">없음</span>')}
           <h4>시그니처·주력 챔피언</h4>
           <div class="ms-chips">${pool.slice(0, 6).map(e => Mastery.chip(e)).join('') || '<span class="ms-none">기록 없음</span>'}</div>
           <div class="cmp-stats">

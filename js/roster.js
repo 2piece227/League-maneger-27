@@ -82,7 +82,7 @@ const Roster = {
     const s = this.status(p);
     switch (key) {
       case 'pos': return G.pos(p.role, true);
-      case 'name': return `<div class="pl-cell">${G.face(p)}<div><b>${UI.esc(p.name)}</b>${p.sub ? '<i class="sub-tag">후보</i>' : ''}<small class="pl-real">${UI.esc(p.nativeName || p.realName || '')}</small></div></div>`;
+      case 'name': return `<div class="pl-cell">${G.face(p)}<div><b>${UI.esc(p.name)}</b>${Traits.icons(p.id)}${p.sub ? '<i class="sub-tag">후보</i>' : ''}<small class="pl-real">${UI.esc(p.nativeName || p.realName || '')}</small></div></div>`;
       case 'nation': return `<span class="nat">${G.flag(p.nation)}${UI.esc(G.nationName(p.nation))}</span>`;
       case 'age': return p.age ?? '-';
       case 'ovr': return `<b class="ovr-v">${p.ovr}</b>`;
@@ -224,4 +224,4 @@ const Roster = {
   },
 };
 
-Views['roster-first-team'] = async el => { await Portal.ready; Roster.render(el); };
+Views['roster-first-team'] = async el => { await Portal.ready; await Traits.load(); Roster.render(el); };

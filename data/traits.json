@@ -1,0 +1,43 @@
+{
+  "_note": "선수 특성(플레이스타일). 효과는 작게, 중복 보유 가능. fx는 경기 엔진이 생기면 쓰는 계수(지금은 표시만). 부여 방식: set(이 선수는 이 특성만) > add(자동 부여에 추가) > 자동(stat: 최근 3시즌 프로 기록 포지션 내 상위 비율 / rand: 선수별 고정 확률 / age: 나이). 한 선수당 자동 부여는 최대 max개.",
+  "max": 3,
+  "traits": [
+    { "id": "immortal", "icon": "😈", "name": "불사대마왕", "desc": "데스 빈도가 약간 줄어듭니다.", "fx": { "deaths": -0.08 },
+      "auto": { "stat": "deathsLow", "top": 0.12 } },
+    { "id": "dice", "icon": "🎲", "name": "주사위", "desc": "한계를 뛰어넘는 플레이를 하지만 기복이 생깁니다.", "fx": { "peak": 0.1, "variance": 0.5 },
+      "auto": { "rand": 0.05 } },
+    { "id": "cs-king", "icon": "💰", "name": "CS 킹", "desc": "CS 확보가 뛰어납니다.", "fx": { "cs": 0.08 },
+      "auto": { "rand": { "BOT": 0.12, "MID": 0.07, "TOP": 0.07 } } },
+    { "id": "clutch", "icon": "☠️", "name": "클러치", "desc": "팀이 불리할 때 능력이 올라갑니다.", "fx": { "behind": 0.07 },
+      "auto": { "rand": 0.04 } },
+    { "id": "worlds", "icon": "🏆", "name": "월즈의 남자", "desc": "월즈 기간에는 폼이 항상 최고로 유지됩니다.", "fx": { "worldsForm": "max" } },
+    { "id": "big-stage", "icon": "🌟", "name": "큰 무대 체질", "desc": "결승과 국제 대회에서 능력이 조금 올라갑니다.", "fx": { "bigMatch": 0.05 },
+      "auto": { "rand": 0.04 } },
+    { "id": "killer", "icon": "🗡️", "name": "킬 결정력", "desc": "교전에서 마무리를 잘 짓습니다.", "fx": { "kills": 0.08 },
+      "auto": { "stat": "killsHigh", "top": 0.12, "roles": ["TOP", "JGL", "MID", "BOT"] } },
+    { "id": "selfless", "icon": "🛡️", "name": "살신성인", "desc": "팀을 위한 희생으로 아군의 교전 능력이 조금 오릅니다.", "fx": { "teamFight": 0.03 },
+      "auto": { "stat": "assistsHigh", "top": 0.15, "roles": ["JGL", "SUP"] } },
+    { "id": "ocean", "icon": "🌊", "name": "챔피언 바다", "desc": "다양한 챔피언을 무리 없이 다룹니다. 밴에 흔들리지 않습니다.", "fx": { "banResist": 0.5 },
+      "auto": { "stat": "poolWide", "top": 0.07 } },
+    { "id": "otp", "icon": "🔨", "name": "장인", "desc": "주력 챔피언을 잡으면 능력이 올라갑니다.", "fx": { "signature": 0.06 },
+      "auto": { "stat": "oneTrick", "top": 0.07 } },
+    { "id": "lane-bully", "icon": "🔥", "name": "라인전 귀재", "desc": "라인전 단계에서 우위를 잘 가져옵니다.", "fx": { "laning": 0.06 },
+      "auto": { "rand": { "TOP": 0.08, "MID": 0.08, "BOT": 0.08 } } },
+    { "id": "roamer", "icon": "🏃", "name": "로밍 전문가", "desc": "다른 라인 개입이 잦고 효과적입니다.", "fx": { "roam": 0.07 },
+      "auto": { "rand": { "MID": 0.08, "SUP": 0.1, "JGL": 0.05 } } },
+    { "id": "vision", "icon": "👁️", "name": "시야 장악", "desc": "와드와 시야 싸움에서 앞섭니다.", "fx": { "vision": 0.08 },
+      "auto": { "rand": { "SUP": 0.12, "JGL": 0.08 } } },
+    { "id": "objective", "icon": "🐉", "name": "오브젝트 사냥꾼", "desc": "용·바론 싸움에서 강세를 보입니다.", "fx": { "objective": 0.06 },
+      "auto": { "rand": { "JGL": 0.12 } } },
+    { "id": "iron-mind", "icon": "🧊", "name": "강철 멘탈", "desc": "연패 중에도 사기가 잘 떨어지지 않습니다.", "fx": { "moraleLoss": -0.5 },
+      "auto": { "rand": 0.06 } },
+    { "id": "prospect", "icon": "🌱", "name": "성장형", "desc": "숙련도와 능력치가 빠르게 오릅니다.", "fx": { "growth": 0.2 },
+      "auto": { "age": { "max": 19 }, "chance": 0.6 } },
+    { "id": "veteran", "icon": "🦉", "name": "베테랑", "desc": "경험이 많아 큰 흔들림 없이 경기를 운영합니다.", "fx": { "variance": -0.3 },
+      "auto": { "age": { "min": 27 }, "chance": 0.5 } }
+  ],
+  "set": {
+    "faker": ["worlds", "immortal", "clutch"]
+  },
+  "add": {}
+}
