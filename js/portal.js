@@ -237,11 +237,13 @@ const Portal = {
   },
 
   // 이번 주(월~일): 경기 · 스크림 · 대회 시작 · 훈련
-  week(today, team) {
+  week(today, team, weeks = 1) {
     const dow = (Fmt.parse(today).getDay() + 6) % 7, mon = Store.addDays(today, -dow);
     const scr = App.state.scrims || [];
-    return Array.from({ length: 7 }, (_, i) => {
-      const date = Store.addDays(mon, i), events = [];
+    return Array.from({ length: 7 * weeks }, (_, j) => {
+      const i = j % 7;
+      j = j - i; // 주 시작 오프셋
+      const date = Store.addDays(mon, j + i), events = [];
       const m = Schedule.matches.find(x => (x.t1 === team.id || x.t2 === team.id) && x.t.slice(0, 10) === date);
       if (m) events.push({ type: 'match', label: `vs ${Schedule.opponent(m, team.id).short}` });
       scr.filter(s => s.status === 'accepted' && s.on === date).forEach(s => events.push({ type: 'scrim', label: `스크림 vs ${(Schedule.team(s.team) || {}).short}` }));

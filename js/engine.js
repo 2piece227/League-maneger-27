@@ -84,7 +84,9 @@ const Engine = {
   rnd(salt) { return G.rand((App.state.seed || '') + '|' + Clock.today(), salt); },
 
   async continue() {
-    if (this.busy || !App.state.teamId) return;
+    // 처리 중에 다시 누르면 그날까지만 처리하고 멈춘다
+    if (this.busy) { this.stopReq = true; Proc.status('이 날짜까지만 처리하고 멈춥니다'); return; }
+    if (!App.state.teamId) return;
     const block = Inbox.blocking()[0];
     if (block) {
       UI.toast('먼저 답해야 하는 메시지가 있습니다');
@@ -92,30 +94,33 @@ const Engine = {
       Router.go('portal-messages');
       return;
     }
-    this.busy = true;
-    $$('.btn-continue').forEach(b => { b.disabled = true; b.classList.add('busy'); });
+    this.busy = true; this.stopReq = false;
     let reason = null, days = 0;
+    const got = [];
     try {
-      await Promise.all([Portal.ready, Events.load(), Mastery.load(), Champions.load()]);
-      while (!reason && days < this.MAX_DAYS) {
+      await Promise.all([Portal.ready, Events.load(), Mastery.load(), Champions.load(), Results.load()]);
+      Inbox.list().forEach(m => m.isNew = false);
+      await Proc.open();
+      while (!reason && days < this.MAX_DAYS && !this.stopReq) {
         reason = this.step();
         days++;
+        got.unshift(...[...this.today].reverse());
         $$('.tb-date').forEach(el => el.textContent = Fmt.date(Clock.today()));
-        await new Promise(r => setTimeout(r, 90));
+        await Proc.day(got, days, reason);
+        await new Promise(r => setTimeout(r, reason ? 900 : 450));
       }
     } finally {
       this.busy = false;
-      $$('.btn-continue').forEach(b => { b.disabled = false; b.classList.remove('busy'); });
+      Proc.close();
     }
     if (SaveSystem.autosave()) console.info('[save] 자동 저장');
     await Portal.setTeam(Roster.team());
     Nav.render(Router.current());
-    UI.toast(reason || `${days}일이 지났습니다`);
+    UI.toast(reason || (this.stopReq ? '진행을 멈췄습니다' : `${days}일이 지났습니다`));
   },
 
   // 하루 진행. 멈춰야 하면 이유를 돌려준다.
   step() {
-    Inbox.list().forEach(m => m.isNew = false);
     this.today = [];
     Clock.set(Store.addDays(Clock.today(), 1));
     let reason = null;
@@ -150,6 +155,118 @@ const Engine = {
     App.state.morale = {};
     Inbox.push({ from: { name: `${t.short} 사무국장`, role: 'board' }, subject: `${t.name} 감독 부임을 환영합니다`, priority: 'urgent', stop: true,
       body: `${t.name} 구단을 대표해 환영 인사를 드립니다.\n\n이사회의 기대는 '${t.boardGoal || '좋은 성적'}'입니다. 선수단과 코칭스태프 소개는 로스터 화면에서 확인해 주십시오.` });
+  },
+};
+
+// ---------- 처리 중 화면 (FM27 방식) ----------
+// 왼쪽: 오늘 날짜 + 다음 경기, 그 아래 진행 중 받은 메시지 / 오른쪽: 오늘의 뉴스, 그 아래 2주 달력
+const Proc = {
+  el: null,
+  newsIdx: 0,
+
+  async open() {
+    this.close();
+    this.news = await News.items();
+    this.newsIdx = 0;
+    const el = document.createElement('div');
+    el.className = 'proc-back';
+    el.innerHTML = `
+      <div class="proc">
+        <div class="proc-title">처리 중<span class="proc-status"></span></div>
+        <div class="proc-grid">
+          <div class="proc-left">
+            <div class="proc-day"></div>
+            <div class="proc-msgs"><h4>수신한 메시지</h4><div class="proc-msg-list"><p class="proc-none">아직 새 메시지가 없습니다</p></div></div>
+          </div>
+          <div class="proc-right">
+            <div class="proc-news"></div>
+            <div class="proc-cal"></div>
+          </div>
+        </div>
+      </div>`;
+    document.body.appendChild(el);
+    requestAnimationFrame(() => el.classList.add('on'));
+    this.el = el;
+    $$('.btn-continue').forEach(b => { b.classList.add('busy'); b.dataset.label = b.firstChild.textContent; b.firstChild.textContent = '처리 중 '; b.style.setProperty('--p', '0%'); });
+    this.drawDay(null);
+    this.drawCal();
+  },
+
+  close() {
+    $$('.btn-continue').forEach(b => { b.classList.remove('busy'); if (b.dataset.label) b.firstChild.textContent = b.dataset.label; });
+    if (!this.el) return;
+    const el = this.el; this.el = null;
+    el.classList.remove('on');
+    setTimeout(() => el.remove(), 250);
+  },
+
+  status(t) { const s = this.el && $('.proc-status', this.el); if (s) s.textContent = ' · ' + t; },
+
+  async day(got, n, reason) {
+    if (!this.el) return;
+    $$('.btn-continue').forEach(b => b.style.setProperty('--p', Math.min(100, n / Engine.MAX_DAYS * 100) + '%'));
+    // 뉴스는 날짜가 바뀌면 새로 만들고 하루에 한 건씩 넘긴다
+    this.news = await News.items();
+    this.newsIdx++;
+    this.drawDay(reason);
+    this.drawMsgs(got);
+    this.drawNews();
+    this.drawCal();
+  },
+
+  drawDay(reason) {
+    const t = Roster.team(), d = Clock.today();
+    const nm = Schedule.next(t.id, d);
+    let next;
+    if (nm) {
+      const o = Schedule.opponent(nm, t.id), ev = Schedule.eventOf(nm);
+      next = `<small>다음 경기</small><span>${G.team(o, 'xs')} ${UI.esc(o.short)} (${nm.t1 === t.id ? '홈' : '원정'}) · ${Fmt.daysBetween(d, nm.t) || '오늘'}${Fmt.daysBetween(d, nm.t) ? '일 내' : ''}</span><span class="proc-sub">${UI.esc(ev.short || ev.label)}</span>`;
+    } else {
+      const e = Schedule.firstEvent(t.league);
+      next = e ? `<small>다음 대회</small><span>${UI.esc(e.label)}</span><span class="proc-sub">개막까지 ${Fmt.daysBetween(d, e.start)}일 · 일정 발표 전</span>` : '<small>다음 경기</small><span>일정 없음</span>';
+    }
+    $('.proc-day', this.el).innerHTML = `
+      <div class="proc-date"><b>${Fmt.dayLabel(d)}</b>${reason ? '<i class="proc-stop">멈춤</i>' : '<i class="proc-spin"></i>'}</div>
+      <div class="proc-next">${next}</div>
+      ${reason ? `<div class="proc-reason">${UI.esc(reason)}</div>` : ''}`;
+    $('.proc-day', this.el).style.setProperty('--c', t.color || '#c8a24a');
+  },
+
+  drawMsgs(got) {
+    if (!got.length) return;
+    const groups = {};
+    got.forEach(m => (groups[m.date] = groups[m.date] || []).push(m));
+    $('.proc-msg-list', this.el).innerHTML = Object.entries(groups).map(([date, ms]) => `
+      <div class="proc-msg-day">${Fmt.dayLabel(date)}</div>
+      ${ms.map(m => `<div class="proc-msg pr-${m.priority}"><span>${UI.esc(m.from.name)}</span><b>${UI.esc(m.subject)}</b><time>${m.time}</time></div>`).join('')}`).join('');
+  },
+
+  drawNews() {
+    const list = this.news || [];
+    if (!list.length) return;
+    const x = list[this.newsIdx % list.length];
+    const hit = x.pid && Player.find(x.pid);
+    const team = hit ? hit.t : Roster.team();
+    $('.proc-news', this.el).innerHTML = `
+      <div class="proc-news-img" style="--c:${team.color || '#334'}">${hit && hit.p.photo ? G.face(hit.p, 'proc-face') : G.team(team, 'xl')}</div>
+      <div class="proc-news-txt"><span class="nw-tag ${x.cat}">${News.CATS[x.cat]}</span>
+        <b>${UI.esc(x.title)}</b><p>${UI.esc(x.body)}</p>
+        <small>${Fmt.dayLabel(x.date)} · ${UI.esc(team.name)}</small></div>`;
+    const n = $('.proc-news', this.el);
+    n.classList.remove('flip'); void n.offsetWidth; n.classList.add('flip');
+  },
+
+  drawCal() {
+    const t = Roster.team(), d = Clock.today();
+    const days = Portal.week(d, t, 2);
+    $('.proc-cal', this.el).innerHTML = `
+      <h4>${Clock.year(d)} 달력</h4>
+      <div class="proc-cal-grid">${Fmt.DOW.slice(1).concat('일').map(w => `<span class="proc-dow">${w}</span>`).join('')}
+        ${days.map(x => `<div class="proc-cell ${x.date === d ? 'today' : x.date < d ? 'past' : ''}">
+          <span>${+x.date.slice(8) === 1 || x === days[0] ? `${+x.date.slice(5, 7)}월 ` : ''}${+x.date.slice(8)}</span>
+          <div>${x.events.map(e => `<i class="ev ev-${e.type}" title="${UI.esc(e.label)}">${Icons.event[e.type] || ''}</i>`).join('')}</div>
+          ${x.events.filter(e => e.type !== 'training').map(e => `<small>${UI.esc(e.label)}</small>`).join('')}
+        </div>`).join('')}</div>`;
   },
 };
 
