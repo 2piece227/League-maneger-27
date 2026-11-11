@@ -33,6 +33,26 @@ const Attributes = {
     };
   },
 
+  // 생성 선수: 현재 기량(ca, 1~20) 주변으로 능력치를 흩뿌린다. pa = 잠재력. r: 시드 고정 난수
+  generate(role, ca, pa, r) {
+    const near = () => Math.max(1, Math.min(20, Math.round((ca + (r() - .5) * 6) * 10) / 10));
+    const pick = obj => Object.fromEntries(Object.keys(obj).map(k => [k, near()]));
+    const hidden = Object.fromEntries(Object.keys(this.hidden).map(k => [k, Math.round(4 + r() * 14)]));
+    hidden.potential = Math.round(pa);
+    return { physical: pick(this.groups.physical.keys), macro: pick(this.groups.macro.keys), mental: pick(this.groups.mental.keys), role: pick(this.role[role] || {}), hidden };
+  },
+
+  // 현재 기량·잠재력을 별 5개로 (1~20 → ★1~5)
+  stars(v) { return Math.max(1, Math.min(5, Math.round(v / 4))); },
+  starText(v) { const n = this.stars(v); return '★'.repeat(n) + '☆'.repeat(5 - n); },
+
+  // 능력치 표 (보이는 능력치만)
+  table(a, role) {
+    const cell = v => { const n = Math.round(v); return `<b class="at-v ${n >= 15 ? 'hi' : n >= 10 ? 'mid' : 'lo'}">${n}</b>`; };
+    const grp = (label, keys, vals) => `<div class="at-grp"><h5>${label}</h5>${Object.entries(keys).map(([k, l]) => `<div class="at-row"><span>${l}</span>${cell(vals[k] ?? this.DEFAULT)}</div>`).join('')}</div>`;
+    return `<div class="at-grid">${Object.values(this.groups).map((g, i) => grp(g.label, g.keys, a[Object.keys(this.groups)[i]])).join('')}${grp(G.ROLE_KO[role] || '포지션', this.role[role] || {}, a.role)}</div>`;
+  },
+
   // TODO: 포지션별 가중치. 지금은 보이는 능력치 단순 평균.
   overall(a) {
     const vals = [a.physical, a.macro, a.mental, a.role].flatMap(o => Object.values(o));

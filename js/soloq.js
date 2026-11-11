@@ -110,17 +110,34 @@ const SoloQ = {
         const c = this.pick(r, cands).id;
         if (!pool.some(x => x[0] === c)) pool.push([c, 1 + r() * 3]);
       }
-      const prodigy = type !== 'streamer' && r() < .22;
+      const id = `${type}:${league}:${i}`;
+      const g = this.genAbility(id, type, role);
       out.push({
-        id: `${type}:${league}:${i}`, type, role, name: this.nick(r, lang, type, main),
-        skill: (type === 'streamer' ? 56 + r() * 16 : type === 'otp' ? 57 + r() * 14 : 46 + r() * 20) + (prodigy ? 10 : 0),
-        age: type === 'streamer' ? 21 + Math.floor(r() * 9) : 16 + Math.floor(r() * (prodigy ? 4 : 9)),
-        prodigy,
+        id, type, role, name: this.nick(r, lang, type, main),
+        ...g,
+        skill: 46 + g.ca * 1.8 + (g.pa - g.ca) * .6 + r() * 6,
+        age: type === 'streamer' ? 21 + Math.floor(r() * 9) : 16 + Math.floor(r() * (g.pa >= 14 ? 4 : 9)),
         games: type === 'streamer' ? [7, 13] : type === 'otp' ? [5, 10] : [2, 8],
         pool,
       });
     }
     return out;
+  },
+
+  // 생성 선수 능력: 현재 기량 ca / 잠재력 pa (1~20). 잠재력이 아주 높은 솔랭 괴물은 1%.
+  // prodigy(유망주)는 스카우트 사이의 소문일 뿐이라 틀릴 때도 있다. 실제 수치는 테스트 후에 보인다.
+  genAbility(id, type, role) {
+    const r = this.rng('gen:' + id);
+    const ca = type === 'streamer' ? 8 + r() * 4 : type === 'otp' ? 7 + r() * 4 : 5 + r() * 5;
+    const roll = r();
+    let pa = type === 'streamer' ? ca + r() * 1.5
+      : roll < .01 ? 17 + r() * 3
+      : roll < .08 ? 14 + r() * 3
+      : roll < .40 ? 11 + r() * 3
+      : ca + r() * 3;
+    pa = Math.max(pa, ca);
+    const round = v => Math.round(v * 10) / 10;
+    return { ca: round(ca), pa: round(pa), attrs: Attributes.generate(role, ca, pa, r), prodigy: type !== 'streamer' && (pa >= 14 ? r() < .75 : r() < .06) };
   },
 
   // 한 계정의 시즌 시뮬레이션
@@ -305,10 +322,11 @@ const SoloQ = {
         <div class="sq-box ${a.prodigy ? 'hot' : ''}">
           <div class="sq-box-head"><b>테스트 제의</b><small>${a.prodigy ? '스카우트 팀이 주목하는 유망주입니다' : '프로 경력이 없는 일반 소환사입니다'}</small></div>
           <div class="sq-offer">
-            <span>${a.age}세 · ${G.ROLE_KO[a.role]} · 잠재력 ${UI.stars(a.prodigy ? 4 : a.skill > 62 ? 3 : 2)}</span>
+            <span>${a.age}세 · ${G.ROLE_KO[a.role]} · ${offered && offered.status === 'done' && offered.ca != null ? `현재 기량 ${UI.stars(Attributes.stars(offered.ca))} 잠재력 ${UI.stars(Attributes.stars(offered.pa))}` : '능력치는 테스트 후 확인'}</span>
             <button class="btn-primary sq-offer-btn" ${offered ? 'disabled' : ''}>${offered ? '제의 완료' : '테스트 제의'}</button>
           </div>
-        </div>` : ''}
+        </div>
+        ${offered && offered.status === 'done' && offered.attrs ? `<h4>테스트 평가 <small>${UI.esc(offered.grade)}</small></h4>${Attributes.table(offered.attrs, a.role)}` : ''}` : ''}
 
       <h4>라인 분포</h4>
       <div class="sq-roles">${G.ROLES.map(r => {
@@ -349,7 +367,7 @@ const SoloQ = {
       body: `<p><b>${UI.esc(a.name)}</b> (${a.age}세 · ${G.ROLE_KO[a.role]})에게 입단 테스트를 제의합니다.</p><p style="color:var(--muted);font-size:12px">수락하면 챌린저스 팀과 함께 일주일간 테스트를 진행합니다. 결과는 메시지로 전달됩니다.</p>`,
       actions: [{ label: '취소' }, {
         label: '제의 보내기', primary: true,
-        onClick: () => { this.offers()[a.id] = { date: this.today(), name: a.name, role: a.role, age: a.age, type: a.type, rank: a.rank }; this.drawTable(el); this.drawDetail(el); }, // TODO: 기능 연결 — 수락 여부·테스트 결과 메시지
+        onClick: () => { this.offers()[a.id] = { date: this.today(), name: a.name, role: a.role, age: a.age, type: a.type, rank: a.rank, ca: a.ca, pa: a.pa, attrs: a.attrs }; this.drawTable(el); this.drawDetail(el); }, // TODO: 기능 연결 — 수락 여부·테스트 결과 메시지
       }],
     });
   },

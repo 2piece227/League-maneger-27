@@ -225,3 +225,33 @@ const Roster = {
 };
 
 Views['roster-first-team'] = async el => { await Portal.ready; await Traits.load(); Roster.render(el); };
+
+// 로스터 > 챌린저스: 테스트를 거쳐 계약한 생성 선수. 경기 없이 결과(성장)만 쌓인다.
+const Academy = {
+  render(el) {
+    const list = App.state.academy || [];
+    el.innerHTML = `
+      <div class="cr-page">
+        ${Career.head('챌린저스', '테스트를 거쳐 계약한 유망주입니다. 매일 잠재력을 향해 조금씩 성장하고, 매월 2군 코치가 보고합니다.')}
+        ${list.length ? `<div class="ac-grid">${list.map(a => this.card(a)).join('')}</div>`
+          : `<div class="card ac-empty"><p>아직 챌린저스 선수가 없습니다.</p><p class="ms-none">훈련 › 솔랭 순위에서 일반인·장인에게 테스트를 제의하고, 결과가 좋으면 계약하세요.</p><a class="btn-primary btn-sm" href="#training-soloq">솔랭 순위로</a></div>`}
+      </div>`;
+  },
+  card(a) {
+    const has = a.ca != null && a.attrs;
+    const pct = has ? Math.round((a.ca - (a.ca0 ?? a.ca)) / Math.max(.1, a.pa - (a.ca0 ?? a.ca)) * 100) : 0;
+    return `
+      <div class="card ac-card">
+        <div class="ac-head">
+          <div class="pl-ph pl-ph-empty">${G.pos(a.role)}</div>
+          <div><b>${UI.esc(a.name)}</b><span>${G.ROLE_KO[a.role]} · ${a.age}세 · ${(a.date || '').replace(/-/g, '.')} 입단</span></div>
+          <i class="sq-type ama">${UI.esc(a.grade || '')}</i>
+        </div>
+        ${has ? `
+          <div class="ac-stars"><div><span>현재 기량</span>${UI.stars(Attributes.stars(a.ca))}</div><div><span>잠재력</span>${UI.stars(Attributes.stars(a.pa))}</div></div>
+          <div class="ac-grow"><span>입단 후 성장</span><div class="ms-next"><i style="width:${Math.max(0, Math.min(100, pct))}%"></i></div><b>${pct}%</b></div>
+          ${Attributes.table(a.attrs, a.role)}` : '<p class="ms-none">능력치 정보가 없는 옛 기록입니다.</p>'}
+      </div>`;
+  },
+};
+Views['roster-challengers'] = async el => { await Portal.ready; Academy.render(el); };
