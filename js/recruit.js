@@ -52,7 +52,7 @@ const Recruit = {
           <span class="ch-count rc-count"></span>
         </div>
         <div class="card rs-table-wrap" style="padding:0">
-          <table class="rs-table rc-table"><thead><tr><th></th><th>선수</th><th>팀</th><th>포지션</th><th class="num">나이</th><th>국적</th><th>계약</th><th class="num">가치 (추정)</th></tr></thead><tbody></tbody></table>
+          <table class="rs-table rc-table"><thead><tr><th></th><th>선수</th><th>팀</th><th>포지션</th><th class="num">나이</th><th>국적</th><th>계약</th><th class="num">가치</th></tr></thead><tbody></tbody></table>
         </div>
       </div>`;
     const draw = () => {
@@ -89,7 +89,7 @@ const Recruit = {
         <div class="cr-page">
           ${Career.head('관심 목록', '스카우트 검색·FA 시장·선수 프로필에서 ★로 추가한 선수')}
           ${list.length ? `<div class="card rs-table-wrap" style="padding:0">
-            <table class="rs-table rc-table"><thead><tr><th></th><th>선수</th><th>팀</th><th>포지션</th><th class="num">나이</th><th>국적</th><th>계약</th><th class="num">가치 (추정)</th><th></th></tr></thead>
+            <table class="rs-table rc-table"><thead><tr><th></th><th>선수</th><th>팀</th><th>포지션</th><th class="num">나이</th><th>국적</th><th>계약</th><th class="num">가치</th><th></th></tr></thead>
             <tbody>${list.map(({ p, t }) => this.playerRow(p, t, `<td><button class="btn-ghost ct-btn" data-ask="${p.id}">영입 문의</button></td>`)).join('')}</tbody></table>
           </div>` : `<div class="card fx-empty"><b>관심 목록이 비어 있습니다</b><span>스카우트 검색이나 FA 시장에서 ★를 눌러 선수를 추가하세요.</span><a class="btn-primary rc-go" href="#recruit-search">스카우트 검색으로</a></div>`}
         </div>`;
@@ -152,8 +152,8 @@ const Recruit = {
           </div>
           <div class="ch-bar"><div class="seg fa-seg"><button class="${this.faStaff ? '' : 'on'}" data-s="0">선수</button><button class="${this.faStaff ? 'on' : ''}" data-s="1">코칭스태프</button></div></div>
           <div class="card rs-table-wrap" style="padding:0">
-            <table class="rs-table rc-table"><thead><tr><th></th><th>이름</th><th>현 소속</th><th>포지션</th><th class="num">나이</th><th>국적</th><th>계약</th><th class="num">가치 (추정)</th><th class="num">요구 연봉</th><th class="num">관심 팀</th></tr></thead>
-            <tbody>${rows.map(({ p, t }) => this.playerRow(p, t, `<td class="num">${Player.money(Player.salary(p, t) * (1.1 + G.rand(p.id, 'fa') * .4))}</td><td class="num">${1 + Math.floor(G.rand(p.id, 'int') * 5)}</td>`).replace(`<td>${G.pos(p.role)}</td>`, `<td>${p.role === 'COACH' ? '코치' : G.pos(p.role)}</td>`)).join('') || '<tr><td colspan="10" class="ms-none" style="text-align:center;padding:30px">해당하는 FA가 없습니다.</td></tr>'}</tbody></table>
+            <table class="rs-table rc-table"><thead><tr><th></th><th>이름</th><th>현 소속</th><th>포지션</th><th class="num">나이</th><th>국적</th><th>계약</th><th class="num">가치</th><th class="num">요구 연봉</th><th class="num">관심 팀</th></tr></thead>
+            <tbody>${rows.map(({ p, t }) => this.playerRow(p, t, `<td class="num">${Player.money(Contract.pay(p, Contract.score(p, t), Roster.team().league) * (1.1 + G.rand(p.id, 'fa') * .25))}</td><td class="num">${1 + Math.floor(G.rand(p.id, 'int') * 5)}</td>`).replace(`<td>${G.pos(p.role)}</td>`, `<td>${p.role === 'COACH' ? '코치' : G.pos(p.role)}</td>`)).join('') || '<tr><td colspan="10" class="ms-none" style="text-align:center;padding:30px">해당하는 FA가 없습니다.</td></tr>'}</tbody></table>
           </div>
         </div>`;
       $('.fa-seg', el).onclick = e => { const b = e.target.closest('button'); if (!b) return; this.faStaff = b.dataset.s === '1'; draw(); };

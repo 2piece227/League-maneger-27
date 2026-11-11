@@ -9,6 +9,7 @@ const Data = {
       const [t, p, h, o, c, cl] = await Promise.all([get('teams.json'), get('players.json'), get('history.json'), get('overrides.json').catch(() => ({})), get('custom.json').catch(() => ({})), get('cl.json').catch(() => ({ teams: [], players: [] }))]);
       db.teams = this.mergeTeams(t.teams, p.players, o.teams || {});
       db.free = this.freeTeam(c.freeAgents || []);
+      Contract.stars = c.stars || {};
       this.attachCl(db.teams, cl);
       this.applyMilitary([...db.teams, db.free], c.military || {});
       db.history.worlds = MOCK.worldsHistory.map(w => ({ ...w, logo: (h.worldsLogos || {})[w.page || w.team] || null, photo: (h.worldsPhotos || {})[w.year] || null }));

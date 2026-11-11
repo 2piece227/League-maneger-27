@@ -1,5 +1,5 @@
 {
-  "_note": "직접 관리하는 선수 정보. freeAgents: 소속팀 없이 추가할 선수(무소속으로 들어감, players.json과 같은 형식, photo는 없어도 됨). military: 한국 선수 병역 상태. exempt=병역 혜택, served=군필, 나머지 한국 선수는 미필.",
+  "_note": "직접 관리하는 선수 정보. freeAgents: 소속팀 없이 추가할 선수(무소속으로 들어감, players.json과 같은 형식, photo는 없어도 됨). military: 한국 선수 병역 상태. exempt=병역 혜택, served=군필, 나머지 한국 선수는 미필. stars: 선수 가치 점수 직접 지정(0~100, 1군 평균 60~70, 정상급 85+). 없으면 커리어 기록으로 계산.",
   "freeAgents": [
     {
       "id": "deft",
@@ -13,7 +13,63 @@
     }
   ],
   "military": {
-    "exempt": ["zeus", "kanavi", "faker", "chovy", "ruler", "keria"],
-    "served": ["deft"]
+    "exempt": [
+      "zeus",
+      "kanavi",
+      "faker",
+      "chovy",
+      "ruler",
+      "keria"
+    ],
+    "served": [
+      "deft"
+    ]
+  },
+  "stars": {
+    "faker": 96,
+    "chovy": 95,
+    "zeus": 92,
+    "keria": 92,
+    "ruler": 92,
+    "knight-zhuo-ding": 92,
+    "canyon": 90,
+    "bin-chen-ze-bin": 90,
+    "viper-park-do-hyeon": 90,
+    "oner": 89,
+    "gumayusi": 89,
+    "kanavi": 89,
+    "peyz": 88,
+    "caps": 88,
+    "kiin": 87,
+    "elk": 87,
+    "zeka-kim-geon-woo": 86,
+    "showmaker": 85,
+    "jackeylove": 85,
+    "on": 85,
+    "doran-choi-hyeon-jun": 84,
+    "hope-wang-jie": 84,
+    "xiaohu": 84,
+    "tian": 84,
+    "bdd": 84,
+    "delight": 84,
+    "lucid-choi-yong-hyeok": 84,
+    "hans-sama": 84,
+    "deft": 84,
+    "lehends": 83,
+    "meiko": 83,
+    "aiming": 83,
+    "wei-yan-yang-wei": 83,
+    "berserker-kim-min-cheol": 83,
+    "scout": 82,
+    "breathe": 82,
+    "razork": 82,
+    "inspired": 82,
+    "siwoo": 81,
+    "kael-kim-jin-hong": 80,
+    "duro": 80,
+    "crisp": 80,
+    "kingen": 80,
+    "smash-shin-geum-jae": 80,
+    "clozer": 80
   }
 }

@@ -10,20 +10,10 @@ const Player = {
   isMine(t) { return t && t.id === App.state.teamId; },
   shortlist() { return (App.state.shortlist ||= []); },
 
-  // 목업 연봉(억 원) · 시장가치: 구단 재정·주전 여부·시그니처·나이로
-  salary(p, t) {
-    const sig = (typeof Mastery !== 'undefined' && Mastery.pools) ? Mastery.signatures(p.id).length : 0;
-    const base = { LCK: 1.6, LPL: 2.0, LEC: 1.0, LCS: 1.2 }[t.league] || 1;
-    let v = base * (0.5 + (t.fin || 2) * 0.35) * (p.sub ? 0.45 : 1) * (1 + sig * 0.35) * (0.75 + G.rand(p.id, 'pay') * 0.6);
-    if (p.role === 'COACH') v *= 0.55;
-    return Math.max(0.3, Math.round(v * 10) / 10);
-  },
-  value(p, t) {
-    const age = p.age || 22;
-    const ageMul = age <= 21 ? 1.4 : age <= 24 ? 1.2 : age <= 27 ? 1 : 0.7;
-    return Math.round(this.salary(p, t) * 1.8 * ageMul * 10) / 10;
-  },
-  money(v) { return v >= 10 ? `${Math.round(v)}억` : `${v.toFixed(1)}억`; },
+  // 연봉·시장가치(억 원)는 js/contract.js
+  salary(p, t) { return Contract.of(p, t).salary; },
+  value(p, t) { return Contract.value(p, t); },
+  money(v) { return v >= 100 ? `${Math.round(v)}억` : `${(+v.toFixed(1)).toString()}억`; },
   days(p) { return p.contractEnd ? Fmt.daysBetween(this.today(), p.contractEnd) : null; },
   contractState(p) {
     if (p.free) return ['무소속', 'fa'];
@@ -61,15 +51,15 @@ const Player = {
             <div class="pp-sub">${UI.esc(p.nativeName || p.realName || '')}${p.realName && p.nativeName ? ` · ${UI.esc(p.realName)}` : ''}</div>
             <div class="pp-tags">${p.role !== 'COACH' ? G.pos(p.role, true) : '<span class="ch-tag">코칭스태프</span>'}<span class="nat">${G.flag(p.nation)} ${G.nationName(p.nation)}</span>${p.age ? `<span>${p.age}세</span>` : ''}</div>
           </div>
-          <div class="pp-val"><span>시장 가치 (추정)</span><b>${this.money(this.value(p, t))}</b></div>
+          <div class="pp-val"><span>시장 가치</span><b>${this.money(this.value(p, t))}</b></div>
         </div>
         <div class="pp-body">
           <div class="pp-col">
             <h4>계약</h4>
             <dl class="cr-dl">
               <dt>소속</dt><dd>${UI.esc(t.name)}${t.league ? ` (${t.league})` : ''}</dd>
-              <dt>계약 만료</dt><dd>${p.contractEnd ? p.contractEnd.replace(/-/g, '.') : '-'} <span class="ct-st ${cc}">${cs}</span></dd>
-              <dt>연봉 (추정)</dt><dd>${this.money(this.salary(p, t))} 원</dd>
+              <dt>계약 만료</dt><dd>${Contract.label(Contract.of(p, t))} <span class="ct-st ${cc}">${cs}</span></dd>
+              <dt>연봉</dt><dd>${this.money(this.salary(p, t))} 원</dd>
               <dt>생년월일</dt><dd>${p.birthdate ? p.birthdate.replace(/-/g, '.') : '-'}</dd>
               ${p.military ? `<dt>병역</dt><dd>${this.military(p)}</dd>` : ''}
             </dl>
@@ -89,7 +79,7 @@ const Player = {
         <div class="pp-foot">
           ${this.isMine(t) && p.role !== 'COACH' ? `<span class="pp-mv" data-pid="${p.id}">${Squad.buttons(p)}</span>` : ''}
           <button class="btn-ghost pp-list">${listed ? '관심 목록에서 빼기' : '관심 목록에 추가'}</button>
-          ${this.isMine(t) ? '<button class="btn-primary pp-talk">재계약 협상</button>' : '<button class="btn-primary pp-ask">영입 문의</button>'}
+          ${this.isMine(t) ? '<button class="btn-primary pp-talk">재계약 협상</button>' : (p.free || this.days(p) < 0 ? '<button class="btn-primary pp-ask">계약 협상</button>' : '<button class="btn-primary pp-ask">영입 문의</button>')}
         </div>
       </div>`;
     document.body.appendChild(back);
@@ -110,33 +100,18 @@ const Player = {
     UI.toast(i >= 0 ? '관심 목록에서 뺐습니다' : '관심 목록에 추가했습니다');
   },
 
-  // 재계약 협상 (레이아웃만)
-  contractModal(id) {
-    const { p, t } = this.find(id);
-    const cur = this.salary(p, t);
-    UI.modal({
-      title: `${p.name} — 재계약 협상`,
-      body: `
-        <div class="neg">
-          <div class="neg-row"><span>현재 연봉</span><b>${this.money(cur)} 원</b></div>
-          <div class="neg-row"><span>선수 요구 (에이전트)</span><b>${this.money(cur * (1.15 + G.rand(p.id, 'ask') * .3))} 원 · ${G.rand(p.id, 'yrs') > .5 ? 2 : 1}년</b></div>
-          <label class="field"><span>제시 연봉 (억 원)</span><input type="number" step="0.1" min="0.1" value="${cur.toFixed(1)}"></label>
-          <label class="field"><span>계약 기간</span><select><option>1년</option><option selected>2년</option><option>3년</option></select></label>
-          <label class="field"><span>옵션</span><select><option>없음</option><option>우승 보너스</option><option>국제대회 출전 보너스</option><option>바이아웃 조항</option></select></label>
-          <p class="cr-note">협상 기능은 준비 중입니다. 제안을 보내도 아직 답이 오지 않습니다.</p>
-        </div>`,
-      actions: [{ label: '취소' }, { label: '제안 보내기', primary: true, onClick: () => UI.toast('제안을 보냈습니다 (협상 기능 준비 중)') }], // TODO: 기능 연결 — 협상 응답
-    });
-  },
+  // 재계약 협상 → js/negotiate.js (1군급은 에이전트 채팅, 2군·아카데미는 계약서)
+  contractModal(id) { Neg.open(id, 'renew'); },
   inquiryModal(id) {
     const { p, t } = this.find(id);
+    if (p.free || (this.days(p) != null && this.days(p) < 0)) { Neg.open(id, 'fa'); return; }
     UI.modal({
       title: `${p.name} — 영입 문의`,
       body: `
         <div class="neg">
           <div class="neg-row"><span>소속</span><b>${UI.esc(t.name)}</b></div>
           <div class="neg-row"><span>계약 만료</span><b>${p.contractEnd ? p.contractEnd.replace(/-/g, '.') : '-'}</b></div>
-          <div class="neg-row"><span>예상 이적료 (추정)</span><b>${this.days(p) != null && this.days(p) < 0 ? '없음 (FA)' : this.money(this.value(p, t)) + ' 원'}</b></div>
+          <div class="neg-row"><span>예상 이적료</span><b>${this.days(p) != null && this.days(p) < 0 ? '없음 (FA)' : this.money(this.value(p, t)) + ' 원'}</b></div>
           <label class="field"><span>문의 방식</span><select><option>구단에 이적 문의</option><option>임대 문의</option><option>계약 만료 후 FA 접촉 예약</option></select></label>
           <p class="cr-note">문의는 영입 › 이적 제안에 기록됩니다.</p>
         </div>`,
@@ -172,7 +147,7 @@ const Player = {
             <dt>국적</dt><dd>${G.flag(p.nation)} ${G.nationName(p.nation)}</dd>
             ${p.military ? `<dt>병역</dt><dd>${this.military(p)}</dd>` : ''}
             <dt>계약 만료</dt><dd>${p.contractEnd ? p.contractEnd.replace(/-/g, '.') : '-'}</dd>
-            <dt>연봉 (추정)</dt><dd>${this.money(this.salary(p, t))}</dd>
+            <dt>연봉</dt><dd>${this.money(this.salary(p, t))}</dd>
             <dt>시장 가치</dt><dd>${this.money(this.value(p, t))}</dd>
             <dt>솔랭</dt><dd>${sq ? `${sq.rank}위 · ${SoloQ.wr(sq)}%` : '100위 밖'}</dd>
           </dl>
@@ -197,7 +172,7 @@ const Player = {
 
   // ---------- 로스터 > 계약 현황 ----------
   async contracts(el) {
-    await Promise.all([Portal.ready, Mastery.load()]);
+    await Promise.all([Portal.ready, Mastery.load(), Traits.load()]);
     const t = this.team();
     const rows = [...t.players, ...(t.staff || [])].sort((a, b) => (a.contractEnd || '9').localeCompare(b.contractEnd || '9'));
     const total = t.players.reduce((s, p) => s + this.salary(p, t), 0);
@@ -205,7 +180,7 @@ const Player = {
     el.innerHTML = `
       <div class="cr-page">
         <div class="card rs-head">
-          <div class="rs-title"><h2>계약 현황 <small>${UI.esc(t.name)}</small></h2><span>연봉은 구단 재정·주전 여부 기반 추정치입니다</span></div>
+          <div class="rs-title"><h2>계약 현황 <small>${UI.esc(t.name)}</small></h2><span>1군급은 에이전트와 협상, 2군·아카데미·코칭스태프는 계약서로 처리합니다</span></div>
           <div class="rs-stats">
             <div><span class="k">선수 연봉 합계</span><b>${this.money(total)}</b></div>
             <div><span class="k">60일 내 만료</span><b class="${soon.length ? 'warn' : ''}">${soon.length}</b></div>
@@ -214,7 +189,7 @@ const Player = {
         </div>
         <div class="card rs-table-wrap" style="padding:0">
           <table class="rs-table ct-table">
-            <thead><tr><th>이름</th><th>역할</th><th>계약 만료</th><th>상태</th><th class="num">연봉 (추정)</th><th>남은 기간</th><th></th></tr></thead>
+            <thead><tr><th>이름</th><th>역할</th><th>계약 만료</th><th>옵션</th><th>상태</th><th class="num">연봉</th><th>남은 기간</th><th></th></tr></thead>
             <tbody>${rows.map(p => {
               const d = this.days(p), [cs, cc] = this.contractState(p);
               const pct = d == null ? 0 : Math.max(2, Math.min(100, d / 1095 * 100));
@@ -222,6 +197,7 @@ const Player = {
                 <td><div class="pl-cell">${G.face(p, 'pl-ph')}<div><b>${UI.esc(p.name)}</b><small class="pl-real">${UI.esc(p.nativeName || p.realName || '')}</small></div></div></td>
                 <td>${p.role === 'COACH' ? '코칭스태프' : G.pos(p.role, true)}</td>
                 <td class="num">${p.contractEnd ? p.contractEnd.replace(/-/g, '.') : '-'}</td>
+                <td>${(o => o.option ? `+1 ${Contract.OPT[o.option]}` : '-')(Contract.of(p, t))}</td>
                 <td><span class="ct-st ${cc}">${cs}</span></td>
                 <td class="num">${this.money(this.salary(p, t))}</td>
                 <td><div class="ct-bar"><i class="${cc}" style="width:${pct}%"></i></div></td>

@@ -312,3 +312,36 @@
 .sqv-res.w b { color: #5fd38d; } .sqv-res.l b { color: #e46a6a; }
 .pp-mv { display: inline-flex; gap: 6px; margin-right: auto; }
 @media (max-width: 760px) { .sqv-two { grid-template-columns: 1fr; } .sqv-table .sq-acts { white-space: normal; } }
+
+/* ---------- 협상 (에이전트 채팅) ---------- */
+.ng-back { position: fixed; inset: 0; z-index: 130; background: rgba(4, 7, 14, .75); display: flex; align-items: center; justify-content: center; padding: 16px; }
+.ng { position: relative; width: min(980px, 100%); height: min(720px, calc(100vh - 32px)); display: grid; grid-template-columns: 250px 1fr; background: var(--panel); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; box-shadow: 0 20px 60px rgba(0, 0, 0, .5); }
+.ng-side { padding: 22px 18px; background: linear-gradient(180deg, color-mix(in srgb, var(--c) 30%, #0f1626), var(--panel) 60%); display: flex; flex-direction: column; gap: 6px; overflow: auto; }
+.ng-ph { width: 96px; height: 96px; border-radius: 10px; object-fit: cover; object-position: top; background: #1c2640; }
+.ng-ph.pl-ph-empty { display: flex; align-items: center; justify-content: center; font-size: 32px; }
+.ng-name { font-size: 22px; margin-top: 6px; }
+.ng-sub { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+.ng-side .cr-dl { margin-top: 10px; font-size: 12px; }
+.ng-side .cr-dl small { color: var(--muted); }
+.ng-side .warn { color: #ff9a9e; }
+.ng-pat { margin-top: 10px; font-size: 12px; color: var(--muted); }
+.ng-pbar { display: flex; gap: 4px; margin-top: 6px; }
+.ng-pbar i { flex: 1; height: 8px; border-radius: 3px; background: rgba(255, 255, 255, .08); }
+.ng-pbar i.on { background: var(--gold); }
+.ng-main { display: flex; flex-direction: column; min-width: 0; min-height: 0; }
+.ng-head { padding: 16px 20px 12px; font-weight: 700; border-bottom: 1px solid var(--line); }
+.ng-head small { color: var(--muted); font-weight: 400; margin-left: 6px; }
+.ng-log { flex: 1; overflow: auto; padding: 14px 20px; display: flex; flex-direction: column; gap: 10px; }
+.ng-msg { max-width: 78%; }
+.ng-msg b { font-size: 11px; color: var(--muted); }
+.ng-msg p { margin: 3px 0 0; padding: 10px 12px; border-radius: 10px; background: #1a2338; font-size: 13px; line-height: 1.55; }
+.ng-msg.me { align-self: flex-end; text-align: right; }
+.ng-msg.me p { background: color-mix(in srgb, var(--gold) 20%, #1a2338); text-align: left; }
+.ng-qs { display: flex; flex-wrap: wrap; gap: 6px; padding: 8px 20px; border-top: 1px solid var(--line); min-height: 20px; }
+.ng-form { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px 12px; padding: 12px 20px 16px; border-top: 1px solid var(--line); background: rgba(0, 0, 0, .15); }
+.ng-form label { display: flex; flex-direction: column; gap: 3px; font-size: 11px; color: var(--muted); }
+.ng-form input, .ng-form select { background: #111a2c; border: 1px solid var(--line); color: var(--text, #e6ebf3); border-radius: 6px; padding: 6px 8px; font-size: 13px; }
+.ng-bonus { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 14px; align-items: center; font-size: 12px; color: var(--muted); }
+.ng-bonus label { flex-direction: row; align-items: center; gap: 4px; color: #dfe5ef; }
+.ng-act { grid-column: 1 / -1; display: flex; justify-content: flex-end; gap: 8px; }
+@media (max-width: 760px) { .ng { grid-template-columns: 1fr; height: calc(100vh - 32px); } .ng-side { display: none; } .ng-form { grid-template-columns: 1fr 1fr; } }

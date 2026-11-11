@@ -90,6 +90,7 @@ const Squad = {
       t.players = [...t._base.players]; t.cl = [...t._base.cl]; t.academy = [];
       t.players.forEach(p => { p.level = 'first'; }); t.cl.forEach(p => { p.level = 'cl'; });
     });
+    Contract.applyWorld();
     const t = this.team(); if (!t) return;
     this.migrate();
     const dev = this.dev();
@@ -112,9 +113,9 @@ const Squad = {
     if (lv === 'cl' && t.cl.length >= this.CL_MAX) { UI.toast(`챌린저스 정원(${this.CL_MAX}명)이 찼습니다`); return false; }
     const p = [...t.players, ...t.cl, ...t.academy].find(x => x.id === pid);
     if (!p) return false;
-    if (lv === 'out' && p.gen) { delete this.gen()[pid]; delete this.moves()[pid]; }
-    else this.moves()[pid] = lv;
-    this.apply();
+    if (lv === 'out' && p.gen) { delete this.gen()[pid]; delete this.moves()[pid]; this.apply(); }
+    else if (lv === 'out') Contract.release(pid); // 실명 선수 방출 → FA 시장으로
+    else { this.moves()[pid] = lv; this.apply(); }
     UI.toast(lv === 'out' ? `${p.name} 선수를 방출했습니다` : `${p.name} → ${this.LV[lv]}`);
     return true;
   },

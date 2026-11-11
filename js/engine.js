@@ -380,17 +380,7 @@ Engine.on(today => {
   return reason;
 });
 
-Engine.on(today => {
-  // 우리 팀 계약: 만료 3일 전 알림, 만료일 다음 날 FA
-  const t = Roster.team();
-  t.players.forEach(p => {
-    const d = Player.days(p);
-    if (d === 3 && Engine.once('exp3:' + p.id + p.contractEnd)) Inbox.push({ from: { name: '사무국장', role: 'board' }, subject: `${p.name} 계약 만료 3일 전`, priority: 'todo', link: 'roster-contracts', ctx: { pid: p.id },
-      body: `${p.name}(${G.ROLE_KO[p.role]})의 계약이 ${Fmt.dayLabel(p.contractEnd)}에 끝납니다.\n\n그 전에 재계약하지 않으면 FA로 풀려 다른 팀과 자유롭게 협상할 수 있습니다.` });
-    if (d === -1 && Engine.once('fa:' + p.id + p.contractEnd)) Inbox.push({ from: { name: '사무국장', role: 'board' }, subject: `${p.name}, 계약 만료로 FA`, priority: 'urgent', link: 'recruit-fa',
-      body: `${p.name}의 계약이 끝나 FA가 됐습니다. 이제 다른 팀도 자유롭게 영입을 시도할 수 있습니다.\n\n다시 데려오려면 FA 시장에서 새 계약을 제시해야 합니다.` });
-  });
-});
+// 우리 팀 계약 만료 처리는 js/contract.js
 
 Engine.on(today => {
   // 스크림 답장 · 결과
