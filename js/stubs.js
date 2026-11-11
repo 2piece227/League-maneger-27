@@ -68,17 +68,15 @@ const Game = {
 
 // 메인 게임 화면(포털)의 버튼 자리
 const GameStubs = {
-  // TODO: 기능 연결 — 다음 일정까지 날짜 진행
-  advanceDay() {
-    console.info('[stub] GameStubs.advanceDay');
-    if (SaveSystem.autosave()) UI.toast('자동 저장했습니다');
-  },
+  advanceDay() { Engine.continue(); },
   // TODO: 기능 연결 — 메시지 읽음 상태 저장
   markAllRead() {},
   // TODO: 기능 연결 — 할 일 메시지에서 해당 화면/처리로 이동
   // 할 일 메시지 → 관련 화면으로 (메시지 제목 키워드 기준)
   handleMessageTask(id) {
     const m = (Portal.data.messages || []).find(x => x.id === id);
+    if (m) m.done = true;
+    if (m && m.link) { Router.go(m.link); return; }
     const s = m ? m.subject + ' ' + m.body : '';
     const map = [[/예산|재정/, 'club-finance'], [/계약 만료|재계약|면담/, 'roster-contracts'], [/FA|영입|스카우트/, 'recruit-fa'],
       [/로스터 등록/, 'roster-first-team'], [/결산|리포트/, 'match-history'], [/콜업|유망주|2군/, 'roster-challengers'],

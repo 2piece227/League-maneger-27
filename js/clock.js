@@ -4,6 +4,6 @@ const Clock = {
   START: '2026-11-10', // 데이터 기준일 = 커리어 시작일
   today() { return (typeof App !== 'undefined' && App.state && App.state.date) || this.START; },
   year(d = this.today()) { return +d.slice(0, 4); },
-  // TODO: 기능 연결 — 계속 버튼으로 하루씩 진행
+  // 계속 버튼(Engine.continue)이 하루씩 넘긴다
   set(ymd) { App.state.date = ymd; },
 };

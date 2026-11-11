@@ -1,0 +1,156 @@
+{
+  "_note": "무작위 이벤트 정의. cond: Events.COND 이름(모두 참일 때만). pick: 대상 선수(Events.PICK). team: true면 같은 리그 팀 하나. chance: 하루 확률. cooldown: 같은 이벤트 재발생까지 최소 일수. fx: board/squad/fans/media/rep/money/morale/moraleAll. outcomes+odds: 확률로 갈리는 결과(odds가 문자열이면 그 관계 수치/100).",
+  "events": [
+    {
+      "id": "media-interview",
+      "cond": ["noMatch"],
+      "chance": 0.07,
+      "cooldown": 12,
+      "from": { "name": "{media} 기자", "role": "media" },
+      "subject": "[{media}] 인터뷰 요청: {season} 시즌 각오",
+      "priority": "todo",
+      "body": "안녕하세요 감독님, {media}입니다.\n\n{season} 시즌을 앞둔 {myShort}의 목표와 준비 상황에 대해 짧게 여쭙고 싶습니다. 팬들의 관심이 큽니다.",
+      "choices": [
+        { "label": "\"목표는 우승뿐입니다\"", "fx": { "fans": 3, "media": 1, "board": 1 }, "reply": "자신감 넘치는 인터뷰가 화제가 됐습니다. 다만 기대치도 함께 올라갔습니다." },
+        { "label": "\"한 경기씩 차근차근 준비하겠습니다\"", "fx": { "media": 2, "squad": 1 }, "reply": "무난한 인터뷰로 기사가 나갔습니다." },
+        { "label": "인터뷰를 정중히 사양한다", "fx": { "media": -3 }, "reply": "기자가 아쉬워하며 돌아갔습니다." }
+      ]
+    },
+    {
+      "id": "sponsor-shoot",
+      "cond": ["noMatch"],
+      "chance": 0.05,
+      "cooldown": 20,
+      "ledger": "스폰서 콘텐츠 촬영",
+      "from": { "name": "마케팅팀", "role": "board" },
+      "subject": "스폰서 광고 촬영 일정 협조 요청",
+      "priority": "todo",
+      "body": "메인 스폰서가 신규 광고 촬영을 요청했습니다. 주전 5명이 하루 동안 참여해야 합니다.\n\n촬영은 계약 조건에 포함된 활동이라, 일정을 미루면 스폰서 측이 불편해할 수 있습니다.",
+      "choices": [
+        { "label": "하루 훈련을 빼고 촬영한다", "fx": { "money": 30000000, "fans": 2, "moraleAll": -1 }, "reply": "촬영이 무사히 끝났습니다. 선수들은 조금 지친 기색입니다." },
+        { "label": "훈련 후 저녁에 짧게만 촬영한다", "fx": { "money": 10000000, "moraleAll": -2 }, "reply": "촬영이 늦게 끝나 선수들이 피곤해합니다. 스폰서는 분량에 아쉬워했습니다." },
+        { "label": "시즌 준비를 이유로 미룬다", "fx": { "board": -2 }, "reply": "스폰서와의 관계를 걱정한 이사회가 불편한 기색을 보였습니다." }
+      ]
+    },
+    {
+      "id": "player-stream",
+      "pick": "player",
+      "chance": 0.04,
+      "cooldown": 25,
+      "from": { "name": "{player}", "role": "player" },
+      "subject": "개인 방송 시간에 대해 여쭙고 싶습니다",
+      "priority": "todo",
+      "body": "감독님, 요즘 팬분들이 방송을 많이 기다려 주셔서요.\n\n휴식 시간에 개인 방송을 조금 더 늘려도 될까요? 연습에는 지장 없게 하겠습니다.",
+      "choices": [
+        { "label": "좋다. 자유롭게 해라", "fx": { "morale": 6, "fans": 2 }, "reply": "{player}이(가) 기뻐하며 고맙다고 했습니다." },
+        { "label": "휴식일에만 허락한다", "fx": { "morale": 2 }, "reply": "{player}이(가) 납득했습니다." },
+        { "label": "시즌 중에는 연습에 집중하자", "fx": { "morale": -4, "board": 1 }, "reply": "{player}이(가) 아쉬운 표정으로 돌아갔습니다." }
+      ]
+    },
+    {
+      "id": "player-contract-talk",
+      "cond": ["stove", "hasExpiring"],
+      "pick": "expiring",
+      "chance": 0.12,
+      "cooldown": 6,
+      "from": { "name": "{player}", "role": "player" },
+      "subject": "다음 시즌 거취에 대해 이야기하고 싶습니다",
+      "priority": "urgent",
+      "link": "roster-contracts",
+      "body": "감독님, 계약이 곧 끝나서 마음이 좀 복잡합니다.\n\n다른 팀에서도 연락이 오고 있는데, 감독님 생각을 먼저 듣고 싶습니다.",
+      "choices": [
+        { "label": "너는 우리 팀의 핵심이다. 꼭 함께하자", "fx": { "morale": 5 }, "reply": "{player}이(가) 재계약에 긍정적인 반응을 보였습니다. 로스터 › 계약 현황에서 협상을 시작하세요." },
+        { "label": "조건을 보고 함께 이야기하자", "fx": { "morale": -1 }, "reply": "{player}이(가) 일단 기다려 보겠다고 했습니다." },
+        { "label": "어떤 선택을 해도 존중하겠다", "fx": { "morale": -5 }, "reply": "{player}이(가) 팀이 자신을 원하지 않는다고 느낀 것 같습니다." }
+      ]
+    },
+    {
+      "id": "board-checkin",
+      "cond": ["stove"],
+      "chance": 0.05,
+      "cooldown": 30,
+      "from": { "name": "사무국장", "role": "board" },
+      "subject": "이사회: 스토브리그 진행 상황 점검",
+      "priority": "todo",
+      "body": "이사회가 스토브리그 진행 상황을 궁금해합니다.\n\n로스터 구성 계획과 예산 사용에 대해 한 말씀 부탁드립니다.",
+      "choices": [
+        { "label": "계획대로 순조롭게 진행 중이다", "fx": { "board": 2 }, "reply": "이사회가 만족스러워했습니다." },
+        { "label": "전력 보강을 위해 추가 예산을 요청한다", "odds": "board", "outcomes": [
+          { "act": "budgetAsk", "arg": true, "fx": { "board": -1 }, "reply": "이사회가 고심 끝에 5억 원의 추가 예산을 승인했습니다." },
+          { "fx": { "board": -4 }, "reply": "이사회가 추가 예산 요청을 거절했습니다. 지금 예산 안에서 해결하라는 답입니다." }
+        ] }
+      ]
+    },
+    {
+      "id": "fan-meeting",
+      "cond": ["noMatch"],
+      "chance": 0.04,
+      "cooldown": 30,
+      "from": { "name": "마케팅팀", "role": "board" },
+      "subject": "팬 사인회 참석 요청",
+      "priority": "todo",
+      "body": "주말에 {myShort} 팬 사인회가 예정돼 있습니다. 감독님과 주전 선수들이 함께 참석해 주시면 좋겠습니다.",
+      "choices": [
+        { "label": "감독과 선수 모두 참석한다", "fx": { "fans": 4, "moraleAll": -1 }, "reply": "팬들의 반응이 뜨거웠습니다." },
+        { "label": "선수들만 보낸다", "fx": { "fans": 2 }, "reply": "사인회가 무난하게 끝났습니다." },
+        { "label": "훈련 일정 때문에 불참한다", "fx": { "fans": -3 }, "reply": "커뮤니티에서 아쉬워하는 반응이 나왔습니다." }
+      ]
+    },
+    {
+      "id": "rumor-poach",
+      "pick": "star",
+      "team": true,
+      "chance": 0.04,
+      "cooldown": 25,
+      "from": { "name": "{media} 기자", "role": "media" },
+      "subject": "[{media}] {teamShort}의 {player} 영입 관심설, 입장이 궁금합니다",
+      "priority": "todo",
+      "body": "{team}이(가) {player} 선수에게 관심을 보이고 있다는 이야기가 업계에 돌고 있습니다.\n\n구단과 감독님의 입장을 듣고 싶습니다.",
+      "choices": [
+        { "label": "\"{player}은(는) 이적 불가입니다\"", "fx": { "morale": 4, "media": -1 }, "reply": "단호한 입장이 기사로 나갔고 {player}이(가) 고마워했습니다." },
+        { "label": "\"좋은 제안이라면 들어볼 수는 있다\"", "fx": { "morale": -6, "board": 1 }, "reply": "{player}이(가) 기사를 보고 서운해한다는 이야기가 들립니다." },
+        { "label": "\"루머에는 답하지 않겠습니다\"", "reply": "기사는 짧게 나가고 묻혔습니다." }
+      ]
+    },
+    {
+      "id": "scrim-incoming",
+      "cond": ["noMatch"],
+      "team": true,
+      "chance": 0.08,
+      "cooldown": 7,
+      "from": { "name": "{teamShort} 코칭스태프", "role": "coach" },
+      "subject": "{teamShort}에서 스크림 요청",
+      "priority": "todo",
+      "link": "training-scrims",
+      "body": "안녕하세요, {team} 코칭스태프입니다.\n\n{onLabel} 저녁에 3세트 스크림 가능하실까요?",
+      "choices": [
+        { "label": "수락한다", "act": "scrimAccept", "arg": "$team", "reply": "{onLabel} 스크림 일정을 잡았습니다." },
+        { "label": "이번에는 거절한다", "reply": "정중히 거절했습니다." }
+      ]
+    },
+    {
+      "id": "sub-wants-chance",
+      "cond": ["hasSub"],
+      "pick": "sub",
+      "chance": 0.04,
+      "cooldown": 40,
+      "from": { "name": "{player}", "role": "player" },
+      "subject": "출전 기회에 대해 말씀드리고 싶습니다",
+      "priority": "todo",
+      "body": "감독님, 열심히 준비하고 있는데 기회가 좀처럼 오지 않아 답답합니다.\n\n대회에서 뛸 기회를 받을 수 있을까요?",
+      "choices": [
+        { "label": "다음 시즌 안에 기회를 주겠다고 약속한다", "act": "promise", "arg": "playtime", "fx": { "morale": 8 }, "reply": "{player}이(가) 의욕을 보였습니다. 약속을 지키지 못하면 실망이 클 것입니다." },
+        { "label": "지금은 어렵다. 더 준비하자", "fx": { "morale": -6 }, "reply": "{player}이(가) 실망한 채 돌아갔습니다." }
+      ]
+    },
+    {
+      "id": "analyst-meta",
+      "chance": 0.05,
+      "cooldown": 21,
+      "from": { "name": "분석관", "role": "analyst" },
+      "subject": "최근 프로 경기 메타 정리",
+      "link": "match-meta",
+      "body": "최근 프로 경기에서 많이 나온 챔피언과 조합을 정리했습니다.\n\n경기 › 메타·패치 노트에서 확인해 주십시오."
+    }
+  ]
+}

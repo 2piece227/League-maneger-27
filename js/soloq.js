@@ -328,7 +328,7 @@ const SoloQ = {
       body: `<p><b>${UI.esc(a.name)}</b> (${a.age}세 · ${G.ROLE_KO[a.role]})에게 입단 테스트를 제의합니다.</p><p style="color:var(--muted);font-size:12px">수락하면 챌린저스 팀과 함께 일주일간 테스트를 진행합니다. 결과는 메시지로 전달됩니다.</p>`,
       actions: [{ label: '취소' }, {
         label: '제의 보내기', primary: true,
-        onClick: () => { this.offers()[a.id] = { date: this.today() }; this.drawTable(el); this.drawDetail(el); }, // TODO: 기능 연결 — 수락 여부·테스트 결과 메시지
+        onClick: () => { this.offers()[a.id] = { date: this.today(), name: a.name, role: a.role, age: a.age, type: a.type, rank: a.rank }; this.drawTable(el); this.drawDetail(el); }, // TODO: 기능 연결 — 수락 여부·테스트 결과 메시지
       }],
     });
   },

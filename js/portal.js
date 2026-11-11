@@ -26,6 +26,11 @@ const Portal = {
     const [raw] = await Promise.all([this.load(), Schedule.load()]);
     this.raw = this.raw || JSON.parse(JSON.stringify(raw));
     this.data = team ? this.localize(this.raw, team) : JSON.parse(JSON.stringify(this.raw));
+    // 메시지는 저장 상태(Inbox)가 원본. 새 커리어면 시작 메시지(목업)로 채운다.
+    if (team) {
+      if (!App.state.inbox) App.state.inbox = this.data.messages;
+      this.data.messages = App.state.inbox;
+    }
     this.openId = null;
     const t = team || this.data.team;
     this.myTeamId = t.id;
@@ -88,7 +93,7 @@ const Portal = {
     };
     const fill = o => JSON.parse(JSON.stringify(o).replace(/\{(\w+)\}/g, (m, k) => k in tok ? JSON.stringify(String(tok[k])).slice(1, -1) : m));
     d.messages = fill(d.messages);
-    d.week = fill(d.week);
+    d.week = this.week(d.date, team);
     d.nextMatch.competition = fill(d.nextMatch.competition);
     d.standings.competition = fill(d.standings.competition || '');
     d.challengers.lastResult = fill(d.challengers.lastResult);
@@ -119,14 +124,16 @@ const Portal = {
   // ---------- 메시지 ----------
   counts() {
     const m = this.data.messages;
-    return { todo: m.filter(x => x.priority === 'todo').length, unread: m.filter(x => !x.read).length };
+    return { todo: m.filter(x => this.isTodo(x)).length, unread: m.filter(x => !x.read).length };
   },
+
+  isTodo(m) { return (m.priority === 'todo' || (m.choices && m.answered == null)) && !m.done; },
 
   visibleMessages() {
     const q = this.query.trim().toLowerCase();
     return this.data.messages.filter(m => {
       if (this.filter === 'new' && !m.isNew) return false;
-      if (this.filter === 'todo' && m.priority !== 'todo') return false;
+      if (this.filter === 'todo' && !this.isTodo(m)) return false;
       if (this.filter === 'unread' && m.read) return false;
       return !q || (m.subject + m.from.name).toLowerCase().includes(q);
     });
@@ -157,7 +164,7 @@ const Portal = {
         ${Object.keys(groups).length ? Object.entries(groups).map(([date, ms]) => `
           <div class="msg-day">${Fmt.dayLabel(date)}</div>
           ${ms.map(m => `
-            <button class="msg-row pr-${m.priority} ${m.read ? '' : 'unread'}" data-id="${m.id}">
+            <button class="msg-row pr-${m.done ? 'normal' : m.priority} ${m.read ? '' : 'unread'}" data-id="${m.id}">
               <span class="msg-dot"></span>
               <span class="msg-icon">${this.senderIcon(m)}</span>
               <span class="msg-text"><small>${UI.esc(m.from.name)}</small><b>${UI.esc(m.subject)}</b></span>
@@ -204,13 +211,44 @@ const Portal = {
             <div class="md-from">${UI.esc(m.from.name)} · ${Fmt.dayLabel(m.date)} ${m.time}</div>
           </div>
         </div>
-        ${m.priority !== 'normal' ? `<div class="md-badge">${m.priority === 'urgent' ? '긴급' : '할 일'}</div>` : ''}
+        ${m.done ? '<div class="md-badge done">처리함</div>' : m.priority !== 'normal' ? `<div class="md-badge">${m.priority === 'urgent' ? '긴급' : '할 일'}</div>` : ''}
         <div class="md-body">${UI.esc(m.body).split('\n\n').map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`).join('')}</div>
-        ${m.priority === 'todo' ? '<div class="md-actions"><button class="btn-primary btn-sm" id="msg-act">처리하기</button></div>' : ''}
+        ${this.detailActions(m)}
       </div>`;
+    $$('.md-choice', panel).forEach(b => b.onclick = () => { Inbox.answer(m.id, +b.dataset.i); this.renderMessages(); });
+    const go = $('#msg-go');
+    if (go) go.onclick = () => { Router.go(m.link); };
     $('#msg-back').onclick = () => { this.openId = null; this.renderMessages(); };
     const act = $('#msg-act');
     if (act) act.onclick = () => GameStubs.handleMessageTask(m.id);
+  },
+
+  // 선택지 / 고른 결과 / 처리하기 / 바로가기
+  detailActions(m) {
+    if (m.choices && m.answered == null) return `
+      <div class="md-choices">${m.choices.map((c, i) => `<button class="md-choice" data-i="${i}">${UI.esc(c.label)}</button>`).join('')}</div>`;
+    if (m.choices) return `
+      <div class="md-answer"><small>내 선택</small><b>${UI.esc(m.choices[m.answered].label)}</b>
+        ${m.reply ? `<p>${UI.esc(m.reply)}</p>` : ''}${m.fxText ? `<span class="md-fx">${UI.esc(m.fxText)}</span>` : ''}</div>
+      ${m.link ? '<div class="md-actions"><button class="btn-ghost btn-sm" id="msg-go">관련 화면으로</button></div>' : ''}`;
+    if (m.priority === 'todo' && !m.done) return '<div class="md-actions"><button class="btn-primary btn-sm" id="msg-act">처리하기</button></div>';
+    if (m.link) return '<div class="md-actions"><button class="btn-ghost btn-sm" id="msg-go">관련 화면으로</button></div>';
+    return '';
+  },
+
+  // 이번 주(월~일): 경기 · 스크림 · 대회 시작 · 훈련
+  week(today, team) {
+    const dow = (Fmt.parse(today).getDay() + 6) % 7, mon = Store.addDays(today, -dow);
+    const scr = App.state.scrims || [];
+    return Array.from({ length: 7 }, (_, i) => {
+      const date = Store.addDays(mon, i), events = [];
+      const m = Schedule.matches.find(x => (x.t1 === team.id || x.t2 === team.id) && x.t.slice(0, 10) === date);
+      if (m) events.push({ type: 'match', label: `vs ${Schedule.opponent(m, team.id).short}` });
+      scr.filter(s => s.status === 'accepted' && s.on === date).forEach(s => events.push({ type: 'scrim', label: `스크림 vs ${(Schedule.team(s.team) || {}).short}` }));
+      Schedule.eventsFor(team.league).filter(e => e.start === date && !e.past).forEach(e => events.push({ type: 'event', label: e.label }));
+      if (!m && i < 6) events.push({ type: 'training', label: '팀 훈련' });
+      return { date, events };
+    });
   },
 
   // ---------- 카드 ----------

@@ -40,7 +40,7 @@ const Nav = {
       item.classList.add('no-drop');
       item.addEventListener('mouseleave', () => item.classList.remove('no-drop'), { once: true });
     });
-    $$('.btn-continue').forEach(b => b.onclick = () => GameStubs.advanceDay());
+    $$('.btn-continue').forEach(b => b.onclick = () => Engine.continue());
 
     Router.onRoute(route => this.render(route));
   },

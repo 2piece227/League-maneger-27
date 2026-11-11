@@ -20,7 +20,13 @@ const Career = {
     return { from, to: `${Clock.year(from) + 2}-11-30`, salary: `연 ${v.toFixed(1)}억 원` };
   },
   // 관계 수치: 배경·평판 기준 출발점. TODO: 기능 연결 — 성적·인터뷰·선수 면담으로 변동
+  // 진행 중에는 저장된 관계 수치(World), 처음에는 배경·평판으로 정한 값
   relations(m) {
+    const r = App.state.rel;
+    if (r) return Object.entries(World.KEYS).map(([k, l]) => [l, Math.round(r[k])]);
+    return this.baseRelations(m);
+  },
+  baseRelations(m) {
     const bg = m.background.type;
     const c = v => Math.max(5, Math.min(95, Math.round(v)));
     return [
