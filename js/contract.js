@@ -67,6 +67,8 @@ const Contract = {
     const sal = c.salary || this.pay(p, s, t.league || 'LCK');
     return this.r1(sal * (.6 + yrs * .9) * am * (t.league === 'LPL' ? 1.3 : 1));
   },
+  // 계약 기간 표기: 2년 + 구단 옵션 → "2+1년 (구단 옵션)"
+  term(years, option) { return option ? `${years}+1년 (${this.OPT[option]})` : `${years}년`; },
   label(c) { return c.end ? `${c.end.replace(/-/g, '.')}${c.option ? ` (+1 ${this.OPT[c.option]})` : ''}` : '-'; },
 
   // ---------- 이적 기록 ----------

@@ -61,11 +61,11 @@ const Training = {
   FOCUS: [['lane', '라인전'], ['macro', '운영·시야'], ['teamfight', '한타'], ['mechanics', '피지컬'], ['champ', '챔피언 연습'], ['mental', '멘탈 관리']],
   INT: [['low', '가볍게'], ['mid', '보통'], ['high', '강하게']],
   async individual(el) {
-    await Promise.all([Portal.ready, Mastery.load()]);
+    await Promise.all([Portal.ready, Mastery.load(), Champions.load()]);
     const t = Roster.team(), s = (App.state.individual ||= {});
     el.innerHTML = `
       <div class="cr-page">
-        ${Career.head('개인 훈련', '선수마다 집중 분야와 강도를 정합니다. 챔피언 연습은 솔랭 순위의 "연습 챔피언 지시"와 연결됩니다.')}
+        ${Career.head('개인 훈련', `선수마다 집중 분야와 강도를 정합니다. 연습 챔피언은 다음 날부터 ${SoloQ.PRACTICE_DAYS}일 동안 솔랭에서 그 챔피언을 자주 하게 합니다.`)}
         <div class="card rs-table-wrap" style="padding:0">
           <table class="rs-table in-table"><thead><tr><th>선수</th><th>집중 분야</th><th>강도</th><th>연습 챔피언</th><th>컨디션</th></tr></thead>
           <tbody>${t.players.map(p => {
@@ -73,16 +73,20 @@ const Training = {
             const prac = (App.state.practice || {})[p.id];
             const st = Roster.status(p);
             return `<tr data-id="${p.id}">
-              <td><div class="pl-cell">${G.face(p, 'pl-ph')}<div><b>${UI.esc(p.name)}</b>${G.pos(p.role)}</div></div></td>
+              <td><div class="pl-cell">${G.face(p, 'pl-ph')}<div>${G.ovr(p)}<b>${UI.esc(p.name)}</b>${G.pos(p.role)}</div></div></td>
               <td><select class="ch-sort" data-k="focus">${this.FOCUS.map(([v, l]) => `<option value="${v}" ${cur.focus === v ? 'selected' : ''}>${l}</option>`).join('')}</select></td>
               <td><div class="seg in-int">${this.INT.map(([v, l]) => `<button data-k="int" data-v="${v}" class="${cur.int === v ? 'on' : ''}">${l}</button>`).join('')}</div></td>
-              <td>${prac ? `<div class="ms-c">${SoloQ.ic(prac.c)}${UI.esc(Champions.byId[prac.c].name)}</div>` : '<a href="#training-soloq" class="cr-dim">지정 안 함 →</a>'}</td>
+              <td><div class="ms-c">${prac ? SoloQ.ic(prac.c) : ''}<select class="ch-sort" data-k="prac"><option value="">지정 안 함</option>${Champions.list.filter(c => c.positions.includes(p.role)).sort((a, b) => a.name.localeCompare(b.name, 'ko')).map(c => `<option value="${c.id}" ${prac && prac.c === c.id ? 'selected' : ''}>${UI.esc(c.name)}</option>`).join('')}</select>${prac ? `<small class="cr-dim">${prac.from === SoloQ.today() ? '내일부터' : SoloQ.pracDaysLeft(p.id) > 0 ? `${SoloQ.pracDaysLeft(p.id)}일 남음` : '끝'}</small>` : ''}</div></td>
               <td style="min-width:140px">${Career.meter('', st.condition)}</td>
             </tr>`;
           }).join('')}</tbody></table>
         </div>
       </div>`;
-    $('.in-table', el).addEventListener('change', e => { const tr = e.target.closest('tr'); s[tr.dataset.id][e.target.dataset.k] = e.target.value; UI.toast('개인 훈련을 바꿨습니다'); });
+    $('.in-table', el).addEventListener('change', e => {
+      const tr = e.target.closest('tr');
+      if (e.target.dataset.k === 'prac') { SoloQ.setPractice(tr.dataset.id, e.target.value || null); UI.toast(e.target.value ? '연습 챔피언을 지정했습니다. 내일부터 반영됩니다' : '연습 지시를 거뒀습니다'); this.individual(el); return; }
+      s[tr.dataset.id][e.target.dataset.k] = e.target.value; UI.toast('개인 훈련을 바꿨습니다');
+    });
     $('.in-table', el).addEventListener('click', e => {
       const b = e.target.closest('button[data-k]'); if (!b) return;
       const tr = b.closest('tr'); s[tr.dataset.id].int = b.dataset.v; // TODO: 기능 연결 — 강도에 따른 성장·피로

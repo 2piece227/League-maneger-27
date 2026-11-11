@@ -76,7 +76,7 @@ Screens.team = {
       <tr class="${p.sub ? 'sub' : ''}">
         <td class="pos">${p.role || '-'}</td>
         <td><div class="pl-cell">${UI.img(p.photo, 'pl-ph', initial(p))}
-          <div><b>${UI.esc(p.name)}</b>${p.sub ? ' <small>(후보)</small>' : ''}${p.realName ? `<small class="pl-real">${UI.esc(p.nativeName || p.realName)}</small>` : ''}</div></div></td>
+          <div>${G.ovr(p)}<b>${UI.esc(p.name)}</b>${p.sub ? ' <small>(후보)</small>' : ''}${p.realName ? `<small class="pl-real">${UI.esc(p.nativeName || p.realName)}</small>` : ''}</div></div></td>
         <td>${p.age || '-'}</td>
         <td>${p.nation}</td>
         <td class="ovr">${p.ovr}</td>

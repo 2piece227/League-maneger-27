@@ -2,8 +2,8 @@
 //
 // - 프로·스트리머·일반인·장인이 섞여 있다. 일반인·장인 중 유망주에게는 테스트 제의를 할 수 있다.
 // - 승률은 실력 차가 있어도 45~62% 안쪽: 솔랭은 팀운이 크고, 라인도 가끔 튄다.
-// - 감독이 연습 챔피언을 지정하면 최근 7일 동안만 그 챔피언 빈도가 늘어난다.
-// 결과는 날짜·선수로 고정된 시드에서 나오므로 같은 날 다시 열어도 같다.
+// - 감독이 연습 챔피언을 지정하면 다음 날부터 7일 동안 그 챔피언 빈도가 늘어난다 (이미 한 판은 바뀌지 않는다).
+// 하루하루의 결과는 그 날짜·계정으로 고정된 시드에서 나오므로, 날이 지나도 지난 전적은 그대로다.
 const SoloQ = {
   DAYS: 45,          // 시즌 시작부터 시뮬레이션하는 일수
   HISTORY: 20,       // 전적으로 남기는 최근 판수
@@ -80,6 +80,25 @@ const SoloQ = {
   },
   today() { return Clock.today(); },
   practice() { return (App.state.practice ||= {}); },
+  // 지난 연습 지시 기록 (전적이 지난 날의 지시대로 남도록)
+  practiceLog() { return (App.state.practiceLog ||= {}); },
+  setPractice(pid, c) {
+    const cur = this.practice()[pid], today = this.today();
+    if (cur && cur.from < today) (this.practiceLog()[pid] ||= []).push({ ...cur, to: today });
+    if (c) this.practice()[pid] = { c, from: today }; else delete this.practice()[pid];
+    this.cache = null;
+  },
+  // 그 날짜에 효과가 있는 연습 챔피언: 지정한 다음 날부터 PRACTICE_DAYS일
+  pracOn(pid, date) {
+    const cur = this.practice()[pid];
+    const list = [...(this.practiceLog()[pid] || []), ...(cur ? [cur] : [])];
+    for (let i = list.length - 1; i >= 0; i--) {
+      const x = list[i], end = Store.addDays(x.from, this.PRACTICE_DAYS);
+      if (date > x.from && date <= end && (!x.to || date <= x.to)) return x.c;
+    }
+    return null;
+  },
+  pracDaysLeft(pid) { const cur = this.practice()[pid]; return cur ? Math.max(0, Fmt.daysBetween(this.today(), Store.addDays(cur.from, this.PRACTICE_DAYS))) : 0; },
   offers() { return (App.state.testOffers ||= {}); },
 
   // 계정 목록: 리그 프로 + 가상 일반 계정
@@ -142,20 +161,22 @@ const SoloQ = {
 
   // 한 계정의 시즌 시뮬레이션
   simulate(acc, avgSkill) {
-    const r = this.rng('sim:' + acc.id + ':' + this.today());
-    // 챔피언 선택은 별도 난수: 연습 지시를 바꿔도 승패·LP 흐름은 그대로 두고 픽만 바뀌게
-    const rc = this.rng('pick:' + acc.id + ':' + this.today());
-    const prac = acc.player && this.practice()[acc.player.id];
     const res = { lp: 0, w: 0, l: 0, lpYesterday: 0, champs: {}, roles: {}, history: [] };
-    const all = Champions.list;
+    const all = Champions.list, today = this.today();
     for (let day = this.DAYS; day >= 1; day--) {
+      // 날짜마다 고정 시드: 날이 지나도 그날 전적은 그대로
+      const date = Store.addDays(today, 1 - day);
+      const r = this.rng('sim:' + acc.id + ':' + date);
+      // 챔피언 선택은 별도 난수: 연습 지시가 있어도 승패·LP 흐름은 그대로 두고 픽만 바뀌게
+      const rc = this.rng('pick:' + acc.id + ':' + date);
+      const pc = acc.player ? this.pracOn(acc.player.id, date) : null, prac = pc && { c: pc };
       const n = acc.games[0] + Math.floor(r() * (acc.games[1] - acc.games[0] + 1));
       for (let i = 0; i < n; i++) {
         // 라인: 대부분 주 라인, 가끔 튄다
         const offRole = r() < (acc.type === 'otp' ? .06 : .14);
         const role = offRole ? this.pick(r, G.ROLES.filter(x => x !== acc.role)) : acc.role;
         const pracRoll = rc(), offPick = this.pick(rc, all.filter(c => c.positions.includes(role))).id, mainPick = this.weighted(rc, acc.pool);
-        const champ = prac && day <= this.PRACTICE_DAYS && pracRoll < .45 ? prac.c : offRole ? offPick : mainPick;
+        const champ = prac && pracRoll < .45 ? prac.c : offRole ? offPick : mainPick;
         // 승률: 실력 차는 작게, 팀운은 크게
         const p = Math.max(.45, Math.min(.62, .5 + (acc.skill - avgSkill) * .006 - (offRole ? .05 : 0)));
         const win = r() < p;
@@ -170,7 +191,7 @@ const SoloQ = {
         res.history.push({
           day, champ, role, win, lp,
           k: Math.max(0, k), d: Math.floor(r() * (win ? 5 : 8)) + (win ? 0 : 1), a: Math.floor(r() * 14),
-          min: 22 + Math.floor(r() * 16), practice: prac && champ === prac.c && day <= this.PRACTICE_DAYS,
+          min: 22 + Math.floor(r() * 16), practice: !!(prac && champ === prac.c),
         });
         if (res.history.length > this.HISTORY) res.history.shift();
       }
@@ -181,7 +202,7 @@ const SoloQ = {
 
   build() {
     const team = Roster.team();
-    const key = team.league + '|' + this.today() + '|' + JSON.stringify(this.practice());
+    const key = team.league + '|' + this.today() + '|' + JSON.stringify(this.practice()) + JSON.stringify(this.practiceLog());
     if (this.cache && this.cache.key === key) return this.cache;
     const accs = this.accounts(team.league);
     const avg = accs.reduce((s, a) => s + a.skill, 0) / accs.length;
@@ -270,7 +291,7 @@ const SoloQ = {
       return `
         <tr data-id="${a.id}" class="${a.id === this.selId ? 'sel' : ''} ${a.team && a.team.id === team.id ? 'mine' : ''}">
           <td class="num"><b class="sq-rank">${a.rank}</b><small class="sq-delta ${a.delta > 0 ? 'up' : a.delta < 0 ? 'down' : ''}">${a.delta > 0 ? '▲' + a.delta : a.delta < 0 ? '▼' + -a.delta : '-'}</small></td>
-          <td><div class="sq-name">${a.team ? G.team(a.team, 'xs') : ''}<b>${UI.esc(a.name)}</b><i class="sq-type ${typeCls}">${typeLabel}</i>${a.prodigy ? '<i class="sq-type prodigy">유망주</i>' : ''}${this.offers()[a.id] ? '<i class="sq-type offered">제의함</i>' : ''}</div></td>
+          <td><div class="sq-name">${a.team ? G.team(a.team, 'xs') : ''}${a.player ? G.ovr(a.player) : ''}<b>${UI.esc(a.name)}</b><i class="sq-type ${typeCls}">${typeLabel}</i>${a.prodigy ? '<i class="sq-type prodigy">유망주</i>' : ''}${this.offers()[a.id] ? '<i class="sq-type offered">제의함</i>' : ''}</div></td>
           <td>${G.pos(a.role)}</td>
           <td><span class="sq-tier ${tc}">${tl}</span></td>
           <td class="num"><b>${a.lpNow.toLocaleString()}</b></td>
@@ -295,7 +316,7 @@ const SoloQ = {
       <div class="sq-d-head">
         ${a.player ? G.face(a.player, 'pl-ph') : `<div class="pl-ph pl-ph-empty sq-anon">${G.pos(a.role)}</div>`}
         <div>
-          <h3>${UI.esc(a.name)}</h3>
+          <h3>${a.player ? G.ovr(a.player, 'lg') : ''}${UI.esc(a.name)}</h3>
           <div class="sq-d-sub"><i class="sq-type ${typeCls}">${typeLabel}</i>${a.team ? `${G.team(a.team, 'xs')}<span>${UI.esc(a.team.name)}</span>` : `<span>${a.age}세</span>`}${a.prodigy ? '<i class="sq-type prodigy">유망주</i>' : ''}</div>
         </div>
         <div class="sq-d-rank"><b>${a.rank}</b><span>위</span></div>
@@ -308,13 +329,13 @@ const SoloQ = {
 
       ${mine ? `
         <div class="sq-box">
-          <div class="sq-box-head"><b>연습 챔피언 지시</b><small>지정하면 ${this.PRACTICE_DAYS}일 동안 그 챔피언 판수가 늘어납니다</small></div>
+          <div class="sq-box-head"><b>연습 챔피언 지시</b><small>지정하면 다음 날부터 ${this.PRACTICE_DAYS}일 동안 그 챔피언 판수가 늘어납니다</small></div>
           <div class="sq-prac">
             <select class="sq-prac-sel">
               <option value="">지시 없음</option>
               ${Champions.list.filter(c => c.positions.includes(a.role)).map(c => `<option value="${c.id}" ${prac && prac.c === c.id ? 'selected' : ''}>${UI.esc(c.name)}</option>`).join('')}
             </select>
-            ${prac ? `${this.ic(prac.c)}<span class="sq-prac-on">연습 중</span>` : ''}
+            ${prac ? `${this.ic(prac.c)}<span class="sq-prac-on">${prac.from === this.today() ? '내일부터 연습' : this.pracDaysLeft(a.player.id) > 0 ? `연습 중 · ${this.pracDaysLeft(a.player.id)}일 남음` : '연습 끝'}</span>` : ''}
           </div>
         </div>` : ''}
 
@@ -355,8 +376,7 @@ const SoloQ = {
     const sel = $('.sq-prac-sel', box);
     if (sel) sel.onchange = () => {
       // TODO: 기능 연결 — 날짜 진행 시 만료, 솔랭 판수를 숙련도 경험치로 누적
-      if (sel.value) this.practice()[a.player.id] = { c: sel.value, from: this.today() };
-      else delete this.practice()[a.player.id];
+      this.setPractice(a.player.id, sel.value || null);
       this.build();
       this.drawTable(el);
       this.drawDetail(el);

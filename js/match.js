@@ -45,7 +45,7 @@ const Match = {
   },
   rosterBlock(t) {
     return `<div class="op-roster">${t.players.filter(p => !p.sub).map(p => `
-      <div class="op-pl" data-pid="${p.id}">${G.face(p, 'pl-ph')}<div><b>${UI.esc(p.name)}</b>${G.pos(p.role)}</div>
+      <div class="op-pl" data-pid="${p.id}">${G.face(p, 'pl-ph')}<div>${G.ovr(p)}<b>${UI.esc(p.name)}</b>${G.pos(p.role)}</div>
         <div class="ms-chips">${Mastery.pool(p.id).slice(0, 4).map(e => Mastery.chip(e)).join('') || '<span class="ms-none">기록 없음</span>'}</div></div>`).join('')}</div>`;
   },
   bindPlayers(el) { el.addEventListener('click', e => { const r = e.target.closest('[data-pid]'); if (r) Player.open(r.dataset.pid); }); },

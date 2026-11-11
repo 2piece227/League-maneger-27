@@ -43,7 +43,7 @@ const Transfer = {
         <button class="pp-x" aria-label="닫기">×</button>
         <aside class="ng-side" style="--c:${t.color || '#555'}">
           ${G.face(p, 'ng-ph')}
-          <b class="ng-name">${UI.esc(p.name)}</b>
+          <b class="ng-name">${G.ovr(p, 'lg')}${UI.esc(p.name)}</b>
           <span class="ng-sub">${G.pos(p.role, true)} · ${p.age || '-'}세 · ${UI.esc(t.short)}</span>
           <dl class="cr-dl">
             <dt>계약</dt><dd>${Player.money(Contract.of(p, t).salary)} · ${Contract.label(Contract.of(p, t))}</dd>
@@ -131,9 +131,9 @@ const Transfer = {
     World.ledger().push({ date: Clock.today(), label: `${p.name} 이적료 수입`, amount: Math.round(b.fee * 1e8) });
     const s = Contract.score(p, t), yrs = 1 + Math.floor(G.rand(p.id + b.id, 'y') * 2);
     Contract.sign(p.id, t.id, { salary: Contract.r1(Contract.pay(p, s, t.league) * 1.1), end: Contract.addYears(Contract.seasonEnd(t), yrs), years: yrs, option: null, bonus: [] });
-    Inbox.push({ from: { name: '사무국장', role: 'board' }, subject: `[오피셜] ${p.name}, ${t.short}로 이적`, body: `${p.name}이(가) 이적료 ${Player.money(b.fee)} 원에 ${t.name}으로 떠났습니다.` });
+    Inbox.push({ from: { name: '사무국장', role: 'board' }, subject: `${p.name}, ${t.short}로 이적 확정`, body: `${p.name}이(가) 이적료 ${Player.money(b.fee)} 원에 ${t.name}으로 떠납니다. 오피셜은 내일 발표됩니다.` });
     const my = Roster.team();
-    Market.post(`[오피셜] ${p.name}, ${my.short} 떠나 ${t.short}로`, `${my.name}의 ${G.ROLE_KO[p.role] || ''} ${p.name}이(가) 이적료 ${Player.money(b.fee)} 원에 ${t.name}으로 이적했습니다.`, p.id);
+    Market.post(`[오피셜] ${p.name}, ${my.short} 떠나 ${t.short}로`, `${my.name}의 ${G.ROLE_KO[p.role] || ''} ${p.name}이(가) 이적료 ${Player.money(b.fee)} 원에 ${t.name}으로 이적했습니다.`, p.id, 1);
   },
 };
 Engine.ACTS.bidAccept = (m, mult) => { const b = Transfer.bids().find(x => x.id === m.ctx.bid); if (b && b.status === 'pending') Transfer.sell(b, mult || 1); };

@@ -84,7 +84,7 @@ const Neg = {
       money: a => `연봉은 ${Player.money(a)} 원은 돼야 합니다.`,
       years: (a, W) => `계약 기간은 ${W.years}년을 원합니다.`,
       teamopt: () => '구단 옵션은 선수에게 불리해서 받기 어렵습니다.',
-      wantopt: () => '1년 연장 선수 옵션(1+1)을 넣어 주셨으면 합니다.',
+      wantopt: (a, W) => `${W.years}+1년처럼 1년 연장 선수 옵션을 넣어 주셨으면 합니다.`,
       role: () => '주전 보장 없이는 선수가 망설입니다.',
     },
   },
@@ -116,7 +116,7 @@ const Neg = {
     return 'counter';
   },
   offerText(o) {
-    return [`연봉 ${Player.money(o.salary)} 원 · ${o.years}년${o.option ? ` + 1년 ${Contract.OPT[o.option]}` : ''}`,
+    return [`연봉 ${Player.money(o.salary)} 원 · ${Contract.term(o.years, o.option)}`,
       o.signing ? `계약금 ${Player.money(o.signing)} 원` : '', o.promise && o.promise !== 'none' ? Contract.PROMISE[o.promise] : '',
       (o.bonus || []).length ? `보너스: ${o.bonus.map(b => Contract.BONUS[b]).join(', ')}` : '', o.buyout ? `바이아웃 ${Player.money(o.buyout)} 원` : ''].filter(Boolean).join('\n');
   },
@@ -131,7 +131,7 @@ const Neg = {
     const txt = {
       top: `선수가 가장 중요하게 보는 건 ${this.TOP[top[0][0]]}이고, 그다음은 ${this.TOP[top[1][0]]}입니다.`,
       rivals: S.rivals ? (A.kind === 'tough' ? `${S.rivals + 1}개 팀이 구체적인 조건을 보내왔습니다. 시간이 많지 않습니다.` : `${S.rivals}개 팀이 관심을 보이고 있습니다.`) : (A.kind === 'tough' ? '그건 말씀드리기 곤란합니다.' : '아직 구체적인 제안은 없습니다.'),
-      years: `${W.years}년을 원합니다. ${W.opt === 'player' ? '1+1이라면 연장 선택권은 선수가 갖는 조건이어야 합니다.' : W.opt === 'any' ? '옵션은 크게 상관없습니다.' : '구단 옵션은 가능하면 피하고 싶습니다.'}`,
+      years: `${W.years}년을 원합니다. ${W.opt === 'player' ? `${W.years}+1년이라면 연장 선택권(+1년)은 선수가 갖는 조건이어야 합니다.` : W.opt === 'any' ? '+1년 옵션은 크게 상관없습니다.' : '+1년 구단 옵션은 가능하면 피하고 싶습니다.'}`,
       role: W.role === 'starter' && W.s >= 65 ? '선수는 주전으로 뛰길 원합니다. 약속해 주시면 큰 힘이 될 겁니다.' : '경쟁은 각오하고 있습니다. 기회만 주시면 됩니다.',
     }[q];
     S.log.push({ who: 'agent', text: txt });
@@ -163,7 +163,7 @@ const Neg = {
         <button class="pp-x" aria-label="닫기">×</button>
         <aside class="ng-side" style="--c:${t.color || '#555'}">
           ${G.face(p, 'ng-ph')}
-          <b class="ng-name">${UI.esc(p.name)}</b>
+          <b class="ng-name">${G.ovr(p, 'lg')}${UI.esc(p.name)}</b>
           <span class="ng-sub">${G.pos(p.role, true)} · ${p.age || '-'}세 · ${UI.esc(t.short)}</span>
           <dl class="cr-dl">
             <dt>현재 계약</dt><dd>${cur ? `${Player.money(cur.salary)} · ${Contract.label(cur)}` : '없음 (FA)'}</dd>
@@ -180,8 +180,9 @@ const Neg = {
           <div class="ng-qs"></div>
           <form class="ng-form">
             <label><span>연봉 (억 원)</span><input name="salary" type="number" step="0.1" min="0.1"></label>
-            <label><span>기간</span><select name="years"><option value="1">1년</option><option value="2">2년</option><option value="3">3년</option></select></label>
-            <label><span>옵션 (1+1)</span><select name="option"><option value="">없음</option>${opts(Contract.OPT)}</select></label>
+            <label><span>보장 기간</span><select name="years"><option value="1">1년</option><option value="2">2년</option><option value="3">3년</option></select></label>
+            <label><span>+1년 연장 옵션</span><select name="option"><option value="">없음</option><option value="player">+1년 · 선수가 결정</option><option value="team">+1년 · 구단이 결정</option></select></label>
+            <div class="ng-term"><span>계약 형태</span><b></b></div>
             <label><span>계약금 (억 원)</span><input name="signing" type="number" step="0.1" min="0" value="0"></label>
             <label><span>역할 약속</span><select name="promise">${opts(Contract.PROMISE, 'none')}</select></label>
             <label><span>바이아웃 (억 원, 선택)</span><input name="buyout" type="number" step="1" min="0" placeholder="없음"></label>
@@ -201,6 +202,7 @@ const Neg = {
       $('.ng-log', back).innerHTML = S.log.map(m => `<div class="ng-msg ${m.who}"><b>${m.who === 'me' ? '나' : UI.esc(A.name)}</b><p>${UI.esc(m.text).replace(/\n/g, '<br>')}</p></div>`).join('');
       $('.ng-log', back).scrollTop = 1e6;
       $('.ng-pbar', back).innerHTML = Array.from({ length: S.max }, (_, i) => `<i class="${i < S.patience ? 'on' : ''}"></i>`).join('');
+      $('.ng-term b', back).textContent = Contract.term(+f.years.value, f.option.value || null);
       const rm = room(), off = +f.salary.value || 0;
       const tx = $('.ng-tax', back); if (tx) { const a = Club.tax(my), b = Club.tax(my, { pid: p.id, salary: off }); tx.innerHTML = `${Player.money(b.tax)} <small>${b.tax > a.tax ? `+${Player.money(b.tax - a.tax)}` : '변화 없음'}</small>`; }
       $('.ng-room', back).innerHTML = `<span class="${rm - off < 0 ? 'warn' : ''}">${rm - off >= 0 ? '' : '−'}${Player.money(Math.abs(rm - off))}</span> <small>제안 후</small>`;
@@ -246,13 +248,13 @@ const Neg = {
     if (o.signing) World.ledger().push({ date: Clock.today(), label: `${p.name} 계약금`, amount: -Math.round(o.signing * 1e8) });
     if (o.promise === 'starter' || o.promise === 'rotation') (App.state.promises ||= []).push({ pid: p.id, kind: o.promise, date: Clock.today(), due: end, src: 'contract' });
     S.done = true; S.signed = true;
-    Inbox.push({ from: { name: '사무국장', role: 'board' }, subject: mode === 'renew' ? `[오피셜] ${p.name} 재계약` : `[오피셜] ${p.name} 영입`,
-      body: `${p.name}과(와) 계약을 마쳤습니다.\n\n${this.offerText(o)}\n계약 만료: ${Contract.label({ end, option: o.option })}` });
+    Inbox.push({ from: { name: '사무국장', role: 'board' }, subject: mode === 'renew' ? `${p.name} 재계약 완료` : `${p.name} 영입 완료`,
+      body: `${p.name}과(와) 계약을 마쳤습니다. 오피셜은 내일 발표됩니다.\n\n${this.offerText(o)}\n계약 만료: ${Contract.label({ end, option: o.option })}` });
     const lbl = Contract.label({ end, option: o.option });
     Market.post(mode === 'renew' ? `[오피셜] ${my.short}, ${p.name}와 재계약` : `[오피셜] ${p.name}, ${my.short} 입단`,
       mode === 'renew' ? `${my.name}이(가) ${G.ROLE_KO[p.role] || ''} ${p.name}과(와) 재계약했습니다. 계약은 ${lbl}까지입니다.`
         : mode === 'transfer' ? `${my.name}이(가) ${t.name}의 ${G.ROLE_KO[p.role] || ''} ${p.name}을(를) 이적료 ${Player.money(fee || 0)} 원에 영입했습니다. 계약은 ${lbl}까지입니다.`
-        : `FA ${p.name}이(가) ${my.name}과(와) 계약했습니다. 계약은 ${lbl}까지입니다.`, p.id);
+        : `FA ${p.name}이(가) ${my.name}과(와) 계약했습니다. 계약은 ${lbl}까지입니다.`, p.id, 1);
     UI.toast(mode === 'renew' ? `${p.name} 재계약 완료` : `${p.name} 영입 완료`);
     return true;
   },
@@ -280,8 +282,8 @@ const Neg = {
           const end = p.gen ? Store.addDays(Clock.today(), 365 * yrs) : Contract.addYears(start, yrs);
           if (p.gen) { Squad.gen()[p.id].contractEnd = end; Squad.apply(); }
           else Contract.sign(p.id, my.id, { salary: sal, end, years: yrs, option: null, bonus: [] });
-          Inbox.push({ from: { name: '사무국장', role: 'board' }, subject: `[오피셜] ${p.name} ${mode === 'renew' ? '재계약' : '계약'}`, body: `${p.name}과(와) 연봉 ${Player.money(sal)} 원, ${yrs}년 계약을 맺었습니다.` });
-          if (!p.gen) Market.post(mode === 'renew' ? `[오피셜] ${my.short}, ${p.name}와 재계약` : `[오피셜] ${p.name}, ${my.short} 입단`, `${my.name}이(가) ${p.role === 'COACH' ? '코치' : `${Squad.LV[tier] || '1군'} ${G.ROLE_KO[p.role] || ''}`} ${p.name}과(와) ${yrs}년 계약을 맺었습니다.`, p.id);
+          Inbox.push({ from: { name: '사무국장', role: 'board' }, subject: `${p.name} ${mode === 'renew' ? '재계약' : '계약'} 완료`, body: `${p.name}과(와) 연봉 ${Player.money(sal)} 원, ${yrs}년 계약을 맺었습니다.${p.gen ? '' : ' 오피셜은 내일 발표됩니다.'}` });
+          if (!p.gen) Market.post(mode === 'renew' ? `[오피셜] ${my.short}, ${p.name}와 재계약` : `[오피셜] ${p.name}, ${my.short} 입단`, `${my.name}이(가) ${p.role === 'COACH' ? '코치' : `${Squad.LV[tier] || '1군'} ${G.ROLE_KO[p.role] || ''}`} ${p.name}과(와) ${yrs}년 계약을 맺었습니다.`, p.id, 1);
           UI.toast('계약을 마쳤습니다'); Router.go(Router.current());
         },
       }],

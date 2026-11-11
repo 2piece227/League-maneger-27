@@ -79,7 +79,7 @@ const Club = {
           ${C.tiers.length > 1 ? `<div class="cap-tiers">${C.tiers.map(([a, b, r]) => `<div class="${used > a ? 'on' : ''}"><b>${a}억 초과${b < 999 ? ` ~ ${b}억` : ''}</b><span>사치세 ${r}</span></div>`).join('')}</div>` : ''}
         </div>` : '<div class="card fx-empty"><b>이 리그는 연봉 상한이 없습니다</b><span>예산 안에서 자유롭게 계약할 수 있습니다.</span></div>'}
         <div class="card"><div class="card-head"><h3>선수 연봉</h3></div>
-          ${pays.map((x, i) => `<div class="cap-row ${t.league === 'LCK' && i < 5 ? 'top' : ''}" data-pid="${x.p.id}">${G.face(x.p, 'pl-ph')}<b>${UI.esc(x.p.name)}</b>${G.pos(x.p.role)}<div class="cr-bar"><i style="width:${x.v / pays[0].v * 100}%;background:var(--gold)"></i></div><span class="num">${this.money(x.v)}</span></div>`).join('')}
+          ${pays.map((x, i) => `<div class="cap-row ${t.league === 'LCK' && i < 5 ? 'top' : ''}" data-pid="${x.p.id}">${G.face(x.p, 'pl-ph')}${G.ovr(x.p)}<b>${UI.esc(x.p.name)}</b>${G.pos(x.p.role)}<div class="cr-bar"><i style="width:${x.v / pays[0].v * 100}%;background:var(--gold)"></i></div><span class="num">${this.money(x.v)}</span></div>`).join('')}
           ${t.league === 'LCK' ? '<p class="cr-note">금색 표시 5명이 샐러리캡 계산에 들어갑니다.</p>' : ''}
         </div>
       </div>`;

@@ -23,7 +23,7 @@ const Recruit = {
     return `
       <tr data-pid="${p.id}">
         <td>${this.star(p.id)}</td>
-        <td><div class="pl-cell">${G.face(p, 'pl-ph')}<div><b>${UI.esc(p.name)}</b>${sig.length ? `<i class="ms-sig static">SIG ${sig.length}</i>` : ''}<small class="pl-real">${UI.esc(p.nativeName || p.realName || '')}</small></div></div></td>
+        <td><div class="pl-cell">${G.face(p, 'pl-ph')}<div>${G.ovr(p)}<b>${UI.esc(p.name)}</b>${sig.length ? `<i class="ms-sig static">SIG ${sig.length}</i>` : ''}<small class="pl-real">${UI.esc(p.nativeName || p.realName || '')}</small></div></div></td>
         <td><span class="fx-team">${G.team(t, 'xs')}<b>${UI.esc(t.short)}</b></span></td>
         <td>${G.pos(p.role)}</td>
         <td class="num">${p.age || '-'}</td>
@@ -120,7 +120,7 @@ const Recruit = {
       const scout = scouts[i % scouts.length];
       return `
         <div class="card rp-card" data-pid="${p.id}">
-          <div class="rp-head">${G.face(p, 'pl-ph')}<div><b>${UI.esc(p.name)}</b><span>${G.team(tt, 'xs')} ${UI.esc(tt.short)} · ${G.pos(p.role, true)} · ${p.age || '-'}세</span></div>${this.star(p.id)}</div>
+          <div class="rp-head">${G.face(p, 'pl-ph')}<div>${G.ovr(p)}<b>${UI.esc(p.name)}</b><span>${G.team(tt, 'xs')} ${UI.esc(tt.short)} · ${G.pos(p.role, true)} · ${p.age || '-'}세</span></div>${this.star(p.id)}</div>
           <div class="rp-grade"><span>스카우트 평가</span>${UI.stars(stars)}<b>${['', '관찰', '보통', '영입 고려', '적극 추천', '최우선 영입'][stars]}</b></div>
           <div class="rp-cols">
             <div><h5>강점</h5><ul>${(pros.length ? pros : ['특출난 강점 없음']).map(x => `<li>${x}</li>`).join('')}</ul></div>
@@ -193,7 +193,7 @@ const Recruit = {
         && (!q || t.name.toLowerCase().includes(q) || t.short.toLowerCase().includes(q) || t.players.some(p => p.name.toLowerCase().includes(q))))
         .map(t => ({ t, ...this.teamPower(t) }))
         .sort((a, b) => f.sort === 'rep' ? (b.t.rep || 2) - (a.t.rep || 2) || b.power - a.power : b[f.sort] - a[f.sort]);
-      const cell = x => x.p ? `<td><div class="tf-pl" data-pid="${x.p.id}">${G.face(x.p, 'pl-ph')}<div><b>${UI.esc(x.p.name)}</b><small class="tf-s ${x.s >= 85 ? 'hi' : x.s >= 70 ? 'mid' : 'lo'}">${Math.round(x.s)}</small></div></div></td>` : '<td><span class="cr-dim">공석</span></td>';
+      const cell = x => x.p ? `<td><div class="tf-pl" data-pid="${x.p.id}">${G.face(x.p, 'pl-ph')}<div>${G.ovr(x.p)}<b>${UI.esc(x.p.name)}</b></div></div></td>` : '<td><span class="cr-dim">공석</span></td>';
       $('.tf-table tbody', el).innerHTML = rows.map((x, i) => `
         <tr data-tid="${x.t.id}" class="${x.t.id === my.id ? 'tf-me' : ''}">
           <td class="num">${i + 1}</td>
@@ -221,7 +221,7 @@ const Recruit = {
     const ST = { talk: ['협상 중', 'seeking'], agreed: ['구단 합의 · 개인 조건 남음', 'stable'], pending: ['답변 대기', 'seeking'], rejected: ['결렬', 'vacant'], done: ['완료', 'stable'] };
     const tm = id => App.db.teams.find(t => t.id === id) || { short: id, name: id };
     const row = b => { const hit = Player.find(b.pid); if (!hit) return ''; const o = tm(b.dir === 'in' ? b.from : b.to), st = ST[b.status] || [b.status, ''];
-      return `<div class="of-row" data-pid="${b.pid}" data-dir="${b.dir}">${G.face(hit.p, 'pl-ph')}<div><b>${UI.esc(hit.p.name)}</b><span>${G.team(o, 'xs')} ${UI.esc(o.name)} · ${b.date.replace(/-/g, '.')}</span></div>
+      return `<div class="of-row" data-pid="${b.pid}" data-dir="${b.dir}">${G.face(hit.p, 'pl-ph')}<div>${G.ovr(hit.p)}<b>${UI.esc(hit.p.name)}</b><span>${G.team(o, 'xs')} ${UI.esc(o.name)} · ${b.date.replace(/-/g, '.')}</span></div>
         <div class="of-fee"><b>${b.fee ? Player.money(b.fee) : b.ask ? Player.money(b.ask) : '-'}</b><small>${b.fee ? '이적료' : '구단 요구'}</small></div><span class="ot-st ${st[1]}">${st[0]}</span></div>`; };
     const all = Transfer.bids().slice().reverse(), recv = all.filter(b => b.dir === 'out'), sent = all.filter(b => b.dir === 'in');
     el.innerHTML = `

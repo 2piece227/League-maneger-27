@@ -320,7 +320,7 @@ const Portal = {
         <table class="mini-table">
           <tbody>${d.soloRank.map(p => `
             <tr>
-              <td><span class="tm-cell">${p.p ? G.face(p.p, 'pl-ph xs') : ''}<b>${UI.esc(p.player)}</b></span></td>
+              <td><span class="tm-cell">${p.p ? G.face(p.p, 'pl-ph xs') + G.ovr(p.p) : ''}<b>${UI.esc(p.player)}</b></span></td>
               <td>${G.pos(p.role)}</td>
               <td class="tier">${p.tier} <span class="num">${p.lp.toLocaleString()} LP</span></td>
               <td class="num delta ${p.change > 0 ? 'up' : p.change < 0 ? 'down' : ''}">${p.change > 0 ? '▲' + p.change : p.change < 0 ? '▼' + -p.change : '–'}</td>
@@ -338,7 +338,7 @@ const Portal = {
         <div class="card-head"><h3>챌린저스 소식</h3><a href="#roster-challengers">2군 보기</a></div>
         <div class="cl-line"><span class="res ${r.win ? 'w' : 'l'}">${r.win ? '승' : '패'}</span>
           ${UI.esc(r.competition)} vs ${UI.esc(r.opponent)} <b class="num">${r.score}</b></div>
-        <div class="cl-line"><span class="k">콜업 추천</span>${c.callUp.p ? G.face(c.callUp.p, 'pl-ph xs') : ''}<b>${UI.esc(c.callUp.player)}</b> ${G.pos(c.callUp.role)}
+        <div class="cl-line"><span class="k">콜업 추천</span>${c.callUp.p ? G.face(c.callUp.p, 'pl-ph xs') + G.ovr(c.callUp.p) : ''}<b>${UI.esc(c.callUp.player)}</b> ${G.pos(c.callUp.role)}
           <small>${UI.esc(c.callUp.reason)}</small></div>
       </div>`;
   },

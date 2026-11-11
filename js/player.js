@@ -47,11 +47,10 @@ const Player = {
           ${G.face(p, 'pp-photo')}
           <div class="pp-id">
             <div class="pp-team">${G.team(p.level === 'cl' && t.clTeam ? { ...t.clTeam, color: t.color } : t, 'xs')}<span>${UI.esc(p.level === 'cl' && t.clTeam ? t.clTeam.name : p.level === 'academy' ? t.name + ' 아카데미' : t.name)}</span>${p.sub ? '<i class="sub-tag">후보</i>' : ''}</div>
-            <h2>${UI.esc(p.name)}</h2>
+            <h2>${G.ovr(p, 'xl')}${UI.esc(p.name)}</h2>
             <div class="pp-sub">${UI.esc(p.nativeName || p.realName || '')}${p.realName && p.nativeName ? ` · ${UI.esc(p.realName)}` : ''}</div>
             <div class="pp-tags">${p.role !== 'COACH' ? G.pos(p.role, true) : '<span class="ch-tag">코칭스태프</span>'}<span class="nat">${G.flag(p.nation)} ${G.nationName(p.nation)}</span>${p.age ? `<span>${p.age}세</span>` : ''}</div>
           </div>
-          ${p.ovr != null && p.role !== 'COACH' ? `<div class="pp-val pp-ovr"><span>OVR</span><b>${p.ovr}</b></div>` : ''}
           <div class="pp-val"><span>시장 가치</span><b>${this.money(this.value(p, t))}</b></div>
         </div>
         <div class="pp-body">
@@ -125,7 +124,7 @@ const Player = {
       return `
         <div class="card cmp-card">
           <select class="ch-sort cmp-sel" data-i="${i}">${opts(id)}</select>
-          <div class="cmp-head">${G.face(p, 'pl-ph')}<div><b>${UI.esc(p.name)}</b><span>${G.team(t, 'xs')} ${UI.esc(t.short)} · ${G.pos(p.role, true)}</span></div></div>
+          <div class="cmp-head">${G.face(p, 'pl-ph')}<div>${G.ovr(p)}<b>${UI.esc(p.name)}</b><span>${G.team(t, 'xs')} ${UI.esc(t.short)} · ${G.pos(p.role, true)}</span></div></div>
           <dl class="cr-dl">
             <dt>나이</dt><dd>${p.age || '-'}세</dd>
             <dt>국적</dt><dd>${G.flag(p.nation)} ${G.nationName(p.nation)}</dd>
@@ -178,10 +177,10 @@ const Player = {
               const d = this.days(p), [cs, cc] = this.contractState(p);
               const pct = d == null ? 0 : Math.max(2, Math.min(100, d / 1095 * 100));
               return `<tr data-id="${p.id}">
-                <td><div class="pl-cell">${G.face(p, 'pl-ph')}<div><b>${UI.esc(p.name)}</b><small class="pl-real">${UI.esc(p.nativeName || p.realName || '')}</small></div></div></td>
+                <td><div class="pl-cell">${G.face(p, 'pl-ph')}<div>${G.ovr(p)}<b>${UI.esc(p.name)}</b><small class="pl-real">${UI.esc(p.nativeName || p.realName || '')}</small></div></div></td>
                 <td>${p.role === 'COACH' ? '코칭스태프' : G.pos(p.role, true)}</td>
                 <td class="num">${p.contractEnd ? p.contractEnd.replace(/-/g, '.') : '-'}</td>
-                <td>${(o => o.option ? `+1 ${Contract.OPT[o.option]}` : '-')(Contract.of(p, t))}</td>
+                <td>${(o => o.option ? `+1년 ${Contract.OPT[o.option]}` : '-')(Contract.of(p, t))}</td>
                 <td><span class="ct-st ${cc}">${cs}</span></td>
                 <td class="num">${this.money(this.salary(p, t))}</td>
                 <td><div class="ct-bar"><i class="${cc}" style="width:${pct}%"></i></div></td>
@@ -213,7 +212,7 @@ const Player = {
           const avg = (st.form.reduce((s, v) => s + +v, 0) / st.form.length).toFixed(1);
           return `
           <div class="card cd-card" data-id="${p.id}">
-            <div class="cd-head">${G.face(p, 'pl-ph')}<div><b>${UI.esc(p.name)}</b>${G.pos(p.role, true)}${p.sub ? '<i class="sub-tag">후보</i>' : ''}</div><span class="morale ${Roster.MORALE[st.morale][1]}">${Roster.MORALE[st.morale][0]}</span></div>
+            <div class="cd-head">${G.face(p, 'pl-ph')}<div>${G.ovr(p)}<b>${UI.esc(p.name)}</b>${G.pos(p.role, true)}${p.sub ? '<i class="sub-tag">후보</i>' : ''}</div><span class="morale ${Roster.MORALE[st.morale][1]}">${Roster.MORALE[st.morale][0]}</span></div>
             ${Career.meter('컨디션', st.condition)}
             ${Career.meter('피로도', x.fatigue, 'inv')}
             <div class="cd-form"><span>최근 폼</span>

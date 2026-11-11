@@ -10,6 +10,13 @@ const G = {
     return t.logo ? `<span class="team-logo ${cls}" title="${UI.esc(t.name)}">${UI.img(t.logo, '', mono)}</span>` : mono;
   },
 
+  // 선수 이름 앞에 붙는 OVR 배지 (코치·능력치 없는 선수는 비움)
+  ovr(p, cls = '') {
+    if (!p || p.role === 'COACH' || p.ovr == null) return '';
+    const v = p.ovr, c = v >= 90 ? 'top' : v >= 80 ? 'hi' : v >= 70 ? 'mid' : 'lo';
+    return `<i class="ovr-b ${c} ${cls}" title="오버롤">${v}</i>`;
+  },
+
   // 선수 사진(없으면 이니셜)
   face(p, cls = 'pl-ph') {
     return UI.img(p.photo, cls, `<div class="${cls} pl-ph-empty">${UI.esc((p.name || '?').slice(0, 1))}</div>`);

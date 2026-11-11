@@ -2,7 +2,8 @@
 // 협상 과정은 보이지 않고 결과만 뉴스로 나온다. FA는 받은 제안을 며칠 모았다가 가장 좋은 곳을 고른다(우리 제안이 먼저 사인되면 끝).
 const Market = {
   news() { return (Contract.st().news ||= []); },
-  post(title, body, pid) { const n = this.news(); n.unshift({ date: Clock.today(), title, body, pid }); if (n.length > 300) n.length = 300; },
+  // delay 1 = 다음 날 오피셜 (우리 구단 계약은 사인 다음 날 발표)
+  post(title, body, pid, delay = 0) { const n = this.news(); n.unshift({ date: delay ? Store.addDays(Clock.today(), delay) : Clock.today(), title, body, pid }); if (n.length > 300) n.length = 300; },
   fa() { return (Contract.st().fa ||= {}); },
   ai() { return App.db.teams.filter(t => t.id !== App.state.teamId); },
   rnd(...k) { return G.rand((App.state.seed || '') + '|' + k.join('|'), 'mk'); },

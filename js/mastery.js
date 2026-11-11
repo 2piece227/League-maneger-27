@@ -90,7 +90,7 @@ const Mastery = {
             <div class="card ms-row ${p.id === this.selId ? 'sel' : ''}" data-id="${p.id}">
               <div class="ms-pl">
                 ${G.face(p, 'pl-ph')}
-                <div><b>${UI.esc(p.name)}</b>${p.sub ? '<i class="sub-tag">후보</i>' : ''}<div class="ms-pl-pos">${G.pos(p.role, true)}<small>${pool.length}개 챔피언 · ${pool.reduce((s, e) => s + e.g, 0)}판</small></div></div>
+                <div>${G.ovr(p)}<b>${UI.esc(p.name)}</b>${p.sub ? '<i class="sub-tag">후보</i>' : ''}<div class="ms-pl-pos">${G.pos(p.role, true)}<small>${pool.length}개 챔피언 · ${pool.reduce((s, e) => s + e.g, 0)}판</small></div></div>
               </div>
               <div class="ms-chips">${pool.length ? pool.slice(0, 10).map(e => this.chip(e)).join('') : '<span class="ms-none">최근 3시즌 프로 경기 기록 없음</span>'}</div>
             </div>`;
@@ -122,7 +122,7 @@ const Mastery = {
     box.innerHTML = `
       <div class="ms-d-head">
         ${G.face(p, 'pl-ph')}
-        <div><h3>${UI.esc(p.name)}</h3><div class="ms-pl-pos">${G.pos(p.role, true)}<small>${UI.esc(p.nativeName || p.realName || '')}</small></div></div>
+        <div><h3>${G.ovr(p, 'lg')}${UI.esc(p.name)}</h3><div class="ms-pl-pos">${G.pos(p.role, true)}<small>${UI.esc(p.nativeName || p.realName || '')}</small></div></div>
       </div>
       ${sig.length ? `<h4>시그니처</h4><div class="ms-sigs">${sig.map(e => this.chip(e, true)).join('')}</div>` : ''}
       <h4>챔피언 풀 <small>${pool.length}개</small></h4>

@@ -283,7 +283,7 @@ const Career = {
         <dt>내 가능성</dt><dd>${st === 'mine' ? '-' : `<span class="ot-ch ${cc}">${ch}</span> <small class="cr-dim">${t.league} 평판 ${Manager.regionRep(m)[t.league]}</small>`}</dd>
       </dl>
       <h4>주전 로스터</h4>
-      <div class="ot-roster">${top.map(p => `<div>${G.face(p, 'pl-ph')}<b>${UI.esc(p.name)}</b>${G.pos(p.role)}</div>`).join('')}</div>
+      <div class="ot-roster">${top.map(p => `<div>${G.face(p, 'pl-ph')}${G.ovr(p)}<b>${UI.esc(p.name)}</b>${G.pos(p.role)}</div>`).join('')}</div>
       ${st !== 'mine' ? `
         <div class="ot-apply">
           ${app ? `<div class="ot-applied"><b>이력서 제출 완료</b><span>${this.ymd(app.date)} 제출 · ${app.status}</span></div>`

@@ -367,3 +367,17 @@
 
 .ng-hold { display: block; margin-top: 6px; font-size: 11px; color: var(--muted); }
 .nw-more-wrap { text-align: center; margin: 16px 0; }
+
+.ng-term { display: flex; flex-direction: column; justify-content: flex-end; gap: 4px; font-size: 12px; }
+.ng-term span { color: var(--muted); font-size: 11px; }
+.ng-term b { color: var(--gold-2); font-size: 15px; }
+
+/* ---------- OVR 배지: 선수 이름 앞 ---------- */
+.ovr-b { display: inline-flex; align-items: center; justify-content: center; min-width: 24px; height: 18px; padding: 0 4px; margin-right: 6px; border-radius: 4px;
+  font: 700 11px/1 var(--f-ui, inherit); font-style: normal; vertical-align: 2px; color: #0d1117; background: #8b95a5; letter-spacing: 0; }
+.ovr-b.top { background: linear-gradient(135deg, #f3d77a, #c9a13c); }
+.ovr-b.hi { background: #5fd38d; }
+.ovr-b.mid { background: #d9dee7; }
+.ovr-b.lo { background: #8b95a5; }
+.ovr-b.lg { min-width: 30px; height: 22px; font-size: 13px; }
+.ovr-b.xl { min-width: 38px; height: 28px; font-size: 17px; border-radius: 6px; vertical-align: 4px; margin-right: 10px; }
