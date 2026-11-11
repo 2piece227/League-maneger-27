@@ -6,8 +6,8 @@ const Data = {
     const db = { leagues: MOCK.leagues, teams: MOCK.teams, history: { worlds: MOCK.worldsHistory }, source: 'mock' };
     try {
       const get = f => fetch('data/' + f).then(r => { if (!r.ok) throw new Error(f); return r.json(); });
-      const [t, p, h, o, c, cl, at] = await Promise.all([get('teams.json'), get('players.json'), get('history.json'), get('overrides.json').catch(() => ({})), get('custom.json').catch(() => ({})), get('cl.json').catch(() => ({ teams: [], players: [] })), get('attributes.json').catch(() => ({ players: {} }))]);
-      this.sheet = at.players || {};
+      const [t, p, h, o, c, cl, at, au] = await Promise.all([get('teams.json'), get('players.json'), get('history.json'), get('overrides.json').catch(() => ({})), get('custom.json').catch(() => ({})), get('cl.json').catch(() => ({ teams: [], players: [] })), get('attributes.json').catch(() => ({ players: {} })), get('attributes-auto.json').catch(() => ({ players: {} }))]);
+      this.sheet = { ...(au.players || {}), ...(at.players || {}) }; // 수동 산정표가 자동 산정보다 우선
       db.teams = this.mergeTeams(t.teams, p.players, o.teams || {});
       db.free = this.freeTeam(c.freeAgents || []);
       Contract.stars = c.stars || {};
@@ -18,7 +18,7 @@ const Data = {
     } catch (e) {
       console.info('[data] 수집 데이터 없음 → 목업 사용', e.message);
     }
-    // 능력치: 산정표(data/attributes.json)에 있으면 그 값, 없으면 평가 점수 근처로 선수별 고정 생성
+    // 능력치: 수동 산정표(attributes.json) → 기록 자동 산정(attributes-auto.json, tools/attr-auto.py) → 없으면 평가 점수 근처로 선수별 고정 생성
     const sheet = this.sheet || {};
     [...db.teams, ...(db.free ? [db.free] : [])].forEach(t => t.players.forEach(p => {
       if (p.role === 'COACH') return;

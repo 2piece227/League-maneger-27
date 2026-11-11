@@ -18,9 +18,12 @@ const Squad = {
   // 실명 2군 선수: 기록이 없으니 현재 기량·잠재력을 선수별 고정값으로 만든다
   initCl(p) {
     const r = this.rng('cl:' + p.id);
-    const ca = 8 + r() * 4, pa = Math.max(ca, ca + r() * r() * 8);
+    let ca = 8 + r() * 4;
+    const sh = (Data.sheet || {})[p.id];                                  // 기록 자동 산정이 있으면 그 능력치
+    if (sh) { p.attributes = Attributes.fromSheet(sh, p.role); ca = Math.max(5, Attributes.raw(p.attributes, p.role) - 3); } // 현재 기량 눈금(2군 8~12)에 맞춤
+    const pa = Math.max(ca, ca + r() * r() * 8);
     p.ca = this.round(ca); p.pa = this.round(pa);
-    p.attributes = Attributes.generate(p.role, ca, pa, r);
+    if (!sh) p.attributes = Attributes.generate(p.role, ca, pa, r);
     p.ovr = Attributes.overall(p.attributes, p.role);
   },
 
