@@ -23,6 +23,7 @@ const Portal = {
   },
 
   async _setTeam(team) {
+    if (team) Squad.apply();
     const [raw] = await Promise.all([this.load(), Schedule.load()]);
     this.raw = this.raw || JSON.parse(JSON.stringify(raw));
     this.data = team ? this.localize(this.raw, team) : JSON.parse(JSON.stringify(this.raw));

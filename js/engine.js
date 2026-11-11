@@ -144,7 +144,7 @@ const Engine = {
     scrimAccept(m, a) { (App.state.scrims ||= []).push({ team: a.team, date: Clock.today(), sets: 3, status: 'accepted', on: a.on, incoming: true }); },
     promise(m, a) { (App.state.promises ||= []).push({ pid: m.ctx.pid, kind: a, date: Clock.today(), due: Store.addDays(Clock.today(), 60) }); },
     budgetAsk(m, ok) { if (ok) World.ledger().push({ date: Clock.today(), label: '이사회 추가 예산', amount: 500000000 }); },
-    academy(m) { const a = JSON.parse(JSON.stringify(m.ctx.acc)); (App.state.academy ||= []).push({ ...a, date: Clock.today() }); },
+    academy(m) { Squad.addGen(JSON.parse(JSON.stringify(m.ctx.acc)), 'academy'); Squad.apply(); },
     interview(m) { const a = Career.apps()[m.ctx.tid]; if (a) { a.status = '면접 예정'; a.on = Store.addDays(Clock.today(), 2); } },
     declineJob(m) { const a = Career.apps()[m.ctx.tid]; if (a) a.status = '거절함'; },
     takeJob(m) { Engine.switchTeam(Schedule.team(m.ctx.tid)); },
@@ -157,6 +157,8 @@ const Engine = {
     App.state.applications = {};
     App.state.rel = null; World.rel();
     App.state.morale = {};
+    App.state.gen = {}; App.state.squad = {}; App.state.dev = {}; App.state.clTable = null; // 하부 선수단은 옛 구단에 남는다
+    Squad.apply();
     Inbox.push({ from: { name: `${t.short} 사무국장`, role: 'board' }, subject: `${t.name} 감독 부임을 환영합니다`, priority: 'urgent', stop: true,
       body: `${t.name} 구단을 대표해 환영 인사를 드립니다.\n\n이사회의 기대는 '${t.boardGoal || '좋은 성적'}'입니다. 선수단과 코칭스태프 소개는 로스터 화면에서 확인해 주십시오.` });
   },
@@ -445,7 +447,7 @@ Engine.on(today => {
         from: { name: `${((Roster.team().staff || [])[1] || {}).name || '2군'} 코치`, role: 'coach' }, subject: `${o.name} 테스트 결과: ${o.grade}`, priority: roll < 2 ? 'todo' : 'normal',
         body: `${G.ROLE_KO[o.role]} ${o.name}(${o.age}세)의 일주일 테스트가 끝났습니다.\n\n현재 기량 ${Attributes.starText(o.ca)}\n잠재력 ${Attributes.starText(o.pa)}\n\n${['피지컬과 라인전은 바로 2군 주전감입니다. 계약을 추천합니다.', '재능은 보이지만 팀 게임 이해도가 아직 부족합니다. 판단은 감독님께 맡기겠습니다.', '솔랭 성적만큼의 팀 게임은 보여주지 못했습니다. 계약은 추천하지 않습니다.'][roll]}`,
         ctx: { acc: { id, name: o.name, role: o.role, age: o.age, grade: o.grade, ca: o.ca, pa: o.pa, attrs: o.attrs } },
-        choices: roll < 2 ? [{ label: '챌린저스 계약 제안', act: 'academy', reply: '선수가 기뻐하며 계약서에 서명했습니다. 챌린저스 명단에 추가됩니다.', fx: { squad: 1 } }, { label: '이번에는 보내기', reply: '선수에게 감사 인사와 함께 결과를 전했습니다.' }] : undefined,
+        choices: roll < 2 ? [{ label: '아카데미 연습생 계약 제안', act: 'academy', reply: '선수가 기뻐하며 연습생 계약서에 서명했습니다. 아카데미 명단에 추가됩니다.', fx: { squad: 1 } }, { label: '이번에는 보내기', reply: '선수에게 감사 인사와 함께 결과를 전했습니다.' }] : undefined,
       });
     }
   });
@@ -489,28 +491,3 @@ Engine.on(today => {
 });
 
 Engine.on(today => Events.run(today));
-
-Engine.on(today => {
-  // 챌린저스: 매일 잠재력까지 남은 만큼 조금씩 성장 (어릴수록 빠름). 매월 1일 2군 코치 보고.
-  const ac = App.state.academy || [];
-  ac.forEach(a => {
-    if (a.ca == null || !a.attrs) return;
-    if (a.ca0 == null) { a.ca0 = a.ca; a.lastCa = a.ca; }
-    const ageMul = a.age <= 18 ? 1.25 : a.age <= 21 ? 1 : .6;
-    const d = Math.max(0, a.pa - a.ca) * .0015 * ageMul * (.5 + G.rand(a.id + today, 'grow'));
-    if (!d) return;
-    a.ca = Math.min(a.pa, a.ca + d);
-    ['physical', 'macro', 'mental', 'role'].forEach(g => Object.keys(a.attrs[g] || {}).forEach(k => {
-      a.attrs[g][k] = Math.min(20, a.attrs[g][k] + d * (.4 + G.rand(a.id + today + k, 'ag') * 1.2));
-    }));
-  });
-  if (ac.length && today.slice(8) === '01') {
-    const coach = ((Roster.team().staff || [])[1] || {}).name || '2군';
-    const lines = ac.filter(a => a.ca != null).map(a => {
-      const up = a.ca - (a.lastCa ?? a.ca); a.lastCa = a.ca;
-      return `· ${a.name} (${G.ROLE_KO[a.role]}) ${Attributes.starText(a.ca)}  ${up >= .3 ? '눈에 띄게 성장했습니다' : up > .05 ? '조금씩 나아지고 있습니다' : '정체기입니다'}`;
-    });
-    Inbox.push({ from: { name: `${coach} 코치`, role: 'coach' }, subject: `챌린저스 월간 보고 (${+today.slice(5, 7)}월)`, link: 'roster-challengers',
-      body: `지난 한 달 챌린저스 선수들의 성장 상황입니다.\n\n${lines.join('\n')}` });
-  }
-});

@@ -6,9 +6,10 @@ const Data = {
     const db = { leagues: MOCK.leagues, teams: MOCK.teams, history: { worlds: MOCK.worldsHistory }, source: 'mock' };
     try {
       const get = f => fetch('data/' + f).then(r => { if (!r.ok) throw new Error(f); return r.json(); });
-      const [t, p, h, o, c] = await Promise.all([get('teams.json'), get('players.json'), get('history.json'), get('overrides.json').catch(() => ({})), get('custom.json').catch(() => ({}))]);
+      const [t, p, h, o, c, cl] = await Promise.all([get('teams.json'), get('players.json'), get('history.json'), get('overrides.json').catch(() => ({})), get('custom.json').catch(() => ({})), get('cl.json').catch(() => ({ teams: [], players: [] }))]);
       db.teams = this.mergeTeams(t.teams, p.players, o.teams || {});
       db.free = this.freeTeam(c.freeAgents || []);
+      this.attachCl(db.teams, cl);
       this.applyMilitary([...db.teams, db.free], c.military || {});
       db.history.worlds = MOCK.worldsHistory.map(w => ({ ...w, logo: (h.worldsLogos || {})[w.page || w.team] || null, photo: (h.worldsPhotos || {})[w.year] || null }));
       db.source = 'scraped';
@@ -20,6 +21,7 @@ const Data = {
       p.attributes = p.attributes || Attributes.create(p.role);
       p.ovr = Attributes.overall(p.attributes);
     }));
+    db.teams.forEach(t => (t.cl || []).forEach(p => Squad.initCl(p)));
     return db;
   },
 
@@ -45,6 +47,21 @@ const Data = {
       team.players = people.filter(p => p.role !== 'COACH');
       MOCK.markSubs(team.players);
       return team;
+    });
+  },
+
+  // 2군(LCK CL) 실명 로스터: 1군 팀에 t.cl(선수) · t.clTeam(팀 정보) · t.clStaff 로 붙인다. 1군과 겹치는 선수는 1군에 둔다.
+  attachCl(teams, cl) {
+    const main = new Set(teams.flatMap(t => [...t.players, ...(t.staff || [])].map(p => p.id)));
+    teams.forEach(t => { t.cl = []; t.clStaff = []; });
+    (cl.teams || []).forEach(ct => {
+      const t = teams.find(x => x.id === ct.parent); if (!t) return;
+      t.clTeam = { ...ct, color: t.color };
+      const seen = new Set();
+      cl.players.filter(p => p.team === ct.id && !main.has(p.id) && !seen.has(p.id) && seen.add(p.id)).forEach(p => {
+        const q = { ...p, team: t.id, contractEnd: p.contractEnd || this.guessContract(p, t), age: p.birthdate ? this.ageOn(p.birthdate, Clock.today()) : null, sub: false, level: 'cl' };
+        (q.role === 'COACH' ? t.clStaff : t.cl).push(q);
+      });
     });
   },
 

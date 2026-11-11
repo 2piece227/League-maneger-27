@@ -1,7 +1,7 @@
 // 선수: 프로필 창 · 재계약/영입 문의 창 · 로스터 > 선수 비교 · 계약 현황 · 컨디션·폼
 // 연봉·이적료는 목업 추정치. TODO: 기능 연결 — 실제 계약 데이터·협상 시스템
 const Player = {
-  all() { return [...App.db.teams, ...(App.db.free ? [App.db.free] : [])].flatMap(t => [...t.players, ...(t.staff || [])].map(p => ({ p, t }))); },
+  all() { return [...App.db.teams, ...(App.db.free ? [App.db.free] : [])].flatMap(t => [...t.players, ...(t.cl || []), ...(t.academy || []), ...(t.staff || [])].map(p => ({ p, t }))); },
   MILITARY: { exempt: ['병역 혜택', 'ok'], served: ['군필', 'ok'], none: ['미필', 'soon'] },
   military(p) { const m = this.MILITARY[p.military]; return m ? `<span class="ct-st ${m[1]}">${m[0]}</span>` : ''; },
   find(id) { return this.all().find(x => x.p.id === id) || null; },
@@ -56,7 +56,7 @@ const Player = {
         <div class="pp-head" style="--c:${t.color || '#555'}">
           ${G.face(p, 'pp-photo')}
           <div class="pp-id">
-            <div class="pp-team">${G.team(t, 'xs')}<span>${UI.esc(t.name)}</span>${p.sub ? '<i class="sub-tag">후보</i>' : ''}</div>
+            <div class="pp-team">${G.team(p.level === 'cl' && t.clTeam ? { ...t.clTeam, color: t.color } : t, 'xs')}<span>${UI.esc(p.level === 'cl' && t.clTeam ? t.clTeam.name : p.level === 'academy' ? t.name + ' 아카데미' : t.name)}</span>${p.sub ? '<i class="sub-tag">후보</i>' : ''}</div>
             <h2>${UI.esc(p.name)}</h2>
             <div class="pp-sub">${UI.esc(p.nativeName || p.realName || '')}${p.realName && p.nativeName ? ` · ${UI.esc(p.realName)}` : ''}</div>
             <div class="pp-tags">${p.role !== 'COACH' ? G.pos(p.role, true) : '<span class="ch-tag">코칭스태프</span>'}<span class="nat">${G.flag(p.nation)} ${G.nationName(p.nation)}</span>${p.age ? `<span>${p.age}세</span>` : ''}</div>
@@ -87,6 +87,7 @@ const Player = {
           </div>
         </div>
         <div class="pp-foot">
+          ${this.isMine(t) && p.role !== 'COACH' ? `<span class="pp-mv" data-pid="${p.id}">${Squad.buttons(p)}</span>` : ''}
           <button class="btn-ghost pp-list">${listed ? '관심 목록에서 빼기' : '관심 목록에 추가'}</button>
           ${this.isMine(t) ? '<button class="btn-primary pp-talk">재계약 협상</button>' : '<button class="btn-primary pp-ask">영입 문의</button>'}
         </div>
@@ -96,6 +97,7 @@ const Player = {
     const onKey = e => { if (e.key === 'Escape') close(); };
     document.addEventListener('keydown', onKey);
     back.addEventListener('click', e => { if (e.target === back || e.target.closest('.pp-x') || e.target.closest('.pp-link')) close(); });
+    Squad.bind(back, () => { close(); Router.go(Router.current()); });
     $('.pp-list', back).onclick = () => { this.toggleShortlist(p.id); close(); this.open(id); };
     const talk = $('.pp-talk', back), ask = $('.pp-ask', back);
     if (talk) talk.onclick = () => this.contractModal(p.id);
