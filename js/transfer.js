@@ -102,11 +102,13 @@ const Transfer = {
   // ---------- 다른 구단 → 우리: 이적 제안 메시지 ----------
   bidFor(today) {
     const my = Roster.team(), stove = Schedule.events.some(e => e.kind === 'stove' && e.start <= today && today <= e.end);
-    if (Engine.rnd('bid') > (stove ? .06 : .015)) return;
-    const cands = my.players.filter(p => !p.free && Player.days(p) > 30 && !(Contract.st().contracts[p.id]?.signed > Store.addDays(today, -60)) && !this.bids().some(b => b.pid === p.id && b.dir === 'out' && b.date > Store.addDays(today, -30)));
+    const listed = Contract.st().listed || {};
+    if (Engine.rnd('bid') > (stove ? .06 : .015) + (Object.keys(listed).length ? .1 : 0)) return;
+    const cands = [...my.players, ...(my.cl || []).filter(p => (Contract.st().listed || {})[p.id])].filter(p => !p.free && Player.days(p) > 30 && !(Contract.st().contracts[p.id]?.signed > Store.addDays(today, -60)) && !this.bids().some(b => b.pid === p.id && b.dir === 'out' && b.date > Store.addDays(today, -30)));
     if (!cands.length) return;
-    const p = cands[Math.floor(Engine.rnd('who') * cands.length)], s = Contract.score(p, my);
-    const buyers = App.db.teams.filter(t => t.id !== my.id && (t.rep || 2) >= (my.rep || 2) - 1 && t.players.filter(x => x.role === p.role).every(x => Contract.score(x, t) < s - 2) && Club.wageRoom(t) > Contract.pay(p, s, t.league) * .5);
+    const req = cands.filter(p => listed[p.id]);                                // 이적 요청한 선수부터
+    const p = (req.length ? req : cands)[Math.floor(Engine.rnd('who') * (req.length || cands.length))], s = Contract.score(p, my);
+    const buyers = App.db.teams.filter(t => t.id !== my.id && (t.rep || 2) >= (my.rep || 2) - 1 && (s < 85 || (t.rep || 2) >= 4) && (p.nation !== 'South Korea' || ['LCK', 'LPL'].includes(t.league)) && t.players.filter(x => x.role === p.role).every(x => Contract.score(x, t) < s - 2) && Club.wageRoom(t) > Contract.pay(p, s, t.league) * .5);
     if (!buyers.length) return;
     const t = buyers[Math.floor(Engine.rnd('buyer') * buyers.length)], c = Contract.of(p, my);
     const fee = Contract.r1((c.buyout && Engine.rnd('bo') < .4 ? c.buyout : this.price(p, my).v * (.7 + Engine.rnd('fee') * .35)));

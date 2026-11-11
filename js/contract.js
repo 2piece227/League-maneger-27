@@ -4,7 +4,7 @@
 const Contract = {
   stars: {},                                   // custom.json stars: 선수별 가치 점수 직접 지정
   LG: { LCK: 1, LPL: 1.15, LEC: .55, LCS: .65 },  // 2군·최저 연봉 리그 배율
-  CURVE: { LCK: [.55, 11.5], LPL: [.63, 11.5], LEC: [1.2, 16], LCS: [1.5, 16] }, // 1군 연봉 곡선: a·e^((점수-45)/k). 해외는 스타와 평균 차이가 작다
+  CURVE: { LCK: [.7, 14], LPL: [.85, 14], LEC: [1.2, 16], LCS: [1.5, 16] }, // 1군 연봉 곡선: a·e^((점수-45)/k). 해외는 스타와 평균 차이가 작다
   MIN: { first: .6, cl: .2, academy: .1 },     // 최저 연봉 (LCK 1군 6천만 원 기준)
   OPT: { player: '선수 옵션', team: '구단 옵션' },
   PROMISE: { starter: '주전 보장', rotation: '로테이션', none: '약속 없음' },
@@ -149,4 +149,45 @@ Engine.on(today => {
       body: `${p.name}의 계약이 끝나 FA가 됐습니다. 이제 다른 팀도 자유롭게 영입을 시도할 수 있습니다.\n\n다시 데려오려면 FA 시장에서 새 계약을 제시해야 합니다.` });
     Contract.release(p.id);
   });
+});
+
+// 계약서의 역할 약속: 매달 1일 확인. 주전 보장인데 후보·2군이면 사기가 떨어지고, 두 달 연속이면 이적을 요청한다.
+Engine.on(today => {
+  if (today.slice(8) !== '01') return;
+  const t = Roster.team(); if (!t) return;
+  const all = [...t.players, ...(t.cl || []), ...(t.academy || [])], mor = World.morale();
+  (App.state.promises || []).filter(x => x.src === 'contract' && !x.over).forEach(pr => {
+    const p = all.find(x => x.id === pr.pid);
+    if (!p || (pr.due && pr.due < today)) { pr.over = true; return; }
+    const broken = pr.kind === 'starter' ? p.level !== 'first' || p.sub : p.level !== 'first';
+    if (!broken) { pr.strikes = 0; return; }
+    pr.strikes = (pr.strikes || 0) + 1;
+    mor[p.id] = (mor[p.id] || 0) - 2;
+    if (pr.strikes === 1) Inbox.push({ from: { name: p.name, role: 'player' }, subject: `${p.name}, 계약 때 약속에 대해 면담 요청`, priority: 'todo', link: 'roster-first-team',
+      body: `감독님, 계약할 때 ${Contract.PROMISE[pr.kind]}을(를) 약속하셨는데 지금은 그렇지 않습니다.
+
+다음 달에도 이대로라면 저도 다른 길을 생각해 볼 수밖에 없습니다.` });
+    else {
+      pr.over = true; mor[p.id] -= 3; World.apply({ squad: -3 }, {});
+      Inbox.push({ from: { name: p.name, role: 'player' }, subject: `${p.name}, 이적 요청`, priority: 'urgent', link: 'recruit-offers',
+        body: `약속이 지켜지지 않아 이적을 요청합니다. 에이전트에게 다른 팀을 알아보라고 했습니다.
+
+(선수단 신뢰가 떨어졌고, 다른 구단의 이적 제안이 늘어납니다)` });
+      (Contract.st().listed ||= {})[p.id] = today;
+    }
+  });
+});
+
+// LCK 균형 지출 제도: 상위 5인 연봉 합산이 상한을 넘으면 11월 1일에 부담금을 낸다. 6월 1일에 예상액을 알린다.
+Engine.on(today => {
+  const t = Roster.team(); if (!t || t.league !== 'LCK') return;
+  const md = today.slice(5);
+  if (md !== '06-01' && md !== '11-01') return;
+  const { used, tax } = Club.tax(t);
+  if (!tax) return;
+  const board = { name: '사무국장', role: 'board' };
+  if (md === '06-01') Inbox.push({ from: board, subject: '균형 지출 부담금 예상', priority: 'todo', link: 'club-salary-cap', body: `상위 5인 연봉 합산이 ${Player.money(used)} 원으로 상한(${Club.CAP.LCK.cap}억)을 넘었습니다.
+
+지금 그대로면 11월 1일에 부담금 약 ${Player.money(tax)} 원을 내야 합니다.` });
+  else { World.ledger().push({ date: today, label: '균형 지출 부담금', amount: -Math.round(tax * 1e8) }); World.apply({ board: tax >= 10 ? -3 : -1 }, {}); Inbox.push({ from: board, subject: `균형 지출 부담금 ${Player.money(tax)} 원 납부`, body: `올 시즌 상위 5인 연봉 합산 ${Player.money(used)} 원 기준으로 부담금을 냈습니다. 이사회가 지출에 신경 쓰고 있습니다.` }); }
 });

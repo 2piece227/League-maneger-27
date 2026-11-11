@@ -91,6 +91,8 @@ const Squad = {
       t.players.forEach(p => { p.level = 'first'; }); t.cl.forEach(p => { p.level = 'cl'; });
     });
     Contract.applyWorld();
+    // 다른 팀은 포지션별로 가치가 높은 선수가 주전
+    App.db.teams.filter(t => t.id !== App.state.teamId).forEach(t => { t.players.sort((a, b) => Contract.score(b, t) - Contract.score(a, t)); MOCK.markSubs(t.players); });
     const t = this.team(); if (!t) return;
     this.migrate();
     const dev = this.dev();
@@ -103,6 +105,8 @@ const Squad = {
       p.level = lv;
       ({ first: t.players, cl: t.cl, academy: t.academy })[lv].push(p);
     });
+    const st = App.state.starters || {};                                    // 감독이 정한 주전
+    t.players.sort((a, b) => (st[b.role] === b.id) - (st[a.role] === a.id));
     MOCK.markSubs(t.players);
     if (typeof Traits !== 'undefined') Traits.cache = null;
   },
@@ -126,7 +130,7 @@ const Squad = {
   // 프로필·목록에서 쓰는 이동 버튼 (data-mv)
   buttons(p) {
     const lv = p.level || 'first', b = (to, l, cls = 'btn-ghost') => `<button class="${cls} btn-sm" data-mv="${to}">${l}</button>`;
-    if (lv === 'first') return b('cl', '챌린저스로');
+    if (lv === 'first') return (p.sub ? b('starter', '주전으로', 'btn-primary') : '') + b('cl', '챌린저스로');
     if (lv === 'cl') return b('first', '1군 콜업', 'btn-primary') + b('academy', '아카데미로') + b('out', '방출');
     return b('cl', '챌린저스 콜업', 'btn-primary') + b('out', '방출');
   },
@@ -135,7 +139,8 @@ const Squad = {
       e.stopPropagation();
       const t = this.team(), p = [...t.players, ...t.cl, ...t.academy].find(x => x.id === btn.closest('[data-pid]').dataset.pid);
       if (!p) return;
-      if (btn.dataset.mv === 'out') this.confirmRelease(p, done); else if (this.move(p.id, btn.dataset.mv)) done && done();
+      if (btn.dataset.mv === 'starter') { (App.state.starters ||= {})[p.role] = p.id; this.apply(); UI.toast(`${p.name} → ${G.ROLE_KO[p.role]} 주전`); done && done(); }
+      else if (btn.dataset.mv === 'out') this.confirmRelease(p, done); else if (this.move(p.id, btn.dataset.mv)) done && done();
     });
   },
 

@@ -165,6 +165,7 @@ const Neg = {
             <dt>에이전트</dt><dd>${UI.esc(A.name)} <small>${UI.esc(A.agency)}</small></dd>
             <dt>성향</dt><dd>${this.KIND[A.kind][0]}</dd>
             <dt>연봉 여유</dt><dd class="ng-room"></dd>
+            ${my.league === 'LCK' ? '<dt>균형 지출 부담금</dt><dd class="ng-tax"></dd>' : ''}
           </dl>
           <div class="ng-pat"><span>인내심</span><div class="ng-pbar"></div></div>
         </aside>
@@ -196,6 +197,7 @@ const Neg = {
       $('.ng-log', back).scrollTop = 1e6;
       $('.ng-pbar', back).innerHTML = Array.from({ length: S.max }, (_, i) => `<i class="${i < S.patience ? 'on' : ''}"></i>`).join('');
       const rm = room(), off = +f.salary.value || 0;
+      const tx = $('.ng-tax', back); if (tx) { const a = Club.tax(my), b = Club.tax(my, { pid: p.id, salary: off }); tx.innerHTML = `${Player.money(b.tax)} <small>${b.tax > a.tax ? `+${Player.money(b.tax - a.tax)}` : '변화 없음'}</small>`; }
       $('.ng-room', back).innerHTML = `<span class="${rm - off < 0 ? 'warn' : ''}">${rm - off >= 0 ? '' : '−'}${Player.money(Math.abs(rm - off))}</span> <small>제안 후</small>`;
       const over = S.done || S.cool;
       $('.ng-qs', back).innerHTML = over ? (S.done ? '<button class="btn-primary ng-sign">계약서에 사인</button>' : '') : this.QUESTIONS.filter(([k]) => !S.asked[k]).map(([k, l]) => `<button class="btn-ghost btn-sm" data-q="${k}">${l}</button>`).join('');

@@ -49,6 +49,14 @@ const Club = {
 
   // ---------- 샐러리캡 ----------
   CAP: { LCK: { cap: 40, rule: '상위 5인 연봉 합산', tiers: [[40, 50, '25%'], [50, 60, '50%'], [60, 70, '75%'], [70, 999, '100%']] }, LEC: { cap: 23, rule: 'SFR · 선수단 지출 상한 (환산)', tiers: [[23, 999, '초과분 제재']] } },
+  // 상위 5인 합산(LCK) → 구간별 부담금. extra: 이 선수의 연봉을 바꿔 넣어 계산 (협상 중 미리보기)
+  tax(t, extra) {
+    const C = this.CAP.LCK, pays = t.players.filter(p => !extra || p.id !== extra.pid).map(p => Player.salary(p, t));
+    if (extra) pays.push(extra.salary);
+    const used = pays.sort((a, b) => b - a).slice(0, 5).reduce((s, v) => s + v, 0);
+    const tax = t.league !== 'LCK' ? 0 : C.tiers.reduce((s, [a, b, r]) => s + Math.max(0, Math.min(used, b) - a) * parseFloat(r) / 100, 0);
+    return { used, tax: Math.round(tax * 10) / 10 };
+  },
   async cap(el) {
     await Promise.all([Portal.ready, Mastery.load()]);
     const t = this.team(), L = App.db.leagues.find(l => l.id === t.league), C = this.CAP[t.league];
@@ -63,13 +71,14 @@ const Club = {
             <div><span class="k">${C ? C.rule : '선수단 연봉 합계'}</span><b>${this.money(used)}</b></div>
             <div><span class="k">상한</span><b>${C ? this.money(C.cap) : '없음'}</b></div>
             <div><span class="k">여유</span><b class="${C && used > C.cap ? 'warn' : ''}">${C ? (used > C.cap ? '초과 ' : '') + this.money(Math.abs(C.cap - used)) : '-'}</b></div>
+            ${t.league === 'LCK' ? `<div><span class="k">예상 부담금 (11월 1일)</span><b class="${this.tax(t).tax ? 'warn' : ''}">${this.money(this.tax(t).tax)}</b></div>` : ''}
           </div>
         </div>
         ${C ? `<div class="card"><div class="card-head"><h3>상한 사용률</h3></div>
           <div class="cap-bar"><i style="width:${Math.min(100, used / C.cap * 100)}%" class="${used > C.cap ? 'over' : ''}"></i><span style="left:100%">상한</span></div>
           ${C.tiers.length > 1 ? `<div class="cap-tiers">${C.tiers.map(([a, b, r]) => `<div class="${used > a ? 'on' : ''}"><b>${a}억 초과${b < 999 ? ` ~ ${b}억` : ''}</b><span>사치세 ${r}</span></div>`).join('')}</div>` : ''}
         </div>` : '<div class="card fx-empty"><b>이 리그는 연봉 상한이 없습니다</b><span>예산 안에서 자유롭게 계약할 수 있습니다.</span></div>'}
-        <div class="card"><div class="card-head"><h3>선수 연봉 <small>추정</small></h3></div>
+        <div class="card"><div class="card-head"><h3>선수 연봉</h3></div>
           ${pays.map((x, i) => `<div class="cap-row ${t.league === 'LCK' && i < 5 ? 'top' : ''}" data-pid="${x.p.id}">${G.face(x.p, 'pl-ph')}<b>${UI.esc(x.p.name)}</b>${G.pos(x.p.role)}<div class="cr-bar"><i style="width:${x.v / pays[0].v * 100}%;background:var(--gold)"></i></div><span class="num">${this.money(x.v)}</span></div>`).join('')}
           ${t.league === 'LCK' ? '<p class="cr-note">금색 표시 5명이 샐러리캡 계산에 들어갑니다.</p>' : ''}
         </div>
