@@ -1,7 +1,9 @@
 // 선수: 프로필 창 · 재계약/영입 문의 창 · 로스터 > 선수 비교 · 계약 현황 · 컨디션·폼
 // 연봉·이적료는 목업 추정치. TODO: 기능 연결 — 실제 계약 데이터·협상 시스템
 const Player = {
-  all() { return App.db.teams.flatMap(t => [...t.players, ...(t.staff || [])].map(p => ({ p, t }))); },
+  all() { return [...App.db.teams, ...(App.db.free ? [App.db.free] : [])].flatMap(t => [...t.players, ...(t.staff || [])].map(p => ({ p, t }))); },
+  MILITARY: { exempt: ['병역 혜택', 'ok'], served: ['군필', 'ok'], none: ['미필', 'soon'] },
+  military(p) { const m = this.MILITARY[p.military]; return m ? `<span class="ct-st ${m[1]}">${m[0]}</span>` : ''; },
   find(id) { return this.all().find(x => x.p.id === id) || null; },
   team() { return Roster.team(); },
   today() { return Clock.today(); },
@@ -24,6 +26,7 @@ const Player = {
   money(v) { return v >= 10 ? `${Math.round(v)}억` : `${v.toFixed(1)}억`; },
   days(p) { return p.contractEnd ? Fmt.daysBetween(this.today(), p.contractEnd) : null; },
   contractState(p) {
+    if (p.free) return ['무소속', 'fa'];
     const d = this.days(p);
     if (d == null) return ['정보 없음', 'na'];
     if (d < 0) return ['계약 만료 (FA)', 'fa'];
@@ -64,10 +67,11 @@ const Player = {
           <div class="pp-col">
             <h4>계약</h4>
             <dl class="cr-dl">
-              <dt>소속</dt><dd>${UI.esc(t.name)} (${t.league})</dd>
+              <dt>소속</dt><dd>${UI.esc(t.name)}${t.league ? ` (${t.league})` : ''}</dd>
               <dt>계약 만료</dt><dd>${p.contractEnd ? p.contractEnd.replace(/-/g, '.') : '-'} <span class="ct-st ${cc}">${cs}</span></dd>
               <dt>연봉 (추정)</dt><dd>${this.money(this.salary(p, t))} 원</dd>
               <dt>생년월일</dt><dd>${p.birthdate ? p.birthdate.replace(/-/g, '.') : '-'}</dd>
+              ${p.military ? `<dt>병역</dt><dd>${this.military(p)}</dd>` : ''}
             </dl>
             ${st ? `<h4>상태</h4>
               ${Career.meter('컨디션', st.condition)}
@@ -164,6 +168,7 @@ const Player = {
           <dl class="cr-dl">
             <dt>나이</dt><dd>${p.age || '-'}세</dd>
             <dt>국적</dt><dd>${G.flag(p.nation)} ${G.nationName(p.nation)}</dd>
+            ${p.military ? `<dt>병역</dt><dd>${this.military(p)}</dd>` : ''}
             <dt>계약 만료</dt><dd>${p.contractEnd ? p.contractEnd.replace(/-/g, '.') : '-'}</dd>
             <dt>연봉 (추정)</dt><dd>${this.money(this.salary(p, t))}</dd>
             <dt>시장 가치</dt><dd>${this.money(this.value(p, t))}</dd>

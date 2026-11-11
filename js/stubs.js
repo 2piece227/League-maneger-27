@@ -6,15 +6,17 @@ const Data = {
     const db = { leagues: MOCK.leagues, teams: MOCK.teams, history: { worlds: MOCK.worldsHistory }, source: 'mock' };
     try {
       const get = f => fetch('data/' + f).then(r => { if (!r.ok) throw new Error(f); return r.json(); });
-      const [t, p, h, o] = await Promise.all([get('teams.json'), get('players.json'), get('history.json'), get('overrides.json').catch(() => ({}))]);
+      const [t, p, h, o, c] = await Promise.all([get('teams.json'), get('players.json'), get('history.json'), get('overrides.json').catch(() => ({})), get('custom.json').catch(() => ({}))]);
       db.teams = this.mergeTeams(t.teams, p.players, o.teams || {});
+      db.free = this.freeTeam(c.freeAgents || []);
+      this.applyMilitary([...db.teams, db.free], c.military || {});
       db.history.worlds = MOCK.worldsHistory.map(w => ({ ...w, logo: (h.worldsLogos || {})[w.page || w.team] || null, photo: (h.worldsPhotos || {})[w.year] || null }));
       db.source = 'scraped';
     } catch (e) {
       console.info('[data] 수집 데이터 없음 → 목업 사용', e.message);
     }
     // 능력치가 없는 선수는 기본값(전원 동일)으로 채운다. TODO: 기록 기반 변환
-    db.teams.forEach(t => t.players.forEach(p => {
+    [...db.teams, ...(db.free ? [db.free] : [])].forEach(t => t.players.forEach(p => {
       p.attributes = p.attributes || Attributes.create(p.role);
       p.ovr = Attributes.overall(p.attributes);
     }));
@@ -44,6 +46,21 @@ const Data = {
       MOCK.markSubs(team.players);
       return team;
     });
+  },
+
+  // 소속팀 없는 선수(직접 추가). 팀 목록에는 넣지 않고 '무소속' 가상 팀으로 묶는다.
+  freeTeam(list) {
+    const people = list.map(p => ({ ...p, team: 'free', free: true, contractEnd: null, age: p.birthdate ? this.ageOn(p.birthdate, Clock.today()) : null, sub: false }));
+    return { id: 'free', name: '무소속', short: '무소속', league: null, color: '#4a5568', rep: 1, fin: 2, tags: [], players: people.filter(p => p.role !== 'COACH'), staff: people.filter(p => p.role === 'COACH') };
+  },
+
+  // 한국 선수 병역: exempt(혜택) / served(군필) / none(미필)
+  applyMilitary(teams, m) {
+    const ex = new Set(m.exempt || []), sv = new Set(m.served || []);
+    teams.forEach(t => [...t.players, ...(t.staff || [])].forEach(p => {
+      if (p.nation !== 'South Korea' || p.role === 'COACH') return;
+      p.military = ex.has(p.id) ? 'exempt' : sv.has(p.id) ? 'served' : 'none';
+    }));
   },
 
   // 계약 정보가 공개되지 않은 선수: 선수별로 고정된 값으로 채운다 (올해 40% · 내년 40% · 2년 뒤 20%)

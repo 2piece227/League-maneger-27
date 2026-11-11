@@ -1,0 +1,19 @@
+{
+  "_note": "직접 관리하는 선수 정보. freeAgents: 소속팀 없이 추가할 선수(무소속으로 들어감, players.json과 같은 형식, photo는 없어도 됨). military: 한국 선수 병역 상태. exempt=병역 혜택, served=군필, 나머지 한국 선수는 미필.",
+  "freeAgents": [
+    {
+      "id": "deft",
+      "name": "Deft",
+      "realName": "Kim Hyuk-kyu",
+      "nativeName": "김혁규",
+      "role": "BOT",
+      "nation": "South Korea",
+      "birthdate": "1996-10-23",
+      "photo": null
+    }
+  ],
+  "military": {
+    "exempt": ["zeus", "kanavi", "faker", "chovy", "ruler", "keria"],
+    "served": ["deft"]
+  }
+}

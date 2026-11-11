@@ -5,7 +5,7 @@ const Recruit = {
 
   today() { return Clock.today(); },
   mineId() { return App.state.teamId; },
-  pool() { return App.db.teams.flatMap(t => t.players.map(p => ({ p, t }))); },
+  pool() { return [...App.db.teams, ...(App.db.free ? [App.db.free] : [])].flatMap(t => t.players.map(p => ({ p, t }))); },
   home(t) { return { LCK: 'South Korea', LPL: 'China', LCS: 'United States' }[t.league]; },
 
   star(id) { return `<button class="rc-star ${Player.shortlist().includes(id) ? 'on' : ''}" data-star="${id}" title="관심 목록">★</button>`; },
@@ -62,7 +62,7 @@ const Recruit = {
         (f.league === 'ALL' || t.league === f.league) && (f.role === 'ALL' || p.role === f.role) &&
         (f.age === 'ALL' || (f.age === 'u21' ? p.age <= 21 : f.age === '22-25' ? p.age >= 22 && p.age <= 25 : p.age >= 26)) &&
         (f.nat === 'ALL' || (f.nat === 'home' ? p.nation === homeN : p.nation !== homeN)) &&
-        (f.contract === 'ALL' || (() => { const d = Player.days(p); return d != null && (f.contract === 'fa' ? d <= 60 : d <= 365); })()) &&
+        (f.contract === 'ALL' || p.free || (() => { const d = Player.days(p); return d != null && (f.contract === 'fa' ? d <= 60 : d <= 365); })()) &&
         (!f.q || p.name.toLowerCase().includes(f.q.toLowerCase()) || (p.nativeName || '').includes(f.q)));
       const by = {
         value: (a, b) => Player.value(b.p, b.t) - Player.value(a.p, a.t),
@@ -141,8 +141,8 @@ const Recruit = {
     const today = this.today(), lim = Store.addDays(today, 30);
     const L = App.db.leagues.find(l => l.id === Player.team().league);
     const draw = () => {
-      const src = App.db.teams.flatMap(t => (this.faStaff ? t.staff || [] : t.players).map(p => ({ p, t })));
-      const rows = src.filter(({ p, t }) => p.contractEnd && p.contractEnd <= lim && t.id !== this.mineId())
+      const src = [...App.db.teams, ...(App.db.free ? [App.db.free] : [])].flatMap(t => (this.faStaff ? t.staff || [] : t.players).map(p => ({ p, t })));
+      const rows = src.filter(({ p, t }) => (p.free || (p.contractEnd && p.contractEnd <= lim)) && t.id !== this.mineId())
         .sort((a, b) => Player.value(b.p, b.t) - Player.value(a.p, a.t));
       el.innerHTML = `
         <div class="cr-page">
