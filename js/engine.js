@@ -79,7 +79,7 @@ const Engine = {
   MAX_DAYS: 7,     // 아무 일이 없어도 한 번에 최대 일주일까지만
   busy: false,
   // 처리 연출 시간(ms): 시작 로딩 · 하루당 · 멈출 때 결과를 보여주는 시간
-  DELAY: { start: 900, day: 1300, stop: 1800 },
+  DELAY: { start: 1300, day: 1900, stop: 2300 },
   delay(k) { return this.DELAY[k] * ({ slow: 1.6, normal: 1, fast: .45 }[App.state.settings.simSpeed] || 1); },
 
   on(fn) { this.daily.push(fn); },
