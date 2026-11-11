@@ -24,6 +24,42 @@ const Squad = {
     p.ovr = Attributes.overall(p.attributes);
   },
 
+  // 2군 데이터가 없는 팀(LCS 전체, 일부 LPL·LEC)은 2군을 생성하고, 있는 팀도 빈 포지션은 생성 선수로 채운다
+  NAMES: {
+    a: ['Ka', 'Ze', 'Ri', 'Lo', 'Vi', 'Mo', 'Ta', 'Ne', 'Ro', 'Xa', 'Ju', 'Fa', 'Hy', 'Do', 'Ki', 'Su', 'Ra', 'Ce', 'Bo', 'Ny', 'Ae', 'Sy', 'Ve', 'Ol'],
+    b: ['ro', 'ne', 'ka', 'ris', 'vo', 'lyn', 'tz', 'mi', 'do', 'sk', 'x', 'ra', 'no', 'zen', 'vy', 'lo', 'th', 'um', 'ce', 'rin', 'ko', 'ga'],
+    cn: ['Xiao', 'Ah', 'Jie', 'Hao', 'Lin', 'Yu', 'Wen', 'Bo', 'Ming', 'Tian', 'Feng', 'Le', 'Qing', 'Zhi', 'Kai', 'Yan', 'Shan', 'Rui'],
+    cn2: ['', '', 'yu', 'hao', 'x', 'bai', 'ge', 'zi', 'an', 'mo'],
+  },
+  NATION: { LCK: ['South Korea'], LPL: ['China', 'China', 'China', 'South Korea'], LEC: ['France', 'Spain', 'Germany', 'Poland', 'Denmark', 'Sweden', 'United Kingdom', 'Belgium'], LCS: ['United States', 'United States', 'Canada', 'South Korea'] },
+  proName(r, league) {
+    const N = this.NAMES, pick = a => a[Math.floor(r() * a.length)];
+    return league === 'LPL' && r() < .7 ? pick(N.cn) + pick(N.cn2) : pick(N.a) + pick(N.b) + (r() < .25 ? pick(N.b) : '');
+  },
+  uniqueName(r, league) {
+    const used = this._names ||= new Set(App.db ? Player.all().map(x => x.p.name.toLowerCase()) : []);
+    let n = this.proName(r, league);
+    for (let i = 0; used.has(n.toLowerCase()) && i < 20; i++) n = this.proName(r, league);
+    used.add(n.toLowerCase());
+    return n;
+  },
+  fillSecond(t) {
+    if (!t.clTeam) t.clTeam = { id: t.id + '-academy', name: `${t.name} Academy`, short: `${t.short}.A`, logo: t.logo, color: t.color, made: true };
+    G.ROLES.filter(role => !t.cl.some(p => p.role === role)).forEach(role => {
+      const r = this.rng(`${role}#${t.id}#second`);
+      const ca = 8 + r() * 3, pa = Math.max(ca, ca + r() * r() * 8);
+      const p = {
+        id: `made-${t.id}-${role.toLowerCase()}`, made: true, team: t.id, name: this.uniqueName(r, t.league), realName: '', nativeName: '', role,
+        nation: this.NATION[t.league][Math.floor(r() * this.NATION[t.league].length)], age: 17 + Math.floor(r() * 5), photo: null,
+        contractEnd: `${2026 + Math.floor(r() * 2)}-11-16`, sub: false, level: 'cl',
+        ca: this.round(ca), pa: this.round(pa), attributes: Attributes.generate(role, ca, pa, r),
+      };
+      if (p.nation === 'South Korea') p.military = 'none';
+      p.ovr = Attributes.overall(p.attributes);
+      t.cl.push(p);
+    });
+  },
+
   // 테스트 합격자 → 아카데미 연습생 (생성 선수)
   addGen(acc, level) {
     const id = 'gen-' + String(acc.id).toLowerCase().replace(/[^a-z0-9]+/g, '-');
@@ -111,7 +147,7 @@ const Squad = {
   strength(list) { return this.lineup(list).reduce((s, p) => s + (p ? p.ca || 9 : 6), 0) / 5; },
 
   // ---------- 챌린저스 리그 (LCK CL): 1~8월 매주 수요일 한 라운드 ----------
-  clTeams() { return App.db.teams.filter(t => t.clTeam); },
+  clTeams() { return App.db.teams.filter(t => t.clTeam && t.league === 'LCK'); },
   clWindow(y) { return [`${y}-01-20`, `${y}-08-26`]; },
   clTable(y) {
     let tb = App.state.clTable;
@@ -161,6 +197,23 @@ const Squad = {
   },
   standings(tb) {
     return Object.entries(tb.rows).map(([id, r]) => ({ id, ...r })).sort((x, y) => y.w - x.w || (y.sw - y.sl) - (x.sw - x.sl));
+  },
+
+  // ---------- LCK 밖 2군: 매월 10일 소속 대회 순위만 ----------
+  secondDay(today) {
+    const me = this.team();
+    if (!me || me.league === 'LCK' || today.slice(8) !== '10' || today.slice(5, 7) === '12' || me.cl.length < 5) return;
+    const ln = this.lineup(me.cl).filter(Boolean);
+    const mine = this.strength(me.cl) + (G.rand(App.state.seed + today, 'sec') - .5) * 2;
+    const field = Array.from({ length: 9 }, (_, i) => 8.5 + G.rand(today + 'sc' + me.id + i, 'f') * 3);
+    const place = 1 + field.filter(v => v > mine).length;
+    ln.forEach(p => this.grow(p, 'cl', .008));
+    (App.state.secResults ||= []).push({ d: today, place });
+    const name = me.clTeam.circuit && !/Invitational|Qualifier/.test(me.clTeam.circuit) ? me.clTeam.circuit : '2군 대회';
+    Inbox.push({ from: { name: `${this.coach()} 코치`, role: 'coach' }, subject: `[2군] ${me.clTeam.short} ${name} ${place}위 (${+today.slice(5, 7)}월)`, link: 'roster-challengers',
+      body: `이번 달 2군 성적입니다. ${name}에서 10팀 중 ${place}위를 기록했습니다.
+
+출전: ${ln.map(p => p.name).join(', ')}` });
   },
 
   // ---------- 아카데미 대회: 매월 20일, 5명 이상이면 참가 ----------
@@ -221,6 +274,7 @@ Engine.on(today => {
   me.players.filter(p => p.gen).forEach(p => Squad.grow(p, 'first'));
   Squad.clDay(today);
   Squad.academyDay(today);
+  Squad.secondDay(today);
   Squad.evalDay(today);
 });
 
@@ -257,9 +311,9 @@ const SquadView = {
           <div class="rs-title"><h2>${ct ? `${G.team({ ...ct, color: t.color }, 'xs')} ${UI.esc(ct.name)}` : '챌린저스'}</h2><span>2군입니다. 경기는 2군 코치가 맡고, 결과와 내부 평가만 보고받습니다.</span></div>
           <div class="rs-stats"><div><span class="k">인원</span><b>${t.cl.length}/${Squad.CL_MAX}</b></div><div><span class="k">CL 순위</span><b>${ct && st.length && (st[0].w + st[0].l) ? (st.findIndex(r => r.id === t.id) + 1) + '위' : '-'}</b></div><div><span class="k">2군 코치</span><b>${UI.esc(Squad.coach())}</b></div></div>
         </div>
-        ${!ct ? '<div class="card ac-empty"><p class="ms-none">이 리그에는 2군 리그(LCK CL) 데이터가 없습니다. 아카데미에서 선수를 올려 채울 수 있습니다.</p></div>' : ''}
+        ${t.league !== 'LCK' ? `<div class="card ac-empty"><p class="ms-none">${ct.made ? '실제 2군 데이터가 없어 생성 선수로 꾸린 2군입니다.' : `최근 출전 대회: ${UI.esc(ct.circuit || '-')}`} 매월 2군 대회 순위가 메시지로 옵니다.</p>${(App.state.secResults || []).slice(-6).reverse().map(r => `<div class="sqv-res ${r.place <= 3 ? 'w' : ''}"><span>${r.d.slice(0, 7).replace('-', '.')}</span><b>${r.place}위</b><span>10팀 중</span></div>`).join('')}</div>` : ''}
         ${this.table(t.cl, '챌린저스 선수가 없습니다.')}
-        ${ct ? `<div class="sqv-two">
+        ${t.league === 'LCK' ? `<div class="sqv-two">
           <div class="card"><div class="card-head"><h3>LCK CL ${y} 순위</h3></div>
             <table class="rs-table"><thead><tr><th class="num">#</th><th>팀</th><th class="num">승</th><th class="num">패</th><th class="num">세트</th></tr></thead><tbody>
             ${st.map((r, i) => `<tr class="${r.id === t.id ? 'mine' : ''}"><td class="num">${i + 1}</td><td>${UI.esc(tn(r.id).name || tn(r.id).short)}</td><td class="num">${r.w}</td><td class="num">${r.l}</td><td class="num">${r.sw - r.sl > 0 ? '+' : ''}${r.sw - r.sl}</td></tr>`).join('')}

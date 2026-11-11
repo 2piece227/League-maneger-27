@@ -21,7 +21,7 @@ const Data = {
       p.attributes = p.attributes || Attributes.create(p.role);
       p.ovr = Attributes.overall(p.attributes);
     }));
-    db.teams.forEach(t => (t.cl || []).forEach(p => Squad.initCl(p)));
+    db.teams.forEach(t => { (t.cl || []).forEach(p => Squad.initCl(p)); Squad.fillSecond(t); });
     return db;
   },
 
