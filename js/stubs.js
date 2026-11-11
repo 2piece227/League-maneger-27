@@ -6,7 +6,8 @@ const Data = {
     const db = { leagues: MOCK.leagues, teams: MOCK.teams, history: { worlds: MOCK.worldsHistory }, source: 'mock' };
     try {
       const get = f => fetch('data/' + f).then(r => { if (!r.ok) throw new Error(f); return r.json(); });
-      const [t, p, h, o, c, cl] = await Promise.all([get('teams.json'), get('players.json'), get('history.json'), get('overrides.json').catch(() => ({})), get('custom.json').catch(() => ({})), get('cl.json').catch(() => ({ teams: [], players: [] }))]);
+      const [t, p, h, o, c, cl, at] = await Promise.all([get('teams.json'), get('players.json'), get('history.json'), get('overrides.json').catch(() => ({})), get('custom.json').catch(() => ({})), get('cl.json').catch(() => ({ teams: [], players: [] })), get('attributes.json').catch(() => ({ players: {} }))]);
+      this.sheet = at.players || {};
       db.teams = this.mergeTeams(t.teams, p.players, o.teams || {});
       db.free = this.freeTeam(c.freeAgents || []);
       Contract.stars = c.stars || {};
@@ -17,10 +18,13 @@ const Data = {
     } catch (e) {
       console.info('[data] 수집 데이터 없음 → 목업 사용', e.message);
     }
-    // 능력치가 없는 선수는 기본값(전원 동일)으로 채운다. TODO: 기록 기반 변환
+    // 능력치: 산정표(data/attributes.json)에 있으면 그 값, 없으면 평가 점수 근처로 선수별 고정 생성
+    const sheet = this.sheet || {};
     [...db.teams, ...(db.free ? [db.free] : [])].forEach(t => t.players.forEach(p => {
-      p.attributes = p.attributes || Attributes.create(p.role);
-      p.ovr = Attributes.overall(p.attributes);
+      if (p.role === 'COACH') return;
+      if (sheet[p.id]) p.attributes = Attributes.fromSheet(sheet[p.id], p.role);
+      else if (!p.attributes) { const ca = Attributes.caFor(Contract.score(p, t), p.role); p.attributes = Attributes.generate(p.role, ca, ca, Squad.rng('at:' + p.id)); delete p._sc; }
+      p.ovr = Attributes.overall(p.attributes, p.role);
     }));
     db.teams.forEach(t => { (t.cl || []).forEach(p => Squad.initCl(p)); Squad.fillSecond(t); });
     return db;

@@ -21,7 +21,7 @@ const Squad = {
     const ca = 8 + r() * 4, pa = Math.max(ca, ca + r() * r() * 8);
     p.ca = this.round(ca); p.pa = this.round(pa);
     p.attributes = Attributes.generate(p.role, ca, pa, r);
-    p.ovr = Attributes.overall(p.attributes);
+    p.ovr = Attributes.overall(p.attributes, p.role);
   },
 
   // 2군 데이터가 없는 팀(LCS 전체, 일부 LPL·LEC)은 2군을 생성하고, 있는 팀도 빈 포지션은 생성 선수로 채운다
@@ -55,7 +55,7 @@ const Squad = {
         ca: this.round(ca), pa: this.round(pa), attributes: Attributes.generate(role, ca, pa, r),
       };
       if (p.nation === 'South Korea') p.military = 'none';
-      p.ovr = Attributes.overall(p.attributes);
+      p.ovr = Attributes.overall(p.attributes, p.role);
       t.cl.push(p);
     });
   },
@@ -70,7 +70,7 @@ const Squad = {
       attributes: acc.attrs || Attributes.create(acc.role), grade: acc.grade || '',
       joined: acc.date || today, contractEnd: Store.addDays(today, 730), military: 'none',
     };
-    this.gen()[id].ovr = Attributes.overall(this.gen()[id].attributes);
+    this.gen()[id].ovr = Attributes.overall(this.gen()[id].attributes, acc.role);
     this.moves()[id] = level;
     return id;
   },
@@ -102,6 +102,7 @@ const Squad = {
       const lv = this.moves()[p.id] || def;
       if (lv === 'out') return;
       if (dev[p.id]) Object.assign(p, dev[p.id]);
+      if (p.attributes && p.role !== 'COACH') { p.attributes = Attributes.fix(p.attributes, p.role); p.ovr = Attributes.overall(p.attributes, p.role); } // 예전 세이브 능력치 → 새 구성
       p.level = lv;
       ({ first: t.players, cl: t.cl, academy: t.academy })[lv].push(p);
     });
@@ -248,7 +249,7 @@ const Squad = {
     ['physical', 'macro', 'mental', 'role'].forEach(g => Object.keys(p.attributes[g] || {}).forEach(k => {
       p.attributes[g][k] = Math.min(20, p.attributes[g][k] + d * (.4 + G.rand(p.id + Clock.today() + k, 'ag') * 1.2));
     }));
-    p.ovr = Attributes.overall(p.attributes);
+    p.ovr = Attributes.overall(p.attributes, p.role);
     if (!p.gen) this.dev()[p.id] = { ca: p.ca, attributes: p.attributes, evalCa: p.evalCa };
   },
 

@@ -51,6 +51,7 @@ const Player = {
             <div class="pp-sub">${UI.esc(p.nativeName || p.realName || '')}${p.realName && p.nativeName ? ` · ${UI.esc(p.realName)}` : ''}</div>
             <div class="pp-tags">${p.role !== 'COACH' ? G.pos(p.role, true) : '<span class="ch-tag">코칭스태프</span>'}<span class="nat">${G.flag(p.nation)} ${G.nationName(p.nation)}</span>${p.age ? `<span>${p.age}세</span>` : ''}</div>
           </div>
+          ${p.ovr != null && p.role !== 'COACH' ? `<div class="pp-val pp-ovr"><span>OVR</span><b>${p.ovr}</b></div>` : ''}
           <div class="pp-val"><span>시장 가치</span><b>${this.money(this.value(p, t))}</b></div>
         </div>
         <div class="pp-body">
@@ -76,6 +77,7 @@ const Player = {
               <a class="pp-link" href="#roster-mastery">숙련도 자세히 →</a>` : `<h4>코칭 정보</h4><p class="ms-none">직책 구분 정보가 아직 없습니다.</p>`}
           </div>
         </div>
+        ${p.attributes && p.role !== 'COACH' ? `<div class="pp-attrs"><h4>능력치 <small>OVR ${p.ovr} · 기술 40% 운영 30% 멘탈 10% 특화 20%</small></h4>${Attributes.table(p.attributes, p.role)}</div>` : ''}
         <div class="pp-foot">
           ${this.isMine(t) && p.role !== 'COACH' ? `<span class="pp-mv" data-pid="${p.id}">${Squad.buttons(p)}</span>` : ''}
           <button class="btn-ghost pp-list">${listed ? '관심 목록에서 빼기' : '관심 목록에 추가'}</button>
@@ -145,7 +147,7 @@ const Player = {
     };
     el.innerHTML = `
       <div class="cr-page">
-        ${Career.head('선수 비교', '리그 전체 선수 중 두 명을 골라 비교합니다. 능력치는 기본값이라 아직 비교하지 않습니다.')}
+        ${Career.head('선수 비교', '리그 전체 선수 중 두 명을 골라 비교합니다. ')}
         <div class="cmp-grid">${card(this.cmp[0], 0)}<div class="cmp-vs">VS</div>${card(this.cmp[1], 1)}</div>
       </div>`;
     $$('.cmp-sel', el).forEach(s => s.onchange = () => { this.cmp[+s.dataset.i] = s.value; this.compare(el); });

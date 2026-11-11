@@ -205,7 +205,7 @@ const Roster = {
         </div>
         <div class="rs-facts">
           <div><span class="k">나이</span><b>${p.age ?? '-'}</b><small>${p.birthdate ? p.birthdate.replace(/-/g, '.') : ''}</small></div>
-          <div><span class="k">OVR</span><b>${p.ovr}</b><small>1–20</small></div>
+          <div><span class="k">OVR</span><b>${p.ovr}</b><small>1–99</small></div>
           <div><span class="k">컨디션</span><b>${s.condition}%</b><small>목업</small></div>
           <div><span class="k">사기</span><b class="morale ${mc}">${ml}</b><small>목업</small></div>
           <div class="wide"><span class="k">계약 만료</span><b>${p.contractEnd ? p.contractEnd.replace(/-/g, '.') : '정보 없음'}</b><small>${this.cell(p, 'left')}</small></div>
