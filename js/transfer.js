@@ -132,6 +132,8 @@ const Transfer = {
     const s = Contract.score(p, t), yrs = 1 + Math.floor(G.rand(p.id + b.id, 'y') * 2);
     Contract.sign(p.id, t.id, { salary: Contract.r1(Contract.pay(p, s, t.league) * 1.1), end: Contract.addYears(Contract.seasonEnd(t), yrs), years: yrs, option: null, bonus: [] });
     Inbox.push({ from: { name: '사무국장', role: 'board' }, subject: `[오피셜] ${p.name}, ${t.short}로 이적`, body: `${p.name}이(가) 이적료 ${Player.money(b.fee)} 원에 ${t.name}으로 떠났습니다.` });
+    const my = Roster.team();
+    Market.post(`[오피셜] ${p.name}, ${my.short} 떠나 ${t.short}로`, `${my.name}의 ${G.ROLE_KO[p.role] || ''} ${p.name}이(가) 이적료 ${Player.money(b.fee)} 원에 ${t.name}으로 이적했습니다.`, p.id);
   },
 };
 Engine.ACTS.bidAccept = (m, mult) => { const b = Transfer.bids().find(x => x.id === m.ctx.bid); if (b && b.status === 'pending') Transfer.sell(b, mult || 1); };

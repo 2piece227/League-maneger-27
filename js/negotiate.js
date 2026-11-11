@@ -34,6 +34,7 @@ const Neg = {
     const M = Contract.st(), my = Roster.team(), old = M.neg[p.id];
     if (old && old.cool && old.cool > Clock.today()) return old;
     if (old && !old.done && !old.cool && Fmt.daysBetween(old.date, Clock.today()) <= 3 && old.mode === mode) return old;
+    if (this.held(old) && old.mode === mode) return old;                                       // 합의했지만 아직 사인 전
     const A = this.agent(p), W = this.wants(p), K = this.KIND[A.kind];
     const hit = Player.find(p.id), cur = hit && !p.free ? Contract.of(p, hit.t) : null;
     const rivals = mode === 'transfer' ? 0 : mode === 'fa' && Market.rivals(p.id) ? Market.rivals(p.id) : mode === 'renew' ? Math.floor(G.rand(p.id + Clock.year(), 'riv') * (W.s >= 75 ? 4 : 2)) : 1 + Math.floor(G.rand(p.id + Clock.year(), 'riv') * (W.s >= 75 ? 4 : 2));
@@ -93,7 +94,11 @@ const Neg = {
     const W = this.wants(p), K = this.KIND[this.agent(p).kind], R = this.judge(p, S, o), r = G.rand(p.id + S.date + S.rounds, 'say');
     S.rounds++;
     S.log.push({ who: 'me', text: this.offerText(o) });
-    if (R.u >= R.need) { S.done = true; S.deal = o; S.log.push({ who: 'agent', text: this.pick(this.say.accept, r) }); return 'deal'; }
+    if (R.u >= R.need) {
+      S.done = true; S.deal = o; S.hold = Store.addDays(Clock.today(), this.HOLD);
+      S.log.push({ who: 'agent', text: this.pick(this.say.accept, r) + `\n\n(${S.hold.replace(/-/g, '.')}까지 계약서에 사인해 주세요. 그때까지는 다른 팀과 계약하지 않습니다)` });
+      return 'deal';
+    }
     const low = R.u < R.need - .25;
     S.patience -= low ? 2 : 1;
     if (S.patience <= 0) {
@@ -200,10 +205,10 @@ const Neg = {
       const tx = $('.ng-tax', back); if (tx) { const a = Club.tax(my), b = Club.tax(my, { pid: p.id, salary: off }); tx.innerHTML = `${Player.money(b.tax)} <small>${b.tax > a.tax ? `+${Player.money(b.tax - a.tax)}` : '변화 없음'}</small>`; }
       $('.ng-room', back).innerHTML = `<span class="${rm - off < 0 ? 'warn' : ''}">${rm - off >= 0 ? '' : '−'}${Player.money(Math.abs(rm - off))}</span> <small>제안 후</small>`;
       const over = S.done || S.cool;
-      $('.ng-qs', back).innerHTML = over ? (S.done ? '<button class="btn-primary ng-sign">계약서에 사인</button>' : '') : this.QUESTIONS.filter(([k]) => !S.asked[k]).map(([k, l]) => `<button class="btn-ghost btn-sm" data-q="${k}">${l}</button>`).join('');
+      $('.ng-qs', back).innerHTML = over ? (this.held(S) ? `<button class="btn-primary ng-sign">계약서에 사인</button><small class="ng-hold">${S.hold.replace(/-/g, '.')}까지 사인하지 않으면 합의가 무효가 됩니다</small>` : '') : this.QUESTIONS.filter(([k]) => !S.asked[k]).map(([k, l]) => `<button class="btn-ghost btn-sm" data-q="${k}">${l}</button>`).join('');
       $$('input,select,button', f).forEach(x => { if (!x.classList.contains('ng-quit')) x.disabled = !!over; });
       $$('[data-q]', back).forEach(b => b.onclick = () => { this.answer(p, S, b.dataset.q); draw(); });
-      const sign = $('.ng-sign', back); if (sign) sign.onclick = () => { this.finish(p, t, S, mode); close(); };
+      const sign = $('.ng-sign', back); if (sign) sign.onclick = () => { if (this.finish(p, t, S, mode)) close(); else draw(); };
     };
     f.oninput = draw;
     f.onsubmit = e => {
@@ -217,9 +222,23 @@ const Neg = {
     draw();
   },
 
+  // 합의 후 사인 대기: 이 기간에는 다른 팀이 데려가지 않는다. 지나면 합의가 무효
+  HOLD: 3,
+  held(S) { return !!(S && S.done && S.deal && !S.signed && !S.lapsed && S.hold && S.hold >= Clock.today()); },
+  // 사인할 수 있는 상태인지 (그사이 다른 팀과 계약했거나 이적 합의가 깨졌으면 불가)
+  signable(p, t, S, mode) {
+    if (!this.held(S)) return '합의 기한이 지났습니다. 다시 협상해야 합니다.';
+    if (mode === 'fa' && !p.free && !(Player.days(p) < 0)) return `${p.name}은(는) 이미 ${t.short}와 계약했습니다.`;
+    if (mode === 'transfer') { const b = Transfer.open$(p.id); if (!b || b.status !== 'agreed') return '구단 간 이적 합의가 유효하지 않습니다.'; }
+    if (mode === 'renew' && !Player.isMine(t)) return `${p.name}은(는) 이미 팀을 떠났습니다.`;
+    return null;
+  },
+
   // 사인: 계약 기록 · 계약금 장부 · 메시지
   finish(p, t, S, mode) {
+    const no = this.signable(p, t, S, mode); if (no) { UI.toast(no, 3200); return false; }
     const my = Roster.team(), o = S.deal, cur = !p.free ? Contract.of(p, t) : null;
+    const fee = mode === 'transfer' ? (Transfer.open$(p.id) || {}).fee : 0;
     const startEnd = mode === 'renew' && cur && cur.end && cur.end >= Clock.today() ? cur.end : Contract.seasonEnd(my);
     const end = Contract.addYears(startEnd, o.years);
     if (mode === 'transfer') Transfer.complete(p.id);
@@ -229,7 +248,13 @@ const Neg = {
     S.done = true; S.signed = true;
     Inbox.push({ from: { name: '사무국장', role: 'board' }, subject: mode === 'renew' ? `[오피셜] ${p.name} 재계약` : `[오피셜] ${p.name} 영입`,
       body: `${p.name}과(와) 계약을 마쳤습니다.\n\n${this.offerText(o)}\n계약 만료: ${Contract.label({ end, option: o.option })}` });
+    const lbl = Contract.label({ end, option: o.option });
+    Market.post(mode === 'renew' ? `[오피셜] ${my.short}, ${p.name}와 재계약` : `[오피셜] ${p.name}, ${my.short} 입단`,
+      mode === 'renew' ? `${my.name}이(가) ${G.ROLE_KO[p.role] || ''} ${p.name}과(와) 재계약했습니다. 계약은 ${lbl}까지입니다.`
+        : mode === 'transfer' ? `${my.name}이(가) ${t.name}의 ${G.ROLE_KO[p.role] || ''} ${p.name}을(를) 이적료 ${Player.money(fee || 0)} 원에 영입했습니다. 계약은 ${lbl}까지입니다.`
+        : `FA ${p.name}이(가) ${my.name}과(와) 계약했습니다. 계약은 ${lbl}까지입니다.`, p.id);
     UI.toast(mode === 'renew' ? `${p.name} 재계약 완료` : `${p.name} 영입 완료`);
+    return true;
   },
 
   // ---------- 2군·아카데미·코치: 계약서 한 장 ----------
@@ -256,9 +281,24 @@ const Neg = {
           if (p.gen) { Squad.gen()[p.id].contractEnd = end; Squad.apply(); }
           else Contract.sign(p.id, my.id, { salary: sal, end, years: yrs, option: null, bonus: [] });
           Inbox.push({ from: { name: '사무국장', role: 'board' }, subject: `[오피셜] ${p.name} ${mode === 'renew' ? '재계약' : '계약'}`, body: `${p.name}과(와) 연봉 ${Player.money(sal)} 원, ${yrs}년 계약을 맺었습니다.` });
+          if (!p.gen) Market.post(mode === 'renew' ? `[오피셜] ${my.short}, ${p.name}와 재계약` : `[오피셜] ${p.name}, ${my.short} 입단`, `${my.name}이(가) ${p.role === 'COACH' ? '코치' : `${Squad.LV[tier] || '1군'} ${G.ROLE_KO[p.role] || ''}`} ${p.name}과(와) ${yrs}년 계약을 맺었습니다.`, p.id);
           UI.toast('계약을 마쳤습니다'); Router.go(Router.current());
         },
       }],
     });
   },
 };
+
+// 합의만 하고 사인하지 않은 계약: 마지막 날 알리고, 기한이 지나면 무효
+Engine.on(today => {
+  Object.values(Contract.st().neg || {}).forEach(S => {
+    if (!S.done || !S.deal || S.signed || S.lapsed || !S.hold) return;
+    const hit = Player.find(S.pid); if (!hit) return;
+    if (S.hold === today) Inbox.push({ from: { name: '사무국장', role: 'board' }, subject: `${hit.p.name} 계약서 사인 마감 오늘`, priority: 'todo', ctx: { pid: S.pid, player: hit.p.name },
+      body: `${hit.p.name} 측과 합의한 계약서에 아직 사인하지 않았습니다. 오늘 안에 사인하지 않으면 합의가 무효가 됩니다.\n\n${Neg.offerText(S.deal)}`,
+      choices: [{ label: '계약서에 사인', act: 'negSign', reply: '계약서에 사인했습니다.' }, { label: '사인하지 않는다', act: 'negDrop', reply: '합의를 없던 일로 했습니다.' }] });
+    if (S.hold < today) { S.lapsed = true; Inbox.push({ from: { name: '사무국장', role: 'board' }, subject: `${hit.p.name} 계약 합의 무효`, body: `기한 안에 계약서에 사인하지 않아 ${hit.p.name} 측과의 합의가 무효가 됐습니다. 다시 협상해야 합니다.` }); }
+  });
+});
+Engine.ACTS.negSign = m => { const S = Contract.st().neg[m.ctx.pid], hit = Player.find(m.ctx.pid); if (S && hit) Neg.finish(hit.p, hit.t, S, S.mode); };
+Engine.ACTS.negDrop = m => { const S = Contract.st().neg[m.ctx.pid]; if (S) S.lapsed = true; };

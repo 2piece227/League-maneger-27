@@ -137,6 +137,7 @@ Engine.on(today => {
     if (d === 3 && Engine.once('exp3:' + p.id + c.end)) Inbox.push({ from: board, subject: `${p.name} 계약 만료 3일 전`, priority: 'todo', link: 'roster-contracts', ctx: { pid: p.id },
       body: `${p.name}(${G.ROLE_KO[p.role] || '코치'})의 계약이 ${Fmt.dayLabel(c.end)}에 끝납니다.\n\n그 전에 재계약하지 않으면 FA로 풀려 다른 팀과 자유롭게 협상할 수 있습니다.` });
     if (d >= 0) return;
+    if (Neg.held(Contract.st().neg[p.id])) return;                          // 재계약 합의 후 사인 대기 중이면 풀지 않는다
     if (c.option === 'player') {
       const stay = G.rand((App.state.seed || '') + p.id + c.end, 'popt') < .45 + ((t.rep || 2) - 3) * .12 + ((World.morale()[p.id] || 0) * .03);
       if (stay) {
@@ -147,6 +148,7 @@ Engine.on(today => {
       Inbox.push({ from: board, subject: `${p.name}, 선수 옵션 포기 — FA 시장으로`, priority: 'urgent', link: 'recruit-fa', body: `${p.name}이(가) 선수 옵션을 쓰지 않고 FA 시장에 나가기로 했습니다.\n\n다시 데려오려면 FA 시장에서 새 계약을 제시해야 합니다.` });
     } else Inbox.push({ from: board, subject: `${p.name}, 계약 만료로 FA`, priority: 'urgent', link: 'recruit-fa',
       body: `${p.name}의 계약이 끝나 FA가 됐습니다. 이제 다른 팀도 자유롭게 영입을 시도할 수 있습니다.\n\n다시 데려오려면 FA 시장에서 새 계약을 제시해야 합니다.` });
+    Market.post(`[FA] ${p.name}, ${t.short}와 계약 만료 — FA 시장으로`, `${t.name}의 ${G.ROLE_KO[p.role] || ''} ${p.name}(${p.age || '-'}세)이(가) 재계약하지 않고 FA 시장에 나왔습니다.`, p.id);
     Contract.release(p.id);
   });
 });

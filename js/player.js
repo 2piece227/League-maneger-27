@@ -92,8 +92,9 @@ const Player = {
     Squad.bind(back, () => { close(); Router.go(Router.current()); });
     $('.pp-list', back).onclick = () => { this.toggleShortlist(p.id); close(); this.open(id); };
     const talk = $('.pp-talk', back), ask = $('.pp-ask', back);
-    if (talk) talk.onclick = () => this.contractModal(p.id);
-    if (ask) ask.onclick = () => this.inquiryModal(p.id);
+    // 협상 창을 열면 프로필은 닫는다 (사인 뒤 예전 정보가 뒤에 남지 않게)
+    if (talk) talk.onclick = () => { close(); this.contractModal(p.id); };
+    if (ask) ask.onclick = () => { close(); this.inquiryModal(p.id); };
   },
 
   toggleShortlist(id) {

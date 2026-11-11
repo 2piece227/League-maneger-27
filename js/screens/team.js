@@ -27,7 +27,7 @@ Screens.team = {
       <span><span class="li-k">참가 팀</span>${teams.length}</span>
       <span><span class="li-k">연봉 규정</span>${league.rules.join(' · ')}</span>
       <span><span class="li-k">FA 개장</span>${league.faOpen}</span>
-      ${App.db.source === 'mock' ? '<span class="mock-tag">목업 데이터 · 수집 스크립트 실행 전</span>' : '<span class="mock-tag">능력치 전원 기본값 · 추후 조정</span>'}`;
+      ${App.db.source === 'mock' ? '<span class="mock-tag">목업 데이터 · 수집 스크립트 실행 전</span>' : ''}`;
 
     $('#team-list').innerHTML = teams.map(t => this.card(t)).join('');
     $$('.team-card').forEach(c => c.onclick = () => this.selectTeam(c.dataset.team));

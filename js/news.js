@@ -23,7 +23,7 @@ const News = {
         out.push({ cat: 'transfer', date: d(i), title: `[이적설] ${p.name}, ${x.short}와 계약 만료 앞두고 ${to.short} 관심설`, body: `${x.name}의 ${G.ROLE_KO[p.role]} ${p.name}(${p.age}세)의 계약이 ${p.contractEnd.replace(/-/g, '.')}에 끝납니다. 업계에서는 ${to.name}이 영입을 검토하고 있다는 이야기가 나옵니다.`, pid: p.id, link: '#recruit-fa' });
       });
     // 이적시장 오피셜 (다른 구단 AI 결과, 최근 30일)
-    (App.state.market?.news || []).filter(n => n.date >= d(30)).slice(0, 25).forEach(n => out.push({ cat: 'transfer', date: n.date, title: n.title, body: n.body, pid: n.pid, link: '#recruit-fa' }));
+    (App.state.market?.news || []).filter(n => n.date >= d(30)).forEach(n => out.push({ cat: 'transfer', date: n.date, title: n.title, body: n.body, pid: n.pid, link: '#recruit-fa' }));
     // 일정 발표 예정
     const rel = Schedule.nextRelease(t.league);
     if (rel) out.push({ cat: 'league', date: d(1), title: `${rel.label} 대진 ${Fmt.dayLabel(rel.pub)}경 발표 예정`, body: `${rel.label}는 ${Fmt.dayLabel(rel.start)} 개막합니다. 대진과 경기 일정은 개막 약 ${rel.lead}일 전에 공개될 예정입니다.`, link: '#portal-fixtures' });
@@ -44,9 +44,10 @@ const News = {
     return out.sort((a, b) => b.date.localeCompare(a.date));
   },
 
+  shown: 40,
   async render(el) {
     const items = await this.items();
-    const list = items.filter(x => this.cat === 'all' || x.cat === this.cat);
+    const all = items.filter(x => this.cat === 'all' || x.cat === this.cat), list = all.slice(0, this.shown);
     const [hero, ...rest] = list;
     const art = (x, big = false) => {
       const hit = x.pid && Player.find(x.pid);
@@ -61,8 +62,10 @@ const News = {
         <div class="ch-bar"><div class="seg nw-cat">${Object.entries(this.CATS).map(([k, l]) => `<button class="${this.cat === k ? 'on' : ''}" data-c="${k}">${l}</button>`).join('')}</div></div>
         ${hero ? art(hero, true) : '<p class="ms-none">기사가 없습니다.</p>'}
         <div class="nw-grid">${rest.map(x => art(x)).join('')}</div>
+        ${all.length > list.length ? `<div class="nw-more-wrap"><button class="btn-ghost nw-more">더 보기 (${all.length - list.length}개 남음)</button></div>` : ''}
       </div>`;
-    $('.nw-cat', el).onclick = e => { const b = e.target.closest('button'); if (!b) return; this.cat = b.dataset.c; this.render(el); };
+    $('.nw-cat', el).onclick = e => { const b = e.target.closest('button'); if (!b) return; this.cat = b.dataset.c; this.shown = 40; this.render(el); };
+    const more = $('.nw-more', el); if (more) more.onclick = () => { this.shown += 40; this.render(el); };
   },
 
   async messages(el) {

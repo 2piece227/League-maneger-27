@@ -122,7 +122,7 @@ const Squad = {
     const p = [...t.players, ...t.cl, ...t.academy].find(x => x.id === pid);
     if (!p) return false;
     if (lv === 'out' && p.gen) { delete this.gen()[pid]; delete this.moves()[pid]; this.apply(); }
-    else if (lv === 'out') Contract.release(pid); // 실명 선수 방출 → FA 시장으로
+    else if (lv === 'out') { Contract.release(pid); Market.post(`[오피셜] ${t.short}, ${p.name} 방출`, `${t.name}이(가) ${G.ROLE_KO[p.role] || ''} ${p.name}과(와) 계약을 해지했습니다. ${p.name}은(는) FA 시장에 나옵니다.`, pid); } // 실명 선수 방출 → FA 시장으로
     else { this.moves()[pid] = lv; this.apply(); }
     UI.toast(lv === 'out' ? `${p.name} 선수를 방출했습니다` : `${p.name} → ${this.LV[lv]}`);
     return true;

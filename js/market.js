@@ -77,6 +77,7 @@ const Market = {
       const hit = Player.find(pid);
       if (!hit || !hit.p.free) { delete F[pid]; return; }
       if (!offers.some(o => o.until <= today)) return;
+      if (Neg.held(Contract.st().neg[pid])) return;                                       // 우리와 합의 후 사인 대기 중
       const p = hit.p;
       const util = o => { const t = App.db.teams.find(x => x.id === o.team); return o.mult * Contract.pay(p, Contract.score(p, t), t.league) / Contract.pay(p, Contract.score(p, t), 'LCK') * .5 + (t.rep || 2) * .08 + (p.nation === 'South Korea' && t.league === 'LCK' ? .25 : 0); };
       const o = offers.filter(x => { const t = App.db.teams.find(y => y.id === x.team); return t && t.players.length < 7; }).sort((a, b) => util(b) - util(a))[0];
@@ -85,12 +86,14 @@ const Market = {
       const t = App.db.teams.find(x => x.id === o.team);
       this.write(p, t, this.deal(p, t, o.mult)); changed = true;
       const s = Contract.score(p, t);
-      this.post(`[오피셜] ${p.name}, ${t.short} 입단`, `FA ${p.name}이(가) ${t.name}과(와) 계약했습니다.${offers.length > 1 ? ` ${offers.length}개 팀이 경쟁한 끝에 ${t.short}을(를) 택했습니다.` : ''}`, p.id);
-      const neg = Contract.st().neg[pid];
-      if ((neg && !neg.done && Fmt.daysBetween(neg.date, today) <= 10) || Player.shortlist().includes(pid) || s >= 82)
-        Inbox.push({ from: { name: '스카우트 팀', role: 'coach' }, subject: `${p.name}, ${t.short}와 계약`, priority: neg && !neg.done ? 'todo' : 'normal', link: 'portal-news',
-          body: `${neg && !neg.done ? '협상 중이던 ' : Player.shortlist().includes(pid) ? '관심 목록에 있던 ' : ''}${p.name}이(가) ${t.name}과(와) 계약했습니다.` });
-      if (neg) neg.done = true;
+      const back = p._o && p._o.team === t.id;                                            // FA로 나왔다가 원 소속팀과 다시 계약
+      this.post(back ? `[오피셜] ${p.name}, ${t.short} 잔류` : `[오피셜] ${p.name}, ${t.short} 입단`,
+        (back ? `FA ${p.name}이(가) 원 소속팀 ${t.name}과(와) 다시 계약했습니다.` : `FA ${p.name}이(가) ${t.name}과(와) 계약했습니다.`) + (offers.length > 1 ? ` ${offers.length}개 팀이 경쟁한 끝에 ${t.short}을(를) 택했습니다.` : ''), p.id);
+      const neg = Contract.st().neg[pid], talking = !!(neg && !neg.signed && neg.mode === 'fa' && Fmt.daysBetween(neg.date, today) <= 14);
+      if (talking || Player.shortlist().includes(pid) || s >= 82)
+        Inbox.push({ from: { name: '스카우트 팀', role: 'coach' }, subject: `${p.name}, ${t.short}와 계약`, priority: talking ? 'todo' : 'normal', link: 'portal-news',
+          body: `${talking ? (neg.deal ? '합의했지만 사인하지 않았던 ' : '협상 중이던 ') : Player.shortlist().includes(pid) ? '관심 목록에 있던 ' : ''}${p.name}이(가) ${t.name}과(와) 계약했습니다.` });
+      if (neg) { neg.done = true; neg.lapsed = true; }
     });
     if (changed) Squad.apply();
   },
