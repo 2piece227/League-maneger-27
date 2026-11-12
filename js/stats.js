@@ -41,15 +41,20 @@ const Stats = {
   },
   // 텔레포트를 드는 챔피언인지 (실제 경기 30% 이상)
   tp(c) { const x = this.of(c); if (!x) return false; const t = (x.spells.find(([s]) => /Teleport/.test(s)) || [, 0])[1]; return t / x.g >= .3; },
-  // 아이템 빌드: 시작 아이템 1개 + 핵심 아이템(신발 포함) 최대 6개, 실제로 많이 간 순서
-  build(c) {
-    const x = this.of(c); if (!x) return { start: null, core: [] };
-    const list = x.items.map(([n, cnt]) => ({ n, cnt, ...(this.items[n] || {}) })).filter(i => i.id);
-    const start = list.find(i => i.gold <= 500 && i.depth <= 1 && !/Ward|Elixir|Potion/.test(i.n)) || null;
-    const legend = list.filter(i => i.gold >= 2000 && !i.boots), boots = list.find(i => i.boots && i.gold >= 600);
+  it(n) { const x = this.items[n]; return x ? { n, ...x } : null; },
+  // 아이템 빌드 (실제로 많이 간 순서)
+  // start: 시작 아이템 (라이너 도란 · 정글 펫 · 서폿 세계 지도집), sup: 서폿 퀘스트 완성 아이템, core: 핵심 아이템(신발 포함) 최대 6개
+  build(c, role) {
+    const x = this.of(c), ch = Champions.byId[c] || { roles: [] };
+    const list = x ? x.items.map(([n, cnt]) => ({ n, cnt, ...(this.items[n] || {}) })).filter(i => i.id) : [];
+    let start = null, sup = null;
+    if (role === 'JGL') start = this.it((ch.roles || []).some(r => ['TANK', 'VANGUARD', 'WARDEN', 'JUGGERNAUT'].includes(r)) ? 'Mosstomper Seedling' : (ch.roles || []).some(r => ['ASSASSIN', 'SKIRMISHER', 'DIVER'].includes(r)) ? 'Gustwalker Hatchling' : 'Scorchclaw Pup');
+    else if (role === 'SUP') { start = this.it('World Atlas'); sup = list.find(i => (i.tags || []).includes('GoldPer') && i.depth >= 2) || this.it('Celestial Opposition'); }
+    else start = list.find(i => /^Doran|Dark Seal|Cull|Tear/.test(i.n) && i.gold <= 500) || this.it(ch.damageType === 'MAGIC_DAMAGE' ? "Doran's Ring" : (ch.roles || []).includes('MARKSMAN') ? "Doran's Blade" : "Doran's Blade");
+    const legend = list.filter(i => i.gold >= 2000 && !i.boots), boots = list.find(i => i.boots && i.gold >= 600) || this.it("Plated Steelcaps");
     const core = legend.slice(0, 5);
     if (boots) core.splice(Math.min(1, core.length), 0, boots);
-    return { start, core: core.slice(0, 6) };
+    return { start, sup, core: core.slice(0, 6), trinket: this.it(role === 'SUP' ? 'Oracle Lens' : 'Stealth Ward'), ward: this.it('Control Ward'), pot: this.it('Health Potion') };
   },
   icon(it) { return it ? `<img class="it-ic" src="assets/items/${it.id}.png" alt="" title="${UI.esc(it.ko || it.n)}">` : ''; },
 };
