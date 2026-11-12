@@ -6,8 +6,8 @@ const Data = {
     const db = { leagues: MOCK.leagues, teams: MOCK.teams, history: { worlds: MOCK.worldsHistory }, source: 'mock' };
     try {
       const get = f => fetch('data/' + f).then(r => { if (!r.ok) throw new Error(f); return r.json(); });
-      const [t, p, h, o, c, cl, at, au, rp, ra] = await Promise.all([get('teams.json'), get('players.json'), get('history.json'), get('overrides.json').catch(() => ({})), get('custom.json').catch(() => ({})), get('cl.json').catch(() => ({ teams: [], players: [] })), get('attributes.json').catch(() => ({ players: {} })), get('attributes-auto.json').catch(() => ({ players: {} })), get('reputation.json').catch(() => ({})), get('reputation-auto.json').catch(() => ({ players: {} }))]);
-      Fame.load(rp, ra);
+      const [t, p, h, o, c, cl, at, au, rp, ra, tn] = await Promise.all([get('teams.json'), get('players.json'), get('history.json'), get('overrides.json').catch(() => ({})), get('custom.json').catch(() => ({})), get('cl.json').catch(() => ({ teams: [], players: [] })), get('attributes.json').catch(() => ({ players: {} })), get('attributes-auto.json').catch(() => ({ players: {} })), get('reputation.json').catch(() => ({})), get('reputation-auto.json').catch(() => ({ players: {} })), get('tenures.json').catch(() => ({ join: {} }))]);
+      Fame.load(rp, ra, tn);
       this.sheet = { ...(au.players || {}), ...(at.players || {}) }; // 수동 산정표가 자동 산정보다 우선
       db.teams = this.mergeTeams(t.teams, p.players, o.teams || {});
       db.free = this.freeTeam(c.freeAgents || []);

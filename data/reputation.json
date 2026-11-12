@@ -1,20 +1,31 @@
 {
-  "_note": "평판 기준값. 문서 'LM 27 연봉·평판·팀 명성 체계' (claude.ai/artifact/7Us56vXc5n2dEMyhZpb5xE). teams: 팀 평판 0~100 (리그 상한 LCK 100·LPL 95·LEC 90·LCS 76). players: 문서에서 정한 선수 평판. adjust: 자동 산정을 손으로 고친 값. icon: 종목 간판 (연봉 계산 때만 평판 300).",
+  "_note": "평판 기준값. 문서 'LM 27 연봉·평판·팀 명성 체계' (claude.ai/artifact/7Us56vXc5n2dEMyhZpb5xE). teams: 팀 평판 0~100 (리그 상한 LCK 100·LPL 95·LEC 90·LCS 76). players: 문서에서 정한 선수 평판 (2026-11-12 기준 합계 = 인지도 + 프랜차이즈 점수). adjust: 자동 산정을 손으로 고친 값. icon: 종목 간판 (연봉 계산 때만 평판 300).",
   "leagueCap": {
     "LCK": 100,
     "LPL": 95,
     "LEC": 90,
     "LCS": 76
   },
-  "leagueCoef": {
-    "LCK": 1.0,
-    "LPL": 0.97,
-    "LEC": 0.94,
-    "LCS": 0.9
-  },
   "icon": [
     "faker"
   ],
+  "salary": {
+    "_note": "실력 연봉 = top × e^(curve·(OVR−99)), 최저 floor. 평판 배수 = 1 + repA·(평판/100)^1.5. cap: 리그별 개인 연봉 상한(억)",
+    "top": 20,
+    "curve": 0.0976,
+    "floor": 0.6,
+    "repA": 0.45,
+    "iconRep": 300,
+    "cap": {
+      "LPL": 20
+    }
+  },
+  "franchise": {
+    "_note": "지금 팀에서 뛴 1년마다 +perYear, 최대 max. 이적하면 0부터. asOf: players/adjust/auto 값이 합계였던 날",
+    "perYear": 3,
+    "max": 15,
+    "asOf": "2026-11-12"
+  },
   "teams": {
     "t1": 100,
     "gen-g": 98,
