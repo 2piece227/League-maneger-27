@@ -22,16 +22,28 @@ const Season = {
       const us = App.state.teamId === blue ? 'B' : App.state.teamId === red ? 'R' : null;
       const S = Draft.make({ series, teams: { B: blue, R: red }, us, mode: 'delegate', official: true });
       Draft.auto(S);
-      Sim.fast = true;
-      const g = Sim.create(S, S.game); let n = 0; try { while (!g.over && n++ < 400) Sim.step(g); } finally { Sim.fast = false; }
+      const g = Sim.create(S, S.game); let n = 0; while (!g.over && n++ < 400) Sim.step(g);
       series.games[series.games.length - 1].result = this.gameResult(g);
+    }
+    return series;
+  },
+  // 경량 시뮬 (다른 팀끼리의 경기): 주전 평균 OVR + 코치 + 그날 컨디션으로 세트 승패만 빠르게 정한다
+  power(t) { const l = Draft.lineup(t).filter(Boolean); return (l.reduce((a, p) => a + (p.ovr || 60), 0) / (l.length || 1)) - (5 - l.length) * 4 + (Draft.coach(t).r - 10) * .25; },
+  lightSeries(m) {
+    const r = Sim.rng((App.state.seed || '') + ':light:' + m.id), t1 = Schedule.team(m.t1), t2 = Schedule.team(m.t2);
+    const p1 = this.power(t1) + (r() - .5) * 5, p2 = this.power(t2) + (r() - .5) * 5, series = { key: m.id, bo: m.bo || 1, games: [] };
+    let guard = 0;
+    while (!this.seriesOver(series) && guard++ < 7) {
+      const w1 = r() < 1 / (1 + Math.exp(-(p1 - p2 + (r() - .5) * 4) / 8)), win = w1 ? m.t1 : m.t2, wt = w1 ? t1 : t2;
+      const kw = 10 + Math.floor(r() * 14), kl = Math.floor(r() * kw * .8), mvp = Draft.lineup(wt).filter(Boolean)[Math.floor(r() * 5)] || {};
+      series.games.push({ game: series.games.length + 1, picks: { B: [], R: [] }, result: { win, side: w1 ? 'B' : 'R', t: 1500 + Math.floor(r() * 900), kills: { B: w1 ? kw : kl, R: w1 ? kl : kw }, mvp: mvp.id || null, teams: { B: m.t1, R: m.t2 }, stats: [] } });
     }
     return series;
   },
   recordSeries(id, series) {
     const m = Schedule.all.find(x => x.id === id); if (!m || this.st()[id]) return;
     const sc = this.seriesScore(series), s1 = sc[m.t1] || 0, s2 = sc[m.t2] || 0;
-    this.st()[id] = { s1, s2, w: s1 > s2 ? 1 : 2, games: series.games.filter(x => x.result).map(x => ({ win: x.result.win, t: x.result.t, k: x.result.kills, mvp: x.result.mvp, teams: x.result.teams, picks: { B: x.picks.B.map(p => p.c), R: x.picks.R.map(p => p.c) } })) };
+    this.st()[id] = { s1, s2, w: s1 > s2 ? 1 : 2, games: series.games.filter(x => x.result).map(x => ({ win: x.result.win, t: x.result.t, k: x.result.kills, mvp: x.result.mvp, teams: x.result.teams, picks: { B: (x.picks.B || []).map(p => p.c), R: (x.picks.R || []).map(p => p.c) } })) };
     this.inject();
     const my = App.state.teamId, t1 = Schedule.team(m.t1), t2 = Schedule.team(m.t2);
     if (m.t1 === my || m.t2 === my) {
@@ -44,9 +56,10 @@ const Season = {
   process(today) {
     if (!App.db || !Schedule.all || !Champions.list || !Mastery.pools) return;
     const my = App.state.teamId;
-    Schedule.all.filter(m => m.t1 && m.t2 && m.t.slice(0, 10) < today && !this.st()[m.id]).slice(0, 60).forEach(m => {
+    Schedule.all.filter(m => m.t1 && m.t2 && m.t.slice(0, 10) < today && !this.st()[m.id]).forEach(m => {
       const plan = (App.state.plans || {})[m.id], mine = m.t1 === my || m.t2 === my;
-      const series = this.autoSeries(m, mine && plan ? plan.series : null);
+      // 우리 경기를 직접 치르지 않고 넘겼으면 코치가 정식 엔진으로 대신 치른다. 나머지는 경량 시뮬
+      const series = mine ? this.autoSeries(m, plan ? plan.series : null) : this.lightSeries(m);
       this.recordSeries(m.id, series);
     });
   },

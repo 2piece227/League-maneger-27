@@ -179,3 +179,45 @@
 .nx-draft a { text-decoration: none; }
 .sf-draft { font-size: 11px; color: var(--muted); }
 .sf-draft b { color: var(--gold-2); }
+
+/* 보드를 화면 높이에 맞춘다 (높이는 Draft.fit 이 넣는다) */
+.dr-board { box-sizing: border-box; padding: 8px 12px 8px; gap: 6px; min-height: 400px; }
+.dr-top { flex: none; }
+.dr-team { padding: 6px 12px; }
+.dr-team b { font-size: 16px; }
+.dr-center { flex-direction: row; flex-wrap: wrap; justify-content: center; align-items: center; gap: 2px 10px; min-width: 200px; max-width: 320px; }
+.dr-center small { flex: 1 1 100%; text-align: center; }
+.dr-center b { font-size: 16px; }
+.dr-timer { font-size: 22px; min-height: 0; min-width: 28px; text-align: center; }
+.dr-banbar { flex: none; }
+.dr-ban { width: 32px; height: 32px; }
+.dr-main { flex: 1; min-height: 0; }
+.dr-col { min-height: 0; }
+.dr-slot { min-height: 0; }
+.dr-pool { min-height: 0; padding: 8px; gap: 6px; }
+.dr-grid { max-height: none; min-height: 60px; }
+.dr-act { padding-top: 6px; flex: none; }
+.dr-coach-h { margin-bottom: 4px; }
+.dr-coach-h .pl-ph { width: 26px; height: 26px; }
+.dr-sug { padding: 4px 6px; min-width: 0; }
+.dr-sug div { min-width: 0; }
+.dr-sug small { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dr-lockin { padding: 9px; font-size: 15px; }
+.dr-vs { padding: 14px 18px; }
+.dr-vs-mid .dr-go { margin-top: 6px; padding: 9px 28px; font-size: 15px; }
+.dr-today { font-style: normal; color: var(--gold-2); font-weight: 700; }
+@media (max-width: 1100px) {
+  .dr-main { grid-template-columns: 140px 1fr 140px; }
+  .dr-act { grid-template-columns: 1fr 170px; }
+  .dr-sugs { grid-template-columns: repeat(3, 1fr); }
+  .dr-sug .sq-ic { width: 26px; height: 26px; }
+  .dr-sug small { display: none; }
+  .dr-ch { font-size: 14px; }
+  .dr-c img { width: 48px; height: 48px; }
+  .dr-grid { grid-template-columns: repeat(auto-fill, minmax(54px, 1fr)); }
+}
+@media (max-width: 760px) {
+  .dr-main { grid-template-columns: 92px 1fr 92px; }
+  .dr-act { grid-template-columns: 1fr; }
+  .dr-pl { font-size: 10px; }
+}

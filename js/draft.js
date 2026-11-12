@@ -227,7 +227,7 @@ const Draft = {
   },
 
   setup(el, preset = {}) {
-    const my = Roster.team(), nm = Schedule.next(my.id, Clock.today()), nOpp = nm && Schedule.opponent(nm, my.id);
+    const my = Roster.team(), nm = Schedule.forTeam(my.id).find(m => m.t.slice(0, 10) >= Clock.today() && !Season.st()[m.id]), nOpp = nm && Schedule.opponent(nm, my.id);
     const opp = this.team(preset.opp) || nOpp || App.db.teams.find(t => t.league === my.league && t.id !== my.id);
     const co = this.coach(my), oc = this.coach(opp);
     const teams = App.db.teams.filter(t => t.id !== my.id).sort((a, b) => (a.league !== my.league) - (b.league !== my.league) || a.league.localeCompare(b.league) || a.name.localeCompare(b.name));
@@ -237,7 +237,7 @@ const Draft = {
         <div class="dr-setup">
           <div class="card dr-vs">
             <div class="dr-vs-side">${G.team(my, 'lg')}<b>${UI.esc(my.name)}</b><small>코치 ${UI.esc(co.name)} · 밴픽 ${co.r}/20</small></div>
-            <div class="dr-vs-mid"><b>VS</b>${nOpp && nOpp.id === opp.id ? `<small>${UI.esc(Schedule.eventOf(nm).label)} · ${Fmt.dateTime(nm.t)} · Bo${nm.bo}</small>` : '<small>연습 밴픽</small>'}</div>
+            <div class="dr-vs-mid"><b>VS</b>${nOpp && nOpp.id === opp.id ? `<small>${UI.esc(Schedule.eventOf(nm).label)} · ${Fmt.dateTime(nm.t)} · Bo${nm.bo}${nm.t.slice(0, 10) === Clock.today() ? ' · <em class="dr-today">오늘 경기</em>' : ''}</small>` : '<small>연습 밴픽</small>'}<button class="btn-primary dr-go">밴픽 시작</button></div>
             <div class="dr-vs-side">${G.team(opp, 'lg')}<b>${UI.esc(opp.name)}</b><small>코치 ${UI.esc(oc.name)} · 밴픽 ${oc.r}/20</small></div>
           </div>
           <div class="card dr-form">
@@ -246,7 +246,6 @@ const Draft = {
             <label><span>방식</span><div class="seg dr-mode"><button class="on" data-v="direct">직접하기</button><button data-v="delegate">위임하기</button></div></label>
             <p class="dr-mode-desc">직접하기: 감독이 고르고, 코치 추천 3개가 옆에 뜹니다. 코치 밴픽 역량이 높을수록 추천이 정확합니다.</p>
             <label><span>시리즈</span><div class="seg dr-bo"><button class="${nm && nOpp && nOpp.id === opp.id && nm.bo === 1 ? 'on' : ''}" data-v="1">단판</button><button class="${!nm || !nOpp || nOpp.id !== opp.id || nm.bo === 3 ? 'on' : ''}" data-v="3">Bo3</button><button class="${nm && nOpp && nOpp.id === opp.id && nm.bo === 5 ? 'on' : ''}" data-v="5">Bo5</button></div></label>
-            <button class="btn-primary dr-go">밴픽 시작</button>
           </div>
           <div class="card dr-coach-card">
             <div class="card-head"><h3>코치 밴픽 역량</h3></div>
@@ -286,6 +285,7 @@ const Draft = {
 
   board(el, S) {
     const B = this.side(S, 'B'), R = this.side(S, 'R'), step = this.ORDER[S.step], mine = this.ourTurn(S);
+    const keep = (el.querySelector('.dr-grid') || {}).scrollTop || 0;
     const taken = this.taken(S), ourT = this.side(S, S.us), ourLine = this.lineup(ourT);
     const actK = step[0], actT = this.side(S, actK);
     el.innerHTML = `
@@ -325,16 +325,21 @@ const Draft = {
         </div>
       </div>`;
     this.drawGrid(S, taken, ourLine);
+    this.fit(el); $('.dr-grid', el).scrollTop = keep;
     $('.dr-rf', el).onclick = e => { const b = e.target.closest('button'); if (!b) return; this.roleF = b.dataset.r; this.board(el, S); };
     $('.dr-q', el).oninput = e => { this.q = e.target.value; this.drawGrid(S, taken, ourLine); };
-    $('.dr-grid', el).onclick = e => { const b = e.target.closest('[data-c]'); if (!b || !mine || b.classList.contains('off')) return; this.sel = b.dataset.c; this.selRole = null; this.board(el, S); };
-    $('.dr-sugs', el).onclick = e => { const b = e.target.closest('[data-c]'); if (!b || !mine) return; this.sel = b.dataset.c; this.selRole = b.dataset.role || null; this.board(el, S); };
-    const rb = $('.dr-role', el); if (rb) rb.onclick = e => { const b = e.target.closest('button'); if (!b) return; this.selRole = b.dataset.r; this.board(el, S); };
+    $('.dr-grid', el).onclick = e => { const b = e.target.closest('[data-c]'); if (!b || !mine || b.classList.contains('off')) return; this.sel = b.dataset.c; this.selRole = null; this.reboard(el, S); };
+    $('.dr-sugs', el).onclick = e => { const b = e.target.closest('[data-c]'); if (!b || !mine) return; this.sel = b.dataset.c; this.selRole = b.dataset.role || null; this.reboard(el, S); };
+    const rb = $('.dr-role', el); if (rb) rb.onclick = e => { const b = e.target.closest('button'); if (!b) return; this.selRole = b.dataset.r; this.reboard(el, S); };
     $('.dr-lockin', el).onclick = () => { if (!mine || !this.sel) return; this.act(S, this.sel, this.selRole); this.next(el, S); };
     $('.dr-timer-t', el).onclick = () => { this.timerOn = !this.timerOn; this.left = this.TIME; this.board(el, S); };
     $('.dr-quit', el).onclick = () => { if (!confirm('진행 중인 밴픽을 그만둘까요?')) return; clearInterval(this._tick); clearTimeout(this._ai); App.state.draft = null; this.render(el); };
     this.drive(el, S);
   },
+  // 보드 높이를 화면에 맞춘다 (태블릿에서도 확정 버튼이 항상 보이게)
+  fit(el) { const b = el.querySelector('.dr-board'); if (b) b.style.height = Math.max(400, window.innerHeight - b.getBoundingClientRect().top - (parseInt(getComputedStyle(document.documentElement).getPropertyValue('--footer-h')) || 34) - 4) + 'px'; },
+  // 챔피언을 고르는 동안에는 타이머·상대 차례 예약을 건드리지 않고 화면만 다시 그린다
+  reboard(el, S) { const t = this._tick, a = this._ai, left = this.left; this._noDrive = true; this.board(el, S); this._noDrive = false; this._tick = t; this._ai = a; this.left = left; const tm = $('.dr-timer', el); if (tm && this.timerOn) tm.textContent = left; },
   drawGrid(S, taken, ourLine) {
     const q = this.q.trim().toLowerCase(), mine = this.ourTurn(S), pick = this.ORDER[S.step][1] === 'pick';
     const open = this.openRoles(S, S.us);
@@ -351,6 +356,7 @@ const Draft = {
   },
   // 다음 차례: 상대(또는 위임한 우리 코치)는 잠깐 고민하는 척하고 고른다. 우리 차례면 타이머
   drive(el, S) {
+    if (this._noDrive) return;
     clearInterval(this._tick); clearTimeout(this._ai);
     if (S.done) return;
     if (!this.ourTurn(S)) { this._ai = setTimeout(() => { if (this.st() !== S || !document.body.contains(el)) return; this.aiAct(S); this.next(el, S); }, S.mode === 'delegate' ? 700 : 1100); return; }
@@ -374,11 +380,12 @@ const Draft = {
     clearInterval(this._tick); clearTimeout(this._ai);
     const us = S.us, opp = us === 'B' ? 'R' : 'B', T = S.tactics[us], my = this.side(S, us), ot = this.side(S, opp);
     const tf = this.teamFits(S, us), total = this.fitTotal(S, us), ready = S.phase === 'ready';
+    const played = (S.series.games.find(x => x.game === S.game) || {}).result || null;
     const champRow = k => `<div class="dr-picks-row">${S.picks[k].slice().sort((a, b) => G.ROLES.indexOf(a.role) - G.ROLES.indexOf(b.role)).map(x => `<div class="dr-pk">${SoloQ.ic(x.c)}<small>${G.pos(x.role)}</small></div>`).join('')}<span class="dr-bn">${S.bans[k].map(c => SoloQ.ic(c, 'ban')).join('')}</span></div>`;
     const tag = v => v >= 70 ? 'good' : v >= 45 ? 'mid' : 'bad';
     el.innerHTML = `
       <div class="cr-page dr-tac">
-        ${Career.head('전술 채택', `밴픽이 끝났습니다. 조합에 맞는 전술을 고를수록 적합도가 높아집니다.${S.mode === 'delegate' ? ' 코치가 추천대로 채워 두었습니다. 바꿔도 됩니다.' : ''}`)}
+        ${Career.head(`전술 채택 <small>${S.series.bo > 1 ? `Bo${S.series.bo} · ${S.game}세트 · 매치 스코어 ${UI.esc(my.short)} ${Season.seriesScore(S.series)[my.id] || 0} : ${Season.seriesScore(S.series)[ot.id] || 0} ${UI.esc(ot.short)}` : '단판'}</small>`, played ? `${S.game}세트는 ${UI.esc(Schedule.team(played.win).short)} 승리로 끝났습니다 (${Sim.clock(played.t)} · 킬 ${played.kills.B}:${played.kills.R}).` : `밴픽이 끝났습니다. 조합에 맞는 전술을 고를수록 적합도가 높아집니다.${S.mode === 'delegate' ? ' 코치가 추천대로 채워 두었습니다. 바꿔도 됩니다.' : ''}`)}
         <div class="dr-tac-top">
           <div class="card"><div class="card-head"><h3>${G.team(my, 'xs')} ${UI.esc(my.short)} 조합 <small>우리 팀</small></h3></div>${champRow(us)}${this.bars(S, us)}</div>
           <div class="card dr-total"><span>전술 적합도</span><b class="${total == null ? '' : tag(total)}">${total == null ? '-' : total}</b><small>${total == null ? '전술을 고르면 계산됩니다' : total >= 70 ? '조합과 잘 맞습니다' : total >= 45 ? '무난합니다' : '조합과 어긋납니다'}</small>
@@ -394,8 +401,8 @@ const Draft = {
               <div class="dr-rt-opts">${this.ROLE_TAC[r].map(([id, n]) => `<button class="dr-opt sm ${T.roles[r] === id ? 'on' : ''}" data-role="${r}" data-v="${id}" ${ready ? 'disabled' : ''}><b>${n}${S.rec.roles[r] === id ? ' <i class="dr-star">★</i>' : ''}</b><span class="dr-fit ${tag(fits[id])}"><i style="width:${fits[id]}%"></i></span><em>${fits[id]}%</em></button>`).join('')}</div></div>`; }).join('')}</div>
         </div>
         <div class="dr-tac-foot">
-          ${ready ? `<span class="cr-dim">밴픽·전술이 저장됐습니다. 관전하면 이 밴픽과 전술로 경기를 치릅니다 (임시 엔진).</span>
-            <button class="btn-primary dr-watch">${S.game}세트 관전</button>
+          ${ready ? `<span class="cr-dim">${played ? (Season.seriesOver(S.series) ? '경기가 끝났습니다.' : '다음 세트 밴픽으로 넘어갈 수 있습니다.') : '밴픽·전술이 저장됐습니다. 경기를 시작하면 이 밴픽과 전술로 치릅니다.'}</span>
+            ${played ? '' : `<button class="btn-primary dr-watch">${S.game}세트 경기 시작</button>`}
             ${(S.series.games.find(x => x.game === S.game) || {}).result && !Season.seriesOver(S.series) ? `<button class="btn-ghost dr-nextgame">${S.game + 1}세트 밴픽 (피어리스)</button>` : ''}
             <button class="btn-ghost dr-done">밴픽 마치기</button>`
           : `<button class="btn-ghost dr-rec">코치 추천대로</button><button class="btn-primary dr-ok">전술 확정</button>`}
@@ -409,7 +416,7 @@ const Draft = {
       else if (b.classList.contains('dr-watch')) return Live.start(S);
       else if (b.classList.contains('dr-ok')) { if (!this.confirm(S)) return; UI.toast('전술을 확정했습니다'); }
       else if (b.classList.contains('dr-nextgame')) {
-        this.start({ opp: ot.id, side: us === 'B' ? 'R' : 'B', mode: S.mode, bo: S.series.bo, key: S.official ? S.series.key : null, continueSeries: true });
+        this.start({ opp: ot.id, side: played && played.win === my.id ? 'R' : 'B', mode: S.mode, bo: S.series.bo, key: S.official ? S.series.key : null, continueSeries: true });   // 진 팀이 블루
         return this.render(el);
       } else if (b.classList.contains('dr-done')) { App.state.draft = null; return this.render(el); }
       else return;
