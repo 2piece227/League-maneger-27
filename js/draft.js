@@ -113,8 +113,82 @@ const Draft = {
     if (this.meta(c) >= .8) why.push('S티어 메타');
     return { v, why, p, m: ms.m, sig: ms.sig };
   },
-  // 코치 추천 (n개). 역량이 낮을수록 평가에 잡음이 크고, 상대 분석(밴) 비중이 줄어든다
+  // ---------- 프로 밴픽 학습 모델 (data/draft-model.json, tools/draft-learn.py) ----------
+  // 2023~2026 4대 리그·국제대회 밴픽을 "그 순간의 판단 기준"으로 학습한 페이즈별 가중치. 챔피언 이름은 학습에 쓰지 않아 메타가 바뀌어도 같은 논리로 고른다.
+  M: null,
+  PHASE_OF: i => i < 6 ? 'ban1' : i === 6 ? 'first' : i < 12 ? 'pick1' : i < 16 ? 'ban2' : i < 19 ? 'pick2' : 'last',
+  share(c) { const r = this.M && this.M.roles[Stats.name(c)]; if (r) return r; const ps = (Champions.byId[c] || {}).positions || []; return Object.fromEntries(ps.map(p => [p, 1 / ps.length])); },
+  fitsR(c, r) { return (this.share(c)[r] || 0) >= .15; },
+  // 선수 숙련: 최근 40게임 중 그 챔피언을 쓴 횟수 근사 (학습 때 팀 기록과 같은 단위)
+  comf(t, c, roles) {
+    const line = this.lineup(t); let v = 0, who = null;
+    roles.forEach(r => {
+      if (!this.fitsR(c, r)) return;
+      const p = line[G.ROLES.indexOf(r)]; if (!p) return;
+      const pool = Mastery.pool(p.id), e = pool.find(x => x.c === c); if (!e) return;
+      const tot = pool.reduce((a, x) => a + (x.g26 || 0), 0), n = (e.g26 || 0) * 40 / Math.max(40, tot) + Math.min(.6, (e.g || 0) / 60);
+      const q = Math.log1p(n); if (q > v) { v = q; who = p; }
+    });
+    return { v, who };
+  },
+  feats(S, k, c) {
+    const o = k === 'B' ? 'R' : 'B', openK = this.openRoles(S, k), openO = this.openRoles(S, o), nm = Stats.name(c), M = this.M;
+    const sh = this.share(c), flex = Object.values(sh).filter(v => v >= .1).length / 3;
+    const fit = openK.some(r => this.fitsR(c, r)) ? 1 : 0, fitO = openO.some(r => this.fitsR(c, r)) ? 1 : 0;
+    const ck = this.comf(this.side(S, k), c, openK), co = this.comf(this.side(S, o), c, openO);
+    let syn = 0, synW = null; S.picks[k].forEach(x => { const v = M.pairs[[nm, Stats.name(x.c)].sort().join('|')] || 0; if (v > syn) { syn = v; synW = x.c; } });
+    let counter = 0, cW = null; S.picks[o].forEach(x => { if (openK.includes(x.role) && this.fitsR(c, x.role)) { const m = Stats.matchup(x.role, c, x.c), v = m.wr - .5; if (v > counter) { counter = v; cW = { c: x.c, m }; } } });
+    let threat = 0, tW = null; S.picks[k].forEach(x => { if (this.fitsR(c, x.role)) { const m = Stats.matchup(x.role, c, x.c), v = m.wr - .5; if (v > threat) { threat = v; tW = { c: x.c, m }; } } });
+    return { x: [this.metaNow(c), ck.v, co.v, flex, fit, fitO, syn, counter, threat, Stats.wr(c) - .5], ck, co, synW, cW, tW };
+  },
+  // 게임 안 메타: 시즌 전체 픽밴 비율을 기준으로, 2주마다 바뀌는 "패치"가 챔피언마다 위아래로 흔든다 (같은 메타가 시즌 내내 고정되지 않게)
+  metaNow(c) {
+    const nm = Stats.name(c), base = (this.M.meta_season || this.M.meta)[nm] || 0;
+    const patch = Math.floor(Fmt.daysBetween(`${Clock.year()}-01-01`, Clock.today()) / 14);
+    const r1 = G.rand(nm + ':patch:' + Clock.year() + ':' + patch, 'mt'), r2 = G.rand(nm + ':patch:' + Clock.year() + ':' + (patch - 1), 'mt');
+    const shift = Math.exp(((r1 - .5) * .9 + (r2 - .5) * .45));     // 지난 패치 영향도 조금 남는다
+    return Math.min(.9, base * shift + (base < .02 && r1 > .97 ? .12 : 0));   // 가끔 안 쓰이던 챔피언이 떠오른다
+  },
+  // 픽 순서별 포지션 비율 (프로 피어리스 시기): 탑·서폿을 늦게 고르는 경향 등
+  slotRole(S, c, k) { const sr = this.M.slot_role && this.M.slot_role[S.step]; if (!sr) return 0; const open = this.openRoles(S, k).filter(r => this.fitsR(c, r)); return open.length ? Math.log(Math.max(...open.map(r => sr[r] || .02)) * 5) : 0; },
+  bestRole(S, k, c) {
+    const open = this.openRoles(S, k), sh = this.share(c), line = this.lineup(this.side(S, k));
+    return open.filter(r => this.fitsR(c, r)).sort((a, b) => ((sh[b] || 0) + this.mast(line[G.ROLES.indexOf(b)], c).m / 20) - ((sh[a] || 0) + this.mast(line[G.ROLES.indexOf(a)], c).m / 20))[0] || open[0];
+  },
+  // 추천 이유: 점수에 가장 크게 기여한 기준 두 개
+  reasons(x, W, kind) {
+    const f = x.f, nm = c => Champions.byId[c] ? Champions.byId[c].name : c, ban = kind === 'ban';
+    const text = [
+      () => `메타 우선 (픽밴 ${Math.round(f.x[0] * 100)}%)`,
+      () => f.ck.who ? `${f.ck.who.name} 숙련` : '우리 팀 숙련',
+      () => f.co.who ? (ban ? `상대 ${f.co.who.name} 숙련 견제` : `상대 ${f.co.who.name} 챔프 선점`) : '상대 숙련 견제',
+      () => '플렉스 (포지션 숨기기)', null,
+      () => ban ? '상대 남은 포지션' : null,
+      () => f.synW ? `${Sim.josa(nm(f.synW), '과', '와')} 조합` : null,
+      () => f.cW ? `${nm(f.cW.c)} 상대 ${Math.round(f.cW.m.wr * 100)}%${f.cW.m.g ? ` (${f.cW.m.g}판)` : ''}` : null,
+      () => f.tW ? (ban ? `우리 ${nm(f.tW.c)} 카운터 차단` : null) : null,
+      () => '최근 승률 높음',
+    ];
+    const why = W.map((w, j) => ({ j, v: w * f.x[j] })).filter(e => e.v > .05 && text[e.j]).sort((a, b) => b.v - a.v).map(e => text[e.j]()).filter(Boolean);
+    return why.slice(0, 2).length ? why.slice(0, 2) : [ban ? '상대 조합 견제' : '무난한 선택'];
+  },
+  // 코치 추천 (n개). 페이즈별 학습 가중치로 점수를 매긴다. 역량이 낮을수록 잡음이 크고, 상대 분석(상대 숙련·카운터·우리 카운터 견제) 비중이 줄어든다
   suggest(S, k, n = 3) {
+    if (!this.M) return this.suggestOld(S, k, n);
+    const i = S.step, kind = this.ORDER[i][1], w = ((this.M.by_mode || {}).fearless || this.M.phases)[this.PHASE_OF(i)] || this.M.phases[this.PHASE_OF(i)],   // 게임은 피어리스 규칙이라 피어리스 시기 가중치
+      taken = this.taken(S), r20 = this.coach(this.side(S, k)).r / 20;
+    const insight = .5 + .5 * r20, W = w.map((v, j) => [2, 7, 8].includes(j) ? v * insight : v);
+    const out = [];
+    Champions.list.forEach(ch => {
+      const c = ch.id; if (taken.has(c)) return;
+      const f = this.feats(S, k, c); if (kind === 'pick' && !f.x[4]) return;
+      out.push({ c, f, s: W.reduce((a, v, j) => a + v * f.x[j], 0) + (kind === 'pick' ? this.slotRole(S, c, k) : 0) + (G.rand(`${S.id}:${i}:${k}:${c}`, 'cn') - .5) * (1 - r20) * 1.6 });
+    });
+    out.sort((a, b) => b.s - a.s);
+    return out.slice(0, n).map(x => ({ c: x.c, s: x.s, role: kind === 'pick' ? this.bestRole(S, k, x.c) : undefined, why: this.reasons(x, W, kind) }));
+  },
+  // (모델 파일이 없을 때 쓰는 예전 규칙)
+  suggestOld(S, k, n = 3) {
     const step = this.ORDER[S.step], taken = this.taken(S), co = this.coach(this.side(S, k)), r20 = co.r / 20;
     const noise = c => (G.rand(`${S.id}:${S.step}:${k}:${c}`, 'cn') - .5) * (1 - r20) * .5;
     const opp = k === 'B' ? 'R' : 'B', out = [];
@@ -166,9 +240,16 @@ const Draft = {
   },
   // AI(상대 코치, 위임 시 우리 코치): 1순위 추천을 고른다. 밴은 가끔 2순위
   aiAct(S) {
-    const [k] = this.ORDER[S.step], list = this.suggest(S, k, 3);
-    const pick = list[G.rand(S.id + S.step, 'ai') < .2 && list[1] ? 1 : 0] || { c: Champions.list.find(ch => !this.taken(S).has(ch.id)).id };
-    this.act(S, pick.c, pick.role);
+    const [k] = this.ORDER[S.step], list = this.suggest(S, k, this.M ? 12 : 3);
+    let pick = list[0];
+    if (this.M && list.length) {
+      // 학습한 점수 = 프로가 고를 확률(로그). 그 확률대로 하나를 뽑아 실제처럼 매번 조금씩 다른 밴픽이 나온다. 코치 역량이 높을수록 1순위에 가깝게
+      const T = 1.15 - this.coach(this.side(S, k)).r / 20 * .25,   // 1.0 = 프로 선택 분포 그대로 (역량 13 코치 ≈ 1.0)
+        mx = list[0].s, ws = list.map(x => Math.exp((x.s - mx) / T)), tot = ws.reduce((a, b) => a + b, 0);
+      let r = G.rand(S.id + ':' + S.step, 'ai') * tot; for (let j = 0; j < list.length; j++) { r -= ws[j]; if (r <= 0) { pick = list[j]; break; } }
+    } else if (G.rand(S.id + S.step, 'ai') < .2 && list[1]) pick = list[1];
+    pick ||= { c: Champions.list.find(ch => !this.taken(S).has(ch.id)).id };
+    this.act(S, pick.c, pick.role || (this.ORDER[S.step][1] === 'pick' && this.M ? this.bestRole(S, k, pick.c) : undefined));
   },
   ourTurn(S) { return !S.done && this.ORDER[S.step][0] === S.us && S.mode === 'direct'; },
 

@@ -9,7 +9,9 @@ const Stats = {
       fetch('data/champ-stats.json').then(r => r.ok ? r.json() : null).catch(() => null),
       fetch('data/items.json').then(r => r.ok ? r.json() : null).catch(() => null),
       Champions.load(),
-    ]).then(([s, it]) => {
+      fetch('data/draft-model.json').then(r => r.ok ? r.json() : null).catch(() => null),
+    ]).then(([s, it, , dm]) => {
+      if (dm && typeof Draft !== 'undefined') Draft.M = dm;
       if (s) { this.champs = s.champs; this.mu = s.matchups; this.syn = s.synergy; this.meta = s.meta; }
       if (it) this.items = it.items;
       if (typeof Style !== 'undefined') Style.cache = {};
