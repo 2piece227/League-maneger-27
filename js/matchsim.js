@@ -117,7 +117,7 @@ const Sim = {
     ['B', 'R'].forEach(k => {
       const t = Draft.side(S, k), co = Draft.coach(t), picks = S.picks[k];
       let syn = 0; picks.forEach((a, i) => picks.slice(i + 1).forEach(b => { const q = Stats.synergy(a.role, a.c, b.role, b.c); if (q) syn += q.wr - .5; }));
-      g.side[k] = { k, t, coach: co.r, kills: 0, syn, fit: Draft.fitTotal(S, k) || 50, form: (r() - .5) * 7,   // form: 그날 컨디션 (임시)
+      g.side[k] = { k, t, coach: co.r, kills: 0, syn, fit: Draft.fitTotal(S, k) || 50, form: (r() - .5) * 6,   // form: 그날 컨디션 (임시)
         tac: (S.tactics[k] || {}).team || 'bal', comp: Style.comp(picks.map(x => x.c)),
         towers: { top: 3, mid: 3, bot: 3 }, inhib: { top: 1, mid: 1, bot: 1 }, nexusT: 2, down: 0,
         thp: { top: [1, 1, 1], mid: [1, 1, 1], bot: [1, 1, 1] }, ihp: { top: 1, mid: 1, bot: 1 }, ntp: [1, 1], nxhp: 1,
@@ -163,12 +163,12 @@ const Sim = {
     v += m < 14 ? (c.early - .4) * 10 : m < 26 ? ((c.fight + c.engage) / 2 - .4) * 9 : (c.late - .4) * 10;
     const tacPhase = { early: m < 15, snow: m < 22, fight: m >= 12 && m < 30, late: m >= 25, bal: true }[s.tac];
     v += (s.fit - 50) / 50 * (tacPhase ? 4 : 1.5) + (s.coach - 10) * .15;
-    v += Math.max(-5, Math.min(5, this.lead(g, k) / 1000 * .55));
+    v += Math.max(-9, Math.min(9, this.lead(g, k) / 1000 * .8));   // 스노우볼 (실제: 이긴 팀 골드 +1만, 킬 2배)
     if (s.baronUntil > g.t) v += 6;
     if (s.drag.length >= 4) v += 4;
     return v;
   },
-  win(g, kA, a, b, bonus = 0) { const d = this.tpow(g, kA, a) - this.tpow(g, this.other(kA), b) + (a.length - b.length) * 6 + bonus; return g.r() < 1 / (1 + Math.exp(-d / 13)); },
+  win(g, kA, a, b, bonus = 0) { const d = this.tpow(g, kA, a) - this.tpow(g, this.other(kA), b) + (a.length - b.length) * 6 + bonus; return g.r() < 1 / (1 + Math.exp(-d / 11.5)); },   // 11.5: 실제 강팀·약팀 승률 곡선에 맞춘 값 (tools/validate-engine.md 참고)
 
   // ---------- 해설 ----------
   CAST: { cast: '캐스터', anal: '해설' },
@@ -270,7 +270,7 @@ const Sim = {
     const big = A.length + Bp.length >= 6;
     const nK = Math.min(L.length, big ? 1 + Math.floor(g.r() * g.r() * (L.length + .2)) : g.r() < .85 ? 1 : Math.min(2, L.length));
     const cap = this.min(g) < 10 ? (big ? 2 : 1) : 5;     // 초반 교전은 킬이 적게 난다
-    const nT = this.min(g) < 10 ? (g.r() < .12 ? 1 : 0) : big ? Math.floor(g.r() * Math.min(W.length, 1.9)) : g.r() < .15 ? 1 : 0;
+    const nT = this.min(g) < 10 ? (g.r() < .1 ? 1 : 0) : big ? Math.floor(g.r() * g.r() * Math.min(W.length, 2.4)) : g.r() < .12 ? 1 : 0;
     const vict = L.slice().sort(() => g.r() - .5).slice(0, Math.min(nK, cap)), trade = W.slice().sort(() => g.r() - .5).slice(0, nT);
     vict.forEach(v => this.kill(g, this.pickKiller(g, W.filter(p => !p.dead)) || W[0], v, W));
     trade.forEach(v => { const ks = L.filter(p => !p.dead); if (ks.length) this.kill(g, this.pickKiller(g, ks), v, ks); });
@@ -280,7 +280,7 @@ const Sim = {
     const ace = this.alive(g, this.other(wk)).length === 0, f = { wk, n: vict.length, t: trade.length, ace, big, W, L, size: A.length + Bp.length };
     // 이긴 쪽이 숫자가 남으면 가장 가까운 라인으로 밀고 들어간다
     const wl = W.filter(p => !p.dead).length, deadL = g.pl.filter(p => p.side !== wk && p.dead).length;
-    if (wl >= 3 && deadL >= 2 && this.min(g) >= 10) { const lane = ['top', 'mid', 'bot'].sort((a, b) => this.distLane(at, a) - this.distLane(at, b))[0]; g.side[wk].push = { lane, until: g.t + (ace ? 90 : 50) }; }
+    if (wl >= 3 && deadL >= 2 && this.min(g) >= 10) { const lane = ['top', 'mid', 'bot'].sort((a, b) => this.distLane(at, a) - this.distLane(at, b))[0]; g.side[wk].push = { lane, until: g.t + (ace ? 110 : 70) }; }
     return f;
   },
   sayFight(g, f, where) {
@@ -335,10 +335,23 @@ const Sim = {
       if (def && atk.length < def + 2) return;
       const plate = st.kind === 'tower' && st.i === 0 && m < 14;
       // 포탑 하나에 4명이 붙어 약 30초. 너무 이른 시간에는 안쪽 구조물이 잘 안 깨진다 (내부 16분 · 억제기 20분 전)
-      const early = st.kind === 'tower' && st.i === 1 && m < 16 ? .5 : (st.kind === 'inhib' || (st.kind === 'tower' && st.i === 2) || st.kind === 'nexusT' || st.kind === 'nexus') && m < 20 ? .35 : 1;
-      const dmg = atk.length * (plate ? .035 : st.kind === 'nexus' ? .16 : .1) * (g.side[k].baronUntil > g.t ? 1.6 : 1) * early;
+      const deep = st.kind === 'inhib' || (st.kind === 'tower' && st.i === 2) || st.kind === 'nexusT' || st.kind === 'nexus';
+      if ((deep && m < 14) || ((st.kind === 'nexusT' || st.kind === 'nexus') && m < 21)) return;   // 실제 경기에서 이 시간 전에는 거의 안 깨진다
+      const early = st.kind === 'tower' && st.i === 1 && m < 14 ? .6 : deep && m < 23 ? .18 : deep && m < 28 ? .45 : 1;
+      const dmg = atk.length * (plate ? .05 : st.kind === 'nexus' ? .2 : st.i === 0 ? .14 : deep ? .14 : .11) * (g.side[k].baronUntil > g.t ? 1.6 : 1) * early;
       this.hit(g, k, lane, st, dmg);
     }));
+    // 웨이브 압박: 전선이 상대 포탑 앞까지 밀리면 미니언이 (수비가 있어도) 포탑을 깎는다. 라인에 아군이 있어야 웨이브가 버틴다
+    if (m >= 4) ['top', 'mid', 'bot'].forEach(lane => {
+      const fr = this.front(g, lane);
+      ['B', 'R'].forEach(k => {
+        const o = this.other(k), st = this.structOf(g, o, lane); if (st.kind !== 'tower' || g.over) return;
+        const ts = Rift.proj(lane, st.pos).s, reach = k === 'B' ? fr >= ts - .06 : fr <= ts + .06;
+        if (!reach || !this.near(g, k, st.pos, 22).length) return;
+        const deep = st.i === 2 && m < 22 ? .3 : st.i === 1 && m < 14 ? .5 : 1;
+        this.hit(g, k, lane, st, (m < 14 ? .035 : .05) * deep);
+      });
+    });
     // 억제기가 깨진 라인은 슈퍼 미니언이 계속 밀고 들어간다
     ['B', 'R'].forEach(k => ['top', 'mid', 'bot'].forEach(lane => {
       const o = this.other(k); if (g.over || g.side[o].ihp[lane] > 0) return;
@@ -351,7 +364,8 @@ const Sim = {
   baronCall(g, k) {
     if (!this.objUp(g, 'baron')) return false;
     const deadO = g.pl.filter(p => p.side !== k && p.dead).length, deadK = g.pl.filter(p => p.side === k && p.dead).length;
-    const mine = this.lead(g, k) > 4000 || deadO - deadK >= 2 || (this.min(g) >= 30 && this.lead(g, k) > 1500) || this.min(g) >= 40;
+    const m = this.min(g), lead = this.lead(g, k);
+    const mine = lead > 7000 || (deadO - deadK >= 3 && lead > -2000) || (m >= 25 && (lead > 3500 || deadO - deadK >= 2)) || (m >= 34 && lead > 2500) || m >= 45;
     const contest = this.near(g, this.other(k), Rift.pos('BAR'), 18).length >= 3 && this.lead(g, k) > -6000;
     return mine || contest;
   },
@@ -395,7 +409,7 @@ const Sim = {
         const n = g.side.B.drag.length + g.side.R.drag.length, d = g.dragSeq[Math.min(n, 2)]; s.drag.push(d);
         this.mark(g, wk, 'drag', d[1], `${d[0]} 드래곤 처치`);
         if (s.drag.length === 4) this.say(g, 'cast', `${s.t.short}, ${d[0]} 드래곤 영혼 획득! 한타 주도권이 넘어갑니다!`);
-        ob.at = g.t + 300;
+        ob.at = g.t + 330;
       } else if (o === 'grubs') { s.grubs += 3; this.mark(g, wk, 'grubs', 'grub', '공허 유충 처치'); ob.at = null; }
       else if (o === 'herald') { s.herald++; this.mark(g, wk, 'herald', 'riftherald', '전령 처치'); ob.at = null; s.push = { lane: g.r() < .5 ? 'top' : 'mid', until: g.t + 60 }; this.say(g, 'anal', `${this.josa(s.t.short, '이', '가')} 전령을 ${this.laneKo(s.push.lane)}에 풀러 갑니다.`); }
       else {
@@ -451,12 +465,17 @@ const Sim = {
 
   // ---------- 위치 ----------
   // 라인 전선: 웨이브가 밀고 당겨지고, 포탑·골드·매치업에 따라 기운다. 맞상대와는 사거리만큼 떨어져 선다
+  // 라인 전선 (블루 기준 s, 0=블루 넥서스): 웨이브가 밀고 당겨지고, 포탑·골드·매치업에 따라 기운다
+  front(g, lane) {
+    const m = this.min(g), wave = Math.sin(g.t / 26 + lane.length * 2 + (g.side.B.jstart === 'top' ? 1 : 0)) * (m < 14 ? .13 : .16);
+    const mu = ((g.pl.find(q => q.side === 'B' && this.LANE_OF[q.role] === lane && q.role !== 'SUP') || { mu: { wr: .5 } }).mu.wr - .5) * .2;
+    const f = .5 + ((3 - g.side.R.towers[lane]) - (3 - g.side.B.towers[lane])) * .08 + Math.max(-.08, Math.min(.08, this.lead(g, 'B') / 20000)) + mu + wave;
+    // 전선은 양 팀의 맨 앞 구조물 사이에서만 움직인다 (살아 있는 포탑을 넘어 서지 않는다)
+    const hi = Rift.proj(lane, this.structOf(g, 'R', lane).pos).s - .02, lo = Rift.proj(lane, this.structOf(g, 'B', lane).pos).s + .02;
+    return Math.max(Math.max(.12, lo), Math.min(Math.min(.88, hi), f));
+  },
   laneSpot(g, p, m, lane) {
-    const o = this.other(p.side), me = g.side[p.side], op = g.side[o], sign = p.side === 'B' ? 1 : -1;
-    const wave = Math.sin(g.t / 26 + lane.length * 2 + (g.side.B.jstart === 'top' ? 1 : 0)) * (m < 14 ? .13 : .16);
-    const mu = (p.side === 'B' ? 1 : -1) * ((g.pl.find(q => q.side === 'B' && this.LANE_OF[q.role] === lane && q.role !== 'SUP') || { mu: { wr: .5 } }).mu.wr - .5) * .2;
-    let front = .5 + ((3 - op.towers[lane]) - (3 - me.towers[lane])) * .08 * sign + Math.max(-.08, Math.min(.08, this.lead(g, 'B') / 20000)) + mu * sign + wave;
-    front = Math.max(.12, Math.min(.88, front));
+    const sign = p.side === 'B' ? 1 : -1, front = this.front(g, lane);
     const pt = Rift.lane(lane, front - .03 * sign);
     return this.clampP(p.role === 'SUP' ? [pt[0] + p.off[0] * .6 + sign, pt[1] + p.off[1] * .6 + sign] : [pt[0] + p.off[0] * .4, pt[1] + p.off[1] * .4]);
   },
@@ -475,7 +494,10 @@ const Sim = {
   },
   target(g, p, m) {
     const s = g.side[p.side];
-    if (s.push && s.push.until > g.t) return this.siegeSpot(g, p, s.push.lane);
+    if (s.push && s.push.until > g.t) {
+      const st = this.structOf(g, this.other(p.side), s.push.lane), deep = st.kind !== 'tower' || st.i === 2;
+      if (!(deep && m < 14)) return this.siegeSpot(g, p, s.push.lane);           // 14분 전에는 억제기 쪽까지 밀고 들어가지 않는다
+    }
     const ob = this.objFor(g, p, m); if (ob) return ob;
     if (m < 14) {
       if (p.role === 'JGL') return this.jungle(g, p, m);
@@ -534,7 +556,7 @@ const Sim = {
       const lane = this.LANE_OF[p.role], inLane = p.role !== 'JGL' && p.role !== 'SUP' && this.distLane(p.pos, lane) < 6;
       if (p.role === 'SUP') p.gold += 7;
       const cs = p.role === 'SUP' ? .15 : p.role === 'JGL' ? (m < 14 ? 0 : 1) : (inLane || m >= 14 ? 1.5 : .3) * (['farm', 'safe', 'hold'].includes(p.tac) ? 1.08 : 1);
-      const c = cs * (.85 + g.r() * .3); p.cs += c; p.gold += 20 + c * 21;
+      const c = cs * (.85 + g.r() * .3); p.cs += c; p.gold += 23 + c * 22;
       if (m < 14 && inLane) p.gold += Math.max(0, p.mu.gd) / 6;             // 라인전 매치업 이득 (실제 분당 골드 차이)
       p.lvl = Math.min(18, Math.floor(1 + m * (p.role === 'SUP' ? .48 : .6) + p.k * .12 + p.a * .04));
       if (this.dist(p.pos, this.fountain(p.side)) < 14) p.hp = 1; else p.hp = Math.min(1, p.hp + .02);
@@ -584,7 +606,7 @@ const Sim = {
         const st = this.structOf(g, o, lane), atk = this.near(g, k, st.pos, 20), def = this.near(g, o, st.pos, 15);
         if (atk.length < 3 || def.length < 1) continue;
         const d = this.tpow(g, k, atk) - this.tpow(g, o, def) + (atk.length - def.length) * 6 - 6, p = 1 / (1 + Math.exp(-d / 13));
-        if (g.r() < Math.max(0, p - .47) * .5) {
+        if (g.r() < Math.max(0, p - .47) * (this.min(g) >= 28 ? .8 : .5)) {
           const at = [def.reduce((a, q) => a + q.pos[0], 0) / def.length, def.reduce((a, q) => a + q.pos[1], 0) / def.length];
           atk.forEach(q => this.shift(q, at, 14));
           const f = this.fightAt(g, at, 18); if (f) { if (f.wk === k && f.L.filter(x => x.dead).length >= 2) g.side[k].push = { lane, until: g.t + 60 }; this.sayFight(g, f, `${this.laneKo(lane)} 포탑 앞`); }
@@ -604,7 +626,7 @@ const Sim = {
     const at = [(best.a.pos[0] + best.b.pos[0]) / 2, (best.a.pos[1] + best.b.pos[1]) / 2];
     const A = this.near(g, 'B', at, 14), Bp = this.near(g, 'R', at, 14), n = A.length + Bp.length;
     const edge = Math.abs(this.tpow(g, 'B', A) - this.tpow(g, 'R', Bp) + (A.length - Bp.length) * 6);
-    if (g.r() > (n >= 6 ? .045 : .03) + Math.min(.08, edge / 120)) return;
+    if (g.r() > (n >= 6 ? .055 : .038) + Math.min(.08, edge / 120)) return;
     const lane = ['top', 'mid', 'bot'].sort((x, y) => this.distLane(at, x) - this.distLane(at, y))[0];
     this.sayFight(g, this.fightAt(g, at, 14), this.distLane(at, lane) < 6 ? this.laneKo(lane) : '정글');
   },

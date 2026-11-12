@@ -272,7 +272,7 @@ const Draft = {
     const hover = cur && this.sel && k === S.us ? this.sel : null, c = x ? x.c : hover, ch = c && Champions.byId[c];
     const role = x ? x.role : cur && k === S.us && this.sel ? (this.selRole || this.openRoles(S, k).find(r => this.fits(this.sel, r))) : null;
     const pp = role ? this.lineup(t)[G.ROLES.indexOf(role)] : null;
-    return `<div class="dr-slot ${k === 'B' ? 'blue' : 'red'} ${cur ? 'cur' : ''} ${x ? 'locked' : ''} ${hover ? 'hover' : ''}" ${ch ? `style="--sp:url('${ch.splash}')"` : ''}>
+    return `<div class="dr-slot ${k === 'B' ? 'blue' : 'red'} ${cur ? 'cur' : ''} ${x ? 'locked' : ''} ${hover ? 'hover' : ''}" ${ch ? `style="--sp:url('${new URL(ch.splash, location.href).href}')"` : ''}>
       <div class="dr-slot-in">
         ${ch ? `<b class="dr-ch">${UI.esc(ch.name)}</b>` : `<b class="dr-ch dim">${cur ? '선택 중…' : ''}</b>`}
         ${pp || (x && p) ? `<span class="dr-pl">${G.pos((x ? x.role : role))}${UI.esc((pp || p).name)}${(() => { const m = this.mast(pp || p, c); return c && m.m ? `<i class="dr-m ${m.sig ? 'sig' : ''}">${m.sig ? 'SIG' : m.m}</i>` : ''; })()}</span>` : ''}

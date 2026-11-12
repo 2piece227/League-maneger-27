@@ -3,3 +3,4 @@ node_modules/
 *.log
 tools/scrape/.cache/
 tools/scrape/.env
+tools/scrape/out/
