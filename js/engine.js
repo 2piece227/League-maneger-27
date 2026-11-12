@@ -332,6 +332,7 @@ const Events = {
 
   // 하루에 무작위 이벤트는 최대 하나
   run(today) {
+    if (!this.defs) { this.load(); return; }                     // 이벤트 목록을 아직 못 읽었으면 오늘은 건너뛴다
     const last = (App.state.evLast ||= {});
     const ok = this.defs.filter(d => (d.cond || []).every(c => this.COND[c](today))
       && (!d.once || !last[d.id]) && (!last[d.id] || Fmt.daysBetween(last[d.id], today) >= (d.cooldown || 14)));

@@ -1436,19 +1436,6 @@
       "sourcePage": "sinian"
     },
     {
-      "id": "xiaohao",
-      "team": "edward-gaming",
-      "name": "Xiaohao",
-      "realName": "Peng Hao",
-      "nativeName": "彭浩",
-      "role": "JGL",
-      "nation": "China",
-      "birthdate": "2002-07-19",
-      "contractEnd": null,
-      "photo": "https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/a/ad/EDG_Xiaohao_2026_Split_1.png/revision/latest?cb=20260327160648",
-      "sourcePage": "Xiaohao"
-    },
-    {
       "id": "zdz",
       "team": "edward-gaming",
       "name": "Zdz",
@@ -2305,19 +2292,6 @@
       "contractEnd": "2026-11-17",
       "photo": "https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/5/5d/WBG_Elk_2026_Split_1.png/revision/latest?cb=20260328182558",
       "sourcePage": "Elk"
-    },
-    {
-      "id": "jiejie",
-      "team": "weibo-gaming",
-      "name": "Jiejie",
-      "realName": "Zhao Li-Jie",
-      "nativeName": "赵礼杰",
-      "role": "JGL",
-      "nation": "China",
-      "birthdate": "2001-10-27",
-      "contractEnd": null,
-      "photo": "https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/5/5e/EDG_Jiejie_2026_Split_3.png/revision/latest?cb=20260812162713",
-      "sourcePage": "Jiejie"
     },
     {
       "id": "jwei",

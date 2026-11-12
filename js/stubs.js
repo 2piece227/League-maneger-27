@@ -32,6 +32,8 @@ const Data = {
   },
 
   mergeTeams(teams, players, overrides) {
+    const seen = new Set();
+    players = players.filter(p => { if (seen.has(p.id)) { console.warn('[data] 두 팀에 같은 선수', p.id, p.team); return false; } seen.add(p.id); return true; });
     return teams.map(t => {
       const o = overrides[t.sourcePage] || {};
       const team = {
