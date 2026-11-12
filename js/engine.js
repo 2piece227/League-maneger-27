@@ -97,6 +97,8 @@ const Engine = {
       Router.go('portal-messages');
       return;
     }
+    // 경기날: 계속을 누르면 날짜를 넘기지 않고 경기(밴픽) 화면으로 간다
+    if (Season.today()) { Draft.matchDay(); return; }
     this.busy = true; this.stopReq = false;
     let reason = null, days = 0;
     const got = [];
@@ -120,6 +122,7 @@ const Engine = {
     if (SaveSystem.autosave()) console.info('[save] 자동 저장');
     await Portal.setTeam(Roster.team());
     Nav.render(Router.current());
+    if (Season.today()) { UI.toast(reason, 3500); Draft.matchDay(); return; }
     UI.toast(reason || (this.stopReq ? '진행을 멈췄습니다' : `${days}일이 지났습니다`));
   },
 
@@ -377,7 +380,7 @@ Engine.on(today => {
   });
   // 경기일
   const m = Schedule.matches.find(x => (x.t1 === t.id || x.t2 === t.id) && x.t.slice(0, 10) === today);
-  if (m && !(App.state.season || {})[m.id]) reason = `오늘 ${Schedule.opponent(m, t.id).short}전이 있습니다 — 경기 > 밴픽 준비에서 직접 치르세요. 그냥 넘기면 코치가 대신 치릅니다`;
+  if (m && !(App.state.season || {})[m.id]) reason = `오늘 ${Schedule.opponent(m, t.id).short}전 경기날입니다`;
   return reason;
 });
 

@@ -40,6 +40,16 @@ const Season = {
     }
     return series;
   },
+  // 오늘 아직 치르지 않은 우리 경기
+  today() { const my = App.state.teamId, d = Clock.today(); return Schedule.matches.find(m => (m.t1 === my || m.t2 === my) && m.t1 && m.t2 && m.t.slice(0, 10) === d && !this.st()[m.id]) || null; },
+  // 경기를 코치에게 맡기고 결과만 (이미 치른 세트는 그대로 두고 남은 세트를 정식 엔진으로)
+  delegate(m) {
+    const plan = (App.state.plans || {})[m.id], d = App.state.draft;
+    const series = this.autoSeries(m, plan ? plan.series : d && d.series && d.series.key === m.id ? d.series : null);
+    this.recordSeries(m.id, series);
+    if (App.state.draft && App.state.draft.series && App.state.draft.series.key === m.id) App.state.draft = null;
+    return series;
+  },
   recordSeries(id, series) {
     const m = Schedule.all.find(x => x.id === id); if (!m || this.st()[id]) return;
     const sc = this.seriesScore(series), s1 = sc[m.t1] || 0, s2 = sc[m.t2] || 0;

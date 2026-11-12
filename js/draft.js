@@ -215,6 +215,14 @@ const Draft = {
     return true;
   },
 
+  // 경기날: 이 경기의 밴픽이 진행 중이면 이어서, 아니면 준비 화면으로
+  matchDay() {
+    const m = Season.today(); if (!m) return;
+    const S = this.st(); if (S && S.series && S.series.key !== m.id && S.phase !== 'ready') App.state.draft = null;
+    if (S && S.series && S.series.key !== m.id) App.state.draft = null;
+    Router.go('match-draft');
+  },
+
   // ---------- 화면 ----------
   async render(el) {
     el.innerHTML = '<div class="placeholder-view"><p>밴픽 준비 중…</p></div>';
@@ -233,11 +241,11 @@ const Draft = {
     const teams = App.db.teams.filter(t => t.id !== my.id).sort((a, b) => (a.league !== my.league) - (b.league !== my.league) || a.league.localeCompare(b.league) || a.name.localeCompare(b.name));
     el.innerHTML = `
       <div class="cr-page">
-        ${Career.head('밴픽 준비', '실제 대회와 같은 순서로 밴픽을 진행합니다 (밴 3·3 → 픽 1·2·2·1 → 밴 2·2 → 픽 1·2·1). 같은 시리즈에서 이미 나온 챔피언은 다시 쓸 수 없습니다(피어리스).')}
+        ${Career.head(nm && nOpp && nOpp.id === opp.id && nm.t.slice(0, 10) === Clock.today() ? '경기날 — 밴픽 준비' : '밴픽 준비', '실제 대회와 같은 순서로 밴픽을 진행합니다 (밴 3·3 → 픽 1·2·2·1 → 밴 2·2 → 픽 1·2·1). 같은 시리즈에서 이미 나온 챔피언은 다시 쓸 수 없습니다(피어리스). 전술을 확정하면 바로 경기가 시작됩니다.')}
         <div class="dr-setup">
           <div class="card dr-vs">
             <div class="dr-vs-side">${G.team(my, 'lg')}<b>${UI.esc(my.name)}</b><small>코치 ${UI.esc(co.name)} · 밴픽 ${co.r}/20</small></div>
-            <div class="dr-vs-mid"><b>VS</b>${nOpp && nOpp.id === opp.id ? `<small>${UI.esc(Schedule.eventOf(nm).label)} · ${Fmt.dateTime(nm.t)} · Bo${nm.bo}${nm.t.slice(0, 10) === Clock.today() ? ' · <em class="dr-today">오늘 경기</em>' : ''}</small>` : '<small>연습 밴픽</small>'}<button class="btn-primary dr-go">밴픽 시작</button></div>
+            <div class="dr-vs-mid"><b>VS</b>${nOpp && nOpp.id === opp.id ? `<small>${UI.esc(Schedule.eventOf(nm).label)} · ${Fmt.dateTime(nm.t)} · Bo${nm.bo}${nm.t.slice(0, 10) === Clock.today() ? ' · <em class="dr-today">오늘 경기</em>' : ''}</small>` : '<small>연습 밴픽</small>'}<button class="btn-primary dr-go">밴픽 시작</button>${nm && nOpp && nOpp.id === opp.id && nm.t.slice(0, 10) === Clock.today() ? '<button class="btn-ghost dr-skip">코치에게 맡기고 결과만 보기</button>' : ''}</div>
             <div class="dr-vs-side">${G.team(opp, 'lg')}<b>${UI.esc(opp.name)}</b><small>코치 ${UI.esc(oc.name)} · 밴픽 ${oc.r}/20</small></div>
           </div>
           <div class="card dr-form">
@@ -258,6 +266,12 @@ const Draft = {
     pick('.dr-side'); pick('.dr-bo');
     pick('.dr-mode', v => { $('.dr-mode-desc', el).textContent = v === 'direct' ? '직접하기: 감독이 고르고, 코치 추천 3개가 옆에 뜹니다. 코치 밴픽 역량이 높을수록 추천이 정확합니다.' : `위임하기: 코치 ${co.name}(밴픽 ${co.r}/20)이(가) 우리 차례를 대신 고르고 전술도 추천대로 채워 둡니다. 감독은 지켜보다가 전술만 고칠 수 있습니다.`; });
     $('.dr-opp', el).onchange = e => this.setup(el, { opp: e.target.value });
+    const sk = $('.dr-skip', el);
+    if (sk) sk.onclick = () => {
+      const s = Season.delegate(nm), sc = Season.seriesScore(s), o = Schedule.opponent(nm, my.id);
+      UI.toast(`${my.short} ${sc[my.id] || 0} : ${sc[o.id] || 0} ${o.short} — 코치가 치른 결과입니다`, 4000);
+      Router.go('match-history');
+    };
     $('.dr-go', el).onclick = () => {
       const v = c => $(c + ' .on', el).dataset.v, oppId = $('.dr-opp', el).value;
       const official = nOpp && nOpp.id === oppId;
@@ -405,7 +419,7 @@ const Draft = {
             ${played ? '' : `<button class="btn-primary dr-watch">${S.game}세트 경기 시작</button>`}
             ${(S.series.games.find(x => x.game === S.game) || {}).result && !Season.seriesOver(S.series) ? `<button class="btn-ghost dr-nextgame">${S.game + 1}세트 밴픽 (피어리스)</button>` : ''}
             <button class="btn-ghost dr-done">밴픽 마치기</button>`
-          : `<button class="btn-ghost dr-rec">코치 추천대로</button><button class="btn-primary dr-ok">전술 확정</button>`}
+          : `<button class="btn-ghost dr-rec">코치 추천대로</button><button class="btn-primary dr-ok">전술 확정 · 경기 시작 ▶</button>`}
         </div>
       </div>`;
     el.querySelector('.dr-tac').onclick = e => {
@@ -414,7 +428,7 @@ const Draft = {
       else if (b.dataset.role) T.roles[b.dataset.role] = b.dataset.v;
       else if (b.classList.contains('dr-rec')) { T.team = S.rec.team; T.roles = { ...S.rec.roles }; }
       else if (b.classList.contains('dr-watch')) return Live.start(S);
-      else if (b.classList.contains('dr-ok')) { if (!this.confirm(S)) return; UI.toast('전술을 확정했습니다'); }
+      else if (b.classList.contains('dr-ok')) { if (!this.confirm(S)) return; return Live.start(S); }
       else if (b.classList.contains('dr-nextgame')) {
         this.start({ opp: ot.id, side: played && played.win === my.id ? 'R' : 'B', mode: S.mode, bo: S.series.bo, key: S.official ? S.series.key : null, continueSeries: true });   // 진 팀이 블루
         return this.render(el);

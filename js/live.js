@@ -60,20 +60,21 @@ const Live = {
           <div class="lv-comm"></div>
         </div>
       </div></div>`;
-    $('.lv-speed', el).onclick = e => { const b = e.target.closest('button'); if (!b) return; this.speed = +b.dataset.s; $$('.lv-speed button', el).forEach(x => x.classList.toggle('on', x === b)); if (this.timer) this.loop(); };
-    $('.lv-pause', el).onclick = e => { if (this.timer) { clearInterval(this.timer); this.timer = null; e.target.textContent = '계속'; } else if (!g.over) { e.target.textContent = '일시정지'; this.loop(); } };
-    $('.lv-skip', el).onclick = () => { clearInterval(this.timer); this.timer = null; while (!g.over) Sim.step(g); this.feedSeen = g.feed.length; this.banners = []; this.tickAt = 0; this.draw(); this.finish(); };
-    $('.lv-exit', el).onclick = () => { clearInterval(this.timer); this.timer = null; Router.go('match-draft'); };
+    $('.lv-speed', el).onclick = e => { const b = e.target.closest('button'); if (!b) return; this.acc = this.acc * this.speed / +b.dataset.s; this.speed = +b.dataset.s; $$('.lv-speed button', el).forEach(x => x.classList.toggle('on', x === b)); };
+    $('.lv-pause', el).onclick = e => { if (g.over) return; this.playing = !this.playing; e.target.textContent = this.playing ? '일시정지' : '계속'; };
+    $('.lv-skip', el).onclick = () => { this.playing = false; while (!g.over) Sim.step(g); this.feedSeen = g.feed.length; this.banners = []; this.acc = 1e9; this.draw(); this.finish(); };
+    $('.lv-exit', el).onclick = () => { this.playing = false; Router.go(this.exitTo || 'match-draft'); };
     this.feedSeen = Math.max(this.feedSeen, g.feed.length); this.banners = []; this.bannerOn = false;
     this.fit(); this._fit ||= (() => { if (this.el && document.body.contains(this.el)) this.fit(); }); window.removeEventListener('resize', this._fit); window.addEventListener('resize', this._fit);
-    this.tickAt = performance.now(); this.draw(); this.animate();
-    if (g.over) this.finish(); else this.loop();
+    this.acc = 0; this.playing = !g.over; this.draw(); this.animate();
+    if (g.over) this.finish();
   },
   // 맵을 남는 공간에 맞춰 최대 크기로 (가로세로 비율 유지)
   fit() {
     const box = this.el && this.el.querySelector('.lv-mapbox'), map = box && box.querySelector('.lv-map'); if (!map) return;
     const w = box.clientWidth, h = box.clientHeight, r = 1000 / 946, mw = Math.min(w, h * r);
     map.style.width = Math.floor(mw) + 'px'; map.style.height = Math.floor(mw / r) + 'px';
+    this.mw = Math.floor(mw); this.mh = Math.floor(mw / r);
   },
   structures() {
     Rift.init();
@@ -84,15 +85,19 @@ const Live = {
     }));
     return out.join('');
   },
-  loop() {
-    clearInterval(this.timer);
-    if (this.g.over) return;
-    this.timer = setInterval(() => {
-      if (!document.body.contains(this.el) || !this.el.querySelector('.lv-wrap')) { clearInterval(this.timer); this.timer = null; return; }
-      try { Sim.step(this.g); } catch (e) { console.error('[sim]', e); clearInterval(this.timer); this.timer = null; UI.toast('경기 진행 중 오류: ' + e.message, 5000); return; }
-      this.tickAt = performance.now(); this.draw();
-      if (this.g.over) { clearInterval(this.timer); this.timer = null; setTimeout(() => this.finish(), 900 / this.speed); }
-    }, 1000 / this.speed);
+  // 한 틱(경기 10초) = 실제 1초 / 배속. 화면 프레임마다 시간을 쌓고, 한 틱이 차면 그 프레임에서 바로 다음 틱을 계산한다
+  // (따로 도는 타이머가 늦게 와서 아이콘이 멈칫하던 문제를 없앤다)
+  advance(dt) {
+    const g = this.g, period = 1000 / this.speed;
+    if (!this.playing || g.over) return;
+    this.acc += Math.min(dt, 250);                                   // 탭이 잠깐 멈췄다 돌아와도 한꺼번에 몰아 돌지 않게
+    let n = 0;
+    while (this.acc >= period && !g.over && n++ < 3) {
+      this.acc -= period;
+      try { Sim.step(g); } catch (e) { console.error('[sim]', e); this.playing = false; UI.toast('경기 진행 중 오류: ' + e.message, 5000); return; }
+      this.dirty = true;
+    }
+    if (g.over) { this.playing = false; this.acc = period; setTimeout(() => this.finish(), 900 / this.speed); }
   },
   // 10초 사이: 각 선수가 지나간 길(trail)을 따라 부드럽게 그린다
   at(trail, f) {
@@ -105,10 +110,15 @@ const Live = {
   },
   animate() {
     cancelAnimationFrame(this.raf);
-    const tick = () => {
+    let last = performance.now();
+    const tick = now => {
       if (!this.el || !document.body.contains(this.el) || !this.el.querySelector('.lv-wrap')) return;
-      const g = this.g, f = this.tickAt && this.timer ? Math.min(1, (performance.now() - this.tickAt) / (1000 / this.speed)) : 1;
-      $$('.lv-ic', this.el).forEach(ic => { const p = g.pl[ic.dataset.i], pos = this.at(p.trail, f) || p.pos; ic.style.left = pos[0] + '%'; ic.style.top = pos[1] + '%'; });
+      this.advance(now - last); last = now;
+      if (this.dirty) { this.dirty = false; this.draw(); }
+      const g = this.g, f = g.over ? 1 : Math.min(1, this.acc / (1000 / this.speed));
+      if (!this.ics || !this.ics[0] || !this.ics[0].isConnected) this.ics = $$('.lv-ic', this.el);
+      const W = this.mw || 1, H = this.mh || 1;
+      for (const ic of this.ics) { const p = g.pl[ic._i ?? (ic._i = +ic.dataset.i)], pos = this.at(p.trail, f) || p.pos; ic.style.transform = `translate3d(${(pos[0] * W / 100).toFixed(1)}px, ${(pos[1] * H / 100).toFixed(1)}px, 0) translate(-50%, -50%)`; }
       this.raf = requestAnimationFrame(tick);
     };
     this.raf = requestAnimationFrame(tick);
@@ -119,9 +129,10 @@ const Live = {
     $('.lv-k.b', el).textContent = g.side.B.kills; $('.lv-k.r', el).textContent = g.side.R.kills;
     $('.lv-gd.b', el).textContent = (gb / 1000).toFixed(1) + 'K'; $('.lv-gd.r', el).textContent = (gr / 1000).toFixed(1) + 'K';
     // 부순 포탑 수 = 상대 포탑이 깨진 수
-    $('.lv-tw.b', el).innerHTML = this.ico('tower') + g.side.R.down; $('.lv-tw.r', el).innerHTML = g.side.B.down + this.ico('tower');
+    const set = (sel, html) => { const n = $(sel, el); if (n && n._h !== html) { n._h = html; n.innerHTML = html; } };   // 내용이 바뀔 때만 다시 그린다 (이미지를 매번 새로 만들지 않게)
+    set('.lv-tw.b', this.ico('tower') + g.side.R.down); set('.lv-tw.r', g.side.B.down + this.ico('tower'));
     const objs = k => { const s = g.side[k]; return [...s.drag.map(d => `<i title="${d[0]} 드래곤">${this.ico(d[1])}</i>`), s.grubs ? `<i title="공허 유충">${this.ico('grub')}<b>${s.grubs}</b></i>` : '', s.herald ? `<i title="전령">${this.ico('riftherald')}</i>` : '', s.baron ? `<i title="바론" class="${s.baronUntil > g.t ? 'bn' : 'off'}">${this.ico('baron')}</i>` : '']; };
-    $('.lv-dr.b', el).innerHTML = objs('B').join(''); $('.lv-dr.r', el).innerHTML = objs('R').reverse().join('');
+    set('.lv-dr.b', objs('B').join('')); set('.lv-dr.r', objs('R').reverse().join(''));
     $('.lv-clock', el).textContent = Sim.clock(g.t);
     // 양옆 선수 · 맵 아이콘: 처음 한 번 만들고 값만 바꾼다
     if (!el.querySelector('.lv-pl')) {
@@ -149,17 +160,17 @@ const Live = {
     }));
     // 효과: 귀환 · 텔레포트 · 교전 · 파괴
     const dur = (1 / this.speed).toFixed(2);
-    $('.lv-fx', el).innerHTML = g.fx.filter(f => g.t - f.t <= 10).map(f => {
+    set('.lv-fx', g.fx.filter(f => g.t - f.t <= 10).map(f => {
       const [x, y] = f.at, sd = f.side === 'B' ? 'b' : 'r';
       if (f.type === 'tp') return `<div class="lv-fx-tp ${sd}" style="left:${x}%;top:${y}%;--d:${dur}s"></div><div class="lv-fx-tpo ${sd}" style="left:${f.from[0]}%;top:${f.from[1]}%;--d:${dur}s"></div>`;
       if (f.type === 'recall') return `<div class="lv-fx-rc ${sd}" style="left:${x}%;top:${y}%;--d:${dur}s"></div>`;
       if (f.type === 'fight') return `<div class="lv-fx-fight" style="left:${x}%;top:${y}%;--d:${dur}s"></div>`;
       return `<div class="lv-fx-boom ${sd}" style="left:${x}%;top:${y}%;--d:${dur}s"></div>`;
-    }).join('');
+    }).join(''));
     // 킬·오브젝트 로그(맵 오른쪽 위, 최근 5개) + 가운데 알림은 새 사건마다 한 번씩
-    $('.lv-klog', el).innerHTML = g.feed.slice(-5).reverse().map(f => f.obj
+    set('.lv-klog', g.feed.slice(-5).reverse().map(f => f.obj
       ? `<div class="lv-kl ${f.side === 'B' ? 'b' : 'r'}"><span>${Sim.clock(f.t)}</span>${G.team(g.side[f.side].t, 'xs')}<i>›</i>${this.ico(f.icon)}</div>`
-      : `<div class="lv-kl ${f.killer.side === 'B' ? 'b' : 'r'}"><span>${Sim.clock(f.t)}</span>${SoloQ.ic(f.killer.c)}${this.ico('kills', 'sw')}${SoloQ.ic(f.victim.c)}</div>`).join('');
+      : `<div class="lv-kl ${f.killer.side === 'B' ? 'b' : 'r'}"><span>${Sim.clock(f.t)}</span>${SoloQ.ic(f.killer.c)}${this.ico('kills', 'sw')}${SoloQ.ic(f.victim.c)}</div>`).join(''));
     for (; this.feedSeen < g.feed.length; this.feedSeen++) this.banners.push(g.feed[this.feedSeen]);
     this.banner();
     // 하단 선수 캠: 최근 처치한 선수, 없으면 1분마다 번갈아
@@ -169,9 +180,16 @@ const Live = {
       const cam = $('.lv-cam.' + k.toLowerCase(), el);
       if (cam.dataset.pid !== p.p.id) { cam.dataset.pid = p.p.id; cam.innerHTML = `${p.p.photo ? `<img src="${p.p.photo}" alt="" referrerpolicy="no-referrer">` : `<div class="lv-cam-empty">${UI.esc(p.name[0] || '?')}</div>`}<b>${UI.esc(p.name)}</b>`; }
     });
-    $('.lv-stats', el).innerHTML = G.ROLES.map(r => { const a = g.pl.find(p => p.side === 'B' && p.role === r), b = g.pl.find(p => p.side === 'R' && p.role === r); return `
-      <div class="lv-st"><span class="its">${this.inventory(a)}</span>${SoloQ.ic(a.c)}<span class="kda">${a.k}/${a.d}/${a.a}</span><span class="cs">${Math.round(a.cs)}</span><em class="${a.gold >= b.gold ? 'b' : 'r'}">${a.gold >= b.gold ? '◀' : '▶'} ${(Math.abs(a.gold - b.gold) / 1000).toFixed(1)}K</em><span class="cs">${Math.round(b.cs)}</span><span class="kda">${b.k}/${b.d}/${b.a}</span>${SoloQ.ic(b.c)}<span class="its r">${this.inventory(b)}</span></div>`; }).join('');
-    $('.lv-evs', el).innerHTML = g.ev.slice(-7).reverse().map(e => `<div class="lv-ev ${e.side === 'B' ? 'b' : 'r'}"><span>${Sim.clock(e.t)}</span>${this.ico(e.icon)}<b>${UI.esc(g.side[e.side].t.short)}</b> ${UI.esc(e.txt)}</div>`).join('') || '<p class="cr-dim">오브젝트·포탑 기록</p>';
+    const st = $('.lv-stats', el);
+    if (!st.firstElementChild) st.innerHTML = G.ROLES.map(r => { const a = g.pl.find(p => p.side === 'B' && p.role === r), b = g.pl.find(p => p.side === 'R' && p.role === r); return `
+      <div class="lv-st" data-r="${r}"><span class="its"></span>${SoloQ.ic(a.c)}<span class="kda a"></span><span class="cs a"></span><em></em><span class="cs b"></span><span class="kda b"></span>${SoloQ.ic(b.c)}<span class="its r"></span></div>`; }).join('');
+    [...st.children].forEach(row => {
+      const r = row.dataset.r, a = g.pl.find(p => p.side === 'B' && p.role === r), b = g.pl.find(p => p.side === 'R' && p.role === r), q = s2 => row.querySelector(s2);
+      q('.kda.a').textContent = `${a.k}/${a.d}/${a.a}`; q('.kda.b').textContent = `${b.k}/${b.d}/${b.a}`; q('.cs.a').textContent = Math.round(a.cs); q('.cs.b').textContent = Math.round(b.cs);
+      const em = q('em'); em.className = a.gold >= b.gold ? 'b' : 'r'; em.textContent = `${a.gold >= b.gold ? '◀' : '▶'} ${(Math.abs(a.gold - b.gold) / 1000).toFixed(1)}K`;
+      [['.its:not(.r)', a], ['.its.r', b]].forEach(([s2, p]) => { const n = q(s2), h = this.inventory(p); if (n._h !== h) { n._h = h; n.innerHTML = h; } });
+    });
+    set('.lv-evs', g.ev.slice(-7).reverse().map(e => `<div class="lv-ev ${e.side === 'B' ? 'b' : 'r'}"><span>${Sim.clock(e.t)}</span>${this.ico(e.icon)}<b>${UI.esc(g.side[e.side].t.short)}</b> ${UI.esc(e.txt)}</div>`).join('') || '<p class="cr-dim">오브젝트·포탑 기록</p>');
     const comm = $('.lv-comm', el);
     if (comm.dataset.n != g.comm.length) {
       comm.dataset.n = g.comm.length;
@@ -205,15 +223,25 @@ const Live = {
     $('.lv-over', el).innerHTML = `<div class="lv-res ${mine ? 'win' : 'lose'}"><small>${Sim.clock(g.t)}${S.series.bo > 1 ? ` · ${S.game}세트` : ''}</small><b>${mine ? 'VICTORY' : 'DEFEAT'}</b><span>${G.team(w.t, 'sm')} ${UI.esc(w.t.name)} 승리 · 킬 ${g.side.B.kills} : ${g.side.R.kills}</span>
       ${S.series.bo > 1 ? `<span class="lv-series">매치 스코어 ${UI.esc(g.side[us].t.short)} ${sc[us]} : ${sc[them]} ${UI.esc(g.side[them].t.short)}${over ? ' · 경기 종료' : ''}</span>` : ''}
       <div class="lv-mvp">${SoloQ.ic(g.over.mvp.c)}<div><small>POG</small><b>${UI.esc(g.over.mvp.name)}</b><span>${g.over.mvp.k}/${g.over.mvp.d}/${g.over.mvp.a}</span></div></div>
-      <div class="lv-res-btn">${!over ? '<button class="btn-primary lv-next">다음 세트 밴픽 →</button>' : ''}<button class="btn-ghost lv-back">${over ? '닫기' : '밴픽 화면으로'}</button></div></div>`;
-    $('.lv-back', el).onclick = () => Router.go(over && S.official ? 'match-history' : 'match-draft');
-    const nx = $('.lv-next', el);
-    if (nx) nx.onclick = () => {
+      <div class="lv-res-btn">${!over ? `<button class="btn-primary lv-next">${S.game + 1}세트 밴픽 → <small class="lv-cd"></small></button>` : `<button class="btn-primary lv-back">${S.official ? '계속' : '닫기'}</button>`}${!over ? '<button class="btn-ghost lv-stay">결과 더 보기</button>' : ''}</div></div>`;
+    clearInterval(this._cd);
+    const next = () => {
+      clearInterval(this._cd);
       const oppT = Draft.side(S, them), lost = g.over.win !== us;
       // 진 팀이 다음 세트 진영을 고른다 (블루를 가져간다고 본다)
       Draft.start({ opp: oppT.id, side: lost ? 'B' : 'R', mode: S.mode, bo: S.series.bo, key: S.official ? S.series.key : null, continueSeries: true });
       Router.go('match-draft');
     };
+    const bk = $('.lv-back', el);
+    if (bk) bk.onclick = () => { if (S.official) App.state.draft = null; Router.go(S.official ? 'portal-overview' : 'match-draft'); };
+    const nx = $('.lv-next', el);
+    if (nx) {
+      nx.onclick = next;
+      // FM처럼 잠시 뒤 다음 세트 밴픽으로 자동으로 넘어간다 (결과 더 보기를 누르면 멈춘다)
+      let left = 8; const cd = $('.lv-cd', el); cd.textContent = `(${left})`;
+      this._cd = setInterval(() => { if (!document.body.contains(nx)) { clearInterval(this._cd); return; } left--; cd.textContent = `(${left})`; if (left <= 0) next(); }, 1000);
+      $('.lv-stay', el).onclick = e => { clearInterval(this._cd); cd.textContent = ''; e.target.remove(); };
+    }
   },
   empty(el) {
     const S = App.state.draft, ready = S && S.phase === 'ready' && !(S.series.games.find(x => x.game === S.game) || {}).result;
