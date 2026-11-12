@@ -1,0 +1,105 @@
+/* ---------- 경기 관전: 옵저버 중계 화면 ---------- */
+.lv-wrap { display: grid; grid-template-columns: minmax(0, 1fr) 320px; gap: 12px; padding: 12px 16px 16px; max-width: 1600px; margin: 0 auto; }
+.lv-bc { background: #05080e; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; display: flex; flex-direction: column; }
+
+/* 상단 스코어보드 */
+.lv-top { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; background: linear-gradient(180deg, #121a2b, #0a0f1a); border-bottom: 1px solid #1d2840; padding: 6px 14px; }
+.lv-tm { display: flex; align-items: center; gap: 10px; }
+.lv-tm b { font: 700 24px var(--f-ui); letter-spacing: .04em; }
+.lv-tm.red { justify-content: flex-end; }
+.lv-tm.blue b { color: #9cc4ff; }
+.lv-tm.red b { color: #ffadb8; }
+.lv-sc { display: grid; grid-template-columns: auto auto auto auto auto auto auto; align-items: center; gap: 14px; justify-items: center; font: 600 15px var(--f-ui); }
+.lv-sc .lv-k { font-size: 24px; min-width: 28px; text-align: center; }
+.lv-sc .lv-k.b { color: #7fb0ff; } .lv-sc .lv-k.r { color: #ff8796; }
+.lv-sc > i { font-style: normal; color: var(--muted); font-size: 13px; }
+.lv-gd { color: var(--gold-2); }
+.lv-tw { color: #cfd8ea; font-size: 13px; }
+.lv-sub { grid-column: 1 / -1; display: grid; grid-template-columns: 1fr auto 1fr; gap: 12px; width: 100%; align-items: center; }
+.lv-clock { font: 700 15px var(--f-ui); font-style: normal; color: #fff; }
+.lv-dr { display: flex; gap: 2px; font-size: 13px; min-height: 18px; }
+.lv-dr.b { justify-content: flex-end; }
+.lv-dr i { font-style: normal; }
+.lv-dr .bn { filter: drop-shadow(0 0 4px #a37bff); }
+
+/* 가운데: 양옆 선수 + 맵 */
+.lv-mid { display: grid; grid-template-columns: 150px minmax(0, 1fr) 150px; background: #070b12; }
+.lv-side { display: flex; flex-direction: column; justify-content: center; gap: 10px; padding: 10px 8px; }
+.lv-pl { display: flex; align-items: center; gap: 7px; }
+.lv-side.r .lv-pl { flex-direction: row-reverse; text-align: right; }
+.lv-pic { position: relative; flex: none; }
+.lv-pic .sq-ic { width: 44px; height: 44px; border-radius: 4px; border: 2px solid #3b8cff; display: block; }
+.lv-side.r .lv-pic .sq-ic { border-color: #ef4b5f; }
+.lv-pic > i { position: absolute; bottom: -4px; left: -4px; font: 700 11px/16px var(--f-ui); font-style: normal; width: 18px; height: 16px; text-align: center; border-radius: 3px; background: #0b111d; border: 1px solid #2c3a56; }
+.lv-pic em { position: absolute; inset: 0; display: grid; place-items: center; font: 700 16px var(--f-ui); font-style: normal; color: #fff; text-shadow: 0 0 4px #000; }
+.lv-pl.dead .sq-ic { filter: grayscale(1) brightness(.4); }
+.lv-pi { min-width: 0; flex: 1; }
+.lv-pi small { display: block; font-size: 11px; color: #d7deeb; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.lv-hp { height: 5px; border-radius: 2px; background: #1c2436; overflow: hidden; margin-top: 3px; }
+.lv-hp i { display: block; height: 100%; background: #3fbf7f; transition: width .4s; }
+
+.lv-map { position: relative; aspect-ratio: 1; height: min(640px, calc(100vh - 425px)); min-height: 340px; max-width: 100%; margin: 0 auto; overflow: hidden; }
+.lv-svg { position: absolute; inset: 0; width: 100%; height: 100%; }
+.lv-svg .tw.b { fill: #3b8cff; } .lv-svg .tw.r { fill: #ef4b5f; }
+.lv-svg .tw.down { fill: #2a3142; opacity: .6; }
+.lv-svg .nx.b { fill: #6aa8ff; } .lv-svg .nx.r { fill: #ff7a8a; }
+.lv-icons { position: absolute; inset: 0; }
+.lv-ic { position: absolute; width: 5.2%; aspect-ratio: 1; transform: translate(-50%, -50%); transition: left .9s linear, top .9s linear, opacity .3s; }
+.lv-ic img { width: 100%; height: 100%; border-radius: 50%; border: 2px solid #3b8cff; box-shadow: 0 0 6px rgba(0, 0, 0, .8); display: block; }
+.lv-ic.r img { border-color: #ef4b5f; }
+.lv-ic.dead { opacity: .15; }
+.lv-feed { position: absolute; top: 4%; left: 0; right: 0; display: flex; justify-content: center; pointer-events: none; }
+.lv-kill { display: flex; align-items: center; gap: 10px; padding: 6px 14px; border-radius: 24px; background: rgba(5, 8, 14, .85); border: 1px solid #2c3a56; font-size: 14px; animation: lvIn .3s; }
+.lv-kill.b { box-shadow: 0 0 14px rgba(59, 140, 255, .4); } .lv-kill.r { box-shadow: 0 0 14px rgba(239, 75, 95, .4); }
+.lv-kill .sq-ic { width: 32px; height: 32px; border-radius: 50%; }
+.lv-kill b { color: var(--gold-2); }
+@keyframes lvIn { from { transform: translateY(-8px); opacity: 0; } }
+.lv-over { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; pointer-events: none; }
+.lv-res { pointer-events: auto; display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 26px 40px; border-radius: 12px; background: rgba(5, 8, 14, .9); border: 1px solid var(--gold); animation: lvIn .4s; }
+.lv-res b { font: 800 46px var(--f-title); letter-spacing: .06em; }
+.lv-res.win b { color: var(--gold-2); } .lv-res.lose b { color: #ff8796; }
+.lv-res > span { display: flex; align-items: center; gap: 8px; }
+.lv-res small { color: var(--muted); }
+.lv-mvp { display: flex; align-items: center; gap: 10px; margin-top: 6px; }
+.lv-mvp .sq-ic { width: 44px; height: 44px; border-radius: 50%; border: 2px solid var(--gold); }
+.lv-mvp small { color: var(--gold); font-size: 11px; display: block; }
+.lv-mvp span { color: var(--muted); font-size: 12px; margin-left: 6px; }
+
+/* 하단: 선수 캠 + 스탯 */
+.lv-bot { display: grid; grid-template-columns: 200px minmax(0, 1fr) 200px; border-top: 1px solid #1d2840; background: #0a0f1a; height: 150px; }
+.lv-cam { position: relative; overflow: hidden; background: #0d1422; }
+.lv-cam img { width: 100%; height: 100%; object-fit: cover; object-position: center 20%; display: block; animation: lvFade .5s; }
+.lv-cam b { position: absolute; left: 0; right: 0; bottom: 0; padding: 4px 10px; font: 700 18px var(--f-ui); letter-spacing: .06em; text-transform: uppercase; background: linear-gradient(transparent, rgba(0, 0, 0, .9)); }
+.lv-cam.b { border-right: 3px solid #3b8cff; } .lv-cam.r { border-left: 3px solid #ef4b5f; }
+.lv-cam.r b { text-align: right; }
+.lv-cam-empty { height: 100%; display: grid; place-items: center; font: 700 40px var(--f-ui); color: var(--muted); }
+@keyframes lvFade { from { opacity: 0; } }
+.lv-stats { display: flex; flex-direction: column; justify-content: center; gap: 3px; padding: 6px 10px; }
+.lv-st { display: grid; grid-template-columns: 26px 1fr 40px 80px 40px 1fr 26px; align-items: center; gap: 6px; font: 600 13px var(--f-ui); }
+.lv-st .sq-ic { width: 24px; height: 24px; }
+.lv-st .kda:first-of-type { text-align: right; }
+.lv-st .cs { color: var(--muted); text-align: center; }
+.lv-st em { font-style: normal; font-size: 11px; text-align: center; }
+.lv-st em.b { color: #7fb0ff; } .lv-st em.r { color: #ff8796; }
+
+/* 오른쪽 패널: 조작 · 오브젝트 · 해설 */
+.lv-panel { display: flex; flex-direction: column; gap: 10px; min-height: 0; }
+.lv-ctrl { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px; }
+.lv-ctrl .seg button { padding: 4px 8px; }
+.lv-evs { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; display: grid; gap: 4px; min-height: 60px; }
+.lv-ev { font-size: 12px; display: flex; gap: 6px; align-items: center; }
+.lv-ev span { color: var(--muted); font: 600 11px var(--f-ui); width: 36px; }
+.lv-ev.b { color: #9cc4ff; } .lv-ev.r { color: #ffadb8; }
+.lv-comm { flex: 1; min-height: 300px; max-height: calc(100vh - 330px); overflow-y: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 8px 10px; display: flex; flex-direction: column; gap: 8px; }
+.lv-line { display: grid; grid-template-columns: 38px 1fr; gap: 2px 8px; font-size: 13px; animation: lvIn .3s; }
+.lv-line span { grid-row: span 2; color: var(--muted); font: 600 11px var(--f-ui); padding-top: 2px; }
+.lv-line b { font-size: 11px; }
+.lv-line.cast b { color: var(--gold-2); } .lv-line.anal b { color: #8fd3c1; }
+.lv-line p { margin: 0; line-height: 1.45; }
+
+@media (max-width: 1200px) {
+  .lv-wrap { grid-template-columns: 1fr; }
+  .lv-mid { grid-template-columns: 110px minmax(0, 1fr) 110px; }
+  .lv-bot { grid-template-columns: 120px minmax(0, 1fr) 120px; }
+  .lv-comm { max-height: 300px; }
+}

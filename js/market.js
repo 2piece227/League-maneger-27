@@ -101,3 +101,10 @@ const Market = {
   rivals(pid) { return (this.fa()[pid] || []).length; },
 };
 Engine.on(today => { if (!App.db.free) return; Market.expire(today); Market.shop(today); });
+
+// 날짜 고정 기사(패치·시즌 결산)는 뉴스 탭을 안 열어도 그날 날짜로 남긴다
+Engine.on(today => {
+  const s = (App.state.newsSeen ||= {}), t = Roster.team();
+  if (typeof Champions !== 'undefined' && Champions.meta) s['patch:' + Champions.meta.patch] ||= today;
+  if (t) s[`recap:${t.id}:${Schedule.BASE}`] ||= today;
+});

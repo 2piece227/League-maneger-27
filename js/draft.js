@@ -375,9 +375,10 @@ const Draft = {
               <div class="dr-rt-opts">${this.ROLE_TAC[r].map(([id, n]) => `<button class="dr-opt sm ${T.roles[r] === id ? 'on' : ''}" data-role="${r}" data-v="${id}" ${ready ? 'disabled' : ''}><b>${n}${S.rec.roles[r] === id ? ' <i class="dr-star">★</i>' : ''}</b><span class="dr-fit ${tag(fits[id])}"><i style="width:${fits[id]}%"></i></span><em>${fits[id]}%</em></button>`).join('')}</div></div>`; }).join('')}</div>
         </div>
         <div class="dr-tac-foot">
-          ${ready ? `<span class="cr-dim">밴픽·전술이 저장됐습니다. 경기 엔진이 들어오면 이 전술로 경기를 치릅니다.</span>
+          ${ready ? `<span class="cr-dim">밴픽·전술이 저장됐습니다. 관전하면 이 밴픽과 전술로 경기를 치릅니다 (임시 엔진).</span>
+            <button class="btn-primary dr-watch">${S.game}세트 관전</button>
             ${S.series.games.length < S.series.bo ? `<button class="btn-ghost dr-nextgame">${S.game + 1}세트 밴픽 (피어리스)</button>` : ''}
-            <button class="btn-primary dr-done">밴픽 마치기</button>`
+            <button class="btn-ghost dr-done">밴픽 마치기</button>`
           : `<button class="btn-ghost dr-rec">코치 추천대로</button><button class="btn-primary dr-ok">전술 확정</button>`}
         </div>
       </div>`;
@@ -386,6 +387,7 @@ const Draft = {
       if (b.dataset.team) T.team = b.dataset.team;
       else if (b.dataset.role) T.roles[b.dataset.role] = b.dataset.v;
       else if (b.classList.contains('dr-rec')) { T.team = S.rec.team; T.roles = { ...S.rec.roles }; }
+      else if (b.classList.contains('dr-watch')) return Live.start(S);
       else if (b.classList.contains('dr-ok')) { if (!this.confirm(S)) return; UI.toast('전술을 확정했습니다'); }
       else if (b.classList.contains('dr-nextgame')) {
         this.start({ opp: ot.id, side: us === 'B' ? 'R' : 'B', mode: S.mode, bo: S.series.bo, key: S.official ? S.series.key : null, continueSeries: true });
