@@ -48,7 +48,7 @@ const Club = {
   },
 
   // ---------- 샐러리캡 ----------
-  CAP: { LCK: { cap: 40, rule: '상위 5인 연봉 합산', tiers: [[40, 50, '25%'], [50, 60, '50%'], [60, 70, '75%'], [70, 999, '100%']] }, LEC: { cap: 23, rule: 'SFR · 선수단 지출 상한 (환산)', tiers: [[23, 999, '초과분 제재']] } },
+  CAP: { LCK: { cap: 40, rule: '상위 5인 연봉 합산', tiers: [[40, 60, '25%'], [60, 80, '35%'], [80, 100, '50%'], [100, 999, '60%']] }, LEC: { cap: 23, rule: 'SFR · 선수단 지출 상한 (환산)', tiers: [[23, 999, '초과분 제재']] } },
   // 상위 5인 합산(LCK) → 구간별 부담금. extra: 이 선수의 연봉을 바꿔 넣어 계산 (협상 중 미리보기)
   tax(t, extra) {
     const C = this.CAP.LCK, pays = t.players.filter(p => !extra || p.id !== extra.pid).map(p => Player.salary(p, t));
@@ -174,7 +174,7 @@ const Club = {
     Results.forTeam(t.id).forEach(m => { (evs[m.e] ||= { w: 0, l: 0 }); Results.won(m, t.id) ? evs[m.e].w++ : evs[m.e].l++; });
     el.innerHTML = `
       <div class="cr-page">
-        <div class="card cr-id">${G.team(t, 'lg')}<div class="cr-id-main"><h2>${UI.esc(t.name)}</h2><div class="cr-id-meta">${t.league}${t.city ? ' · ' + UI.esc(t.city) : ''} · 구단 평판 ${UI.stars(t.rep || 2)}</div></div>
+        <div class="card cr-id">${G.team(t, 'lg')}<div class="cr-id-main"><h2>${UI.esc(t.name)}</h2><div class="cr-id-meta">${t.league}${t.city ? ' · ' + UI.esc(t.city) : ''} · 구단 평판 ${UI.stars(t.rep || 2)} <b>${Fame.team(t)}</b> ${Fame.teamTitle(Fame.team(t))}</div></div>
           <div class="cr-id-rep"><span>월즈 우승</span><b>${titles.length}회</b></div></div>
         <div class="cr-grid">
           <div class="card"><div class="card-head"><h3>월드 챔피언십 우승</h3></div>

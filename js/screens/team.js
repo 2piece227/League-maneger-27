@@ -53,7 +53,7 @@ Screens.team = {
           <div><div class="tc-name">${UI.esc(t.name)}</div><div class="tc-city">${t.city}</div></div>
         </div>
         <div class="tc-stats">
-          <span class="k">명성</span>${UI.stars(t.rep)}
+          <span class="k">명성</span>${UI.stars(t.rep)} <small>${Fame.team(t)} · ${Fame.teamTitle(Fame.team(t))}</small>
           <span class="k">자본</span><div class="bar"><span style="width:${t.fin * 20}%"></span></div>
           <span class="k">로스터</span><span>주전 평균 OVR <b>${this.avgOvr(t)}</b></span>
         </div>

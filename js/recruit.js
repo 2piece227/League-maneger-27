@@ -192,7 +192,7 @@ const Recruit = {
       const rows = App.db.teams.filter(t => (f.league === 'ALL' || t.league === f.league)
         && (!q || t.name.toLowerCase().includes(q) || t.short.toLowerCase().includes(q) || t.players.some(p => p.name.toLowerCase().includes(q))))
         .map(t => ({ t, ...this.teamPower(t) }))
-        .sort((a, b) => f.sort === 'rep' ? (b.t.rep || 2) - (a.t.rep || 2) || b.power - a.power : b[f.sort] - a[f.sort]);
+        .sort((a, b) => f.sort === 'rep' ? Fame.team(b.t) - Fame.team(a.t) || b.power - a.power : b[f.sort] - a[f.sort]);
       const cell = x => x.p ? `<td><div class="tf-pl" data-pid="${x.p.id}">${G.face(x.p, 'pl-ph')}<div>${G.ovr(x.p)}<b>${UI.esc(x.p.name)}</b></div></div></td>` : '<td><span class="cr-dim">공석</span></td>';
       $('.tf-table tbody', el).innerHTML = rows.map((x, i) => `
         <tr data-tid="${x.t.id}" class="${x.t.id === my.id ? 'tf-me' : ''}">
@@ -200,7 +200,7 @@ const Recruit = {
           <td><div class="pl-cell">${G.team(x.t, 'sm')}<div><b>${UI.esc(x.t.name)}</b><small class="pl-real">${x.t.league}${x.t.id === my.id ? ' · 우리 팀' : ''}</small></div></div></td>
           <td class="num"><b class="tf-pow">${x.power.toFixed(1)}</b></td>
           ${x.line.map(cell).join('')}
-          <td class="num">${Player.money(x.value)}</td><td class="num">${Player.money(x.pay)}</td><td class="num">${x.sig}</td><td class="num">${UI.stars(x.t.rep || 2)}</td>
+          <td class="num">${Player.money(x.value)}</td><td class="num">${Player.money(x.pay)}</td><td class="num">${x.sig}</td><td class="num" title="${Fame.teamTitle(Fame.team(x.t))}">${Fame.team(x.t)}</td>
         </tr>`).join('') || '<tr><td colspan="13" class="ms-none" style="text-align:center;padding:30px">해당하는 팀이 없습니다.</td></tr>';
       $('.tf-count', el).textContent = `${rows.length}팀`;
     };

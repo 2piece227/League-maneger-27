@@ -41,6 +41,8 @@ const Contract = {
   // 이 점수의 선수가 이 리그에서 받는 시장 연봉
   pay(p, s, league) {
     const tier = this.tier(p);
+    // 1군 선수: 실력 연봉(OVR) × 평판 배수 (js/fame.js). 코치·OVR 없는 선수는 예전 점수 곡선
+    if (tier === 'first' && p.role !== 'COACH' && p.ovr != null) return this.r1(Math.max(this.MIN.first, Fame.pay(p, league)));
     let v = tier === 'cl' ? .2 + Math.max(0, (p.ca || 8) - 8) * .06 : tier === 'academy' ? .1 + Math.max(0, (p.ca || 7) - 7) * .02 : (([a, k]) => a * Math.exp((s - 45) / k))(this.CURVE[league] || [.8, 14]);
     if (p.role === 'COACH') v *= .5;
     if (tier !== 'first') v *= this.LG[league] || .8;

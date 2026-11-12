@@ -39,6 +39,8 @@ const Neg = {
     const hit = Player.find(p.id), cur = hit && !p.free ? Contract.of(p, hit.t) : null;
     const rivals = mode === 'transfer' ? 0 : mode === 'fa' && Market.rivals(p.id) ? Market.rivals(p.id) : mode === 'renew' ? Math.floor(G.rand(p.id + Clock.year(), 'riv') * (W.s >= 75 ? 4 : 2)) : 1 + Math.floor(G.rand(p.id + Clock.year(), 'riv') * (W.s >= 75 ? 4 : 2));
     let ask = Contract.pay(p, W.s, my.league) * (1 + K[2] * 3 + .12 + rivals * .04);
+    const disc = mode === 'renew' ? 0 : Fame.discount(my, p);                                   // 명문 할인: 팀 평판이 선수보다 높으면
+    ask *= 1 - disc;
     if (p.nation === 'South Korea' && my.league !== 'LCK') ask *= 1 + W.w.home * .8;           // 한국 선수가 해외로 가려면 더 받아야
     if (mode === 'renew') ask *= 1 - W.w.loyal * .15;                                            // 재계약 의리 할인
     if (mode === 'renew' && cur && (p.age || 22) < 28) ask = Math.max(ask, cur.salary * 1.05);    // 젊은 선수는 연봉 삭감을 받지 않는다
@@ -46,6 +48,7 @@ const Neg = {
     const S = M.neg[p.id] = { pid: p.id, mode, date: Clock.today(), patience: K[1], max: K[1], ask, ask0: ask, rivals, asked: {}, log: [], rounds: 0 };
     const opening = `${my.name} 측 연락 감사합니다. ${p.name} 선수 에이전트 ${A.name}(${A.agency})입니다.\n\n`
       + (mode === 'renew' ? `선수는 ${my.short}에 남는 걸 긍정적으로 보고 있지만, 그에 맞는 대우를 원합니다. ` : mode === 'transfer' ? `구단 간 합의 소식 들었습니다. 선수도 ${my.short} 이적에 관심이 있습니다. ` : `선수는 새 팀을 찾고 있고, ${rivals}개 팀과 이야기 중입니다. `)
+      + (disc >= .03 ? `${my.short}에서 뛸 수 있다면 연봉은 어느 정도 양보할 수 있습니다. ` : '')
       + `연봉은 최소 ${Player.money(ask)} 원, 계약 기간은 ${W.years}년을 생각하고 있습니다.${W.role === 'starter' && W.s >= 65 ? ' 주전으로 뛰는 것도 중요합니다.' : ''}`;
     S.log.push({ who: 'agent', text: opening });
     return S;

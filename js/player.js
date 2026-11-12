@@ -60,6 +60,7 @@ const Player = {
               <dt>소속</dt><dd>${UI.esc(t.name)}${t.league ? ` (${t.league})` : ''}</dd>
               <dt>계약 만료</dt><dd>${Contract.label(Contract.of(p, t))} <span class="ct-st ${cc}">${cs}</span></dd>
               <dt>연봉</dt><dd>${this.money(this.salary(p, t))} 원</dd>
+              ${p.role !== 'COACH' ? `<dt>평판</dt><dd>${Fame.label(p)}${Fame.icon(p) ? ' <span class="ch-tag">종목 간판</span>' : ''}</dd>` : ''}
               <dt>생년월일</dt><dd>${p.birthdate ? p.birthdate.replace(/-/g, '.') : '-'}</dd>
               ${p.military ? `<dt>병역</dt><dd>${this.military(p)}</dd>` : ''}
             </dl>
@@ -131,6 +132,7 @@ const Player = {
             ${p.military ? `<dt>병역</dt><dd>${this.military(p)}</dd>` : ''}
             <dt>계약 만료</dt><dd>${p.contractEnd ? p.contractEnd.replace(/-/g, '.') : '-'}</dd>
             <dt>연봉</dt><dd>${this.money(this.salary(p, t))}</dd>
+            <dt>평판</dt><dd>${Fame.label(p)}</dd>
             <dt>시장 가치</dt><dd>${this.money(this.value(p, t))}</dd>
             <dt>솔랭</dt><dd>${sq ? `${sq.rank}위 · ${SoloQ.wr(sq)}%` : '100위 밖'}</dd>
           </dl>
