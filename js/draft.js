@@ -33,6 +33,12 @@ const Style = {
     const ch = Champions.byId[c] || { roles: [] }, s = Object.fromEntries(Object.keys(this.DIMS).map(k => [k, 0]));
     (ch.roles || []).forEach(r => Object.entries(this.ROLE_W[r] || {}).forEach(([k, v]) => { s[k] = Math.max(s[k], v); }));
     Object.assign(s, this.FIX[c] || {});
+    // 실데이터: 짧은 경기(27분 미만) 승률과 긴 경기(33분 이상) 승률 차이로 초반/후반 성향을 보정
+    if (typeof Stats !== 'undefined' && Stats.of(c) && Stats.of(c).g >= 15) {
+      const [e, , l] = Stats.curve(c), d = Math.max(-.5, Math.min(.5, (e - l) * 3));
+      s.early = s.early * .5 + (.5 + d) * .5; s.late = s.late * .5 + (.5 - d) * .5;
+      s.real = true;
+    }
     const roles = ch.roles || [];
     s.front = roles.some(r => ['TANK', 'VANGUARD', 'WARDEN', 'JUGGERNAUT'].includes(r)) ? 1 : 0;
     s.ap = ch.damageType === 'MAGIC_DAMAGE' ? 1 : ch.damageType === 'MIXED_DAMAGE' ? .5 : 0;
@@ -95,7 +101,14 @@ const Draft = {
     if (comp.n >= 2 && comp.ap < .25 && st.ap >= .5) { need += .35; why.push('AP 딜 보완'); }
     if (comp.n >= 2 && comp.ap > .7 && st.ap <= .5) { need += .35; why.push('AD 딜 보완'); }
     if (comp.n >= 1 && comp.engage < .5 && st.engage >= .6) { need += .3; why.push('이니시 보완'); }
-    const v = .45 * ms.m / 20 + .25 * this.meta(c) + .2 * Math.min(1, need) + (ms.sig ? .1 : 0);
+    // 실데이터: 상대가 이미 고른 같은 포지션 챔피언과의 매치업, 우리 팀 챔피언과의 시너지
+    let mu = 0, sy = 0;
+    if (typeof Stats !== 'undefined') {
+      const opp = S.picks[k === 'B' ? 'R' : 'B'].find(x => x.role === r);
+      if (opp) { const m = Stats.matchup(r, c, opp.c); mu = m.wr - .5; if (m.g >= 3 && Math.abs(mu) >= .04) why.push(`${Champions.byId[opp.c].name} 상대 ${Math.round(m.wr * 100)}% (${m.g}판)`); }
+      S.picks[k].forEach(x => { const q = Stats.synergy(r, c, x.role, x.c); if (q) { sy += q.wr - .5; if (q.g >= 4 && q.wr >= .55) why.push(`${Champions.byId[x.c].name}와 시너지 ${Math.round(q.wr * 100)}%`); } });
+    }
+    const v = .4 * ms.m / 20 + .22 * this.meta(c) + .18 * Math.min(1, need) + (ms.sig ? .1 : 0) + mu * .6 + sy * .4;
     if (ms.sig) why.unshift(`${p.name} 시그니처`); else if (ms.m >= 12) why.unshift(`${p.name} 숙련 ${ms.m}`);
     if (this.meta(c) >= .8) why.push('S티어 메타');
     return { v, why, p, m: ms.m, sig: ms.sig };
@@ -127,14 +140,19 @@ const Draft = {
     const my = Roster.team(), opp = this.team(o.opp);
     const prev = this.st(), series = o.continueSeries && prev && prev.series ? prev.series : { key: o.key || 'practice:' + Clock.today() + ':' + opp.id, bo: o.bo || 1, games: [] };
     const us = o.side || 'B';
-    App.state.draft = {
-      id: `${series.key}:${series.games.length + 1}:${Date.now().toString(36)}`, series, game: series.games.length + 1, mode: o.mode || 'direct', us,
-      teams: us === 'B' ? { B: my.id, R: opp.id } : { B: opp.id, R: my.id },
-      bans: { B: [], R: [] }, picks: { B: [], R: [] }, step: 0, done: false, phase: 'draft',
-      fearless: series.games.flatMap(g => [...g.picks.B, ...g.picks.R].map(x => x.c)), official: !!o.key,
-    };
+    App.state.draft = this.make({ series, teams: us === 'B' ? { B: my.id, R: opp.id } : { B: opp.id, R: my.id }, us, mode: o.mode, official: !!o.key });
     this.sel = null; this.selRole = null; this.left = this.TIME;
   },
+  // 드래프트 상태 만들기 (us: 우리 진영, 없으면 AI 대 AI)
+  make({ series, teams, us = null, mode = 'delegate', official = false }) {
+    return {
+      id: `${series.key}:${series.games.length + 1}:${Date.now().toString(36)}`, series, game: series.games.length + 1, mode, us,
+      teams, bans: { B: [], R: [] }, picks: { B: [], R: [] }, step: 0, done: false, phase: 'draft',
+      fearless: series.games.flatMap(g => [...g.picks.B, ...g.picks.R].map(x => x.c)), official,
+    };
+  },
+  // 양 팀 코치가 끝까지 고르고 전술까지 확정 (AI 경기 · 자동 진행)
+  auto(S) { while (!S.done) this.aiAct(S); S.phase = 'ready'; S.series.games.push({ game: S.game, teams: S.teams, bans: S.bans, picks: S.picks, tactics: S.tactics }); return S; },
   act(S, c, role) {
     const [k, kind] = this.ORDER[S.step];
     if (kind === 'ban') S.bans[k].push(c);
@@ -178,6 +196,7 @@ const Draft = {
     return { team: best(this.teamFits(S, k), 'team'), roles: Object.fromEntries(G.ROLES.map(r => [r, best(this.roleFits(S, k, r), r)])) };
   },
   initTactics(S) {
+    if (!S.us) { S.tactics = { B: this.coachTac(S, 'B'), R: this.coachTac(S, 'R') }; S.rec = S.tactics.B; return; }
     const opp = S.us === 'B' ? 'R' : 'B';
     S.tactics = { [opp]: this.coachTac(S, opp), [S.us]: S.mode === 'delegate' ? this.coachTac(S, S.us) : { team: null, roles: {} } };
     S.rec = this.coachTac(S, S.us);
@@ -199,7 +218,7 @@ const Draft = {
   // ---------- 화면 ----------
   async render(el) {
     el.innerHTML = '<div class="placeholder-view"><p>밴픽 준비 중…</p></div>';
-    await Promise.all([Portal.ready, Mastery.load(), Champions.load(), Results.load()]);
+    await Promise.all([Portal.ready, Mastery.load(), Champions.load(), Results.load(), Stats.load()]);
     this.el = el; clearInterval(this._tick); clearTimeout(this._ai);
     const S = this.st();
     if (!S) return this.setup(el);
@@ -377,7 +396,7 @@ const Draft = {
         <div class="dr-tac-foot">
           ${ready ? `<span class="cr-dim">밴픽·전술이 저장됐습니다. 관전하면 이 밴픽과 전술로 경기를 치릅니다 (임시 엔진).</span>
             <button class="btn-primary dr-watch">${S.game}세트 관전</button>
-            ${S.series.games.length < S.series.bo ? `<button class="btn-ghost dr-nextgame">${S.game + 1}세트 밴픽 (피어리스)</button>` : ''}
+            ${(S.series.games.find(x => x.game === S.game) || {}).result && !Season.seriesOver(S.series) ? `<button class="btn-ghost dr-nextgame">${S.game + 1}세트 밴픽 (피어리스)</button>` : ''}
             <button class="btn-ghost dr-done">밴픽 마치기</button>`
           : `<button class="btn-ghost dr-rec">코치 추천대로</button><button class="btn-primary dr-ok">전술 확정</button>`}
         </div>

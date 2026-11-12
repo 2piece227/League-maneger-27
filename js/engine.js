@@ -377,7 +377,7 @@ Engine.on(today => {
   });
   // 경기일
   const m = Schedule.matches.find(x => (x.t1 === t.id || x.t2 === t.id) && x.t.slice(0, 10) === today);
-  if (m) reason = `오늘 ${Schedule.opponent(m, t.id).short}전이 있습니다 (경기 진행은 준비 중)`;
+  if (m && !(App.state.season || {})[m.id]) reason = `오늘 ${Schedule.opponent(m, t.id).short}전이 있습니다 — 경기 > 밴픽 준비에서 직접 치르세요. 그냥 넘기면 코치가 대신 치릅니다`;
   return reason;
 });
 

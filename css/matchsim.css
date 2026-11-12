@@ -38,13 +38,17 @@
 .lv-hp { height: 5px; border-radius: 2px; background: #1c2436; overflow: hidden; margin-top: 3px; }
 .lv-hp i { display: block; height: 100%; background: #3fbf7f; transition: width .4s; }
 
-.lv-map { position: relative; aspect-ratio: 1; height: min(640px, calc(100vh - 425px)); min-height: 340px; max-width: 100%; margin: 0 auto; overflow: hidden; }
+.lv-map { position: relative; aspect-ratio: 1000 / 946; height: min(660px, calc(100vh - 400px)); min-height: 340px; max-width: 100%; margin: 0 auto; overflow: hidden; background: #0b1410; }
+.lv-bg { position: absolute; inset: 0; width: 100%; height: 100%; display: block; filter: saturate(.9) brightness(.85); }
 .lv-svg { position: absolute; inset: 0; width: 100%; height: 100%; }
-.lv-svg .tw.b { fill: #3b8cff; } .lv-svg .tw.r { fill: #ef4b5f; }
-.lv-svg .tw.down { fill: #2a3142; opacity: .6; }
+.lv-svg .tw, .lv-svg .ih { stroke: #0b111d; stroke-width: .35; }
+.lv-svg .tw.b, .lv-svg .ih.b { fill: #3b8cff; } .lv-svg .tw.r, .lv-svg .ih.r { fill: #ef4b5f; }
+.lv-svg .ih { opacity: .85; }
+.lv-svg .tw.down, .lv-svg .ih.down { fill: #39404f; opacity: .55; }
 .lv-svg .nx.b { fill: #6aa8ff; } .lv-svg .nx.r { fill: #ff7a8a; }
 .lv-icons { position: absolute; inset: 0; }
-.lv-ic { position: absolute; width: 5.2%; aspect-ratio: 1; transform: translate(-50%, -50%); transition: left .9s linear, top .9s linear, opacity .3s; }
+.lv-ic { position: absolute; width: 4.6%; aspect-ratio: 1; transform: translate(-50%, -50%); transition: opacity .3s; z-index: 2; will-change: left, top; }
+.lv-ic.recalling img { box-shadow: 0 0 0 2px rgba(120, 190, 255, .9), 0 0 14px 4px rgba(90, 170, 255, .8); }
 .lv-ic img { width: 100%; height: 100%; border-radius: 50%; border: 2px solid #3b8cff; box-shadow: 0 0 6px rgba(0, 0, 0, .8); display: block; }
 .lv-ic.r img { border-color: #ef4b5f; }
 .lv-ic.dead { opacity: .15; }
@@ -75,9 +79,12 @@
 .lv-cam-empty { height: 100%; display: grid; place-items: center; font: 700 40px var(--f-ui); color: var(--muted); }
 @keyframes lvFade { from { opacity: 0; } }
 .lv-stats { display: flex; flex-direction: column; justify-content: center; gap: 3px; padding: 6px 10px; }
-.lv-st { display: grid; grid-template-columns: 26px 1fr 40px 80px 40px 1fr 26px; align-items: center; gap: 6px; font: 600 13px var(--f-ui); }
+.lv-st { display: grid; grid-template-columns: 1fr 24px 56px 32px 70px 32px 56px 24px 1fr; align-items: center; gap: 5px; font: 600 12.5px var(--f-ui); }
+.lv-st .its { display: flex; gap: 1px; justify-content: flex-end; }
+.lv-st .its.r { justify-content: flex-start; }
+.lv-st .it-ic { width: 18px; height: 18px; border-radius: 2px; }
 .lv-st .sq-ic { width: 24px; height: 24px; }
-.lv-st .kda:first-of-type { text-align: right; }
+.lv-st .kda { text-align: center; }
 .lv-st .cs { color: var(--muted); text-align: center; }
 .lv-st em { font-style: normal; font-size: 11px; text-align: center; }
 .lv-st em.b { color: #7fb0ff; } .lv-st em.r { color: #ff8796; }
@@ -103,3 +110,27 @@
   .lv-bot { grid-template-columns: 120px minmax(0, 1fr) 120px; }
   .lv-comm { max-height: 300px; }
 }
+
+/* 아이템 */
+.lv-items { display: flex; gap: 1px; margin-top: 3px; min-height: 16px; }
+.lv-side.r .lv-items { justify-content: flex-end; }
+.lv-items .it-ic { width: 16px; height: 16px; border-radius: 2px; border: 1px solid #2c3a56; }
+.lv-series { font: 700 15px var(--f-ui); color: var(--gold-2); }
+.lv-res-btn { display: flex; gap: 8px; margin-top: 6px; }
+
+/* 효과: 텔레포트 · 귀환 · 교전 · 파괴 */
+.lv-fx { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
+.lv-fx > div { position: absolute; transform: translate(-50%, -50%); border-radius: 50%; }
+.lv-fx-tp { width: 7%; aspect-ratio: 1; border: 2px solid #c58cff; box-shadow: 0 0 16px 4px rgba(170, 110, 255, .7), inset 0 0 12px rgba(200, 150, 255, .8); animation: fxTp var(--d) ease-out; }
+.lv-fx-tp.r { border-color: #ff9ad0; box-shadow: 0 0 16px 4px rgba(255, 110, 190, .7), inset 0 0 12px rgba(255, 150, 210, .8); }
+.lv-fx-tpo { width: 4%; aspect-ratio: 1; border: 2px solid rgba(197, 140, 255, .8); animation: fxOut var(--d) ease-in forwards; }
+.lv-fx-rc { width: 6.5%; aspect-ratio: 1; border: 2px dashed #8ec5ff; box-shadow: 0 0 14px 3px rgba(90, 170, 255, .6); animation: fxSpin var(--d) linear infinite; }
+.lv-fx-rc.r { border-color: #ffb0bc; box-shadow: 0 0 14px 3px rgba(255, 120, 140, .6); }
+.lv-fx-fight { width: 9%; aspect-ratio: 1; background: radial-gradient(circle, rgba(255, 210, 120, .55), rgba(255, 120, 60, .15) 60%, transparent 70%); animation: fxBoom var(--d) ease-out; }
+.lv-fx-boom { width: 6%; aspect-ratio: 1; background: radial-gradient(circle, rgba(255, 255, 255, .8), rgba(255, 170, 70, .4) 50%, transparent 70%); animation: fxBoom var(--d) ease-out forwards; }
+@keyframes fxTp { 0% { transform: translate(-50%, -50%) scale(.2); opacity: 0; } 30% { opacity: 1; } 100% { transform: translate(-50%, -50%) scale(1); opacity: .9; } }
+@keyframes fxOut { to { transform: translate(-50%, -50%) scale(.1); opacity: 0; } }
+@keyframes fxSpin { to { transform: translate(-50%, -50%) rotate(360deg); } }
+@keyframes fxBoom { 0% { transform: translate(-50%, -50%) scale(.3); opacity: 1; } 100% { transform: translate(-50%, -50%) scale(1.3); opacity: 0; } }
+.it-ic { vertical-align: middle; }
+.fx-score { font: 700 15px var(--f-ui); color: var(--gold-2); padding: 0 8px; }

@@ -92,7 +92,7 @@ const Fixtures = {
           ${dayCell}
           <span class="fx-time num">${this.time(m)}${this.ord(m)}</span>
           ${this.evBadge(ev)}
-          <div class="fx-vs">${this.side(m.t1, 'l', m)}<i>vs</i>${this.side(m.t2, 'r', m)}</div>
+          <div class="fx-vs">${this.side(m.t1, 'l', m)}${(App.state.season || {})[m.id] ? `<b class="fx-score">${App.state.season[m.id].s1} : ${App.state.season[m.id].s2}</b>` : '<i>vs</i>'}${this.side(m.t2, 'r', m)}</div>
           <span class="fx-tab">${UI.esc(m.tab || '')}</span>
           <span class="fx-bo">Bo${m.bo}</span>
           ${next && next.id === m.id ? '<span class="fx-next">다음 경기</span>' : ''}
@@ -223,7 +223,7 @@ const Fixtures = {
       ${ms.length ? ms.map(m => `
         <div class="fx-row compact ${m.t1 === t.id || m.t2 === t.id ? 'mine' : ''}">
           <span class="fx-time num">${this.time(m)}${this.ord(m)}</span>
-          <div class="fx-vs">${this.side(m.t1, 'l', m)}<i>vs</i>${this.side(m.t2, 'r', m)}</div>
+          <div class="fx-vs">${this.side(m.t1, 'l', m)}${(App.state.season || {})[m.id] ? `<b class="fx-score">${App.state.season[m.id].s1} : ${App.state.season[m.id].s2}</b>` : '<i>vs</i>'}${this.side(m.t2, 'r', m)}</div>
           <span class="fx-bo">Bo${m.bo}</span>
         </div>`).join('') : '<p class="ms-none">이 날은 경기가 없습니다.</p>'}`;
   },

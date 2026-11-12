@@ -143,17 +143,21 @@ const Match = {
   },
 
   // ---------- 경기 기록 ----------
+  hSeason: null,
   async history(el) {
     await this.ready();
-    const t = this.team(), list = Results.forTeam(t.id);
-    const rec = this.record(t.id);
+    const t = this.team(), all = Results.forTeam(t.id), cur = all.filter(m => m.cur);
+    // 새 시즌 경기가 있으면 새 시즌이 먼저, 지난 시즌 실제 기록은 탭으로
+    const which = this.hSeason || (cur.length ? 'cur' : 'base'), list = which === 'cur' ? cur : all.filter(m => !m.cur);
+    const rec = { w: list.filter(m => Results.won(m, t.id)).length, l: list.filter(m => !Results.won(m, t.id)).length };
     const sets = list.reduce((s, m) => { const mine = m.t1 === t.id; s.w += mine ? m.s1 : m.s2; s.l += mine ? m.s2 : m.s1; return s; }, { w: 0, l: 0 });
     const byEv = {};
     list.forEach(m => (byEv[m.e] ||= []).push(m));
     el.innerHTML = `
       <div class="cr-page">
         <div class="card rs-head">
-          <div class="rs-title"><h2>경기 기록 <small>${UI.esc(t.name)}</small></h2><span>${Schedule.BASE} 시즌 실제 기록 · ${Schedule.season()} 시즌 기록은 경기를 치르면 여기에 쌓입니다</span></div>
+          <div class="rs-title"><h2>경기 기록 <small>${UI.esc(t.name)}</small></h2><span>${which === 'cur' ? `${Schedule.season()} 시즌 (게임 안 경기)` : `${Schedule.BASE} 시즌 실제 기록${cur.length ? '' : ` · ${Schedule.season()} 시즌 기록은 경기를 치르면 여기에 쌓입니다`}`}</span>
+            <div class="seg mh-season" style="margin-top:8px"><button class="${which === 'cur' ? 'on' : ''}" data-s="cur">${Schedule.season()} 시즌</button><button class="${which === 'base' ? 'on' : ''}" data-s="base">${Schedule.BASE} 시즌 (실제)</button></div></div>
           <div class="rs-stats"><div><span class="k">경기</span><b>${rec.w}승 ${rec.l}패</b></div><div><span class="k">세트</span><b>${sets.w}-${sets.l}</b></div><div><span class="k">승률</span><b>${list.length ? Math.round(rec.w / list.length * 100) + '%' : '-'}</b></div></div>
         </div>
         ${Object.entries(byEv).map(([id, ms]) => {
@@ -162,6 +166,7 @@ const Match = {
             ${ms.map(m => { const o = this.oppOf(m, t.id), win = Results.won(m, t.id); return `<div class="mh-row ${win ? 'w' : 'l'}"><span class="num">${m.kst.slice(5, 10).replace('-', '.')}</span><span class="fx-team">${o.logo ? G.team(o, 'xs') : ''}<b>${UI.esc(o.short || o.name || '?')}</b></span><span class="mh-tab">${UI.esc(m.tab)}</span><b class="mh-score">${this.score(m, t.id)}</b><i>${win ? '승' : '패'}</i></div>`; }).join('')}</div>`;
         }).join('') || '<div class="card fx-empty"><b>기록이 없습니다</b></div>'}
       </div>`;
+    const hs = el.querySelector('.mh-season'); if (hs) hs.onclick = e => { const b = e.target.closest('button'); if (!b) return; this.hSeason = b.dataset.s; this.history(el); };
   },
 
   // ---------- 메타·패치 노트 ----------
@@ -207,7 +212,7 @@ const Match = {
     const first = Schedule.firstEvent(this.stLeague);
     el.innerHTML = `
       <div class="cr-page">
-        <div class="card rs-head"><div class="rs-title"><h2>순위표</h2><span>${Schedule.season()} 시즌은 ${first ? `${Fmt.dayLabel(first.start)} ${UI.esc(first.short)} 개막 후` : '개막 후'} 집계됩니다 · 아래는 ${Schedule.BASE} 시즌 실제 결과</span></div></div>
+        <div class="card rs-head"><div class="rs-title"><h2>순위표</h2><span>${evs.some(id => String(id).startsWith(Schedule.season() + ':')) ? `${Schedule.season()} 시즌 결과 (게임 안 경기)` : `${Schedule.season()} 시즌은 ${first ? `${Fmt.dayLabel(first.start)} ${UI.esc(first.short)} 개막 후` : '개막 후'} 집계됩니다 · 아래는 ${Schedule.BASE} 시즌 실제 결과`}</span></div></div>
         <div class="ch-bar">
           <div class="seg st-lg">${['LCK', 'LPL', 'LEC', 'LCS'].map(l => `<button class="${this.stLeague === l ? 'on' : ''}" data-l="${l}">${l}</button>`).join('')}</div>
           <select class="ch-sort st-ev"><option value="all">정규 시즌 종합</option>${evs.map(id => `<option value="${id}" ${this.stEvent === id ? 'selected' : ''}>${UI.esc(Results.ev(id).name)}</option>`).join('')}</select>
