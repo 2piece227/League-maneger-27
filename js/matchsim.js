@@ -268,9 +268,10 @@ const Sim = {
     g.calm = g.t + 60;
     const bWin = this.win(g, 'B', A, Bp, bonus), W = bWin ? A : Bp, L = bWin ? Bp : A, wk = bWin ? 'B' : 'R';
     const big = A.length + Bp.length >= 6;
-    const nK = Math.min(L.length, big ? 1 + Math.floor(g.r() * g.r() * (L.length + .5)) : g.r() < .75 ? 1 : Math.min(2, L.length));
-    const nT = big ? Math.floor(g.r() * Math.min(W.length, 1.9)) : g.r() < .15 ? 1 : 0;
-    const vict = L.slice().sort(() => g.r() - .5).slice(0, nK), trade = W.slice().sort(() => g.r() - .5).slice(0, nT);
+    const nK = Math.min(L.length, big ? 1 + Math.floor(g.r() * g.r() * (L.length + .2)) : g.r() < .85 ? 1 : Math.min(2, L.length));
+    const cap = this.min(g) < 10 ? (big ? 2 : 1) : 5;     // 초반 교전은 킬이 적게 난다
+    const nT = this.min(g) < 10 ? (g.r() < .12 ? 1 : 0) : big ? Math.floor(g.r() * Math.min(W.length, 1.9)) : g.r() < .15 ? 1 : 0;
+    const vict = L.slice().sort(() => g.r() - .5).slice(0, Math.min(nK, cap)), trade = W.slice().sort(() => g.r() - .5).slice(0, nT);
     vict.forEach(v => this.kill(g, this.pickKiller(g, W.filter(p => !p.dead)) || W[0], v, W));
     trade.forEach(v => { const ks = L.filter(p => !p.dead); if (ks.length) this.kill(g, this.pickKiller(g, ks), v, ks); });
     W.forEach(p => { if (!p.dead) p.hp = Math.max(.15, p.hp - .15 - g.r() * .35); }); L.forEach(p => { if (!p.dead) p.hp = Math.max(.08, p.hp - .35 - g.r() * .3); });
@@ -398,7 +399,7 @@ const Sim = {
       } else if (o === 'grubs') { s.grubs += 3; this.mark(g, wk, 'grubs', 'grub', '공허 유충 처치'); ob.at = null; }
       else if (o === 'herald') { s.herald++; this.mark(g, wk, 'herald', 'riftherald', '전령 처치'); ob.at = null; s.push = { lane: g.r() < .5 ? 'top' : 'mid', until: g.t + 60 }; this.say(g, 'anal', `${this.josa(s.t.short, '이', '가')} 전령을 ${this.laneKo(s.push.lane)}에 풀러 갑니다.`); }
       else {
-        s.baron++; s.baronUntil = g.t + 180; this.mark(g, wk, 'baron', 'baron', '바론 처치'); ob.at = g.t + 360;
+        s.baron++; s.baronUntil = g.t + 180; this.mark(g, wk, 'baron', 'baron', '바론 처치'); ob.at = g.t + 420;
         this.say(g, 'cast', `${s.t.short}, 바론 획득! 정비하고 공성을 시작합니다.`);
         s.push = { lane: ['mid', 'bot', 'top'].sort((a, b) => g.side[this.other(wk)].towers[a] - g.side[this.other(wk)].towers[b])[0], until: g.t + 170 };
       }
@@ -420,7 +421,7 @@ const Sim = {
       } else {
         const gankRate = .35 + p.st.early * .3 + (p.tac === 'gank' ? .25 : 0) - (p.tac === 'farm' ? .2 : 0);
         if (m < 15 && g.r() < gankRate) {
-          const L = ['top', 'mid', 'bot'].map(l => { const e = g.pl.find(q => q.side !== p.side && !q.dead && !q.recall && this.LANE_OF[q.role] === l && q.role !== 'SUP' && this.distLane(q.pos, l) < 6); return { l, e, w: e ? (1.3 - e.hp) + g.r() * .6 : 0 }; }).sort((a, b) => b.w - a.w)[0];
+          const L = ['top', 'mid', 'bot'].map(l => { const e = g.pl.find(q => q.side !== p.side && !q.dead && !q.recall && this.LANE_OF[q.role] === l && q.role !== 'SUP' && this.distLane(q.pos, l) < 6 && this.dist(q.pos, this.fountain(q.side)) > 40); return { l, e, w: e ? (1.3 - e.hp) + g.r() * .6 : 0 }; }).sort((a, b) => b.w - a.w)[0];
           if (L.e) p.jq = [{ kind: 'gank', e: L.e, lane: L.l, pos: L.e.pos, left: 6 }];
         }
         if (!p.jq.length) p.jq = Rift.CAMPS.slice().sort(() => g.r() - .5).slice(0, 2).map(n => ({ pos: own(n), wait: 15 }));
@@ -429,7 +430,7 @@ const Sim = {
     const head = p.jq[0];
     if (head.kind === 'gank') {
       // 대상이 죽었거나 귀환했거나 너무 오래 걸리면 포기
-      if (head.e.dead || head.e.recall || --head.left < 0) { p.jq = []; return p.pos; }
+      if (head.e.dead || head.e.recall || --head.left < 0 || this.dist(head.e.pos, this.fountain(head.e.side)) < 40) { p.jq = []; return p.pos; }   // 본진까지는 쫓아가지 않는다
       head.pos = this.toward(head.e.pos, p.side, 2);
       if (this.dist(p.pos, head.pos) < 6) {
         p.jq.shift();
@@ -522,7 +523,7 @@ const Sim = {
     const prev = this.audit ? g.pl.map(p => [...p.pos]) : null;
     g.t += 10;
     const m = this.min(g);
-    g.pl.forEach(p => { p.trail = null; });
+    g.pl.forEach(p => { p.trail = null; p.budget = 40; });   // 10초 동안 움직일 수 있는 거리 한도
     ['B', 'R'].forEach(k => { const s = g.side[k]; if (s.push && s.push.until <= g.t) { s.push = null; s.reset = g.t; } });
     // 부활 · 귀환 완료 · 성장
     g.pl.forEach(p => {
@@ -633,13 +634,13 @@ const Sim = {
   // ---------- 이동 ----------
   // 짧은 거리를 곧장 다가간다 (교전 중 붙기)
   shift(p, to, maxD) {
-    to = this.clampP(to);
+    to = this.clampP(to); maxD = Math.min(maxD, p.budget ?? 40); p.budget = (p.budget ?? 40) - Math.min(maxD, this.dist(p.pos, to));
     const d = this.dist(p.pos, to), q = d <= maxD ? to : [p.pos[0] + (to[0] - p.pos[0]) / d * maxD, p.pos[1] + (to[1] - p.pos[1]) / d * maxD];
     p.trail = (p.trail && p.trail.length ? p.trail.slice() : [p.pos]).concat([q]); p.pos = q;
   },
   // 길을 따라 최대 maxD만큼 걷는다. 같은 10초 안에 여러 번 불리면 이어서 걷는다 (trail = 이번 10초 동안 지나간 점)
   walk(p, to, maxD = this.SPEED) {
-    to = this.clampP(to);
+    to = this.clampP(to); maxD = Math.min(maxD, p.budget ?? 40);
     const trail = p.trail && p.trail.length ? p.trail.slice() : [p.pos];
     let left = maxD, cur = p.pos;
     for (const q of Rift.path(cur, to)) {
@@ -648,6 +649,6 @@ const Sim = {
       if (d <= left) { trail.push(q); left -= d; cur = q; }
       else { const f = left / d; cur = [cur[0] + (q[0] - cur[0]) * f, cur[1] + (q[1] - cur[1]) * f]; trail.push(cur); left = 0; }
     }
-    p.pos = cur; p.trail = trail;
+    p.pos = cur; p.trail = trail; p.budget = (p.budget ?? 40) - (maxD - left);
   },
 };
