@@ -7,19 +7,21 @@ const G = {
   team(t, cls = '') {
     if (!t) return '';
     const mono = `<span class="team-badge ${cls}" style="--c:${t.color || '#555'}">${UI.esc(t.short || '?')}</span>`;
-    return t.logo ? `<span class="team-logo ${cls}" title="${UI.esc(t.name)}">${UI.img(t.logo, '', mono)}</span>` : mono;
+    const tt = t.id && t.id !== 'free' ? ` data-tt="${t.id}"` : '';
+    return t.logo ? `<span class="team-logo ${cls}"${tt} title="${UI.esc(t.name)}">${UI.img(t.logo, '', mono)}</span>` : mono.replace('<span ', `<span${tt} `);
   },
 
   // 선수 이름 앞에 붙는 OVR 배지 (코치·능력치 없는 선수는 비움)
   ovr(p, cls = '') {
     if (!p || p.role === 'COACH' || p.ovr == null) return '';
     const v = p.ovr, c = v >= 90 ? 'top' : v >= 80 ? 'hi' : v >= 70 ? 'mid' : 'lo';
-    return `<i class="ovr-b ${c} ${cls}" title="오버롤">${v}</i>`;
+    return `<i class="ovr-b ${c} ${cls}" data-pp="${p.id}" title="오버롤 · 누르면 프로필">${v}</i>`;
   },
 
   // 선수 사진(없으면 이니셜)
   face(p, cls = 'pl-ph') {
-    return UI.img(p.photo, cls, `<div class="${cls} pl-ph-empty">${UI.esc((p.name || '?').slice(0, 1))}</div>`);
+    const pp = p.id && !(p.name || '').startsWith('?') ? ` data-pp="${p.id}"` : '';
+    return UI.img(p.photo, cls, `<div class="${cls} pl-ph-empty"${pp}>${UI.esc((p.name || '?').slice(0, 1))}</div>`).replace('<img class=', `<img${pp} class=`);
   },
 
   // 포지션 아이콘: 롤 클라이언트 공식 아이콘 모양 (assets/positions/*.svg 와 동일)
@@ -59,3 +61,35 @@ const G = {
     return ((h >>> 0) % 10000) / 10000;
   },
 };
+
+// ---------- 바로가기 (편의성) ----------
+// 게임 화면 어디서든 선수 사진 · OVR 배지 · 이름(배지 바로 뒤) → 선수 프로필, 팀 로고 → 상대 분석(우리 팀은 1군 로스터).
+// 캡처 단계에서 먼저 받아서, 행 전체에 걸린 다른 동작(솔랭 상세 등)보다 프로필이 우선한다. 입력·버튼·대화상자 안은 건드리지 않는다.
+const Links = {
+  player(target) {
+    const hit = target.closest('[data-pp]');
+    if (hit) return hit.dataset.pp;
+    const name = target.closest('b, h2, h3, .ng-name');
+    if (!name) return null;
+    const prev = name.previousElementSibling;
+    if (prev && prev.matches('.ovr-b[data-pp]')) return prev.dataset.pp;
+    const inner = name.querySelector(':scope > .ovr-b[data-pp]');
+    return inner ? inner.dataset.pp : null;
+  },
+  init() {
+    document.addEventListener('click', e => {
+      const t = e.target;
+      if (!(t instanceof Element) || !t.closest('#screen-game')) return;
+      if (t.closest('input, select, textarea, button, a, label, .modal, .modal-back, [role="dialog"], .pp-modal')) return;
+      const pid = this.player(t);
+      if (pid && Player.find(pid)) { e.stopPropagation(); e.preventDefault(); Player.open(pid); return; }
+      const tl = t.closest('[data-tt]');
+      if (tl && !tl.closest('tr[data-tid], .nav, .topbar, header')) {
+        e.stopPropagation(); e.preventDefault();
+        const id = tl.dataset.tt, my = App.state.teamId;
+        if (id === my) Router.go('roster-first-team'); else { Match.oppId = id; Router.go('match-opponent'); }
+      }
+    }, true);
+  },
+};
+Links.init();

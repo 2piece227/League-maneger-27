@@ -381,3 +381,10 @@
 .ovr-b.lo { background: #8b95a5; }
 .ovr-b.lg { min-width: 30px; height: 22px; font-size: 13px; }
 .ovr-b.xl { min-width: 38px; height: 28px; font-size: 17px; border-radius: 6px; vertical-align: 4px; margin-right: 10px; }
+
+/* 바로가기: 선수 사진·OVR·이름, 팀 로고 */
+#screen-game [data-pp], #screen-game .ovr-b[data-pp] + b, #screen-game [data-tt] { cursor: pointer; }
+#screen-game .ovr-b[data-pp] + b:hover { text-decoration: underline; text-underline-offset: 3px; }
+#screen-game img[data-pp]:hover, #screen-game .pl-ph-empty[data-pp]:hover { outline: 2px solid var(--gold, #c9a13c); outline-offset: 1px; }
+#screen-game [data-tt]:hover { filter: brightness(1.2); }
+.modal [data-pp], .modal [data-tt] { cursor: default; }

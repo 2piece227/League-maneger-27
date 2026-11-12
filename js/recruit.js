@@ -167,7 +167,8 @@ const Recruit = {
   // ---------- 팀 검색: 다른 팀 전력 한눈에 ----------
   tf: { league: 'ALL', q: '', sort: 'power' },
   teamPower(t) {
-    const line = G.ROLES.map(r => { const ps = t.players.filter(p => p.role === r); const p = ps.find(x => !x.sub) || ps[0]; return { r, p, s: p ? Contract.score(p, t) : 0 }; });
+    // 주전: 포지션마다 후보가 아닌 선수 중 OVR이 가장 높은 선수 (없으면 후보 중 최고)
+    const line = G.ROLES.map(r => { const ps = t.players.filter(p => p.role === r).sort((a, b) => (b.ovr || 0) - (a.ovr || 0)); const p = ps.find(x => !x.sub) || ps[0]; return { r, p, s: p ? p.ovr || 0 : 0 }; });
     return { line, power: line.reduce((a, x) => a + x.s, 0) / 5, sig: t.players.reduce((a, p) => a + Mastery.signatures(p.id).length, 0), pay: Club.payroll(t), value: t.players.reduce((a, p) => a + Player.value(p, t), 0) };
   },
   async teams(el) {
@@ -175,18 +176,22 @@ const Recruit = {
     const sel = (k, opts) => `<select class="ch-sort" data-tf="${k}">${opts.map(([v, l]) => `<option value="${v}" ${this.tf[k] === v ? 'selected' : ''}>${l}</option>`).join('')}</select>`;
     el.innerHTML = `
       <div class="cr-page">
-        ${Career.head('팀 검색', '모든 팀의 주전 전력. 전력은 주전 5명의 평가 점수 평균입니다. 행을 누르면 상대 분석, 선수를 누르면 프로필로 갑니다.')}
+        ${Career.head('팀 검색', '모든 팀의 주전 전력. 전력은 주전 5명의 평균 OVR입니다. 순위는 전체 팀 중 전력 순위이고, 리그 안 순위도 함께 보여 줍니다. 행을 누르면 상대 분석, 선수를 누르면 프로필로 갑니다.')}
         <div class="ch-bar">
           <input class="ch-search tf-q" type="search" placeholder="팀·선수 이름 검색" value="${UI.esc(this.tf.q)}">
           ${sel('league', [['ALL', '모든 리그'], ['LCK', 'LCK'], ['LPL', 'LPL'], ['LEC', 'LEC'], ['LCS', 'LCS']])}
-          ${sel('sort', [['power', '전력순'], ['value', '선수단 가치순'], ['pay', '연봉 총액순'], ['sig', '시그니처순'], ['rep', '명성순']])}
+          ${sel('sort', [['power', '전력순 (평균 OVR)'], ['value', '선수단 가치순'], ['pay', '연봉 총액순'], ['sig', '시그니처순'], ['rep', '명성순']])}
           <span class="ch-count tf-count"></span>
         </div>
         <div class="card rs-table-wrap" style="padding:0">
-          <table class="rs-table tf-table"><thead><tr><th class="num">#</th><th>팀</th><th class="num">전력</th>${G.ROLES.map(r => `<th>${G.pos(r)}</th>`).join('')}<th class="num">가치</th><th class="num">연봉</th><th class="num">SIG</th><th class="num">명성</th></tr></thead><tbody></tbody></table>
+          <table class="rs-table tf-table"><thead><tr><th class="num">#</th><th class="num" title="전체 전력 순위 · 리그 안 순위">전력 순위</th><th>팀</th><th class="num">평균 OVR</th>${G.ROLES.map(r => `<th>${G.pos(r)}</th>`).join('')}<th class="num">가치</th><th class="num">연봉</th><th class="num">SIG</th><th class="num">명성</th></tr></thead><tbody></tbody></table>
         </div>
       </div>`;
     const my = Player.team();
+    // 전력 순위: 필터·정렬과 상관없이 전체 팀 기준 + 리그 안 순위
+    const pw = App.db.teams.map(t => ({ t, v: this.teamPower(t).power })).sort((a, b) => b.v - a.v);
+    const rank = {}, lrank = {};
+    pw.forEach(x => { rank[x.t.id] = pw.filter(y => y.v > x.v).length + 1; lrank[x.t.id] = pw.filter(y => y.t.league === x.t.league && y.v > x.v).length + 1; });
     const draw = () => {
       const f = this.tf, q = f.q.toLowerCase();
       const rows = App.db.teams.filter(t => (f.league === 'ALL' || t.league === f.league)
@@ -197,11 +202,12 @@ const Recruit = {
       $('.tf-table tbody', el).innerHTML = rows.map((x, i) => `
         <tr data-tid="${x.t.id}" class="${x.t.id === my.id ? 'tf-me' : ''}">
           <td class="num">${i + 1}</td>
+          <td class="num"><b>${rank[x.t.id]}위</b><small class="cr-dim"> · ${x.t.league} ${lrank[x.t.id]}위</small></td>
           <td><div class="pl-cell">${G.team(x.t, 'sm')}<div><b>${UI.esc(x.t.name)}</b><small class="pl-real">${x.t.league}${x.t.id === my.id ? ' · 우리 팀' : ''}</small></div></div></td>
-          <td class="num"><b class="tf-pow">${x.power.toFixed(1)}</b></td>
+          <td class="num"><b class="tf-pow ovr-b ${x.power >= 90 ? 'top' : x.power >= 80 ? 'hi' : x.power >= 70 ? 'mid' : 'lo'} lg">${x.power.toFixed(1)}</b></td>
           ${x.line.map(cell).join('')}
           <td class="num">${Player.money(x.value)}</td><td class="num">${Player.money(x.pay)}</td><td class="num">${x.sig}</td><td class="num" title="${Fame.teamTitle(Fame.team(x.t))}">${Fame.team(x.t)}</td>
-        </tr>`).join('') || '<tr><td colspan="13" class="ms-none" style="text-align:center;padding:30px">해당하는 팀이 없습니다.</td></tr>';
+        </tr>`).join('') || '<tr><td colspan="14" class="ms-none" style="text-align:center;padding:30px">해당하는 팀이 없습니다.</td></tr>';
       $('.tf-count', el).textContent = `${rows.length}팀`;
     };
     $$('[data-tf]', el).forEach(s => s.onchange = () => { this.tf[s.dataset.tf] = s.value; draw(); });
