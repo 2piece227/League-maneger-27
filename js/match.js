@@ -89,6 +89,7 @@ const Match = {
           <div class="nx-mid"><span>${UI.esc(ev.label)}${nm.tab ? ' · ' + UI.esc(nm.tab) : ''}</span><b>VS</b><small>${Fmt.dateTime(nm.t)} · Bo${nm.bo}${Schedule.orderLabel(nm) ? ' · ' + Schedule.orderLabel(nm) : ''}</small><em>D-${Fmt.daysBetween(this.today(), nm.t)}</em></div>
           <div class="nx-side">${opp ? G.team(opp, 'lg') : ''}<b>${opp ? UI.esc(opp.name) : '미정'}</b>${opp ? this.formDots(this.form(opp.id)) : ''}</div>
         </div>
+        ${opp ? `<div class="nx-draft"><span>${(App.state.plans || {})[nm.id] ? `밴픽·전술 준비됨 (${(App.state.plans[nm.id].series.games || []).length}세트)` : '이 경기의 밴픽과 전술을 미리 준비할 수 있습니다.'}</span><a class="btn-primary" href="#match-draft">밴픽 준비 →</a></div>` : ''}
         ${opp ? `<div class="cr-grid">
           <div class="card"><div class="card-head"><h3>${Schedule.BASE} 상대 전적</h3></div>
             <p class="pp-line">${h.length ? `<b>${hw}승 ${h.length - hw}패</b>` : '맞대결 기록 없음'}</p>

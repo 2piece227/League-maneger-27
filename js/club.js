@@ -97,7 +97,8 @@ const Club = {
         <div class="sf-grid">
           <div class="card sf-card me"><div class="sf-av">${Avatar.render(m.avatar)}</div><b>${UI.esc(m.displayName || m.name)}</b><span>감독 (나)</span><small>${Career.contract(m, t).from.replace(/-/g, '.')} 부임</small></div>
           ${(t.staff || []).map(s => { const [cs, cc] = Player.contractState(s); return `
-            <div class="card sf-card" data-pid="${s.id}">${G.face(s, 'sf-photo')}<b>${UI.esc(s.name)}</b><span>코치</span>
+            <div class="card sf-card" data-pid="${s.id}">${G.face(s, 'sf-photo')}<b>${UI.esc(s.name)}</b><span>코치${Draft.coach(t).p === s ? ' · 밴픽 담당' : ''}</span>
+              <span class="sf-draft">밴픽 역량 <b>${Draft.coachRating(s, t)}</b>/20 · ${Draft.grade(Draft.coachRating(s, t))}</span>
               <small>${G.flag(s.nation)} ${UI.esc(s.nativeName || s.realName || '')}</small>
               <span class="ct-st ${cc}">${cs}</span></div>`; }).join('')}
           ${this.VACANT.map(([r, d]) => `<div class="card sf-card empty"><div class="sf-photo pl-ph-empty">+</div><b>${r}</b><span>${d}</span><button class="btn-ghost sf-hire">채용 공고</button></div>`).join('')}
