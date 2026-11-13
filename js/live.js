@@ -137,7 +137,7 @@ const Live = {
     // 맵 위 오브젝트: 나와 있는 동안 둥지에 아이콘 (드래곤은 다음에 나올 속성)
     set('.lv-objs', ['drag', 'grubs', 'herald', 'baron'].filter(o => Sim.objUp(g, o)).map(o => {
       const [x, y] = Rift.pos(Sim.PIT[o]), n = g.side.B.drag.length + g.side.R.drag.length;
-      const ic = o === 'drag' ? g.dragSeq[Math.min(n, 2)][1] : Sim.ICON[o], nm = o === 'drag' ? `${g.dragSeq[Math.min(n, 2)][0]} 드래곤` : Sim.OBJ[o];
+      const el2 = o === 'drag' && Sim.elder(g), ic = el2 ? 'dragon_elder' : o === 'drag' ? g.dragSeq[Math.min(n, 2)][1] : Sim.ICON[o], nm = el2 ? '장로 드래곤' : o === 'drag' ? `${g.dragSeq[Math.min(n, 2)][0]} 드래곤` : Sim.OBJ[o];
       return `<div class="lv-obj ${o}" style="left:${x}%;top:${y}%" title="${nm}">${this.ico(ic)}</div>`;
     }).join(''));
     // 양옆 선수 · 맵 아이콘: 처음 한 번 만들고 값만 바꾼다
