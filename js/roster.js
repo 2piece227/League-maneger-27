@@ -8,15 +8,19 @@ const Roster = {
   team() { return App.db.teams.find(t => t.id === App.state.teamId) || App.db.teams[0]; },
   today() { return Clock.today(); },
 
-  // 목업 상태값. 같은 선수는 항상 같은 값. TODO: 기능 연결 — 훈련·경기 시뮬레이션 결과로 교체
+  // 선수 상태. 최근 폼 = 공식전 경기 평점(1~10, Season.rate) 최근 5경기. 기록이 없으면 선수마다 고정된 평범한 값.
+  // 사기 = 성격(고정) + 최근 폼 + 사건(World.morale: 약속·면담·이적 등). 컨디션은 훈련 부하 몫이라 따로 간다.
   status(p) {
-    const r = k => G.rand(p.id, k);
+    const r = k => G.rand(p.id, k), rs = ((App.state.ratings || {})[p.id] || []).slice(-5);
+    const form = rs.length ? rs.map(v => v.toFixed(1)) : Array.from({ length: 5 }, (_, i) => (5.8 + r('f' + i) * 2.2).toFixed(1));
+    const avg = form.reduce((a, v) => a + +v, 0) / form.length, ev = (typeof World !== 'undefined' ? World.morale()[p.id] : 0) || 0;
     return {
       condition: Math.round(78 + r('cond') * 22),
-      morale: Math.floor(r('mor') * 5),
-      form: Array.from({ length: 5 }, (_, i) => (r('f' + i) * 10 + 5).toFixed(1)),
+      morale: Math.max(0, Math.min(4, Math.round(1.2 + r('mor') * 1.6 + (avg - 6.8) * 1.3 + ev / 3))),
+      form,
     };
   },
+  formCls(v) { return +v >= 7.5 ? 'hi' : +v >= 6.5 ? 'mid' : 'lo'; },
   MORALE: [['낮음', 'bad'], ['보통', 'mid'], ['좋음', 'ok'], ['매우 좋음', 'good'], ['최상', 'best']],
 
   days(p) {
@@ -87,7 +91,7 @@ const Roster = {
       case 'age': return p.age ?? '-';
       case 'ovr': return `<b class="ovr-v">${p.ovr}</b>`;
       case 'condition': return `<span class="cond"><span class="cond-bar"><i style="width:${s.condition}%" class="${s.condition < 85 ? 'warn' : ''}"></i></span><span class="num">${s.condition}%</span></span>`;
-      case 'form': return `<span class="form-pts">${s.form.map(f => `<i class="${+f >= 11 ? 'hi' : +f >= 8 ? 'md' : 'lo'}" title="평점 ${f}">${f}</i>`).join('')}</span>`;
+      case 'form': return `<span class="form-pts">${s.form.map(f => `<i class="${this.formCls(f).replace('mid', 'md')}" title="평점 ${f} / 10">${f}</i>`).join('')}</span>`;
       case 'morale': { const [l, c] = this.MORALE[s.morale]; return `<span class="morale ${c}">${Icons.morale}${l}</span>`; }
       case 'physical': case 'macro': case 'mental': case 'role': return this.attrCell(this.groupAvg(p, key));
       case 'contractEnd': return p.contractEnd ? `<span class="num">${p.contractEnd.replace(/-/g, '.')}</span>` : '-';
@@ -122,7 +126,7 @@ const Roster = {
         <div class="rs-main">
           <div class="rs-head panel">
             ${G.team(t, 'lg')}
-            <div class="rs-title"><h2>${UI.esc(t.name)} <small>1군</small></h2><span>${t.league} · ${UI.esc(G.nationName(t.city))}</span></div>
+            <div class="rs-title"><h2>${UI.esc(t.name)} <small>1군</small></h2><span>${t.league} · ${UI.esc(G.country(t))}</span></div>
             <div class="rs-stats">
               <div><span class="k">선수</span><b class="num">${ps.length}</b></div>
               <div><span class="k">평균 나이</span><b class="num">${avg(ages, p => p.age)}</b></div>

@@ -233,7 +233,7 @@ async function main() {
       id: slug(r.Link),
       team: slug(r.Team),
       name: p.ID || r.Link,
-      realName: p.Name || '',
+      realName: (p.Name || '').replace(/&nbsp;| /g, ' '),
       nativeName: p.NativeName || '',
       role: ROLE[r.Role] || (/coach/i.test(r.Role) ? 'COACH' : ROLE[p.Role] || r.Role || ''),
       nation: p.NationalityPrimary || p.Country || '',

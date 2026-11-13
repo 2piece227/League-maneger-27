@@ -23,7 +23,7 @@ const Market = {
   expire(today) {
     let changed = false;
     this.ai().forEach(t => {
-      (t.staff || []).forEach(p => { const c = Contract.of(p, t); if (c.end && c.end < today) Contract.st().contracts[p.id] = { ...c, end: Contract.addYears(c.end, 1), signed: today }; });
+      (t.staff || []).forEach(p => { const c = Contract.of(p, t); if (c.end && c.end < today) { const end = Contract.addYears(c.end, 1); Contract.st().contracts[p.id] = { ...c, end, signed: today }; p.contractEnd = end; } });
       [...t.players, ...(t.cl || [])].forEach(p => {
         const c = Contract.of(p, t); if (!c.end || c.end >= today) return;
         changed = true;
@@ -50,9 +50,12 @@ const Market = {
     const stove = this.stove(today), free = App.db.free.players, F = this.fa();
     let changed = false;
     this.ai().forEach(t => {
-      if (t.players.length >= 7 || this.rnd(t.id, today, 'shop') > (stove ? .35 : .08)) return;
-      const gaps = G.ROLES.map(role => ({ role, cur: this.best(t, role) })).sort((a, b) => a.cur - b.cur);
-      const g = gaps[0], empty = !g.cur;
+      // 포지션별 인원 (이미 제안을 넣어 둔 포지션은 그 FA까지 센다): 빈 포지션 우선, 한 포지션 2명까지
+      const n = r => t.players.filter(x => x.role === r).length, asked = r => Object.entries(F).some(([pid, os]) => os.some(o => o.team === t.id) && (Player.find(pid) || { p: {} }).p.role === r);
+      const gaps = G.ROLES.filter(r => n(r) < 2 && !asked(r)).map(role => ({ role, cur: this.best(t, role) })).sort((a, b) => a.cur - b.cur);
+      const g = gaps[0]; if (!g) return;
+      const empty = !g.cur;
+      if (!empty && (t.players.length >= 7 || this.rnd(t.id, today, 'shop') > (stove ? .35 : .08))) return;   // 빈자리는 매일 찾는다
       if (!stove && !empty) return;
       let room = Club.wageRoom(t) + (empty ? 3 : 0);
       const cands = free.filter(p => p.role === g.role && !(F[p.id] || []).some(o => o.team === t.id)).map(p => ({ p, s: Contract.score(p, t) }))
@@ -71,6 +74,11 @@ const Market = {
       if (empty) {
         const up = (t.cl || []).filter(p => p.role === g.role).sort((a, b) => (b.ca || 0) - (a.ca || 0))[0];
         if (up) { Contract.st().moves[up.id] = t.id; changed = true; this.post(`${t.short}, 2군 ${up.name} 1군 콜업`, `${t.name}이(가) 비어 있던 ${G.ROLE_KO[g.role]} 자리에 2군 ${up.name}을(를) 올렸습니다.`, up.id); }
+        else if (late || !stove) {
+          // 2군도 없으면 그 포지션 FA 중 가장 나은 선수와 바로 계약 (주전 없이 공식전에 나가지 않게)
+          const fb = free.filter(p => p.role === g.role && !Neg.held(Contract.st().neg[p.id])).sort((a, b) => Contract.score(b, t) - Contract.score(a, t))[0];
+          if (fb) { this.write(fb, t, this.deal(fb, t)); changed = true; this.post(`[오피셜] ${fb.name}, ${t.short} 입단`, `${t.name}이(가) 비어 있던 ${G.ROLE_KO[g.role]} 자리에 FA ${fb.name}을(를) 영입했습니다.`, fb.id); }
+        }
       }
     });
     // 제안 마감: 가장 좋은 조건(연봉 + 팀 명성 + 리그)을 고른다
@@ -81,7 +89,7 @@ const Market = {
       if (Neg.held(Contract.st().neg[pid])) return;                                       // 우리와 합의 후 사인 대기 중
       const p = hit.p;
       const util = o => { const t = App.db.teams.find(x => x.id === o.team); return o.mult * Contract.pay(p, Contract.score(p, t), t.league) / Contract.pay(p, Contract.score(p, t), 'LCK') * .5 + (t.rep || 2) * .08 + (p.nation === 'South Korea' && t.league === 'LCK' ? .25 : 0); };
-      const o = offers.filter(x => { const t = App.db.teams.find(y => y.id === x.team); return t && t.players.length < 7; }).sort((a, b) => util(b) - util(a))[0];
+      const o = offers.filter(x => { const t = App.db.teams.find(y => y.id === x.team); return t && t.players.length < 7 && t.players.filter(y => y.role === p.role).length < 2; }).sort((a, b) => util(b) - util(a))[0];
       delete F[pid];
       if (!o) return;
       const t = App.db.teams.find(x => x.id === o.team);

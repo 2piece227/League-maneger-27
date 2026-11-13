@@ -40,6 +40,7 @@ Screens.team = {
     this.renderDetail();
   },
 
+  country(t) { return G.country(t); },
   avgOvr(t) {
     const s = t.players.filter(p => !p.sub);
     return (s.reduce((a, p) => a + p.ovr, 0) / s.length).toFixed(1);
@@ -50,10 +51,10 @@ Screens.team = {
       <button class="team-card ${App.state.teamId === t.id ? 'on' : ''}" data-team="${t.id}" style="--c:${t.color}">
         <div class="tc-top">
           ${UI.img(t.logo, 'tc-logo', `<div class="tc-mono">${UI.esc(t.short)}</div>`)}
-          <div><div class="tc-name">${UI.esc(t.name)}</div><div class="tc-city">${t.city}</div></div>
+          <div><div class="tc-name">${UI.esc(t.name)}</div><div class="tc-city">${UI.esc(this.country(t))}</div></div>
         </div>
         <div class="tc-stats">
-          <span class="k">명성</span>${UI.stars(t.rep)} <small>${Fame.team(t)} · ${Fame.teamTitle(Fame.team(t))}</small>
+          <span class="k">명성</span><span>${UI.stars(t.rep)} <small>${Fame.team(t)} · ${Fame.teamTitle(Fame.team(t))}</small></span>
           <span class="k">자본</span><div class="bar"><span style="width:${t.fin * 20}%"></span></div>
           <span class="k">로스터</span><span>주전 평균 OVR <b>${this.avgOvr(t)}</b></span>
         </div>
@@ -78,7 +79,7 @@ Screens.team = {
         <td><div class="pl-cell">${UI.img(p.photo, 'pl-ph', initial(p))}
           <div>${G.ovr(p)}<b>${UI.esc(p.name)}</b>${p.sub ? ' <small>(후보)</small>' : ''}${p.realName ? `<small class="pl-real">${UI.esc(p.nativeName || p.realName)}</small>` : ''}</div></div></td>
         <td>${p.age || '-'}</td>
-        <td>${p.nation}</td>
+        <td>${G.flag(p.nation)} ${UI.esc(G.nationName(p.nation))}</td>
         <td class="ovr">${p.ovr}</td>
       </tr>`).join('');
 
@@ -88,7 +89,7 @@ Screens.team = {
       <div class="td-head">
         ${UI.img(t.logo, 'td-logo', '')}
         <div class="td-name">${UI.esc(t.name)}</div>
-        <div class="td-sub">${t.league} · ${t.city}</div>
+        <div class="td-sub">${t.league} · ${UI.esc(this.country(t))}</div>
       </div>
       <div class="td-sec td-grid">
         <div class="td-stat"><div class="k">명성</div><div class="v">${UI.stars(t.rep)}</div></div>

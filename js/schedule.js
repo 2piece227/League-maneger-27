@@ -94,6 +94,7 @@ const Schedule = {
     const byDay = {};
     this.all.forEach(m => { (byDay[m.event + m.t.slice(0, 10)] ||= []).push(m); });
     Object.values(byDay).forEach(list => list.forEach((m, i) => { m.order = i + 1; m.ofDay = list.length; }));
+    if (typeof Season !== 'undefined') Season.resolve();
   },
 
   meta(e, Y, shift) {
@@ -123,7 +124,7 @@ const Schedule = {
       const map = tok => {
         if (!tok) return null;
         if (tok.startsWith('X:')) return false;           // 게임에 없는 팀 → 경기 제외
-        if (tok.startsWith('S:')) return null;            // 앞 단계 순위 확정 전 (TODO: 기능 연결 — 순위표로 채우기)
+        if (tok.startsWith('S:')) return null;            // 앞 단계 순위 확정 전 → Season.resolve 가 순위로 채운다
         const i = ids.indexOf(tok.slice(2));
         return i < 0 ? null : perm[i];
       };
@@ -132,8 +133,7 @@ const Schedule = {
         if (t1 === false || t2 === false) continue;
         this.all.push({
           id: `${Y}-m${n++}`, event: `${Y}:${e.id}`, year: Y, league: e.league, kind: e.kind, t: this.kst(s.t, shift), bo: s.bo, tab: s.tab,
-          t1, t2, group: s.g || null, seeds: s.a && s.a.startsWith('S:') ? [+s.a.slice(2), +s.b.slice(2)] : null,
-          // TODO: 기능 연결 — 경기 시뮬레이션 결과(score, winner)
+          t1, t2, group: s.g || null, seeds: s.a && s.a.startsWith('S:') ? [+s.a.slice(2), +s.b.slice(2)] : null, open: !t1 || !t2,
         });
       }
     }

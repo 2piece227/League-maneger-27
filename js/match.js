@@ -25,6 +25,14 @@ const Results = {
     return Object.values(rows).filter(r => r.w + r.l).sort((a, b) => b.w - a.w || (b.sw - b.sl) - (a.sw - a.sl) || b.sw - a.sw);
   },
   regularEvents(league) { return Object.entries(this.meta.events || {}).filter(([, e]) => e.league === league && e.kind === 'regular').map(([id]) => id); },
+  // 정규 시즌 종합: 컵 대회(LCK컵 · LCS 락인)는 빼고 합산
+  mainEvents(league) { const l = this.regularEvents(league), m = l.filter(id => !/컵|Cup|Lock-?In/i.test(this.ev(id).name || '')); return m.length ? m : l; },
+  // 지금 순위표: 경기가 열린 가장 최근 정규 단계
+  current(league) {
+    const evs = this.regularEvents(league), last = [...this.list].reverse().find(m => m.league === league && evs.includes(m.e));
+    const id = last ? last.e : evs.at(-1);
+    return { ids: id ? [id] : [], name: id ? this.ev(id).name : '' };
+  },
 };
 
 const Match = {
@@ -40,7 +48,7 @@ const Match = {
   // 팀 전체 챔피언 경향: 선수 풀 합산
   teamChamps(t, n = 8) {
     const agg = {};
-    t.players.filter(p => !p.sub).forEach(p => Mastery.pool(p.id).forEach(e => { (agg[e.c] ||= { c: e.c, g: 0, sig: 0, by: [] }); agg[e.c].g += e.g26 || 0; if (e.sig) { agg[e.c].sig++; agg[e.c].by.push(p.name); } }));
+    t.players.filter(p => !p.sub).forEach(p => Mastery.pool(p.id).forEach(e => { const x = agg[e.c] ||= { c: e.c, g: 0, sig: 0, m: 0, w: 0, k: 0, d: 0, a: 0, by: [] }; x.g += e.g26 || 0; x.m = Math.max(x.m, e.m || 0); x.w += e.w || 0; x.k += e.k || 0; x.d += e.d || 0; x.a += e.a || 0; if (e.sig) { x.sig++; x.by.push(p.name); } }));
     return Object.values(agg).sort((a, b) => b.sig - a.sig || b.g - a.g).slice(0, n);
   },
   rosterBlock(t) {
@@ -91,12 +99,12 @@ const Match = {
         </div>
         ${opp ? `<div class="nx-draft"><span>${(App.state.plans || {})[nm.id] ? `밴픽·전술 준비됨 (${(App.state.plans[nm.id].series.games || []).length}세트)` : '이 경기의 밴픽과 전술을 미리 준비할 수 있습니다.'}</span><a class="btn-primary" href="#match-draft">밴픽 준비 →</a></div>` : ''}
         ${opp ? `<div class="cr-grid">
-          <div class="card"><div class="card-head"><h3>${Schedule.BASE} 상대 전적</h3></div>
+          <div class="card"><div class="card-head"><h3>상대 전적 <small>최근 2시즌</small></h3></div>
             <p class="pp-line">${h.length ? `<b>${hw}승 ${h.length - hw}패</b>` : '맞대결 기록 없음'}</p>
             ${h.slice(-5).reverse().map(m => `<div class="mh-row ${Results.won(m, t.id) ? 'w' : 'l'}"><span>${m.kst.slice(5, 10).replace('-', '.')}</span><span>${UI.esc(Results.ev(m.e).name)}</span><b>${this.score(m, t.id)}</b></div>`).join('')}
           </div>
           <div class="card"><div class="card-head"><h3>상대 주력 챔피언</h3><a href="#match-opponent">상대 분석</a></div>
-            <div class="ms-chips">${this.teamChamps(opp).map(x => Mastery.chip({ c: x.c, m: x.sig ? 18 : 12, g: x.g, w: 0, k: 0, d: 1, a: 0, sig: !!x.sig })).join('')}</div>
+            <div class="ms-chips">${this.teamChamps(opp).map(x => Mastery.chip({ c: x.c, m: x.m, g: x.g, w: x.w, k: x.k, d: x.d, a: x.a, sig: !!x.sig })).join('')}</div>
           </div>
         </div>
         <div class="card"><div class="card-head"><h3>상대 선발 예상</h3></div>${this.rosterBlock(opp)}</div>` : ''}
@@ -113,7 +121,7 @@ const Match = {
     if (!this.oppId || !App.db.teams.some(x => x.id === this.oppId)) this.oppId = (nm && Schedule.opponent(nm, t.id) || Results.table(t.league, Results.regularEvents(t.league)).map(r => r.t).find(x => x.id !== t.id) || league[0]).id;
     const o = App.db.teams.find(x => x.id === this.oppId);
     const rec = this.record(o.id), h = Results.h2h(t.id, o.id), hw = h.filter(m => Results.won(m, t.id)).length;
-    const rank = Results.table(o.league, Results.regularEvents(o.league)).findIndex(r => r.t.id === o.id) + 1;
+    const rank = Results.table(o.league, Results.current(o.league).ids).findIndex(r => r.t.id === o.id) + 1;
     const sq = (SoloQ.cache || SoloQ.build()).ladder.filter(a => a.team && a.team.id === o.id);
     const roleScore = G.ROLES.map(r => { const p = o.players.find(x => !x.sub && x.role === r); return [r, p ? Mastery.pool(p.id).filter(e => e.m >= 15).length : 0]; }).sort((a, b) => b[1] - a[1]);
     el.innerHTML = `
@@ -207,7 +215,7 @@ const Match = {
     const t = this.team();
     this.stLeague ||= t.league;
     const evs = Results.regularEvents(this.stLeague);
-    const ids = this.stEvent === 'all' || !evs.includes(this.stEvent) ? evs : [this.stEvent];
+    const ids = this.stEvent === 'all' || !evs.includes(this.stEvent) ? Results.mainEvents(this.stLeague) : [this.stEvent];
     const rows = Results.table(this.stLeague, ids);
     const first = Schedule.firstEvent(this.stLeague);
     el.innerHTML = `

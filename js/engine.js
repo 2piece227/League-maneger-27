@@ -13,7 +13,9 @@ const Inbox = {
       id: 'g' + App.state.msgSeq, date: Clock.today(), time: msg.time || Engine.clockTime(),
       priority: 'normal', read: false, isNew: true, ...msg,
     };
-    this.list().unshift(m);
+    // 같은 날 메시지는 시각 순서대로 (목록은 최신이 위)
+    const L = this.list(), key = x => (x.date || '') + ' ' + (x.time || ''), i = L.findIndex(x => key(x) <= key(m));
+    i < 0 ? L.push(m) : L.splice(i, 0, m);
     Engine.today.push(m);
     return m;
   },
@@ -83,7 +85,13 @@ const Engine = {
   delay(k) { return this.DELAY[k] * ({ slow: 1.6, normal: 1, fast: .45 }[App.state.settings.simSpeed] || 1); },
 
   on(fn) { this.daily.push(fn); },
-  clockTime() { const r = G.rand(App.state.seed + Clock.today(), 'time' + this.today.length); return `${String(9 + Math.floor(r * 10)).padStart(2, '0')}:${String(Math.floor(r * 6) * 10).padStart(2, '0')}`; },
+  // 메시지 시각: 그날 앞 메시지보다 10~40분 뒤 (첫 메시지는 9~11시)
+  clockTime() {
+    const d = Clock.today(), r = G.rand(App.state.seed + d, 'time' + this.today.length), last = Inbox.list().filter(x => x.date === d).map(x => x.time || '').sort().at(-1);
+    let min = last ? +last.slice(0, 2) * 60 + +last.slice(3, 5) + 10 + Math.floor(r * 4) * 10 : 9 * 60 + Math.floor(r * 12) * 10;
+    min = Math.min(min, 23 * 60 + 50);
+    return `${String(Math.floor(min / 60)).padStart(2, '0')}:${String(min % 60).padStart(2, '0')}`;
+  },
   rnd(salt) { return G.rand((App.state.seed || '') + '|' + Clock.today(), salt); },
 
   async continue() {

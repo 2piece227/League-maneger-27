@@ -130,7 +130,10 @@ Engine.on(today => {
   // 코칭스태프는 사무국이 1년씩 자동 연장한다 (코치 영입·해임은 추후)
   (t.staff || []).forEach(p => {
     const c = Contract.of(p, t);
-    if (c.end && c.end < today) Contract.st().contracts[p.id] = { ...c, end: Contract.addYears(c.end, 1), signed: today };
+    if (!c.end || c.end >= today) return;
+    const end = Contract.addYears(c.end, 1);
+    Contract.st().contracts[p.id] = { ...c, end, signed: today }; p.contractEnd = end;
+    Inbox.push({ from: board, subject: `${p.name} 코치 계약 1년 연장`, link: 'club-staff', body: `${p.name} 코치의 계약이 끝나 사무국이 같은 조건으로 1년 연장했습니다. 새 만료일은 ${Fmt.dayLabel(end)}입니다.` });
   });
   [...t.players].forEach(p => {
     const c = Contract.of(p, t), d = c.end ? Fmt.daysBetween(today, c.end) : null;

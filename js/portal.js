@@ -76,7 +76,6 @@ const Portal = {
     const byRole = r => starters.find(p => p.role === r) || starters[0] || { name: '선수' };
     const sub = team.players.find(p => p.sub);
     d.soloRank = d.soloRank.map(s => ({ ...s, p: byRole(s.role), player: byRole(s.role).name }));
-    if (sub) d.challengers.callUp = { ...d.challengers.callUp, player: sub.name, role: sub.role, p: sub };
     const staff = team.staff || [];
     // 스토브: 30일 안에 계약이 끝나는 선수
     const soon = Fmt.parse(d.date).getTime() + 30 * 864e5;
@@ -105,9 +104,32 @@ const Portal = {
     return d;
   },
 
+  // 리그 순위: 실제 경기 결과(Results) 기준. 새 시즌 경기가 열리면 그 단계, 아니면 지난 시즌 실제 결과
+  liveStandings(d) {
+    const t = Roster.team(); if (!t || !Results.list) return;
+    const cur = Results.current(t.league), rows = Results.table(t.league, cur.ids);
+    d.standings.rows = rows.map((r, i) => ({ rank: i + 1, team: r.t, w: r.w, l: r.l, setDiff: r.sw - r.sl }));
+    d.standings.competition = cur.name;
+    if (d.nextMatch && d.nextMatch.opponent) {
+      const o = d.nextMatch.opponent, i = rows.findIndex(r => r.t.id === o.id);
+      o.rank = i < 0 ? null : i + 1;
+      d.nextMatch.form = Results.forTeam(o.id).slice(-5).map(m => Results.won(m, o.id) ? 'W' : 'L');
+    }
+  },
+  // 솔랭 순위·콜업 추천: 솔랭 모델(SoloQ)과 실제 2군 로스터 기준
+  liveSolo(d) {
+    const t = Roster.team(); if (!t) return;
+    try {
+      const lad = SoloQ.build().ladder, ids = new Set(t.players.map(p => p.id));
+      d.soloRank = lad.filter(a => a.player && ids.has(a.player.id)).slice(0, 5).map(a => ({ p: a.player, player: a.player.name, role: a.role, tier: `${a.rank}위`, lp: a.lpNow, change: a.delta }));
+    } catch (e) { d.soloRank = []; }
+    const cl = (t.cl || []).filter(p => p.role !== 'COACH').sort((a, b) => (b.ovr || 0) - (a.ovr || 0))[0];
+    if (d.challengers) d.challengers.callUp = cl ? { player: cl.name, role: cl.role, p: cl, reason: `2군 최고 OVR ${cl.ovr || '-'}` } : { player: '추천할 2군 선수 없음', role: '', p: null, reason: '' };
+  },
   async render(el) {
     await this.ready;
     const d = await this.load();
+    await Promise.all([Results.load(), Mastery.load(), Champions.load()]); this.liveStandings(d); this.liveSolo(d);
     el.innerHTML = `
       <div class="portal">
         <section class="msg-panel panel" id="msg-panel"></section>
@@ -287,7 +309,7 @@ const Portal = {
         </div>
         <div class="nm-foot">
           <div><span class="k">최근 5경기</span><span class="form">${n.form.map(r => `<i class="${r === 'W' ? 'w' : 'l'}" title="${r === 'W' ? '승' : '패'}"></i>`).join('')}</span></div>
-          <div><span class="k">리그 순위</span><b class="num">${n.opponent.rank}위</b></div>
+          <div><span class="k">리그 순위</span><b class="num">${n.opponent.rank ? n.opponent.rank + '위' : '-'}</b></div>
         </div>
       </div>`;
   },
@@ -318,7 +340,7 @@ const Portal = {
       <div class="card">
         <div class="card-head"><h3>소속 선수 솔랭 순위</h3><a href="#training-soloq">전체</a></div>
         <table class="mini-table">
-          <tbody>${d.soloRank.map(p => `
+          <tbody>${d.soloRank.length ? '' : '<tr><td class="ms-none">서버 100위 안에 든 소속 선수가 없습니다</td></tr>'}${d.soloRank.map(p => `
             <tr>
               <td><span class="tm-cell">${p.p ? G.face(p.p, 'pl-ph xs') + G.ovr(p.p) : ''}<b>${UI.esc(p.player)}</b></span></td>
               <td>${G.pos(p.role)}</td>
@@ -338,7 +360,7 @@ const Portal = {
         <div class="card-head"><h3>챌린저스 소식</h3><a href="#roster-challengers">2군 보기</a></div>
         <div class="cl-line"><span class="res ${r.win ? 'w' : 'l'}">${r.win ? '승' : '패'}</span>
           ${UI.esc(r.competition)} vs ${UI.esc(r.opponent)} <b class="num">${r.score}</b></div>
-        <div class="cl-line"><span class="k">콜업 추천</span>${c.callUp.p ? G.face(c.callUp.p, 'pl-ph xs') + G.ovr(c.callUp.p) : ''}<b>${UI.esc(c.callUp.player)}</b> ${G.pos(c.callUp.role)}
+        <div class="cl-line"><span class="k">콜업 추천</span>${c.callUp.p ? G.face(c.callUp.p, 'pl-ph xs') + G.ovr(c.callUp.p) : ''}<b>${UI.esc(c.callUp.player)}</b> ${c.callUp.role ? G.pos(c.callUp.role) : ''}
           <small>${UI.esc(c.callUp.reason)}</small></div>
       </div>`;
   },

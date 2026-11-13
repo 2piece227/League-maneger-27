@@ -67,7 +67,7 @@ const Player = {
             ${st ? `<h4>상태</h4>
               ${Career.meter('컨디션', st.condition)}
               <div class="pp-morale"><span>사기</span><b class="morale ${Roster.MORALE[st.morale][1]}">${Roster.MORALE[st.morale][0]}</b></div>
-              <div class="pp-morale"><span>최근 폼</span><span class="form-pts">${st.form.map(v => `<i class="${+v >= 12 ? 'hi' : +v >= 8 ? 'mid' : 'lo'}">${v}</i>`).join('')}</span></div>` : ''}
+              <div class="pp-morale"><span>최근 폼</span><span class="form-pts">${st.form.map(v => `<i class="${Roster.formCls(v)}">${v}</i>`).join('')}</span></div>` : ''}
             ${sq ? `<h4>솔랭</h4><p class="pp-line">${SoloQ.SERVER[t.league]} 서버 <b>${sq.rank}위</b> · ${sq.lpNow.toLocaleString()} LP · 승률 ${SoloQ.wr(sq)}%</p>` : ''}
           </div>
           <div class="pp-col">
@@ -208,7 +208,7 @@ const Player = {
     const extra = p => ({ fatigue: Math.round(10 + G.rand(p.id, 'fat') * 50), load: ['낮음', '보통', '높음'][Math.floor(G.rand(p.id, 'load') * 3)], sleep: (6 + G.rand(p.id, 'slp') * 2.5).toFixed(1) });
     el.innerHTML = `
       <div class="cr-page">
-        ${Career.head('컨디션·폼', `${UI.esc(t.name)} 선수단 상태. 스토브 기간이라 경기 폼은 지난 시즌 마지막 5경기 평점입니다.`)}
+        ${Career.head('컨디션·폼', `${UI.esc(t.name)} 선수단 상태. 최근 폼은 공식전 최근 5경기 평점(10점 만점)입니다.`)}
         <div class="cd-grid">${t.players.map(p => {
           const st = Roster.status(p), x = extra(p);
           const avg = (st.form.reduce((s, v) => s + +v, 0) / st.form.length).toFixed(1);
@@ -218,7 +218,7 @@ const Player = {
             ${Career.meter('컨디션', st.condition)}
             ${Career.meter('피로도', x.fatigue, 'inv')}
             <div class="cd-form"><span>최근 폼</span>
-              <svg viewBox="0 0 100 30" preserveAspectRatio="none"><polyline fill="none" stroke="var(--gold)" stroke-width="2" points="${st.form.map((v, i) => `${i * 25},${30 - (+v - 4) * 2.2}`).join(' ')}"/></svg>
+              <svg viewBox="0 0 100 30" preserveAspectRatio="none"><polyline fill="none" stroke="var(--gold)" stroke-width="2" points="${st.form.map((v, i) => `${i * 25},${30 - (+v - 3) * 4}`).join(' ')}"/></svg>
               <b class="num">${avg}</b></div>
             <div class="cd-meta"><span>훈련 부하 <b>${x.load}</b></span><span>평균 수면 <b>${x.sleep}h</b></span><span>부상 <b>없음</b></span></div>
           </div>`;

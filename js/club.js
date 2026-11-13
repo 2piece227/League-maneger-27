@@ -26,7 +26,7 @@ const Club = {
     el.innerHTML = `
       <div class="cr-page">
         <div class="card rs-head">
-          <div class="rs-title"><h2>재정 <small>${UI.esc(t.name)}</small></h2><span>예산 ${UI.esc(t.budget || '-')} · 아래 금액은 억 원 환산 추정치</span></div>
+          <div class="rs-title"><h2>재정 <small>${UI.esc(t.name)}</small></h2><span>금액은 모두 억 원 환산 · 시즌 기준</span></div>
           <div class="rs-stats">
             <div><span class="k">시즌 예산</span><b>${this.money(B)}</b></div>
             <div><span class="k">예상 수입</span><b>${this.money(ti)}</b></div>
@@ -138,28 +138,53 @@ const Club = {
   },
 
   // ---------- 이사회 기대치 ----------
+  // 목표별 현재 상태 [문구, 클래스(seeking 좋음 · unstable 주의 · vacant 위험 · stable 보통)]
+  boardStatus(t) {
+    const Y = Schedule.season(), mine = Results.list.filter(m => m.cur && String(m.e).startsWith(Y + ':') && (m.t1 === t.id || m.t2 === t.id));
+    if (!mine.length) return null;
+    const cur = Results.current(t.league), rows = Results.table(t.league, cur.ids), i = rows.findIndex(r => r.t.id === t.id), r = rows[i];
+    const n = rows.length, cut = Math.ceil(n * .6);
+    const league = !r ? ['기록 없음', 'stable'] : [`${i + 1}위 · ${r.w}승 ${r.l}패 (${cur.name.replace(/ \d{4}$/, '')})`, i < Math.ceil(n * .3) ? 'seeking' : i < cut ? 'stable' : i < n - 2 ? 'unstable' : 'vacant'];
+    const intl = Object.entries(App.state.brk || {}).filter(([id, l]) => id.startsWith(Y + ':') && (Schedule.byEvent[id] || {}).league === 'INTL' && l.includes(t.id)).map(([id]) => Schedule.byEvent[id].name);
+    const won = Object.entries(App.state.champs || {}).filter(([id, w]) => id.startsWith(Y + ':') && w === t.id).map(([id]) => Schedule.byEvent[id].name);
+    const pay = this.payroll(t) + this.staffPay(t), B = this.budget(t);
+    const all = mine.length, w = mine.filter(m => Results.won(m, t.id)).length;
+    return {
+      league, intl: intl.length ? [`${intl.join(' · ')} 진출`, 'seeking'] : ['아직 진출 없음', 'stable'],
+      fin: [`인건비 ${this.money(pay)} / 예산 ${this.money(B)}`, pay > B * .75 ? 'vacant' : pay > B * .6 ? 'unstable' : 'seeking'],
+      youth: [`2군 출신 1군 ${t.players.filter(p => p.made || (p._o && p._o.level === 'cl')).length}명`, 'stable'],
+      fans: [`시즌 ${w}승 ${all - w}패`, w / all >= .6 ? 'seeking' : w / all >= .4 ? 'stable' : 'unstable'],
+      won, w, all,
+    };
+  },
   async board(el) {
-    await Portal.ready;
-    const t = this.team(), m = Career.m(), conf = Career.relations(m)[0][1];
+    await Promise.all([Portal.ready, Results.load()]);
+    const t = this.team(), m = Career.m(), conf = Career.relations(m)[0][1], st = this.boardStatus(t), pre = ['시즌 전', 'stable'];
     const goals = [
-      ['리그 성적', t.boardGoal || '플레이오프 진출', 5],
-      ['국제대회', (t.rep || 2) >= 4 ? 'MSI·월즈 진출' : '국제대회 진출 도전', (t.rep || 2) >= 4 ? 4 : 2],
-      ['재정', '시즌 예산 안에서 운영', 4],
-      ['유망주 기용', (t.rep || 2) <= 2 ? '2군 유망주 1군 기용' : '2군 유망주 관리', (t.rep || 2) <= 2 ? 4 : 2],
-      ['팬·미디어', '팬 지지 유지', 3],
+      ['리그 성적', t.boardGoal || '플레이오프 진출', 5, st ? st.league : pre],
+      ['국제대회', (t.rep || 2) >= 4 ? 'MSI·월즈 진출' : '국제대회 진출 도전', (t.rep || 2) >= 4 ? 4 : 2, st ? st.intl : pre],
+      ['재정', '시즌 예산 안에서 운영', 4, st ? st.fin : pre],
+      ['유망주 기용', (t.rep || 2) <= 2 ? '2군 유망주 1군 기용' : '2군 유망주 관리', (t.rep || 2) <= 2 ? 4 : 2, st ? st.youth : pre],
+      ['팬·미디어', '팬 지지 유지', 3, st ? st.fans : pre],
     ];
+    const name = UI.esc(m.displayName || m.name), goal = UI.esc(t.boardGoal || '좋은 성적');
+    const msg = !st ? `${Schedule.season()} 시즌 ${goal}을 기대합니다. 예산은 확정됐으니 개막 전에 로스터를 완성해 주십시오.`
+      : st.won.length ? `${st.won.join(', ')} 우승, 축하드립니다. 이 기세로 ${goal}까지 이어가 주십시오.`
+      : st.league[1] === 'vacant' ? `시즌 ${st.w}승 ${st.all - st.w}패, 지금 순위는 받아들이기 어렵습니다. 반등 계획을 보여 주십시오.`
+      : st.league[1] === 'unstable' ? `시즌 ${st.w}승 ${st.all - st.w}패입니다. ${goal}을 위해서는 순위를 끌어올려야 합니다.`
+      : `시즌 ${st.w}승 ${st.all - st.w}패, 순조롭습니다. ${goal}을 향해 지금처럼 부탁드립니다.`;
     el.innerHTML = `
       <div class="cr-page">
-        ${Career.head('이사회 기대치', `${Schedule.season()} 시즌 이사회 목표. 시즌이 진행되면 달성 정도가 표시됩니다.`)}
+        ${Career.head('이사회 기대치', `${Schedule.season()} 시즌 이사회 목표와 지금 달성 정도입니다.`)}
         <div class="cr-grid">
           <div class="card cr-rep-main"><span class="cr-rep-k">이사회 신뢰</span><b class="cr-rep-l">${conf >= 70 ? '굳건함' : conf >= 50 ? '보통' : conf >= 30 ? '불안' : '위기'}</b>
             <div class="cr-ladder"><div class="cr-ladder-bar"><i style="width:${conf}%"></i></div></div><small>신뢰가 바닥나면 경질될 수 있습니다.</small></div>
           <div class="card"><div class="card-head"><h3>이사회 메시지</h3></div>
-            <p class="cr-bg">"${UI.esc(m.displayName || m.name)} 감독님, ${Schedule.season()} 시즌 ${UI.esc(t.boardGoal || '좋은 성적')}을 기대합니다. 예산은 확정됐으니 스토브 기간 안에 로스터를 완성해 주십시오."</p></div>
+            <p class="cr-bg">"${name} 감독님, ${msg}"</p></div>
         </div>
         <div class="card"><div class="card-head"><h3>시즌 목표</h3></div>
           <table class="rs-table"><thead><tr><th>분야</th><th>목표</th><th>중요도</th><th>현재</th></tr></thead>
-          <tbody>${goals.map(([k, g, imp]) => `<tr><td><b>${k}</b></td><td>${UI.esc(g)}</td><td>${UI.stars(imp)}</td><td><span class="ot-st stable">시즌 전</span></td></tr>`).join('')}</tbody></table>
+          <tbody>${goals.map(([k, g, imp, [txt, cls]]) => `<tr><td><b>${k}</b></td><td>${UI.esc(g)}</td><td>${UI.stars(imp)}</td><td><span class="ot-st ${cls}">${UI.esc(txt)}</span></td></tr>`).join('')}</tbody></table>
         </div>
       </div>`;
   },
@@ -175,7 +200,7 @@ const Club = {
     Results.forTeam(t.id).forEach(m => { (evs[m.e] ||= { w: 0, l: 0 }); Results.won(m, t.id) ? evs[m.e].w++ : evs[m.e].l++; });
     el.innerHTML = `
       <div class="cr-page">
-        <div class="card cr-id">${G.team(t, 'lg')}<div class="cr-id-main"><h2>${UI.esc(t.name)}</h2><div class="cr-id-meta">${t.league}${t.city ? ' · ' + UI.esc(t.city) : ''} · 구단 평판 ${UI.stars(t.rep || 2)} <b>${Fame.team(t)}</b> ${Fame.teamTitle(Fame.team(t))}</div></div>
+        <div class="card cr-id">${G.team(t, 'lg')}<div class="cr-id-main"><h2>${UI.esc(t.name)}</h2><div class="cr-id-meta">${t.league} · ${UI.esc(G.country(t))} · 구단 평판 ${UI.stars(t.rep || 2)} <b>${Fame.team(t)}</b> ${Fame.teamTitle(Fame.team(t))}</div></div>
           <div class="cr-id-rep"><span>월즈 우승</span><b>${titles.length}회</b></div></div>
         <div class="cr-grid">
           <div class="card"><div class="card-head"><h3>월드 챔피언십 우승</h3></div>

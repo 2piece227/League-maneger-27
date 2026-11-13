@@ -297,8 +297,19 @@ const Draft = {
   },
 
   // 경기날: 이 경기의 밴픽이 진행 중이면 이어서, 아니면 준비 화면으로
+  // 주전이 비어 있는 포지션 (공식전은 5포지션이 다 차야 치른다)
+  missing(t = Roster.team()) { return G.ROLES.filter((r, i) => !this.lineup(t)[i]); },
   matchDay() {
     const m = Season.today(); if (!m) return;
+    const miss = this.missing();
+    if (miss.length) {
+      const txt = miss.map(r => G.ROLE_KO[r]).join('·');
+      UI.toast(`${txt} 주전이 없어 경기에 나갈 수 없습니다. 1군 로스터를 채워 주세요.`, 5000);
+      if (Engine.once('miss:' + m.id + ':' + miss.join())) Inbox.push({ from: { name: '코칭스태프', role: 'coach' }, subject: `오늘 경기 출전 불가 — ${txt} 공석`, priority: 'urgent', link: 'roster-first-team', body: `오늘 경기에 나갈 ${txt} 선수가 1군에 없습니다.
+
+2군에서 올리거나 FA를 영입해 5포지션을 채워야 경기를 치를 수 있습니다.` });
+      Router.go('roster-first-team'); return;
+    }
     const S = this.st(); if (S && S.series && S.series.key !== m.id && S.phase !== 'ready') App.state.draft = null;
     if (S && S.series && S.series.key !== m.id) App.state.draft = null;
     Router.go('match-draft');
@@ -348,6 +359,7 @@ const Draft = {
     pick('.dr-mode', v => { $('.dr-mode-desc', el).textContent = v === 'direct' ? '직접하기: 감독이 고르고, 코치 추천 3개가 옆에 뜹니다. 코치 밴픽 역량이 높을수록 추천이 정확합니다.' : `위임하기: 코치 ${co.name}(밴픽 ${co.r}/20)이(가) 우리 차례를 대신 고르고 전술도 추천대로 채워 둡니다. 감독은 지켜보다가 전술만 고칠 수 있습니다.`; });
     $('.dr-opp', el).onchange = e => this.setup(el, { opp: e.target.value });
     const sk = $('.dr-skip', el);
+    if (nm && nm.t.slice(0, 10) === Clock.today() && this.missing().length) { $('.dr-go', el).disabled = true; if (sk) sk.disabled = true; UI.toast(`${this.missing().map(r => G.ROLE_KO[r]).join('·')} 주전이 없어 공식전을 치를 수 없습니다.`, 4000); }
     if (sk) sk.onclick = () => {
       const s = Season.delegate(nm), sc = Season.seriesScore(s), o = Schedule.opponent(nm, my.id);
       UI.toast(`${my.short} ${sc[my.id] || 0} : ${sc[o.id] || 0} ${o.short} — 코치가 치른 결과입니다`, 4000);

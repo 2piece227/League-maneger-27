@@ -47,7 +47,7 @@ const teams = teamNames.map(n => ({ id: slug(n), name: (tb[n] || {}).Name || n, 
 const players = current.map(r => {
   const p = pb[r.Link] || {};
   return {
-    id: slug(r.Link), team: slug(r.Team), name: p.ID || r.Link, realName: p.Name || '', nativeName: p.NativeName || '',
+    id: slug(r.Link), team: slug(r.Team), name: p.ID || r.Link, realName: (p.Name || '').replace(/&nbsp;| /g, ' '), nativeName: p.NativeName || '',
     role: ROLE[r.Role] || (/coach/i.test(r.Role) ? 'COACH' : ROLE[p.Role] || r.Role || ''),
     nation: p.NationalityPrimary || p.Country || '', birthdate: p.Birthdate || null, contractEnd: p.Contract || null,
     photo: urls[(photo[r.Link] || {}).FileName] || null, sourcePage: r.Link,

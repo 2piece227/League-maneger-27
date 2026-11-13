@@ -9,7 +9,7 @@
 .rs-stats { margin-left: auto; display: flex; gap: 22px; flex-wrap: wrap; }
 .rs-stats > div { display: flex; flex-direction: column; align-items: flex-end; }
 .rs-stats .k { font-size: 11px; color: var(--muted); }
-.rs-stats b { font-family: var(--f-ui); font-size: 22px; font-weight: 700; line-height: 1.1; }
+.rs-stats b { font-family: var(--f-ui); font-size: 22px; font-weight: 700; line-height: 1.1; white-space: nowrap; }
 .rs-stats b.warn { color: #f0a54a; }
 
 .rs-bar { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }

@@ -48,6 +48,8 @@ const G = {
     Norway: ['no', '노르웨이'], Lithuania: ['lt', '리투아니아'], Australia: ['au', '호주'], Japan: ['jp', '일본'], Argentina: ['ar', '아르헨티나'],
   },
   nationName(n) { return (this.NATION[n] || [null, n || '-'])[1]; },
+  // 팀 연고 국가 (데이터의 city 칸은 국가명, 비어 있으면 리그 기준)
+  country(t) { const c = t.city || { LCK: 'South Korea', LPL: 'China' }[t.league] || ''; return c ? this.nationName(c) : t.league || ''; },
   flag(n) {
     const hit = this.NATION[n];
     if (!hit) return '<span class="flag none"></span>';

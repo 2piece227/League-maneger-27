@@ -39,7 +39,7 @@ const Mastery = {
   pool(pid) { return (this.pools && this.pools[pid]) || []; },
   signatures(pid) { return this.pool(pid).filter(e => e.sig); },
 
-  tier(m) { return m >= 17 ? 'm4' : m >= 13 ? 'm3' : m >= 9 ? 'm2' : 'm1'; },
+  tier(m) { return m >= MasteryModel.SIG_MIN ? 'm4' : m >= 13 ? 'm3' : m >= 9 ? 'm2' : 'm1'; },
   wr(e) { return Math.round(e.w / e.g * 100); },
   kda(e) { return ((e.k + e.a) / Math.max(1, e.d)).toFixed(1); },
 
@@ -80,7 +80,7 @@ const Mastery = {
             </div>
           </div>
           <div class="ms-legend">
-            <span><i class="ms-m m4">17+</i>최상급</span><span><i class="ms-m m3">13+</i>숙련</span>
+            <span><i class="ms-m m4">18+</i>최상급</span><span><i class="ms-m m3">13+</i>숙련</span>
             <span><i class="ms-m m2">9+</i>사용 가능</span><span><i class="ms-m m1">~8</i>미숙</span>
             <span><i class="ms-sig static">SIG</i>시그니처 — 리그 최상급 장인 챔피언 (숙련도 18+, 선수당 최대 2개)</span>
           </div>

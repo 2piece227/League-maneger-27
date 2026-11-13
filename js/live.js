@@ -178,7 +178,7 @@ const Live = {
       const recent = g.feed.slice().reverse().find(x => !x.obj && x.killer.side === k && g.t - x.t <= 40);
       const ps = g.pl.filter(p => p.side === k), p = recent ? recent.killer : ps[Math.floor(g.t / 60 + (k === 'B' ? 0 : 2)) % 5];
       const cam = $('.lv-cam.' + k.toLowerCase(), el);
-      if (cam.dataset.pid !== p.p.id) { cam.dataset.pid = p.p.id; cam.innerHTML = `${p.p.photo ? `<img src="${p.p.photo}" alt="" referrerpolicy="no-referrer">` : `<div class="lv-cam-empty">${UI.esc(p.name[0] || '?')}</div>`}<b>${UI.esc(p.name)}</b>`; }
+      if (cam.dataset.pid !== p.p.id) { cam.dataset.pid = p.p.id; cam.innerHTML = `${p.p.photo ? `<img src="${p.p.photo}" alt="" referrerpolicy="no-referrer" onerror="this.outerHTML='<div class=&quot;lv-cam-empty&quot;>${UI.esc(p.name[0] || '?')}</div>'">` : `<div class="lv-cam-empty">${UI.esc(p.name[0] || '?')}</div>`}<b>${UI.esc(p.name)}</b>`; }
     });
     const st = $('.lv-stats', el);
     if (!st.firstElementChild) st.innerHTML = G.ROLES.map(r => { const a = g.pl.find(p => p.side === 'B' && p.role === r), b = g.pl.find(p => p.side === 'R' && p.role === r); return `
