@@ -60,7 +60,7 @@ const Season = {
     const my = App.state.teamId, t1 = Schedule.team(m.t1), t2 = Schedule.team(m.t2);
     if (m.t1 === my || m.t2 === my) {
       const won = (m.t1 === my) === (s1 > s2), ev = Schedule.eventOf(m);
-      Market.post(`[결과] ${t1.short} ${s1}:${s2} ${t2.short}`, `${ev ? ev.label : ''} ${t1.name}와 ${t2.name}의 경기가 ${s1}:${s2}로 끝났습니다.`, null);
+      Market.post(`[결과] ${t1.short} ${s1}:${s2} ${t2.short}`, `${ev ? ev.label + ' ' : ''}${Sim.josa(t1.name, '과', '와')} ${t2.name}의 경기가 ${Sim.josa(`${s1}:${s2}`, '으로', '로')} 끝났습니다.`, null);
       // 결과 메시지 시각: 오늘 경기면 경기 시작 + 세트당 약 50분, 지난 경기를 오늘 처리하면 아침
       const end = m.t.slice(0, 10) === Clock.today() ? Math.min(23 * 60 + 50, +m.t.slice(11, 13) * 60 + +m.t.slice(14, 16) + (s1 + s2) * 50) : 8 * 60, time = `${String(Math.floor(end / 60)).padStart(2, '0')}:${String(end % 60).padStart(2, '0')}`;
       if (typeof Inbox !== 'undefined') Inbox.push({ time, from: { name: '코칭스태프', role: 'coach' }, subject: `${won ? '승리' : '패배'} — ${t1.short} ${s1}:${s2} ${t2.short}`, link: 'match-history', body: `${ev ? ev.label + ' ' : ''}경기를 ${s1}:${s2}로 ${won ? '이겼습니다' : '졌습니다'}.` });
@@ -241,7 +241,7 @@ const Season = {
     Schedule.events.filter(e => !e.past && e.kind !== 'stove' && !c[e.id] && this.bracket(e.id).length >= 3 && !/playin/.test(e.base) && this.done(e.id)).forEach(e => {
       const id = this.ranking(e)[0], t = Schedule.team(id); if (!t) return;
       c[e.id] = id;
-      if (typeof Market !== 'undefined' && Market.post) Market.post(`[우승] ${t.short} ${e.label} 우승`, `${t.name}가 ${e.label} 정상에 올랐습니다.`, null);
+      if (typeof Market !== 'undefined' && Market.post) Market.post(`[우승] ${t.short} ${e.label} 우승`, `${Sim.josa(t.name, '이', '가')} ${e.label} 정상에 올랐습니다.`, null);
       if (id === App.state.teamId && typeof Inbox !== 'undefined') Inbox.push({ from: { name: '구단 사무국', role: 'board' }, subject: `${e.label} 우승!`, link: 'match-history', body: `${e.label} 우승을 축하합니다. 구단 모두가 자랑스러워합니다.` });
     });
   },

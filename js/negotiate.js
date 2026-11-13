@@ -233,7 +233,7 @@ const Neg = {
   // 사인할 수 있는 상태인지 (그사이 다른 팀과 계약했거나 이적 합의가 깨졌으면 불가)
   signable(p, t, S, mode) {
     if (!this.held(S)) return '합의 기한이 지났습니다. 다시 협상해야 합니다.';
-    if (mode === 'fa' && !p.free && !(Player.days(p) < 0)) return `${p.name}은(는) 이미 ${t.short}와 계약했습니다.`;
+    if (mode === 'fa' && !p.free && !(Player.days(p) < 0)) return `${p.name}은(는) 이미 ${Sim.josa(t.short, '과', '와')} 계약했습니다.`;
     if (mode === 'transfer') { const b = Transfer.open$(p.id); if (!b || b.status !== 'agreed') return '구단 간 이적 합의가 유효하지 않습니다.'; }
     if (mode === 'renew' && !Player.isMine(t)) return `${p.name}은(는) 이미 팀을 떠났습니다.`;
     return null;
@@ -254,7 +254,7 @@ const Neg = {
     Inbox.push({ from: { name: '사무국장', role: 'board' }, subject: mode === 'renew' ? `${p.name} 재계약 완료` : `${p.name} 영입 완료`,
       body: `${p.name}과(와) 계약을 마쳤습니다. 오피셜은 내일 발표됩니다.\n\n${this.offerText(o)}\n계약 만료: ${Contract.label({ end, option: o.option })}` });
     const lbl = Contract.label({ end, option: o.option });
-    Market.post(mode === 'renew' ? `[오피셜] ${my.short}, ${p.name}와 재계약` : `[오피셜] ${p.name}, ${my.short} 입단`,
+    Market.post(mode === 'renew' ? `[오피셜] ${my.short}, ${Sim.josa(p.name, '과', '와')} 재계약` : `[오피셜] ${p.name}, ${my.short} 입단`,
       mode === 'renew' ? `${my.name}이(가) ${G.ROLE_KO[p.role] || ''} ${p.name}과(와) 재계약했습니다. 계약은 ${lbl}까지입니다.`
         : mode === 'transfer' ? `${my.name}이(가) ${t.name}의 ${G.ROLE_KO[p.role] || ''} ${p.name}을(를) 이적료 ${Player.money(fee || 0)} 원에 영입했습니다. 계약은 ${lbl}까지입니다.`
         : `FA ${p.name}이(가) ${my.name}과(와) 계약했습니다. 계약은 ${lbl}까지입니다.`, p.id, 1);
@@ -286,7 +286,7 @@ const Neg = {
           if (p.gen) { Squad.gen()[p.id].contractEnd = end; Squad.apply(); }
           else Contract.sign(p.id, my.id, { salary: sal, end, years: yrs, option: null, bonus: [] });
           Inbox.push({ from: { name: '사무국장', role: 'board' }, subject: `${p.name} ${mode === 'renew' ? '재계약' : '계약'} 완료`, body: `${p.name}과(와) 연봉 ${Player.money(sal)} 원, ${yrs}년 계약을 맺었습니다.${p.gen ? '' : ' 오피셜은 내일 발표됩니다.'}` });
-          if (!p.gen) Market.post(mode === 'renew' ? `[오피셜] ${my.short}, ${p.name}와 재계약` : `[오피셜] ${p.name}, ${my.short} 입단`, `${my.name}이(가) ${p.role === 'COACH' ? '코치' : `${Squad.LV[tier] || '1군'} ${G.ROLE_KO[p.role] || ''}`} ${p.name}과(와) ${yrs}년 계약을 맺었습니다.`, p.id, 1);
+          if (!p.gen) Market.post(mode === 'renew' ? `[오피셜] ${my.short}, ${Sim.josa(p.name, '과', '와')} 재계약` : `[오피셜] ${p.name}, ${my.short} 입단`, `${my.name}이(가) ${p.role === 'COACH' ? '코치' : `${Squad.LV[tier] || '1군'} ${G.ROLE_KO[p.role] || ''}`} ${p.name}과(와) ${yrs}년 계약을 맺었습니다.`, p.id, 1);
           UI.toast('계약을 마쳤습니다'); Router.go(Router.current());
         },
       }],

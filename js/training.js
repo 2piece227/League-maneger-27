@@ -117,7 +117,7 @@ const Training = {
     el.innerHTML = `
       <div class="cr-page">
         ${Career.head('스크림', '날짜와 판수를 정해 신청합니다. 상대가 수락하면 그날 계속 버튼이 "스크림으로"가 되고, 실제 경기처럼 밴픽 → 전술 → 관전으로 치릅니다. 공식 기록에는 남지 않습니다.')}
-        ${Scrim.today() ? `<div class="card nx-draft"><span>오늘 ${UI.esc(Schedule.team(Scrim.today().team).name)}와 스크림이 있습니다.</span><button class="btn-primary sm-go">스크림 시작</button></div>` : ''}
+        ${Scrim.today() ? `<div class="card nx-draft"><span>오늘 ${UI.esc(Sim.josa(Schedule.team(Scrim.today().team).name, '과', '와'))} 스크림이 있습니다.</span><button class="btn-primary sm-go">스크림 시작</button></div>` : ''}
         <div class="cr-grid">
           <div class="card"><div class="card-head"><h3>같은 리그 팀</h3></div>${others.map(row).join('')}</div>
           <div class="card"><div class="card-head"><h3>해외 팀 (온라인·부트캠프)</h3></div>${intl.map(row).join('')}

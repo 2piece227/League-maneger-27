@@ -21,12 +21,12 @@ const Inbox = {
   },
 
   // 답이 필요한(선택지가 있고 아직 안 고른) 메시지
-  pending() { return this.list().filter(m => m.choices && m.answered == null); },
+  pending() { return this.list().filter(m => m.choices && m.answered == null && !m.expired); },
   blocking() { return this.pending().filter(m => m.required); },
 
   answer(id, i) {
     const m = this.find(id);
-    if (!m || m.answered != null) return;
+    if (!m || m.answered != null || m.expired) return;
     const c = m.choices[i];
     let out = c;
     // 결과가 확률로 갈리는 선택지: odds = 숫자 또는 관계 수치 이름(board 등, 0~100 → 확률)
@@ -391,7 +391,7 @@ Engine.on(today => {
     }
     if (e.start === today && Engine.once('start:' + e.id)) {
       Inbox.push({ from: { name: '사무국장', role: 'board' }, subject: e.kind === 'stove' ? `${e.label} 개장` : `${e.label} 개막`, priority: 'normal', stop: true, link: e.kind === 'stove' ? 'recruit-fa' : 'portal-fixtures',
-        body: e.kind === 'stove' ? '계약이 끝난 선수들과 자유롭게 협상할 수 있습니다. FA 시장을 확인해 주십시오.' : `오늘 ${e.label}가 시작됩니다.` });
+        body: e.kind === 'stove' ? '계약이 끝난 선수들과 자유롭게 협상할 수 있습니다. FA 시장을 확인해 주십시오.' : `오늘 ${Sim.josa(e.label, '이', '가')} 시작됩니다.` });
     }
   });
   // 경기일
@@ -399,7 +399,7 @@ Engine.on(today => {
   if (m && !(App.state.season || {})[m.id]) reason = `오늘 ${Schedule.opponent(m, t.id).short}전 경기날입니다`;
   // 스크림 날도 멈춘다 (안 멈추면 그날이 지나가 코치가 대신 치르고 결과만 왔다)
   const sc = !reason && typeof Scrim !== 'undefined' && Scrim.today();
-  if (sc) reason = `오늘 ${(Schedule.team(sc.team) || {}).short || ''}와 스크림이 있습니다`;
+  if (sc) reason = `오늘 ${Sim.josa((Schedule.team(sc.team) || {}).short || '', '과', '와')} 스크림이 있습니다`;
   return reason;
 });
 
@@ -468,7 +468,7 @@ Engine.on(today => {
         a.status = '최종 제안';
         Inbox.push({ from, subject: `${t.name}, 감독직 공식 제안`, priority: 'urgent', ctx: { tid }, stop: true,
           body: `면접에서 보여주신 비전에 이사회가 깊은 인상을 받았습니다.\n\n${t.name}의 새 감독으로 모시고 싶습니다. 수락하시면 즉시 부임하게 됩니다. 이사회 기대는 '${t.boardGoal || '좋은 성적'}'입니다.`,
-          choices: [{ label: `수락하고 ${t.short}로 간다`, act: 'takeJob', reply: `${t.name} 감독직을 수락했습니다.` }, { label: '거절한다', act: 'declineJob', reply: '제안을 거절했습니다. 현 구단에 남습니다.' }] });
+          choices: [{ label: `수락하고 ${Sim.josa(t.short, '으로', '로')} 간다`, act: 'takeJob', reply: `${t.name} 감독직을 수락했습니다.` }, { label: '거절한다', act: 'declineJob', reply: '제안을 거절했습니다. 현 구단에 남습니다.' }] });
       } else {
         a.status = '불합격';
         Inbox.push({ from, subject: `${t.name} 면접 결과`, body: '면접에 응해 주셔서 감사합니다. 고심 끝에 다른 후보를 선임하기로 했습니다.' });
@@ -478,3 +478,15 @@ Engine.on(today => {
 });
 
 Engine.on(today => Events.run(today));
+
+// 답하지 않은 제안은 기한이 지나면 넘어간다 (날짜가 있는 요청은 그날이 지나면, 이벤트·이적 제안은 7일 뒤).
+// 꼭 답해야 하는 메시지(required)와 계약 옵션·구직처럼 자기 기한이 따로 있는 메시지는 건드리지 않는다.
+Engine.on(today => {
+  Inbox.list().forEach(m => {
+    if (!m.choices || m.answered != null || m.expired || m.required) return;
+    const bid = m.ctx && m.ctx.bid; if (!m.ev && !bid) return;
+    if (today <= (m.ctx && m.ctx.on ? m.ctx.on : Store.addDays(m.date, 7))) return;
+    m.expired = true; m.done = true;
+    if (bid && typeof Transfer !== 'undefined') { const b = Transfer.bids().find(x => x.id === bid); if (b && b.status === 'pending') b.status = 'rejected'; }
+  });
+});

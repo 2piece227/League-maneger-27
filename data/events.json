@@ -3,9 +3,9 @@
   "events": [
     {
       "id": "media-interview",
-      "cond": ["noMatch"],
+      "cond": ["stove", "noMatch"],
       "chance": 0.07,
-      "cooldown": 12,
+      "cooldown": 300,
       "from": { "name": "{media} 기자", "role": "media" },
       "subject": "[{media}] 인터뷰 요청: {season} 시즌 각오",
       "priority": "todo",

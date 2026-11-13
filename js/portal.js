@@ -251,6 +251,7 @@ const Portal = {
 
   // 선택지 / 고른 결과 / 처리하기 / 바로가기
   detailActions(m) {
+    if (m.expired) return '<div class="md-answer"><small>지나간 제안</small><b>답하지 않아 기한이 지났습니다</b></div>';
     if (m.choices && m.answered == null) return `
       <div class="md-choices">${m.choices.map((c, i) => `<button class="md-choice" data-i="${i}">${UI.esc(c.label)}</button>`).join('')}</div>`;
     if (m.choices) return `

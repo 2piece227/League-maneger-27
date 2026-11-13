@@ -13,7 +13,7 @@ const News = {
     const out = [];
     // 진행 중인 국제대회 (실제)
     Schedule.events.filter(e => e.past && e.end >= today).forEach(e => out.push({
-      cat: 'league', date: today, title: `${e.label}, ${Fmt.dayLabel(e.end)} 결승`, body: `${e.label}가 막바지에 접어들었습니다. 결승이 끝나면 다음 날부터 스토브리그가 시작됩니다.`, link: '#portal-calendar',
+      cat: 'league', date: today, title: `${e.label}, ${Fmt.dayLabel(e.end)} 결승`, body: `${Sim.josa(e.label, '이', '가')} 막바지에 접어들었습니다. 결승이 끝나면 다음 날부터 스토브리그가 시작됩니다.`, link: '#portal-calendar',
     }));
     // FA 시장: 개장 2주 전에 예고, 개장일에 개장 기사 (날짜 고정)
     const stove = Schedule.events.find(e => e.kind === 'stove' && e.end >= today && Store.addDays(e.start, -14) <= today);
@@ -24,16 +24,16 @@ const News = {
     App.db.teams.flatMap(x => x.players.map(p => ({ p, t: x }))).filter(({ p, t: x }) => x.id !== t.id && !p.free && p.contractEnd && p.contractEnd > today && rumorDay(p) <= today)
       .sort((a, b) => Player.value(b.p, b.t) - Player.value(a.p, a.t)).slice(0, 6).forEach(({ p, t: x }) => {
         const to = App.db.teams.filter(y => y.id !== x.id && (y.rep || 2) >= (x.rep || 2) - 1)[Math.floor(G.rand(p.id, 'rumor') * 6)] || App.db.teams[0];
-        out.push({ cat: 'transfer', date: rumorDay(p), title: `[이적설] ${p.name}, ${x.short}와 계약 만료 앞두고 ${to.short} 관심설`, body: `${x.name}의 ${G.ROLE_KO[p.role]} ${p.name}(${p.age}세)의 계약이 ${p.contractEnd.replace(/-/g, '.')}에 끝납니다. 업계에서는 ${to.name}이 영입을 검토하고 있다는 이야기가 나옵니다.`, pid: p.id, link: '#recruit-fa' });
+        out.push({ cat: 'transfer', date: rumorDay(p), title: `[이적설] ${p.name}, ${Sim.josa(x.short, '과', '와')} 계약 만료 앞두고 ${to.short} 관심설`, body: `${x.name}의 ${G.ROLE_KO[p.role]} ${p.name}(${p.age}세)의 계약이 ${p.contractEnd.replace(/-/g, '.')}에 끝납니다. 업계에서는 ${to.name}이 영입을 검토하고 있다는 이야기가 나옵니다.`, pid: p.id, link: '#recruit-fa' });
       });
     // 이적시장 오피셜 (다른 구단 AI 결과, 최근 30일)
-    (App.state.market?.news || []).filter(n => n.date >= d(30) && n.date <= today).forEach(n => out.push({ cat: 'transfer', date: n.date, title: n.title, body: n.body, pid: n.pid, link: '#recruit-fa' }));
+    (App.state.market?.news || []).filter(n => n.date >= d(30) && n.date <= today).forEach(n => { const lg = /^\[(결과|우승)\]/.test(n.title); out.push({ cat: lg ? 'league' : 'transfer', date: n.date, title: n.title, body: n.body, pid: n.pid, link: lg ? '#match-history' : '#recruit-fa' }); });
     // 일정 발표 예정
     const rel = Schedule.nextRelease(t.league);
     if (rel && Store.addDays(rel.pub, -21) <= today) out.push({ cat: 'league', date: Store.addDays(rel.pub, -21), title: `${rel.label} 대진 ${Fmt.dayLabel(rel.pub)}경 발표 예정`, body: `${rel.label}는 ${Fmt.dayLabel(rel.start)} 개막합니다. 대진과 경기 일정은 개막 약 ${rel.lead}일 전에 공개될 예정입니다.`, link: '#portal-fixtures' });
     // 솔랭 1위
     const sq = (SoloQ.cache || SoloQ.build()).ladder[0];
-    if (sq) out.push({ cat: 'soloq', date: today, title: `${SoloQ.SERVER[t.league]} 서버 솔랭 1위는 '${sq.name}'`, body: `${sq.type === 'pro' ? `${sq.team.name}의 ${sq.name}` : `${SoloQ.TYPES[sq.type][0]} '${sq.name}'`}이 ${sq.lpNow.toLocaleString()} LP로 1위를 지키고 있습니다. 승률 ${SoloQ.wr(sq)}%.${sq.prodigy ? ' 프로팀 스카우트들의 관심도 쏠리고 있습니다.' : ''}`, link: '#training-soloq', pid: sq.player && sq.player.id });
+    if (sq) out.push({ cat: 'soloq', date: today, title: `${SoloQ.SERVER[t.league]} 서버 솔랭 1위는 '${sq.name}'`, body: `${sq.type === 'pro' ? `${sq.team.name}의 ${sq.name}` : `${SoloQ.TYPES[sq.type][0]} '${sq.name}'`}${Sim.josa(sq.name, '이', '가').slice(sq.name.length)} ${sq.lpNow.toLocaleString()} LP로 1위를 지키고 있습니다. 승률 ${SoloQ.wr(sq)}%.${sq.prodigy ? ' 프로팀 스카우트들의 관심도 쏠리고 있습니다.' : ''}`, link: '#training-soloq', pid: sq.player && sq.player.id });
     // 시그니처 조명
     const sigs = Object.entries(Mastery.pools).flatMap(([pid, l]) => l.filter(e => e.sig).map(e => ({ pid, e })));
     const pick = sigs[Math.floor(G.rand(today, 'sig') * sigs.length)];

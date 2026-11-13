@@ -35,7 +35,7 @@ const Scrim = {
     s.result = `${w}:${n - w}`; s.games = series.games.filter(x => x.result).map(x => ({ win: x.result.win, t: x.result.t, k: x.result.kills }));
     const o = Schedule.team(s.team), t = Roster.team();
     Inbox.push({ from: { name: `${((t.staff || [])[1] || (t.staff || [])[0] || {}).name || '코치'} 코치`, role: 'coach' }, subject: `${o.short} 스크림 결과 ${s.result}`, link: 'training-scrims',
-      body: `${o.name}와의 스크림 ${n}판을 ${s.result}로 마쳤습니다.\n\n${w > n / 2 ? '준비한 운영이 잘 통했습니다.' : w === n / 2 ? '주고받은 스크림이었습니다. 보완할 점을 정리하겠습니다.' : '초반 설계에서 밀렸습니다. 다음 스크림 전에 보완하겠습니다.'}` });
+      body: `${Sim.josa(o.name, '과', '와')}의 스크림 ${n}판을 ${Sim.josa(s.result, '으로', '로')} 마쳤습니다.\n\n${w > n / 2 ? '준비한 운영이 잘 통했습니다.' : w === n / 2 ? '주고받은 스크림이었습니다. 보완할 점을 정리하겠습니다.' : '초반 설계에서 밀렸습니다. 다음 스크림 전에 보완하겠습니다.'}` });
     if (App.state.draft && App.state.draft.scrim === id) App.state.draft = null;
   },
 };

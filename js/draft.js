@@ -111,7 +111,7 @@ const Draft = {
     if (typeof Stats !== 'undefined') {
       const opp = S.picks[k === 'B' ? 'R' : 'B'].find(x => x.role === r);
       if (opp) { const m = Stats.matchup(r, c, opp.c); mu = m.wr - .5; if (m.g >= 3 && Math.abs(mu) >= .04) why.push(`${Champions.byId[opp.c].name} 상대 ${Math.round(m.wr * 100)}% (${m.g}판)`); }
-      S.picks[k].forEach(x => { const q = Stats.synergy(r, c, x.role, x.c); if (q) { sy += q.wr - .5; if (q.g >= 4 && q.wr >= .55) why.push(`${Champions.byId[x.c].name}와 시너지 ${Math.round(q.wr * 100)}%`); } });
+      S.picks[k].forEach(x => { const q = Stats.synergy(r, c, x.role, x.c); if (q) { sy += q.wr - .5; if (q.g >= 4 && q.wr >= .55) why.push(`${Sim.josa(Champions.byId[x.c].name, '과', '와')} 시너지 ${Math.round(q.wr * 100)}%`); } });
     }
     const v = .4 * ms.m / 20 + .22 * this.meta(c) + .18 * Math.min(1, need) + (ms.sig ? .1 : 0) + mu * .6 + sy * .4;
     if (ms.sig) why.unshift(`${p.name} 시그니처`); else if (ms.m >= 12) why.unshift(`${p.name} 숙련 ${ms.m}`);
