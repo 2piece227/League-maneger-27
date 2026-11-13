@@ -30,13 +30,13 @@ window.LMBench = {
       const fb = g.kills[0]; if (fb && fb.t === 300) R.fb5++;
       const d1 = g.ev.find(e => e.kind === 'drag'); if (d1 && d1.t === 300) R.d5++;
       R.jcs += cs10 || 0; R.jcsEnd += g.pl.filter(p => p.role === 'JGL').reduce((s, p) => s + p.cs / (g.t / 60), 0) / 2;
-      g.pl.forEach(p => { if (p.roams) { const k = p.role + ':' + (p.tac || '-'); (R.roam[k] ||= [0, 0]); R.roam[k][0] += p.roams; R.roam[k][1]++; } });
+      g.pl.forEach(p => { if (!['MID', 'SUP', 'TOP', 'JGL'].includes(p.role)) return; const k = p.role + ':' + (p.tac || '-'); (R.roam[k] ||= [0, 0]); R.roam[k][0] += (p.roams || 0) + (p.invades || 0) + (p.wardTrips || 0); R.roam[k][1]++; });
       if (Math.abs(g.side.B.kills - g.side.R.kills) >= 15) R.big++;
     }
     const n = R.n, f = v => (v / n).toFixed(1);
     return { games: n, len: f(R.len), kills: f(R.kills), winLose: f(R.wk) + '/' + f(R.lk), oneSided: Math.round(R.big / n * 100) + '%', drag: f(R.drag), baron: (R.baron / n).toFixed(2), noBaron: Math.round(R.noBaron / n * 100) + '%',
       towers: f(R.tow), herald: (R.her / n).toFixed(2), gold: Math.round(R.gold / n), endGoldDiff: Math.round(R.gd / n), blueWin: Math.round(R.bw / n * 100) + '%',
       fb0500: R.fb5, drag0500: R.d5, jgCs10: f(R.jcs), jgCsPerMin: (R.jcsEnd / n).toFixed(1), msPerGame: Math.round(R.ms / n), audit: R.au, auditSample: R.auS.slice(0, 6),
-      roamsPerGame: Object.fromEntries(Object.entries(R.roam).map(([k, [s, c]]) => [k, (s / c).toFixed(1)])) };
+      tripsPerGame: Object.fromEntries(Object.entries(R.roam).map(([k, [s, c]]) => [k, (s / c).toFixed(1)])) };
   },
 };

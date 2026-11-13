@@ -269,8 +269,11 @@ const Sim = {
     return w[0].p;
   },
   // 그 자리 근처(radius)에 실제로 있는 선수끼리만 싸운다. 큰 싸움에는 텔레포트가 있는 선수가 날아올 수 있다
+  // 합류 반경: 교전 합류(미드·원딜 join)는 +8, 탑 소규모 교전(skirm)은 강가 쪽 싸움에 +6
+  joinR(p, at, r) { return r + (p.tac === 'join' ? 8 : p.tac === 'skirm' && p.role === 'TOP' && Rift.proj('top', at).d > 6 ? 6 : 0); },
   fightAt(g, at, radius, opt = {}) {
-    const A = this.near(g, 'B', at, radius), Bp = this.near(g, 'R', at, radius);
+    const pick = k => this.alive(g, k).filter(p => !p.recall && !p.tpCh && this.dist(p.pos, at) <= this.joinR(p, at, radius));
+    const A = pick('B'), Bp = pick('R');
     if (!A.length || !Bp.length) return null;
     if (A.length + Bp.length >= 5 && this.min(g) >= 4) ['B', 'R'].forEach(k => this.alive(g, k).filter(p => p.tp && g.t >= p.tpReady && this.dist(p.pos, at) > 40 && !p.recall && !p.tpCh && g.r() < .55).forEach(p => {
       this.teleport(g, p, this.toward(at, k, 6));
@@ -328,7 +331,7 @@ const Sim = {
       if (v.dead || g.over) return;
       if (v.tpCh) { x.t = v.tpCh.at + 1; g.pend.push(x); return; }                           // 순간이동 중이면 도착한 뒤에
       const ks = K.filter(p => !p.dead && !p.tpCh && !p.recall), close = ks.filter(p => this.dist(p.pos, v.pos) <= 18);
-      if (!close.length) { if ((x.n = (x.n || 0) + 1) <= 4 && ks.length) { x.t = g.t + 1; g.pend.push(x); } return; }   // 아직 닿지 않았으면 잠시 뒤, 끝내 못 닿으면 살아서 빠져나간다
+      if (!close.length) { if ((x.n = (x.n || 0) + 1) <= 7 && ks.length) { x.t = g.t + 1; g.pend.push(x); } return; }   // 아직 닿지 않았으면 잠시 뒤, 끝내 못 닿으면 살아서 빠져나간다
       this.kill(g, this.pickKiller(g, close), v, ks.filter(p => this.dist(p.pos, v.pos) <= 25));
     });
   },
@@ -384,7 +387,8 @@ const Sim = {
       const fr = this.front(g, lane);
       ['B', 'R'].forEach(k => {
         const o = this.other(k), st = this.structOf(g, o, lane); if (st.kind !== 'tower' || g.over) return;
-        const ts = Rift.proj(lane, st.pos).s, reach = k === 'B' ? fr >= ts - .06 : fr <= ts + .06;
+        const pr = g.pl.some(q => q.side === k && !q.dead && q.tac === 'press' && this.LANE_OF[q.role] === lane && q.role !== 'SUP') ? .09 : .06;   // 압박 전술은 포탑을 더 자주 두드린다
+        const ts = Rift.proj(lane, st.pos).s, reach = k === 'B' ? fr >= ts - pr : fr <= ts + pr;
         if (!reach || !this.near(g, k, st.pos, 22).length) return;
         const deep = st.i === 2 && m < 22 ? .3 : st.i === 1 && m < 14 ? .5 : 1;
         this.hit(g, k, lane, st, (m < 14 ? .035 : .05) * deep);
@@ -410,8 +414,8 @@ const Sim = {
   objFor(g, p, m) {
     for (const o of ['drag', 'grubs', 'herald', 'baron']) {
       const ob = g.obj[o]; if (!ob.at || (ob.until && g.t >= ob.until)) continue;
-      const go = (ob.go && ob.go[p.side]) || ob.at;
-      if (o === 'baron' ? !this.baronCall(g, p.side) || g.t < go - 30 : go - g.t > 60) continue;
+      const go = (ob.go && ob.go[p.side]) || ob.at, early = (p.role === 'JGL' && p.tac === 'obj') || (p.role === 'MID' && p.tac === 'join') ? 40 : 0;   // 오브젝트 중심 정글 · 합류형 미드는 먼저 자리 잡는다
+      if (o === 'baron' ? !this.baronCall(g, p.side) || g.t < go - 30 - early : go - g.t > 60 + early) continue;
       const roles = m >= 20 && o === 'drag' ? ['JGL', 'MID', 'BOT', 'SUP', p.tac === 'split' ? '' : 'TOP'] : this.OBJ_ROLES[o];
       if (!roles.includes(p.role)) continue;
       // 많이 밀리거나 2명 이상 죽었으면 내준다
@@ -472,11 +476,19 @@ const Sim = {
         p.jq.push({ pos: Rift.pos(s.jstart === 'top' ? (p.side === 'B' ? 'RVbm' : 'RVtm') : (p.side === 'B' ? 'RVtm' : 'RVbm')), wait: 10, kind: 'crab' });
         p.cleared = true;
       } else {
-        const gankRate = .35 + p.st.early * .3 + (p.tac === 'gank' ? .25 : 0) - (p.tac === 'farm' ? .2 : 0);
+        const gankRate = .35 + p.st.early * .3 + (p.tac === 'gank' ? .25 : 0) - (p.tac === 'farm' ? .2 : 0) - (p.tac === 'invade' ? .1 : 0);
         if (m < 15 && g.r() < gankRate) {
           const L = ['top', 'mid', 'bot'].map(l => { const e = g.pl.find(q => q.side !== p.side && !q.dead && !q.recall && this.LANE_OF[q.role] === l && q.role !== 'SUP' && this.distLane(q.pos, l) < 6 && this.dist(q.pos, this.fountain(q.side)) > 40); return { l, e, w: e ? (1.3 - e.hp) + g.r() * .6 : 0 }; }).sort((a, b) => b.w - a.w)[0];
-          if (L.e) p.jq = [{ kind: 'gank', e: L.e, lane: L.l, pos: L.e.pos, left: 6 }];
+          // 상대 서폿이 시야를 깔아 둔 쪽(바텀·미드)은 동선이 들켜 갱을 접기도 한다
+          const ward = g.side[this.other(p.side)].ward, seen = L.e && ward && ward.until > g.t && ward.lanes.includes(L.l) && g.r() < .35;
+          if (L.e && !seen) p.jq = [{ kind: 'gank', e: L.e, lane: L.l, pos: L.e.pos, left: 6 }];
         }
+        // 카정: 상대 정글 안쪽이 아닌 강가 쪽 캠프로 들어간다
+        const foe = n => Rift.pos((p.side === 'B' ? 'r' : 'b') + n);
+        if (!p.jq.length && p.tac === 'invade' && m < 15 && g.r() < .4) { p.jq = [{ pos: foe(g.r() < .5 ? 'JW' : 'JR'), wait: 15, invade: true }]; p.invades = (p.invades || 0) + 1; }
+        // 오브젝트 중심: 생성 75초 전부터 그쪽 강가에서 시야를 잡고 기다린다
+        const nextObj = ['drag', 'grubs', 'herald'].find(o => { const ob = g.obj[o]; return ob.at && (!ob.until || g.t < ob.until) && ob.at - g.t > 0 && ob.at - g.t <= 75; });
+        if (!p.jq.length && p.tac === 'obj' && nextObj) p.jq = [{ pos: this.toward(Rift.pos(this.PIT[nextObj]), p.side, 8), wait: 20, kind: 'setup' }];
         if (!p.jq.length) p.jq = Rift.CAMPS.slice().sort(() => g.r() - .5).slice(0, 2).map(n => ({ pos: own(n), wait: 15 }));
       }
     }
@@ -497,7 +509,7 @@ const Sim = {
     if (this.dist(p.pos, head.pos) < 3) {
       head.wait -= 10;
       if (head.wait <= 0) p.jq.shift();
-      if (!head.until) { p.cs += head.kind ? 0 : 1.6; p.gold += head.kind ? 40 : 45; }
+      if (!head.until) { p.cs += head.kind ? (head.kind === 'crab' ? 1 : 0) : 3.6; p.gold += head.kind === 'setup' ? 0 : head.kind ? 40 : 45; }   // 캠프 하나 약 7 CS (실제 10분 정글 CS 약 60)
     }
     return head.pos;
   },
@@ -508,7 +520,10 @@ const Sim = {
   front(g, lane) {
     const m = this.min(g), wave = Math.sin(g.t / 26 + lane.length * 2 + (g.side.B.jstart === 'top' ? 1 : 0)) * (m < 14 ? .13 : .16);
     const mu = ((g.pl.find(q => q.side === 'B' && this.LANE_OF[q.role] === lane && q.role !== 'SUP') || { mu: { wr: .5 } }).mu.wr - .5) * .2;
-    const f = .5 + ((3 - g.side.R.towers[lane]) - (3 - g.side.B.towers[lane])) * .08 + Math.max(-.08, Math.min(.08, this.lead(g, 'B') / 20000)) + mu + wave;
+    // 라인 전술: 압박은 전선을 앞으로, 버티기는 자기 포탑 쪽으로
+    const tac = k => { const q = g.pl.find(x => x.side === k && !x.dead && this.LANE_OF[x.role] === lane && x.role !== 'SUP'); return q ? q.tac : null; };
+    const lean = (tac('B') === 'press' ? .03 : tac('B') === 'hold' ? -.045 : 0) - (tac('R') === 'press' ? .03 : tac('R') === 'hold' ? -.045 : 0);
+    const f = .5 + ((3 - g.side.R.towers[lane]) - (3 - g.side.B.towers[lane])) * .08 + Math.max(-.08, Math.min(.08, this.lead(g, 'B') / 20000)) + mu + wave + lean;
     // 전선은 양 팀의 맨 앞 구조물 사이에서만 움직인다 (살아 있는 포탑을 넘어 서지 않는다)
     const hi = Rift.proj(lane, this.structOf(g, 'R', lane).pos).s - .02, lo = Rift.proj(lane, this.structOf(g, 'B', lane).pos).s + .02;
     return Math.max(Math.max(.12, lo), Math.min(Math.min(.88, hi), f));
@@ -540,14 +555,31 @@ const Sim = {
     const ob = this.objFor(g, p, m); if (ob) return ob;
     if (m < 14) {
       if (p.role === 'JGL') return this.jungle(g, p, m);
+      if (p.roam > g.t) return p.roamTo;
+      const sideR = 'RVbm', topR = 'RVtm';   // 바텀 쪽 강가 · 탑 쪽 강가
       if (p.role === 'SUP') {
-        if (p.roam > g.t) return p.roamTo;
-        if (m >= 3 && g.t % 150 < 10 && g.r() < (p.tac === 'roam' ? .7 : .3)) { p.roam = g.t + 30; p.roamTo = g.r() < .5 ? this.laneSpot(g, p, m, 'mid') : Rift.pos(p.side === 'B' ? 'RVbm' : 'RVtm'); return p.roamTo; }
+        // 로밍 / 시야 장악(강가·오브젝트 둥지에 와드) / 바텀 고정·원딜 보호(라인을 떠나지 않음)
+        if (m >= 3 && g.t % 150 < 10 && !['lane', 'protect'].includes(p.tac)) {
+          if (p.tac === 'vision' ? g.r() < .75 : g.r() < (p.tac === 'roam' ? .7 : .3)) {
+            p.roam = g.t + 30;
+            if (p.tac === 'vision') { p.roamTo = g.r() < .6 ? Rift.pos(sideR) : this.toward(Rift.pos(g.r() < .6 ? 'DRA' : 'BAR'), p.side, 7); g.side[p.side].ward = { until: g.t + 120, lanes: ['bot', 'mid'] }; p.wardTrips = (p.wardTrips || 0) + 1; }
+            else { p.roamTo = g.r() < .5 ? this.laneSpot(g, p, m, 'mid') : Rift.pos(sideR); p.roams = (p.roams || 0) + 1; }
+            return p.roamTo;
+          }
+        }
       }
+      if (p.role === 'MID' && m >= 3.5 && g.t % 120 < 10 && g.r() < (p.tac === 'roam' ? .55 : p.tac === 'farm' ? .05 : .15)) {
+        // 미드 로밍: 웨이브를 밀어 두고 사이드 라인·강가로
+        const to = g.r(); p.roam = g.t + 35; p.roams = (p.roams || 0) + 1;
+        p.roamTo = to < .4 ? this.laneSpot(g, p, m, 'bot') : to < .7 ? this.laneSpot(g, p, m, 'top') : Rift.pos(g.r() < .5 ? sideR : topR);
+        return p.roamTo;
+      }
+      if (p.role === 'TOP' && p.tac === 'skirm' && m >= 5 && g.t % 120 < 10 && g.r() < .35) { p.roam = g.t + 25; p.roams = (p.roams || 0) + 1; p.roamTo = Rift.pos('RVt'); return p.roamTo; }
       return this.laneSpot(g, p, m, this.LANE_OF[p.role]);
     }
-    if (p.role === 'TOP' && (p.tac === 'split' || m < 25)) return this.laneSpot(g, p, m, 'top');
-    if (p.role === 'BOT' && m < 20) return this.laneSpot(g, p, m, 'bot');
+    if (p.role === 'SUP' && p.tac === 'protect') { const ad = g.pl.find(q => q.side === p.side && q.role === 'BOT' && !q.dead && !q.recall); if (ad && ad.goal) return this.clampP([ad.goal[0] + p.off[0] * .6, ad.goal[1] + p.off[1] * .6]); }   // 원딜 곁을 떠나지 않는다
+    if (p.role === 'TOP' && (p.tac === 'split' || (m < 25 && p.tac !== 'skirm') || (m < 18 && p.tac === 'skirm'))) return this.laneSpot(g, p, m, 'top');
+    if (p.role === 'BOT' && m < (p.tac === 'join' ? 16 : p.tac === 'safe' ? 22 : 20)) return this.laneSpot(g, p, m, 'bot');
     if (p.role === 'JGL' && m < 25 && !Object.keys(g.obj).some(k => g.obj[k].at && g.obj[k].at - g.t < 90 && (!g.obj[k].until || g.t < g.obj[k].until))) return this.jungle(g, p, m);
     return this.groupSpot(g, p, m);
   },
@@ -637,7 +669,7 @@ const Sim = {
   laning(g, m) {
     ['TOP', 'MID'].forEach(role => {
       const a = this.alive(g, 'B').find(p => p.role === role), b = this.alive(g, 'R').find(p => p.role === role), lane = this.LANE_OF[role];
-      if (g.t < 90 || !a || !b || a.recall || b.recall || a.tpCh || b.tpCh || this.dist(a.pos, b.pos) > 13 || this.distLane(a.pos, lane) > 5 || this.distLane(b.pos, lane) > 5 || g.r() > .008) return;   // 미니언이 만나기(1:30) 전에는 솔로킬이 없다
+      if (g.t < 90 || !a || !b || a.tac === 'hold' || b.tac === 'hold' || a.recall || b.recall || a.tpCh || b.tpCh || this.dist(a.pos, b.pos) > 13 || this.distLane(a.pos, lane) > 5 || this.distLane(b.pos, lane) > 5 || g.r() > .008) return;   // 미니언이 만나기(1:30) 전에는 솔로킬이 없다
       const press = (a.tac === 'press' ? 3 : 0) - (b.tac === 'press' ? 3 : 0), muE = (a.mu.wr - .5) * 25;
       const [w, l] = g.r() < 1 / (1 + Math.exp(-((this.ppow(a, m) - this.ppow(b, m)) + press + muE) / 9)) ? [a, b] : [b, a];
       this.engage(g, w, l.pos, 3);
