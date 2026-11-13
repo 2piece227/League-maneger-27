@@ -111,7 +111,7 @@ const Cond = {
   },
   morale(pid) { const m = (World.morale()[pid] || 0); return Math.max(-1.5, Math.min(1.5, m * .25)); },
   // 엔진에 들어가는 개인 보정 (OVR 단위)
-  ovr(p) { return this.of(p.id) + this.morale(p.id); },
+  ovr(p) { return this.of(p.id) + this.morale(p.id) + (typeof Rel !== 'undefined' ? Rel.ovr(p.id) : 0); },
   // 팀 보정 (tpow 단위): 팀합 최대 +3, 소통 최대 -3
   team(t, line) { return this.chem(line) * .25 + this.comm(t, line); },
 };

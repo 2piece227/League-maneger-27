@@ -416,3 +416,15 @@
 
 .cd-left { display: flex; flex-wrap: wrap; gap: 8px; padding: 4px 12px 10px; }
 .cd-left small { color: var(--muted); margin-left: 4px; }
+
+/* 커뮤니티 반응 */
+.nw-cm { display: block; margin-top: 6px; color: var(--gold-2); font-size: 11.5px; }
+.cm-body { line-height: 1.55; margin: 0 0 10px; }
+.cm-h { margin: 8px 0 6px; font-size: 13px; color: var(--muted); }
+.cm-list { display: flex; flex-direction: column; gap: 6px; max-height: 46vh; overflow-y: auto; }
+.cm-row { display: grid; grid-template-columns: auto auto 1fr auto; gap: 8px; align-items: center; padding: 7px 10px; background: #141d30; border-radius: 8px; font-size: 13px; }
+.cm-row p { margin: 0; }
+.cm-row b { color: var(--muted); font-size: 11.5px; font-weight: 600; }
+.cm-row em { font-style: normal; color: #e2575c; font-size: 11.5px; }
+.cm-site { font-size: 10.5px; padding: 1px 6px; border-radius: 4px; background: #23304a; color: #b7c3d8; white-space: nowrap; }
+.cm-site.fan { background: #3a2f12; color: #f0d58c; }

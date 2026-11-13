@@ -67,6 +67,7 @@ const Player = {
             ${st ? `<h4>상태</h4>
               ${Career.meter('컨디션', st.condition)}
               <div class="pp-morale"><span>사기</span><b class="morale ${Roster.MORALE[st.morale][1]}">${Roster.MORALE[st.morale][0]}</b></div>
+              ${this.isMine(t) && typeof Rel !== 'undefined' ? `<div class="pp-morale"><span>감독과의 관계</span><b>${Rel.word(p.id)}</b></div>` : ''}
               <div class="pp-morale"><span>최근 폼</span><span class="form-pts">${st.form.map(v => `<i class="${Roster.formCls(v)}">${v}</i>`).join('')}</span></div>` : ''}
             ${sq ? `<h4>솔랭</h4><p class="pp-line">${SoloQ.SERVER[t.league]} 서버 <b>${sq.rank}위</b> · ${sq.lpNow.toLocaleString()} LP · 승률 ${SoloQ.wr(sq)}%</p>` : ''}
           </div>
