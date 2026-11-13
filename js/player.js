@@ -82,7 +82,7 @@ const Player = {
         <div class="pp-foot">
           ${this.isMine(t) && p.role !== 'COACH' ? `<span class="pp-mv" data-pid="${p.id}">${Squad.buttons(p)}</span>` : ''}
           <button class="btn-ghost pp-list">${listed ? '관심 목록에서 빼기' : '관심 목록에 추가'}</button>
-          ${this.isMine(t) ? '<button class="btn-primary pp-talk">재계약 협상</button>' : (p.free || this.days(p) < 0 ? '<button class="btn-primary pp-ask">계약 협상</button>' : '<button class="btn-primary pp-ask">영입 문의</button>')}
+          ${this.isMine(t) ? '<button class="btn-primary pp-talk">재계약 협상</button>' : (p.free || this.days(p) < 0 ? '<button class="btn-primary pp-ask">계약 협상</button>' : '<button class="btn-ghost pp-trade">트레이드 제안</button><button class="btn-primary pp-ask">영입 문의</button>')}
         </div>
       </div>`;
     document.body.appendChild(back);
@@ -96,6 +96,7 @@ const Player = {
     // 협상 창을 열면 프로필은 닫는다 (사인 뒤 예전 정보가 뒤에 남지 않게)
     if (talk) talk.onclick = () => { close(); this.contractModal(p.id); };
     if (ask) ask.onclick = () => { close(); this.inquiryModal(p.id); };
+    const trd = $('.pp-trade', back); if (trd) trd.onclick = () => { close(); Trade.propose(p.id); };
   },
 
   toggleShortlist(id) {

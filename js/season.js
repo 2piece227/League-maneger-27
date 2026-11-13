@@ -84,7 +84,7 @@ const Season = {
     this.resolve();
     for (let guard = 0; guard < 3000; guard++) {
       const m = Schedule.all.find(m => m.t1 && m.t2 && m.t.slice(0, 10) < today && !this.st()[m.id]); if (!m) break;
-      const plan = (App.state.plans || {})[m.id], mine = m.t1 === my || m.t2 === my;
+      const plan = (App.state.plans || {})[m.id], mine = !App.state.unemployed && (m.t1 === my || m.t2 === my);
       // 우리 경기를 직접 치르지 않고 넘겼으면 코치가 정식 엔진으로 대신 치른다. 나머지는 경량 시뮬
       const series = mine ? this.autoSeries(m, plan ? plan.series : null) : this.lightSeries(m);
       this.recordSeries(m.id, series);
