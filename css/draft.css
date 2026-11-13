@@ -221,3 +221,66 @@
   .dr-act { grid-template-columns: 1fr; }
   .dr-pl { font-size: 10px; }
 }
+
+/* 팀 지시 */
+.dr-advice .adv { margin: 6px 0; padding: 7px 10px; border-radius: 8px; font-size: 13px; line-height: 1.45; background: #172238; }
+.dr-advice .adv.bad { border-left: 3px solid #e2575c; } .dr-advice .adv.good { border-left: 3px solid #3fbf7f; } .dr-advice .adv.mid { border-left: 3px solid #5d6b85; }
+.dr-presets { display: flex; flex-wrap: wrap; gap: 6px; margin-left: auto; }
+.dr-presets .on { border-color: var(--gold); color: var(--gold-2); }
+.dr-ins { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 18px; }
+.dr-ins-row { display: flex; align-items: center; gap: 10px; }
+.dr-ins-row > span { width: 72px; flex: none; color: var(--muted); font-size: 12.5px; }
+.dr-ins-row .seg { flex: 1; flex-wrap: wrap; }
+.dr-ins-row .seg button { flex: 1; font-size: 12.5px; padding: 6px 6px; }
+
+
+/* 전술 화면: 태블릿에서도 한 화면 (조합 막대는 2열, 지시는 2열, 포지션 지시는 한 줄) */
+.dr-tac .dr-dims { grid-template-columns: 1fr 1fr; gap: 4px 12px; padding: 2px 12px 10px; }
+.dr-tac .dr-dim { grid-template-columns: 44px 1fr; gap: 6px; font-size: 11px; }
+.dr-tac .dr-dbar { height: 5px; }
+.dr-tac .card { margin-bottom: 10px; }
+.dr-tac .dr-tac-top { margin-bottom: 10px; gap: 10px; }
+.dr-tac .dr-rt { gap: 4px; }
+.dr-tac .dr-opt.sm { padding: 5px 8px; }
+@media (max-width: 1100px) {
+  .dr-tac .dr-tac-top { grid-template-columns: 1fr 210px 1fr; }
+  .dr-tac .dr-rt-row { grid-template-columns: 150px 1fr; gap: 8px; }
+  .dr-tac .rs-head span { display: none; }
+}
+.dr-tac > .rs-head { display: none; }
+.dr-tac .dr-dim:nth-child(n+9) { display: none; }
+.dr-tac .card-head { padding-top: 8px; padding-bottom: 4px; }
+.dr-tac .dr-picks-row { padding: 2px 12px 4px; }
+.dr-tac .dr-pk .sq-ic { width: 34px; height: 34px; }
+.dr-tac .dr-rt { grid-template-columns: 1fr 1fr; column-gap: 14px; }
+.dr-tac .dr-rt-row { grid-template-columns: 120px 1fr !important; gap: 6px; }
+.dr-tac .dr-rt-who .sq-ic { width: 26px; height: 26px; }
+.dr-tac .dr-rt-who small { display: none; }
+.dr-tac .dr-rt-opts { display: flex; flex-wrap: wrap; gap: 4px; }
+.dr-tac .dr-opt.sm { flex: 1; min-width: 0; }
+.dr-tac .dr-opt.sm b { font-size: 11.5px; white-space: nowrap; }
+.dr-tac .dr-ins { gap: 6px 14px; padding: 0 12px 10px; }
+.dr-tac .dr-tac-foot { margin-top: 6px; }
+.dr-tac .dr-tac-foot .dr-series { margin-right: auto; color: var(--muted); font-size: 12.5px; }
+.dr-tac .dr-ins { grid-template-columns: 1fr 1fr !important; }
+.dr-tac .dr-ins-row .seg button { padding: 5px 4px; font-size: 12px; }
+.dr-tac .dr-picks-row { flex-wrap: nowrap; align-items: center; }
+.dr-tac .dr-bn { margin-left: auto; display: flex; gap: 2px; }
+.dr-tac .dr-bn .sq-ic { width: 18px; height: 18px; }
+.dr-tac .dr-dims { gap: 2px 12px; padding-bottom: 6px; }
+.dr-tac .dr-advice .adv { margin: 4px 0; padding: 5px 8px; font-size: 12.5px; }
+.dr-tac .card { padding: 6px 4px; }
+.dr-tac .card-head { margin: 0; min-height: 0; padding: 4px 10px; }
+.dr-tac .card-head h3 { font-size: 13.5px; }
+.dr-tac .dr-tac-top .dr-dims { grid-template-columns: repeat(4, 1fr); }
+.dr-tac .dr-tac-top .dr-dim { grid-template-columns: 30px 1fr; font-size: 10.5px; }
+.dr-tac .dr-presets .btn-ghost { padding: 3px 8px; font-size: 12px; }
+.cr-page.dr-tac { padding-top: 6px; padding-bottom: 4px; }
+.dr-tac .card, .dr-tac .dr-tac-top { margin-bottom: 6px; }
+.dr-tac .dr-ins { gap: 4px 14px; padding-bottom: 6px; }
+.dr-tac .dr-ins-row .seg button { padding: 4px 4px; }
+.dr-tac .dr-rt { padding-bottom: 6px; }
+.dr-tac .dr-opt.sm { padding: 4px 6px; }
+.dr-tac .dr-pk .sq-ic { width: 30px; height: 30px; }
+.dr-tac .dr-tac-foot { margin-top: 0; }
+.dr-tac .dr-tac-foot .btn-primary, .dr-tac .dr-tac-foot .btn-ghost { padding-top: 7px; padding-bottom: 7px; }

@@ -92,7 +92,9 @@ const Sim = {
   ICON: { baron: 'baron', herald: 'riftherald', grubs: 'grub', tower: 'tower', inhib: 'inhibitor', nexusT: 'tower', nexus: 'nexus' },
   SPEED: 24,   // 10초 동안 걷는 거리 (맵 %). 1초에 SPEED / 10
   TP_CH: 4, RECALL_CH: 8,
-  TRADE: .036,   // 라인 맞상대가 붙어 있을 때 10초마다 딜교환이 시작될 확률
+  TRADE: .036,
+  // 교전 성향: 두 팀 평균 (적극적인 팀이 있으면 싸움이 잦다)
+  agr(g) { const f = { safe: .7, norm: 1, aggr: 1.35 }; return (f[g.side.B.ins.aggr] + f[g.side.R.ins.aggr]) / 2; },   // 라인 맞상대가 붙어 있을 때 10초마다 딜교환이 시작될 확률
   SIEGE_K: 1.0,   // 1초 이동으로 바꾸면서 공성 위치 도착이 늦어진 만큼 (검증표의 경기 시간에 맞춘 값)   // 텔레포트 · 귀환 정신집중 (초)
   // 역할별 기본 자리 (같은 팀이 한 점에 겹치지 않게)
   OFF: { TOP: [-2.2, -1.2], JGL: [.4, -2.6], MID: [0, 0], BOT: [2.2, 1.2], SUP: [-.6, 2.4] },
@@ -126,7 +128,10 @@ const Sim = {
         tac: (S.tactics[k] || {}).team || 'bal', comp: Style.comp(picks.map(x => x.c)),
         towers: { top: 3, mid: 3, bot: 3 }, inhib: { top: 1, mid: 1, bot: 1 }, nexusT: 2, down: 0,
         thp: { top: [1, 1, 1], mid: [1, 1, 1], bot: [1, 1, 1] }, ihp: { top: 1, mid: 1, bot: 1 }, ntp: [1, 1], nxhp: 1,
-        drag: [], grubs: 0, herald: 0, baron: 0, baronUntil: 0, push: null, reset: -999, jstart: r() < .5 ? 'top' : 'bot', focus: ((k === S.us ? (S.series || {}).plan : S.us ? (S.series || {}).oppPlan : null) || {}).focus || null };
+        drag: [], grubs: 0, herald: 0, baron: 0, baronUntil: 0, push: null, reset: -999, jstart: r() < .5 ? 'top' : 'bot', ins: Draft.insOf(S.tactics[k]) };
+      // 공략 라인: 팀 지시, 없으면 라커룸에서 정한 것
+      const pl = (k === S.us ? (S.series || {}).plan : S.us ? (S.series || {}).oppPlan : null) || {};
+      g.side[k].focus = g.side[k].ins.focus !== 'none' ? g.side[k].ins.focus : pl.focus || null;
     });
     g.pl = [];
     ['B', 'R'].forEach(k => S.picks[k].slice().sort((a, b) => G.ROLES.indexOf(a.role) - G.ROLES.indexOf(b.role)).forEach(x => {
@@ -176,8 +181,7 @@ const Sim = {
     if (!ps.length) return 0;
     let v = ps.reduce((a, p) => a + this.ppow(p, m), 0) / ps.length + s.form + s.syn * 8;
     v += m < 14 ? (c.early - .4) * 10 : m < 26 ? ((c.fight + c.engage) / 2 - .4) * 9 : (c.late - .4) * 10;
-    const tacPhase = { early: m < 15, snow: m < 22, fight: m >= 12 && m < 30, late: m >= 25, bal: true }[s.tac];
-    v += (s.fit - 50) / 50 * (tacPhase ? 4 : 1.5) + (s.coach - 10) * .15;
+    v += (s.coach - 10) * .15;   // 전술 적합도 보너스는 없다: 전술은 경기 중 판단(교전·오브젝트·운영·목표·시야)으로만 결과에 닿는다
     v += Math.max(-9, Math.min(9, this.lead(g, k) / 1000 * .8));   // 스노우볼 (실제: 이긴 팀 골드 +1만, 킬 2배)
     if (s.baronUntil > g.t) v += 6;
     if (s.drag.length >= 4) v += 4;
@@ -319,8 +323,12 @@ const Sim = {
         const foes = g.pl.filter(q => q.side !== a.side && !q.dead && !q.recall && !q.tpCh && this.dist(q.pos, a.pos) <= this.RANGE && (f.mem.has(q) || q.fled === f.id));
         if (!foes.length) return;
         // 대상: 체력이 낮고 몸이 약한 쪽을 노린다 (가끔 앞라인)
-        const v = foes.map(q => ({ q, w: (1.4 - q.hp) * this.TANK[q.role] * (q.fled ? .6 : 1) + g.r() * .5 })).sort((x, y) => y.w - x.w)[0].q;
-        const dmg = this.FIGHT_K * early * mult[a.side] * (1 + (this.ppow(a, m) - av[a.side]) / 40) * this.TANK[v.role] * (.75 + g.r() * .5) * (v.fled ? .55 : 1);
+        // 대상: 한타 목표 지시 — 딜러 노리기(원딜·미드) / 앞라인부터(가까운 적) / 보호(평소대로)
+        const tg = g.side[a.side].ins.target, carry = q => q.role === 'BOT' || q.role === 'MID';
+        const v = foes.map(q => ({ q, w: (1.4 - q.hp) * this.TANK[q.role] * (q.fled ? .6 : 1) * (tg === 'carry' ? (carry(q) ? 1.6 : .75) : tg === 'front' ? (carry(q) ? .8 : 1.25) + (this.RANGE - this.dist(q.pos, a.pos)) / this.RANGE * .5 : 1) + g.r() * .5 })).sort((x, y) => y.w - x.w)[0].q;
+        // 보호 지시: 우리 딜러가 받는 피해가 줄고, 대신 우리 딜은 조금 준다
+        const peel = (g.side[v.side].ins.target === 'peel' && carry(v) ? .8 : 1) * (tg === 'peel' ? .93 : 1);
+        const dmg = peel * this.FIGHT_K * early * mult[a.side] * (1 + (this.ppow(a, m) - av[a.side]) / 40) * this.TANK[v.role] * (.75 + g.r() * .5) * (v.fled ? .55 : 1);
         hits.push([a, v, dmg]);
       });
       hits.forEach(([a, v, dmg]) => {
@@ -333,10 +341,10 @@ const Sim = {
         }
       });
       // 후퇴: 체력이 낮고 밀리면 (숫자 · 남은 체력)
-      const thr = m < 10 ? .45 : m < 20 ? .35 : .3;
+      const thr0 = m < 10 ? .45 : m < 20 ? .35 : .3, AGR = { safe: .08, norm: 0, aggr: -.07 };
       // 양 팀이 같은 순간을 보고 동시에 판단한다 (먼저 판단한 쪽이 불리해지지 않게)
       const snap = { B: B.filter(x => !x.dead), R: R.filter(x => !x.dead) }, hpS = k => snap[k].reduce((a, x) => a + x.hp, 0);
-      const go = [...snap.B, ...snap.R].filter(p => { const o = this.other(p.side); return p.hp < thr && (snap[p.side].length < snap[o].length || hpS(p.side) < hpS(o) * .85 || p.hp < .12) && g.r() < .7; });
+      const go = [...snap.B, ...snap.R].filter(p => { const o = this.other(p.side), thr = thr0 + AGR[g.side[p.side].ins.aggr]; return p.hp < thr && (snap[p.side].length < snap[o].length || hpS(p.side) < hpS(o) * .85 || p.hp < .12) && g.r() < .7; });
       // 팀 단위 후퇴: 이 싸움에서 둘 이상 잘렸고 숫자에서 밀리면 남은 팀원도 빠진다 (실제 한타는 끝까지 다 죽지 않는다)
       ['B', 'R'].forEach(k => { const o = this.other(k); if (f.kills[o] >= 2 && snap[k].length < snap[o].length) snap[k].forEach(p => { if (!go.includes(p) && g.r() < .75) go.push(p); }); });
       go.forEach(p => { p.fled = f.id; this.retreat(g, p, 18); });
@@ -445,6 +453,10 @@ const Sim = {
   },
 
   // ---------- 오브젝트 ----------
+  // 오브젝트 우선순위 (+1 우선 · 0 · -1 양보)
+  objPri(g, k, o) { const x = g.side[k].ins.obj; if (x === 'bal') return 0; const top = o === 'grubs' || o === 'herald' || o === 'baron'; return x === 'top' ? (top ? 1 : -1) : (top ? (o === 'baron' ? 0 : -1) : 1); },
+  // 이 팀 쪽 라인에 시야가 있나 (깊은 시야는 늘, 시야 서폿은 와드 동선 뒤 잠시)
+  wardOn(g, k, lane) { const s = g.side[k]; return s.ins.vision === 'deep' || (s.ward && s.ward.until > g.t && s.ward.lanes.includes(lane)); },
   elder(g) { return g.side.B.drag.length >= 4 || g.side.R.drag.length >= 4; },
   objUp(g, o) { const ob = g.obj[o]; return ob.at && g.t >= ob.at && (!ob.until || g.t < ob.until); },
   baronCall(g, k) {
@@ -458,13 +470,14 @@ const Sim = {
   objFor(g, p, m) {
     for (const o of ['drag', 'grubs', 'herald', 'baron']) {
       const ob = g.obj[o]; if (!ob.at || (ob.until && g.t >= ob.until)) continue;
-      const go = (ob.go && ob.go[p.side]) || ob.at, early = (p.role === 'JGL' && p.tac === 'obj') || (p.role === 'MID' && p.tac === 'join') ? 40 : 0;   // 오브젝트 중심 정글 · 합류형 미드는 먼저 자리 잡는다
+      const pri = this.objPri(g, p.side, o), vis = { deep: 20, norm: 0, home: -20 }[g.side[p.side].ins.vision];
+      const go = (ob.go && ob.go[p.side]) || ob.at, early = ((p.role === 'JGL' && p.tac === 'obj') || (p.role === 'MID' && p.tac === 'join') ? 40 : 0) + pri * 30 + vis;   // 우선 오브젝트·깊은 시야는 먼저 자리 잡는다
       if (o === 'baron' ? !this.baronCall(g, p.side) || g.t < go - 30 - early : go - g.t > 60 + early) continue;
       const roles = m >= 20 && o === 'drag' ? ['JGL', 'MID', 'BOT', 'SUP', p.tac === 'split' ? '' : 'TOP'] : this.OBJ_ROLES[o];
       if (!roles.includes(p.role)) continue;
       // 많이 밀리거나 2명 이상 죽었으면 내준다
       const k = p.side, deadK = g.pl.filter(q => q.side === k && q.dead).length, deadO = g.pl.filter(q => q.side !== k && q.dead).length;
-      if (o !== 'baron' && (deadK - deadO >= 2 || (1 / (1 + Math.exp(-(this.tpow(g, k) - this.tpow(g, this.other(k))) / 13)) < .33))) continue;
+      if (o !== 'baron' && (deadK - deadO >= 2 + (pri > 0 ? 1 : 0) || (1 / (1 + Math.exp(-(this.tpow(g, k) - this.tpow(g, this.other(k))) / 13)) < (pri > 0 ? .2 : pri < 0 ? .5 : .33)))) continue;   // 우선 오브젝트는 끝까지, 나머지는 쉽게 내준다
       const pit = Rift.pos(this.PIT[o]), spot = [pit[0] + p.off[0], pit[1] + p.off[1]];
       return g.t >= go ? spot : this.toward(spot, p.side, 6);             // 준비가 끝나기 전에는 강 입구에서 대기
     }
@@ -542,12 +555,12 @@ const Sim = {
         if (m < 15 && g.r() < gankRate) {
           const L = ['top', 'mid', 'bot'].map(l => { const e = g.pl.find(q => q.side !== p.side && !q.dead && !q.recall && this.LANE_OF[q.role] === l && q.role !== 'SUP' && this.distLane(q.pos, l) < 6 && this.dist(q.pos, this.fountain(q.side)) > 40); return { l, e, w: e ? (1.3 - e.hp) + g.r() * .6 + (s.focus === l ? .5 : 0) : 0 }; }).sort((a, b) => b.w - a.w)[0];   // 라커룸에서 정한 공략 라인을 먼저
           // 상대 서폿이 시야를 깔아 둔 쪽(바텀·미드)은 동선이 들켜 갱을 접기도 한다
-          const ward = g.side[this.other(p.side)].ward, seen = L.e && ward && ward.until > g.t && ward.lanes.includes(L.l) && g.r() < .35;
+          const seen = L.e && this.wardOn(g, this.other(p.side), L.l) && g.r() < .35;
           if (L.e && !seen) p.jq = [{ kind: 'gank', e: L.e, lane: L.l, pos: L.e.pos, left: 6 }];
         }
         // 카정: 상대 정글 안쪽이 아닌 강가 쪽 캠프로 들어간다
         const foe = n => Rift.pos((p.side === 'B' ? 'r' : 'b') + n);
-        if (!p.jq.length && p.tac === 'invade' && m < 15 && g.r() < .4) { p.jq = [{ pos: foe(g.r() < .5 ? 'JW' : 'JR'), wait: 15, invade: true }]; p.invades = (p.invades || 0) + 1; }
+        if (!p.jq.length && p.tac === 'invade' && m < 15 && g.r() < (g.side[this.other(p.side)].ins.vision === 'home' ? .2 : .4)) {   /* 상대가 자기 정글 시야를 잡고 있으면 카정이 어렵다 */ p.jq = [{ pos: foe(g.r() < .5 ? 'JW' : 'JR'), wait: 15, invade: true }]; p.invades = (p.invades || 0) + 1; }
         // 오브젝트 중심: 생성 75초 전부터 그쪽 강가에서 시야를 잡고 기다린다
         const nextObj = ['drag', 'grubs', 'herald'].find(o => { const ob = g.obj[o]; return ob.at && (!ob.until || g.t < ob.until) && ob.at - g.t > 0 && ob.at - g.t <= 75; });
         if (!p.jq.length && p.tac === 'obj' && nextObj) p.jq = [{ pos: this.toward(Rift.pos(this.PIT[nextObj]), p.side, 8), wait: 20, kind: 'setup' }];
@@ -641,9 +654,12 @@ const Sim = {
     }
     if (p.role === 'SUP' && p.tac === 'protect') { const ad = g.pl.find(q => q.side === p.side && q.role === 'BOT' && !q.dead && !q.recall); if (ad && ad.goal) return this.clampP([ad.goal[0] + p.off[0] * .6, ad.goal[1] + p.off[1] * .6]); }   // 원딜 곁을 떠나지 않는다
     // 중후반: 실제 경기처럼 흩어져 있다 (같이 다니는 인원 20분 약 3명, 30분 약 3.4명 — 솔랭 타임라인). 모이는 건 오브젝트·공성·한타 호출 때만
-    const lead = this.lead(g, p.side), call = Math.abs(lead) > 4000 || m >= 30;
-    if (p.role === 'TOP' && (p.tac === 'split' || m < 28 || !call) && !(p.tac === 'skirm' && m >= 18)) return this.laneSpot(g, p, m, 'top');
-    if (p.role === 'BOT' && m < (p.tac === 'join' ? 18 : p.tac === 'safe' ? 26 : 23)) return this.laneSpot(g, p, m, 'bot');
+    // 운영 구도 지시: 5인 뭉치기(18분부터 다 같이) / 1-4(탑이 사이드) / 1-3-1(탑·원딜이 양 사이드)
+    const lead = this.lead(g, p.side), call = Math.abs(lead) > 4000 || m >= 30, setup = s.ins.setup;
+    if (p.role === 'TOP' && setup === 'five' && m >= 18 && p.tac !== 'split') return this.groupSpot(g, p, m);
+    if (p.role === 'TOP' && (setup === '131' || p.tac === 'split' || m < 28 || !call) && !(p.tac === 'skirm' && m >= 18)) return this.laneSpot(g, p, m, 'top');
+    if (p.role === 'BOT' && setup === '131' && m < 36) return this.laneSpot(g, p, m, 'bot');
+    if (p.role === 'BOT' && m < (setup === 'five' ? 18 : p.tac === 'join' ? 18 : p.tac === 'safe' ? 26 : 23)) return this.laneSpot(g, p, m, 'bot');
     if (p.role === 'SUP' && m < 23) { const ad = g.pl.find(q => q.side === p.side && q.role === 'BOT' && !q.dead); return ad && this.LANE_OF.BOT === 'bot' && ad.goal && this.distLane(ad.goal, 'bot') < 8 ? this.clampP([ad.goal[0] + p.off[0] * .7, ad.goal[1] + p.off[1] * .7]) : this.toward(Rift.pos('DRA'), p.side, 9); }
     if (p.role === 'JGL' && m < 28 && !Object.keys(g.obj).some(k => g.obj[k].at && g.obj[k].at - g.t < 90 && (!g.obj[k].until || g.t < g.obj[k].until))) return this.jungle(g, p, m);
     if (p.role === 'MID' && !call) return this.laneSpot(g, p, m, 'mid');
@@ -735,13 +751,13 @@ const Sim = {
   laning(g, m) {
     ['TOP', 'MID'].forEach(role => {
       const a = this.alive(g, 'B').find(p => p.role === role), b = this.alive(g, 'R').find(p => p.role === role), lane = this.LANE_OF[role];
-      if (g.t < 90 || !a || !b || a.tac === 'hold' || b.tac === 'hold' || a.recall || b.recall || a.tpCh || b.tpCh || this.dist(a.pos, b.pos) > 13 || this.distLane(a.pos, lane) > 5 || this.distLane(b.pos, lane) > 5 || g.r() > this.TRADE) return;   // 미니언이 만나기(1:30) 전에는 싸움이 없다
+      if (g.t < 90 || !a || !b || a.tac === 'hold' || b.tac === 'hold' || a.recall || b.recall || a.tpCh || b.tpCh || this.dist(a.pos, b.pos) > 13 || this.distLane(a.pos, lane) > 5 || this.distLane(b.pos, lane) > 5 || g.r() > this.TRADE * this.agr(g)) return;   // 미니언이 만나기(1:30) 전에는 싸움이 없다
       // 라인 딜교환: 1대1 교전 (매치업·압박 전술은 유리함으로). 대부분 체력만 주고받고 빠진다
       const press = (a.tac === 'press' ? 3 : 0) - (b.tac === 'press' ? 3 : 0), muE = (a.mu.wr - .5) * 25;
       this.fightAt(g, [(a.pos[0] + b.pos[0]) / 2, (a.pos[1] + b.pos[1]) / 2], 8, { bonus: { side: 'B', v: press + muE }, onEnd: f => { if (f.n) { const w = g.pl.find(x => x.side === f.wk && x.role === role), l = g.pl.find(x => x.side !== f.wk && x.role === role); this.say(g, 'cast', this.pick(g, [`${w.name}, ${this.laneKo(lane)} 솔로킬! ${this.cn(w)} 라인전에서 압도합니다!`, `${this.josa(l.name, '이', '가')} 잘렸어요! ${w.name}의 피지컬!`, `${w.name}, 1대1에서 이겨냅니다!`])); } } });
     });
     const bb = this.near(g, 'B', Rift.lane('bot', .5), 60).filter(p => ['BOT', 'SUP'].includes(p.role)), rb = this.near(g, 'R', Rift.lane('bot', .5), 60).filter(p => ['BOT', 'SUP'].includes(p.role));
-    if (g.t >= 90 && bb.length && rb.length && this.dist(bb[0].pos, rb[0].pos) < 13 && this.distLane(bb[0].pos, 'bot') < 5 && g.r() < this.TRADE * .9) {
+    if (g.t >= 90 && bb.length && rb.length && this.dist(bb[0].pos, rb[0].pos) < 13 && this.distLane(bb[0].pos, 'bot') < 5 && g.r() < this.TRADE * .9 * this.agr(g)) {
       const at = [(bb[0].pos[0] + rb[0].pos[0]) / 2, (bb[0].pos[1] + rb[0].pos[1]) / 2];
       this.fightAt(g, at, 10, { where: '바텀' });
     }
@@ -756,7 +772,7 @@ const Sim = {
         const st = this.structOf(g, o, lane), atk = this.near(g, k, st.pos, 20), def = this.near(g, o, st.pos, 15);
         if (atk.length < 3 || def.length < 1) continue;
         const d = this.tpow(g, k, atk) - this.tpow(g, o, def) + (atk.length - def.length) * 6 - 6, p = 1 / (1 + Math.exp(-d / 13));
-        if (g.r() < Math.max(0, p - .47) * (this.min(g) >= 28 ? .8 : .5)) {
+        if (g.r() < Math.max(0, p - { safe: .55, norm: .47, aggr: .4 }[g.side[k].ins.aggr]) * (this.min(g) >= 28 ? .8 : .5)) {
           const at = [def.reduce((a, q) => a + q.pos[0], 0) / def.length, def.reduce((a, q) => a + q.pos[1], 0) / def.length];
           this.fightAt(g, at, 18, { where: `${this.laneKo(lane)} 포탑 앞` });
           return;
@@ -775,7 +791,8 @@ const Sim = {
     const at = [(best.a.pos[0] + best.b.pos[0]) / 2, (best.a.pos[1] + best.b.pos[1]) / 2];
     const A = this.near(g, 'B', at, 14), Bp = this.near(g, 'R', at, 14), n = A.length + Bp.length;
     const edge = Math.abs(this.tpow(g, 'B', A) - this.tpow(g, 'R', Bp) + (A.length - Bp.length) * 6);
-    if (g.r() > (n >= 6 ? .055 : .038) + Math.min(.08, edge / 120)) return;
+    const expose = [best.a, best.b].some(x => (x.role === 'SUP' || x.role === 'JGL') && g.side[x.side].ins.vision === 'deep' && this.dist(x.pos, this.fountain(x.side)) > 70) ? 1.25 : 1;   // 깊은 와드를 박다 잡힌다
+    if (g.r() > ((n >= 6 ? .055 : .038) + Math.min(.08, edge / 120)) * this.agr(g) * expose) return;
     const lane = ['top', 'mid', 'bot'].sort((x, y) => this.distLane(at, x) - this.distLane(at, y))[0];
     this.fightAt(g, at, 14, { where: this.distLane(at, lane) < 6 ? this.laneKo(lane) : '정글' });
   },

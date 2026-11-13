@@ -282,6 +282,40 @@ const Draft = {
     SUP: [['roam', '로밍', s => s.pick * .6 + s.engage * .4], ['lane', '바텀 고정', s => s.early * .45 + s.poke * .35 + s.engage * .25], ['vision', '시야 장악', s => s.pick * .4 + s.peel * .35 + .15], ['protect', '원딜 보호', s => s.peel]],
   },
   pct: v => Math.max(5, Math.min(99, Math.round(v * 100))),
+  // ---------- 팀 지시 (전술 = 경기 중 판단 기준. 승률 보정 숫자는 없다) ----------
+  INS: {
+    aggr: ['교전 성향', [['safe', '신중', '유리할 때만 싸운다. 체력이 조금만 빠져도 물러난다'], ['norm', '보통', '상황을 보고 싸운다'], ['aggr', '적극', '조금 불리해도 먼저 건다. 딜교환·다이브가 잦다']]],
+    obj: ['오브젝트', [['drag', '드래곤 중심', '드래곤은 끝까지 다투고 유충·전령·바론은 상황 보고'], ['bal', '균형', '나오는 대로'], ['top', '유충·전령·바론', '탑 쪽 오브젝트를 먼저 챙기고 드래곤은 내주기도']]],
+    setup: ['운영 구도', [['five', '5인 뭉치기', '중반부터 다섯이 같이 다닌다'], ['14', '1-4', '탑이 사이드를 맡고 넷이 뭉친다'], ['131', '1-3-1', '탑·원딜이 양쪽 사이드, 셋이 가운데']]],
+    focus: ['공략 라인', [['top', '탑'], ['mid', '미드'], ['bot', '바텀'], ['none', '정하지 않음']]],
+    target: ['한타 목표', [['carry', '딜러 노리기', '뒤쪽 딜러부터 노린다'], ['front', '앞라인부터', '가까운 적부터 차례로'], ['peel', '우리 딜러 보호', '우리 원딜·미드를 지키며 싸운다']]],
+    vision: ['시야', [['deep', '깊게', '상대 정글까지 와드. 갱을 미리 보고 오브젝트 준비가 빠르다. 와드 박다 잡히기도'], ['norm', '보통', '강가 위주'], ['home', '우리 정글 위주', '카정을 잘 막지만 오브젝트 준비가 늦다']]],
+  },
+  // 팀 전술 이름은 지시 묶음(프리셋)
+  PRESET: {
+    late: { aggr: 'safe', obj: 'bal', setup: 'five', target: 'peel', vision: 'home' },
+    early: { aggr: 'aggr', obj: 'top', setup: '14', target: 'carry', vision: 'deep' },
+    fight: { aggr: 'aggr', obj: 'drag', setup: 'five', target: 'front', vision: 'norm' },
+    snow: { aggr: 'norm', obj: 'drag', setup: '14', target: 'carry', vision: 'deep' },
+    bal: { aggr: 'norm', obj: 'bal', setup: '14', target: 'front', vision: 'norm' },
+  },
+  insOf(T) { return { ...this.PRESET.bal, focus: 'none', ...(T && T.team && this.PRESET[T.team] || {}), ...(T && T.ins || {}) }; },
+  // 코치 의견: 조합과 지시가 어긋나는 곳을 말로 (숫자 없이)
+  advice(S, k) {
+    const T = S.tactics[k], I = this.insOf(T), c = Style.comp(S.picks[k].map(x => x.c)), top = S.picks[k].find(x => x.role === 'TOP'), ts = top ? Style.of(top.c) : null, out = [];
+    if (I.aggr === 'aggr' && c.early < .42) out.push(['bad', '초반이 약한 조합인데 적극적으로 싸우면 손해 보는 교전이 많아집니다.']);
+    if (I.aggr === 'safe' && c.early > .55) out.push(['bad', '초반이 강한 조합입니다. 신중하게 가면 강점을 못 살립니다.']);
+    if (I.aggr === 'safe' && c.late > .55) out.push(['good', '후반을 보는 조합이라 신중한 운영이 잘 맞습니다.']);
+    if (I.setup !== 'five' && ts && ts.split < .35) out.push(['bad', `${Champions.byId[top.c].name}은(는) 사이드를 혼자 버티기 어려운 챔피언입니다.`]);
+    if (I.setup !== 'five' && ts && ts.split > .6) out.push(['good', `${Champions.byId[top.c].name}의 스플릿이 위협적입니다.`]);
+    if (I.setup === 'five' && c.fight > .58) out.push(['good', '한타 조합이라 뭉쳐 다니는 게 좋습니다.']);
+    if (I.target === 'carry' && c.engage < .4 && c.pick < .45) out.push(['bad', '들어갈 수단이 부족해 상대 딜러까지 닿기 어렵습니다.']);
+    if (I.target === 'peel' && c.peel < .35) out.push(['bad', '지켜 줄 챔피언이 부족합니다.']);
+    if (I.target === 'front' && c.poke > .55) out.push(['good', '포킹으로 앞라인부터 깎아 들어가는 그림이 좋습니다.']);
+    if (I.vision === 'deep' && c.pick > .55) out.push(['good', '끊어 먹는 조합이라 깊은 시야가 잘 맞습니다.']);
+    if (!out.length) out.push(['mid', '무난한 운영입니다. 크게 어긋나는 곳은 없습니다.']);
+    return out.slice(0, 3);
+  },
   teamFits(S, k) { const c = Style.comp(S.picks[k].map(x => x.c)); return Object.fromEntries(Object.entries(this.TEAM_TAC).map(([id, x]) => [id, this.pct(x.f(c))])); },
   roleFits(S, k, r) { const x = S.picks[k].find(y => y.role === r); const s = x ? Style.of(x.c) : null; return Object.fromEntries(this.ROLE_TAC[r].map(([id, , f]) => [id, s ? this.pct(f(s)) : 50])); },
   // 라커룸에서 정한 밴 방향: 그 포지션 상대 선수가 다룰 줄 아는 챔피언에 가산 (상대 팀은 우리 에이스 쪽을 노린다)
@@ -293,7 +327,22 @@ const Draft = {
     return .6 + (known ? .9 : 0);
   },
   // 코치가 고르는 전술: 적합도 1위 (역량이 낮으면 가끔 2위). 라커룸에서 정한 공략 라인이 있으면 정글은 갱킹, 그 라인은 압박
-  coachTac(S, k) { const t = this.coachTac0(S, k), pl = this.plan(S, k); if (pl && pl.focus) { const r = { top: 'TOP', mid: 'MID', bot: 'BOT' }[pl.focus]; t.roles.JGL = 'gank'; if (r && this.ROLE_TAC[r].some(x => x[0] === 'press')) t.roles[r] = 'press'; } return t; },
+  coachTac(S, k) {
+    const t = this.coachTac0(S, k), pl = this.plan(S, k), c = Style.comp(S.picks[k].map(x => x.c)), top = S.picks[k].find(x => x.role === 'TOP'), ts = top ? Style.of(top.c) : null;
+    const r20 = this.coach(this.side(S, k)).r / 20, sharp = G.rand(S.id + k, 'ins') < .4 + r20 * .6;     // 역량이 낮으면 세부 지시를 덜 맞춘다
+    const I = { ...this.PRESET[t.team], focus: 'none' };
+    if (sharp) {
+      if (ts) I.setup = ts.split > .55 ? (c.fight < .5 ? '131' : '14') : c.fight > .58 ? 'five' : I.setup;
+      I.target = c.engage > .55 || c.pick > .55 ? 'carry' : c.peel > .5 ? 'peel' : I.target;
+      I.aggr = c.early > .55 ? 'aggr' : c.late > .55 && c.early < .45 ? 'safe' : I.aggr;
+      // 공략 라인: 매치업이 가장 유리한 라인
+      const mu = ['TOP', 'MID', 'BOT'].map(r => { const a = S.picks[k].find(x => x.role === r), b = S.picks[k === 'B' ? 'R' : 'B'].find(x => x.role === r); return [r, a && b ? Stats.matchup(r, a.c, b.c).wr : .5]; }).sort((x, y) => y[1] - x[1])[0];
+      if (mu[1] > .54) I.focus = { TOP: 'top', MID: 'mid', BOT: 'bot' }[mu[0]];
+    }
+    if (pl && pl.focus) { I.focus = pl.focus; const r = { top: 'TOP', mid: 'MID', bot: 'BOT' }[pl.focus]; t.roles.JGL = 'gank'; if (r && this.ROLE_TAC[r].some(x => x[0] === 'press')) t.roles[r] = 'press'; }
+    t.ins = I;
+    return t;
+  },
   coachTac0(S, k) {
     const r20 = this.coach(this.side(S, k)).r / 20, best = (fits, key) => { const l = Object.entries(fits).sort((a, b) => b[1] - a[1]); return (G.rand(S.id + key + k, 'tac') < (1 - r20) * .6 && l[1] ? l[1] : l[0])[0]; };  // 역량 13이면 약 20% 확률로 2순위
     return { team: best(this.teamFits(S, k), 'team'), roles: Object.fromEntries(G.ROLES.map(r => [r, best(this.roleFits(S, k, r), r)])) };
@@ -301,8 +350,8 @@ const Draft = {
   initTactics(S) {
     if (!S.us) { S.tactics = { B: this.coachTac(S, 'B'), R: this.coachTac(S, 'R') }; S.rec = S.tactics.B; return; }
     const opp = S.us === 'B' ? 'R' : 'B';
-    S.tactics = { [opp]: this.coachTac(S, opp), [S.us]: S.mode === 'delegate' ? this.coachTac(S, S.us) : { team: null, roles: {} } };
     S.rec = this.coachTac(S, S.us);
+    S.tactics = { [opp]: this.coachTac(S, opp), [S.us]: JSON.parse(JSON.stringify(S.rec)) };   // 코치 안에서 시작해 감독이 고친다
   },
   fitTotal(S, k) {
     const T = S.tactics[k]; if (!T || !T.team) return null;
@@ -311,7 +360,8 @@ const Draft = {
   },
   confirm(S) {
     const T = S.tactics[S.us];
-    if (!T.team || G.ROLES.some(r => !T.roles[r])) { UI.toast('팀 전술과 다섯 포지션 전술을 모두 골라 주세요'); return false; }
+    if (G.ROLES.some(r => !T.roles[r])) { UI.toast('다섯 포지션 전술을 모두 골라 주세요'); return false; }
+    T.ins = this.insOf(T);
     S.phase = 'ready';
     S.series.games.push({ game: S.game, teams: S.teams, bans: S.bans, picks: S.picks, tactics: S.tactics });
     (App.state.plans ||= {})[S.series.key] = { series: S.series, date: Clock.today() };
@@ -516,47 +566,44 @@ const Draft = {
   },
   tacticsView(el, S) {
     clearInterval(this._tick); clearTimeout(this._ai);
-    const us = S.us, opp = us === 'B' ? 'R' : 'B', T = S.tactics[us], my = this.side(S, us), ot = this.side(S, opp);
-    const tf = this.teamFits(S, us), total = this.fitTotal(S, us), ready = S.phase === 'ready';
+    const us = S.us, opp = us === 'B' ? 'R' : 'B', T = S.tactics[us], my = this.side(S, us), ot = this.side(S, opp), ready = S.phase === 'ready';
+    T.ins = this.insOf(T); const I = T.ins, R = this.insOf(S.rec);
     const played = (S.series.games.find(x => x.game === S.game) || {}).result || null;
     const champRow = k => `<div class="dr-picks-row">${S.picks[k].slice().sort((a, b) => G.ROLES.indexOf(a.role) - G.ROLES.indexOf(b.role)).map(x => `<div class="dr-pk">${SoloQ.ic(x.c)}<small>${G.pos(x.role)}</small></div>`).join('')}<span class="dr-bn">${S.bans[k].map(c => SoloQ.ic(c, 'ban')).join('')}</span></div>`;
-    const tag = v => v >= 70 ? 'good' : v >= 45 ? 'mid' : 'bad';
+    const star = on => on ? ' <i class="dr-star">★</i>' : '';
+    const adv = this.advice(S, us);
     el.innerHTML = `
       <div class="cr-page dr-tac">
-        ${Career.head(`전술 채택 <small>${S.series.bo > 1 ? `Bo${S.series.bo} · ${S.game}세트 · 매치 스코어 ${UI.esc(my.short)} ${Season.seriesScore(S.series)[my.id] || 0} : ${Season.seriesScore(S.series)[ot.id] || 0} ${UI.esc(ot.short)}` : '단판'}</small>`, played ? `${S.game}세트는 ${UI.esc(Schedule.team(played.win).short)} 승리로 끝났습니다 (${Sim.clock(played.t)} · 킬 ${played.kills.B}:${played.kills.R}).` : `밴픽이 끝났습니다. 조합에 맞는 전술을 고를수록 적합도가 높아집니다.${S.mode === 'delegate' ? ' 코치가 추천대로 채워 두었습니다. 바꿔도 됩니다.' : ''}`)}
+        ${Career.head(`전술 <small>${S.series.bo > 1 ? `Bo${S.series.bo} · ${S.game}세트 · 매치 스코어 ${UI.esc(my.short)} ${Season.seriesScore(S.series)[my.id] || 0} : ${Season.seriesScore(S.series)[ot.id] || 0} ${UI.esc(ot.short)}` : '단판'}</small>`, played ? `${S.game}세트는 ${UI.esc(Schedule.team(played.win).short)} 승리로 끝났습니다 (${Sim.clock(played.t)} · 킬 ${played.kills.B}:${played.kills.R}).` : '전술은 경기 중 판단 기준입니다. 조합과 맞지 않는 지시는 경기에서 불리한 싸움으로 돌아옵니다. ★는 코치 추천.')}
         <div class="dr-tac-top">
           <div class="card"><div class="card-head"><h3>${G.team(my, 'xs')} ${UI.esc(my.short)} 조합 <small>우리 팀</small></h3></div>${champRow(us)}${this.bars(S, us)}</div>
-          <div class="card dr-total"><span>전술 적합도</span><b class="${total == null ? '' : tag(total)}">${total == null ? '-' : total}</b><small>${total == null ? '전술을 고르면 계산됩니다' : total >= 70 ? '조합과 잘 맞습니다' : total >= 45 ? '무난합니다' : '조합과 어긋납니다'}</small>
-            ${ready ? '<em class="dr-saved">전술 확정됨</em>' : ''}</div>
+          <div class="card dr-advice"><div class="card-head"><h3>코치 의견</h3><small>${UI.esc(this.coach(my).name)}</small></div>${adv.map(([t, x]) => `<p class="adv ${t}">${UI.esc(x)}</p>`).join('')}${ready ? '<em class="dr-saved">전술 확정됨</em>' : ''}</div>
           <div class="card"><div class="card-head"><h3>${G.team(ot, 'xs')} ${UI.esc(ot.short)} 조합 <small>상대</small></h3></div>${champRow(opp)}${this.bars(S, opp)}</div>
         </div>
-        <div class="card"><div class="card-head"><h3>팀 전술</h3><small class="cr-dim">★ 코치 추천</small></div>
-          <div class="dr-tt">${Object.entries(this.TEAM_TAC).map(([id, x]) => `<button class="dr-opt ${T.team === id ? 'on' : ''}" data-team="${id}" ${ready ? 'disabled' : ''}><b>${x.n}${S.rec.team === id ? ' <i class="dr-star">★</i>' : ''}</b><small>${x.d}</small><span class="dr-fit ${tag(tf[id])}"><i style="width:${tf[id]}%"></i></span><em>${tf[id]}%</em></button>`).join('')}</div>
+        <div class="card"><div class="card-head"><h3>팀 지시</h3><div class="dr-presets">${Object.entries(this.TEAM_TAC).map(([id, x]) => `<button class="btn-ghost sm dr-pre ${T.team === id ? 'on' : ''}" data-pre="${id}" title="${UI.esc(x.d)}" ${ready ? 'disabled' : ''}>${x.n}${star(S.rec.team === id)}</button>`).join('')}</div></div>
+          <div class="dr-ins">${Object.entries(this.INS).map(([key, [label, opts]]) => `<div class="dr-ins-row"><span>${label}</span><div class="seg">${opts.map(([v, n, d]) => `<button class="${I[key] === v ? 'on' : ''}" data-ins="${key}" data-v="${v}" title="${UI.esc(d || '')}" ${ready ? 'disabled' : ''}>${n}${star(R[key] === v)}</button>`).join('')}</div></div>`).join('')}</div>
         </div>
-        <div class="card"><div class="card-head"><h3>포지션별 전술</h3></div>
-          <div class="dr-rt">${G.ROLES.map(r => { const x = S.picks[us].find(y => y.role === r), p = x && Player.find(x.pid)?.p, fits = this.roleFits(S, us, r); return `
+        <div class="card"><div class="card-head"><h3>포지션별 지시</h3></div>
+          <div class="dr-rt">${G.ROLES.map(r => { const x = S.picks[us].find(y => y.role === r), p = x && Player.find(x.pid)?.p; return `
             <div class="dr-rt-row"><div class="dr-rt-who">${x ? SoloQ.ic(x.c) : ''}<div>${G.pos(r)} <b>${p ? UI.esc(p.name) : '공석'}</b><small>${x ? UI.esc(Champions.byId[x.c].name) : ''}</small></div></div>
-              <div class="dr-rt-opts">${this.ROLE_TAC[r].map(([id, n]) => `<button class="dr-opt sm ${T.roles[r] === id ? 'on' : ''}" data-role="${r}" data-v="${id}" ${ready ? 'disabled' : ''}><b>${n}${S.rec.roles[r] === id ? ' <i class="dr-star">★</i>' : ''}</b><span class="dr-fit ${tag(fits[id])}"><i style="width:${fits[id]}%"></i></span><em>${fits[id]}%</em></button>`).join('')}</div></div>`; }).join('')}</div>
+              <div class="dr-rt-opts">${this.ROLE_TAC[r].map(([id, n]) => `<button class="dr-opt sm ${T.roles[r] === id ? 'on' : ''}" data-role="${r}" data-v="${id}" ${ready ? 'disabled' : ''}><b>${n}${star(S.rec.roles[r] === id)}</b></button>`).join('')}</div></div>`; }).join('')}</div>
         </div>
-        <div class="dr-tac-foot">
-          ${ready ? `<span class="cr-dim">${played ? (Season.seriesOver(S.series) ? '경기가 끝났습니다.' : '다음 세트 밴픽으로 넘어갈 수 있습니다.') : '밴픽·전술이 저장됐습니다. 경기를 시작하면 이 밴픽과 전술로 치릅니다.'}</span>
+        <div class="dr-tac-foot"><span class="dr-series">${S.series.bo > 1 ? `Bo${S.series.bo} · ${S.game}세트 · ${UI.esc(my.short)} ${Season.seriesScore(S.series)[my.id] || 0} : ${Season.seriesScore(S.series)[ot.id] || 0} ${UI.esc(ot.short)}` : '단판'} · ★ 코치 추천</span>
+          ${ready ? `<span class="cr-dim">${played ? (Season.seriesOver(S.series) ? '경기가 끝났습니다.' : '다음 세트로 넘어갈 수 있습니다.') : '밴픽·전술이 저장됐습니다.'}</span>
             ${played ? '' : `<button class="btn-primary dr-watch">${S.game}세트 경기 시작</button>`}
-            ${(S.series.games.find(x => x.game === S.game) || {}).result && !Season.seriesOver(S.series) ? `<button class="btn-ghost dr-nextgame">${S.game + 1}세트 밴픽 (피어리스)</button>` : ''}
             <button class="btn-ghost dr-done">밴픽 마치기</button>`
           : `<button class="btn-ghost dr-rec">코치 추천대로</button><button class="btn-primary dr-ok">전술 확정 · 경기 시작 ▶</button>`}
         </div>
       </div>`;
     el.querySelector('.dr-tac').onclick = e => {
       const b = e.target.closest('button'); if (!b || b.disabled) return;
-      if (b.dataset.team) T.team = b.dataset.team;
+      if (b.dataset.pre) { T.team = b.dataset.pre; T.ins = { ...this.PRESET[T.team], focus: I.focus }; }
+      else if (b.dataset.ins) { T.ins = { ...I, [b.dataset.ins]: b.dataset.v }; }
       else if (b.dataset.role) T.roles[b.dataset.role] = b.dataset.v;
-      else if (b.classList.contains('dr-rec')) { T.team = S.rec.team; T.roles = { ...S.rec.roles }; }
+      else if (b.classList.contains('dr-rec')) { T.team = S.rec.team; T.roles = { ...S.rec.roles }; T.ins = { ...this.insOf(S.rec) }; }
       else if (b.classList.contains('dr-watch')) return Live.start(S);
       else if (b.classList.contains('dr-ok')) { if (!this.confirm(S)) return; return Live.start(S); }
-      else if (b.classList.contains('dr-nextgame')) {
-        this.start({ opp: ot.id, side: played && played.win === my.id ? 'R' : 'B', mode: S.mode, bo: S.series.bo, key: S.official ? S.series.key : null, continueSeries: true });   // 진 팀이 블루
-        return this.render(el);
-      } else if (b.classList.contains('dr-done')) { App.state.draft = null; return this.render(el); }
+      else if (b.classList.contains('dr-done')) { App.state.draft = null; return this.render(el); }
       else return;
       this.tacticsView(el, S);
     };
