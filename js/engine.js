@@ -147,6 +147,9 @@ const Engine = {
     for (const fn of this.daily) {
       try { const r = fn(Clock.today()); reason = reason || r; } catch (e) { console.error('[engine]', e); }
     }
+    // 그날 처리 중에 대진이 채워진 우리 경기(플레이오프·국제대회)도 경기날로 멈춘다.
+    // (경기일 확인이 대진 채우기보다 먼저 돌아서, 멈추지 않고 다음 날 코치가 대신 치르던 문제)
+    if (!reason && typeof Season !== 'undefined') { const m = Season.today(); if (m) reason = `오늘 ${Schedule.opponent(m, App.state.teamId).short}전 경기날입니다`; }
     const important = this.today.find(m => m.stop || m.priority !== 'normal' || m.choices);
     return reason || (important ? `새 메시지: ${important.subject}` : null);
   },
