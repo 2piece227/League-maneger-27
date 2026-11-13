@@ -86,7 +86,7 @@ const Sim = {
   OBJ: { drag: '드래곤', grubs: '공허 유충', herald: '전령', baron: '바론' },
   // 오브젝트마다 모이는 포지션 (드래곤은 바텀 쪽 4인, 유충·전령은 탑 쪽, 바론은 5인)
   OBJ_ROLES: { drag: ['JGL', 'MID', 'BOT', 'SUP'], grubs: ['JGL', 'TOP', 'MID'], herald: ['JGL', 'TOP', 'MID', 'SUP'], baron: ['TOP', 'JGL', 'MID', 'BOT', 'SUP'] },
-  OBJ_NEED: { drag: 30, grubs: 30, herald: 30, baron: 40 },
+  OBJ_NEED: { drag: 30, grubs: 12, herald: 30, baron: 40 },   // 유충은 한 마리씩 (3마리)
   LANE_OF: { TOP: 'top', MID: 'mid', BOT: 'bot', SUP: 'bot' },
   DRAGONS: [['화염', 'dragon_infernal'], ['바다', 'dragon_ocean'], ['바람', 'dragon_cloud'], ['대지', 'dragon_mountain'], ['마법공학', 'dragon_hextech'], ['화학공학', 'dragon_chemtech']],
   ICON: { baron: 'baron', herald: 'riftherald', grubs: 'grub', tower: 'tower', inhib: 'inhibitor', nexusT: 'tower', nexus: 'nexus' },
@@ -492,7 +492,7 @@ const Sim = {
       }
       if (!wk) continue;
       const s = g.side[wk];
-      ob.prog = {}; ob.fought = false;
+      ob.prog = {}; if (o !== 'grubs' || (ob.left ?? 3) <= 1) ob.fought = false;
       if (o === 'drag') {
         if (this.elder(g)) {
           // 영혼이 나온 뒤에는 장로 드래곤: 2분 30초 동안 강력한 버프
@@ -507,7 +507,15 @@ const Sim = {
           else ob.at = g.t + 330;
           this.objGo(g, ob);
         }
-      } else if (o === 'grubs') { s.grubs += 3; this.mark(g, wk, 'grubs', 'grub', '공허 유충 처치'); ob.at = null; }
+      } else if (o === 'grubs') {
+        // 유충 3마리는 한 마리씩: 상대가 오면 나눠 먹기도 한다
+        ob.left = (ob.left ?? 3) - 1; s.grubs++;
+        this.mark(g, wk, 'grubs', 'grub', `공허 유충 처치 (${3 - ob.left}/3)`);
+        if (ob.left > 0) continue;
+        const o2 = g.side[this.other(wk)];
+        if (o2.grubs) this.say(g, 'anal', `유충은 ${s.t.short} ${s.grubs}마리, ${o2.t.short} ${o2.grubs}마리로 나눠 가졌습니다.`);
+        ob.at = null;
+      }
       else if (o === 'herald') { s.herald++; this.mark(g, wk, 'herald', 'riftherald', '전령 처치'); ob.at = null; s.push = { lane: g.r() < .5 ? 'top' : 'mid', until: g.t + 60 }; this.say(g, 'anal', `${this.josa(s.t.short, '이', '가')} 전령을 ${this.laneKo(s.push.lane)}에 풀러 갑니다.`); }
       else {
         s.baron++; s.baronUntil = g.t + 180; this.mark(g, wk, 'baron', 'baron', '바론 처치'); ob.at = g.t + 420; this.objGo(g, ob);
