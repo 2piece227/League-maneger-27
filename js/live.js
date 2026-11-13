@@ -39,7 +39,7 @@ const Live = {
           </div>
           <div class="lv-mid">
             <div class="lv-side b"></div>
-            <div class="lv-mapbox"><div class="lv-map"><img class="lv-bg" src="assets/map/rift.webp" alt=""><svg class="lv-svg" viewBox="0 0 100 100" preserveAspectRatio="none">${this.structures()}</svg><div class="lv-fx"></div><div class="lv-icons"></div><div class="lv-feed"></div><div class="lv-klog"></div><div class="lv-over"></div></div></div>
+            <div class="lv-mapbox"><div class="lv-map"><img class="lv-bg" src="assets/map/rift.webp" alt=""><svg class="lv-svg" viewBox="0 0 100 100" preserveAspectRatio="none">${this.structures()}</svg><div class="lv-fx"></div><div class="lv-objs"></div><div class="lv-icons"></div><div class="lv-feed"></div><div class="lv-klog"></div><div class="lv-over"></div></div></div>
             <div class="lv-side r"></div>
           </div>
           <div class="lv-bot">
@@ -134,6 +134,12 @@ const Live = {
     const objs = k => { const s = g.side[k]; return [...s.drag.map(d => `<i title="${d[0]} 드래곤">${this.ico(d[1])}</i>`), s.grubs ? `<i title="공허 유충">${this.ico('grub')}<b>${s.grubs}</b></i>` : '', s.herald ? `<i title="전령">${this.ico('riftherald')}</i>` : '', s.baron ? `<i title="바론" class="${s.baronUntil > g.t ? 'bn' : 'off'}">${this.ico('baron')}</i>` : '']; };
     set('.lv-dr.b', objs('B').join('')); set('.lv-dr.r', objs('R').reverse().join(''));
     $('.lv-clock', el).textContent = Sim.clock(g.t);
+    // 맵 위 오브젝트: 나와 있는 동안 둥지에 아이콘 (드래곤은 다음에 나올 속성)
+    set('.lv-objs', ['drag', 'grubs', 'herald', 'baron'].filter(o => Sim.objUp(g, o)).map(o => {
+      const [x, y] = Rift.pos(Sim.PIT[o]), n = g.side.B.drag.length + g.side.R.drag.length;
+      const ic = o === 'drag' ? g.dragSeq[Math.min(n, 2)][1] : Sim.ICON[o], nm = o === 'drag' ? `${g.dragSeq[Math.min(n, 2)][0]} 드래곤` : Sim.OBJ[o];
+      return `<div class="lv-obj ${o}" style="left:${x}%;top:${y}%" title="${nm}">${this.ico(ic)}</div>`;
+    }).join(''));
     // 양옆 선수 · 맵 아이콘: 처음 한 번 만들고 값만 바꾼다
     if (!el.querySelector('.lv-pl')) {
       ['B', 'R'].forEach(k => {

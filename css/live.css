@@ -191,3 +191,10 @@
   .lv-st { grid-template-columns: 20px 1fr 26px 54px 26px 1fr 20px; }
   .lv-bot { grid-template-columns: 0 minmax(0, 1fr) 0; }
 }
+
+/* 맵 위 오브젝트 (생성되어 있는 동안) */
+.lv-objs { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
+.lv-obj { position: absolute; width: 5.4%; aspect-ratio: 1; transform: translate(-50%, -50%); border-radius: 50%; background: rgba(8, 12, 20, .75); border: 2px solid #c8a24a; box-shadow: 0 0 10px rgba(200, 162, 74, .55); display: grid; place-items: center; animation: lvObjIn .4s ease-out; }
+.lv-obj.baron { width: 6.4%; border-color: #b46cff; box-shadow: 0 0 12px rgba(180, 108, 255, .6); }
+.lv-obj .ob-ic { width: 78%; height: 78%; object-fit: contain; }
+@keyframes lvObjIn { from { transform: translate(-50%, -50%) scale(.3); opacity: 0; } to { transform: translate(-50%, -50%) scale(1); opacity: 1; } }
