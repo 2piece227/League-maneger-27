@@ -85,21 +85,21 @@ const Live = {
     }));
     return out.join('');
   },
-  // 한 틱(경기 10초) = 실제 1초 / 배속. 화면 프레임마다 시간을 쌓고, 한 틱이 차면 그 프레임에서 바로 다음 틱을 계산한다
-  // (따로 도는 타이머가 늦게 와서 아이콘이 멈칫하던 문제를 없앤다)
+  // 한 틱(경기 1초) = 실제 0.1초 / 배속 (1배속 = 경기 10초가 실제 1초). 화면 프레임마다 시간을 쌓고, 한 틱이 차면 그 프레임에서 바로 다음 틱을 계산한다
+  TICK: 100,
   advance(dt) {
-    const g = this.g, period = 1000 / this.speed;
+    const g = this.g, period = this.TICK / this.speed;
     if (!this.playing || g.over) return;
     this.acc += Math.min(dt, 250);                                   // 탭이 잠깐 멈췄다 돌아와도 한꺼번에 몰아 돌지 않게
     let n = 0;
-    while (this.acc >= period && !g.over && n++ < 3) {
+    while (this.acc >= period && !g.over && n++ < 40) {
       this.acc -= period;
       try { Sim.step(g); } catch (e) { console.error('[sim]', e); this.playing = false; UI.toast('경기 진행 중 오류: ' + e.message, 5000); return; }
       this.dirty = true;
     }
     if (g.over) { this.playing = false; this.acc = period; setTimeout(() => this.finish(), 900 / this.speed); }
   },
-  // 10초 사이: 각 선수가 지나간 길(trail)을 따라 부드럽게 그린다
+  // 틱 사이: 각 선수가 지나간 길(trail)을 따라 부드럽게 그린다
   at(trail, f) {
     if (!trail || trail.length < 2) return trail ? trail[trail.length - 1] : null;
     let total = 0; const seg = [];
@@ -115,7 +115,7 @@ const Live = {
       if (!this.el || !document.body.contains(this.el) || !this.el.querySelector('.lv-wrap')) return;
       this.advance(now - last); last = now;
       if (this.dirty) { this.dirty = false; this.draw(); }
-      const g = this.g, f = g.over ? 1 : Math.min(1, this.acc / (1000 / this.speed));
+      const g = this.g, f = g.over ? 1 : Math.min(1, this.acc / (this.TICK / this.speed));
       if (!this.ics || !this.ics[0] || !this.ics[0].isConnected) this.ics = $$('.lv-ic', this.el);
       const W = this.mw || 1, H = this.mh || 1;
       for (const ic of this.ics) { const p = g.pl[ic._i ?? (ic._i = +ic.dataset.i)], pos = this.at(p.trail, f) || p.pos; ic.style.transform = `translate3d(${(pos[0] * W / 100).toFixed(1)}px, ${(pos[1] * H / 100).toFixed(1)}px, 0) translate(-50%, -50%)`; }
@@ -158,15 +158,20 @@ const Live = {
       Rift.TOWER[k][l].forEach((n, i) => { const c = el.querySelector(`[data-tw="${k}-${l}-${i}"]`); if (c) c.classList.toggle('down', g.side[k].thp[l][i] <= 0); });
       const ih = el.querySelector(`[data-ih="${k}-${l}"]`); if (ih) ih.classList.toggle('down', !g.side[k].inhib[l]);
     }));
-    // 효과: 귀환 · 텔레포트 · 교전 · 파괴
-    const dur = (1 / this.speed).toFixed(2);
-    set('.lv-fx', g.fx.filter(f => g.t - f.t <= 10).map(f => {
-      const [x, y] = f.at, sd = f.side === 'B' ? 'b' : 'r';
-      if (f.type === 'tp') return `<div class="lv-fx-tp ${sd}" style="left:${x}%;top:${y}%;--d:${dur}s"></div><div class="lv-fx-tpo ${sd}" style="left:${f.from[0]}%;top:${f.from[1]}%;--d:${dur}s"></div>`;
-      if (f.type === 'recall') return `<div class="lv-fx-rc ${sd}" style="left:${x}%;top:${y}%;--d:${dur}s"></div>`;
-      if (f.type === 'fight') return `<div class="lv-fx-fight" style="left:${x}%;top:${y}%;--d:${dur}s"></div>`;
-      return `<div class="lv-fx-boom ${sd}" style="left:${x}%;top:${y}%;--d:${dur}s"></div>`;
-    }).join(''));
+    // 효과: 귀환(8초) · 텔레포트(4초) · 교전 · 파괴. 효과마다 따로 붙였다 떼서, 다른 효과가 생겨도 진행 중인 애니메이션이 처음부터 다시 돌지 않게
+    const fxBox = $('.lv-fx', el), live = new Set();
+    g.fx.forEach(f => {
+      const key = `${f.type}:${f.t}:${f.at.map(v => v.toFixed(1)).join(',')}`; live.add(key);
+      if (fxBox.querySelector(`[data-k="${key}"]`)) return;
+      const [x, y] = f.at, sd = f.side === 'B' ? 'b' : 'r', d = ((f.dur || 2) * this.TICK / 1000 / this.speed).toFixed(2), late = (-(g.t - f.t) * this.TICK / 1000 / this.speed).toFixed(2);
+      const css = `left:${x}%;top:${y}%;--d:${d}s;animation-delay:${late}s`;
+      const html = f.type === 'tp' ? `<div class="lv-fx-tp ${sd}" style="${css}"></div><div class="lv-fx-tpo ${sd}" style="left:${f.from[0]}%;top:${f.from[1]}%;--d:${d}s;animation-delay:${late}s"></div>`
+        : f.type === 'recall' ? `<div class="lv-fx-rc ${sd}" style="${css}"></div>`
+        : f.type === 'fight' ? `<div class="lv-fx-fight" style="${css}"></div>`
+        : `<div class="lv-fx-boom ${sd}" style="${css}"></div>`;
+      const w = document.createElement('div'); w.dataset.k = key; w.className = 'lv-fx-one'; w.innerHTML = html; fxBox.appendChild(w);
+    });
+    [...fxBox.children].forEach(c => { if (!live.has(c.dataset.k)) c.remove(); });
     // 킬·오브젝트 로그(맵 오른쪽 위, 최근 5개) + 가운데 알림은 새 사건마다 한 번씩
     set('.lv-klog', g.feed.slice(-5).reverse().map(f => f.obj
       ? `<div class="lv-kl ${f.side === 'B' ? 'b' : 'r'}"><span>${Sim.clock(f.t)}</span>${G.team(g.side[f.side].t, 'xs')}<i>›</i>${this.ico(f.icon)}</div>`

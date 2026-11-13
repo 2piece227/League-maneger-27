@@ -106,7 +106,7 @@
 .lv-res-btn { display: flex; gap: 8px; margin-top: 6px; }
 
 /* 하단: 선수 캠 + 스탯 */
-.lv-bot { display: grid; grid-template-columns: 170px minmax(0, 1fr) 170px; border-top: 1px solid #1d2840; background: #0a0f1a; height: 126px; flex: none; }
+.lv-bot { display: grid; grid-template-columns: 170px minmax(0, 1fr) 170px; grid-template-rows: 100%; border-top: 1px solid #1d2840; background: #0a0f1a; height: 126px; flex: none; overflow: hidden; }
 .lv-cam { position: relative; overflow: hidden; background: #0d1422; }
 .lv-cam img { width: 100%; height: 100%; object-fit: cover; object-position: center 20%; display: block; animation: lvFade .5s; }
 .lv-cam b { position: absolute; left: 0; right: 0; bottom: 0; padding: 3px 8px; font: 700 16px var(--f-ui); letter-spacing: .06em; text-transform: uppercase; background: linear-gradient(transparent, rgba(0, 0, 0, .9)); }
@@ -144,11 +144,12 @@
 
 /* 효과: 텔레포트 · 귀환 · 교전 · 파괴 */
 .lv-fx { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
-.lv-fx > div { position: absolute; transform: translate(-50%, -50%); border-radius: 50%; }
+.lv-fx-one { position: absolute; inset: 0; }
+.lv-fx-one > div { position: absolute; transform: translate(-50%, -50%); border-radius: 50%; }
 .lv-fx-tp { width: 7%; aspect-ratio: 1; border: 2px solid #c58cff; box-shadow: 0 0 16px 4px rgba(170, 110, 255, .7), inset 0 0 12px rgba(200, 150, 255, .8); animation: fxTp var(--d) ease-out; }
 .lv-fx-tp.r { border-color: #ff9ad0; box-shadow: 0 0 16px 4px rgba(255, 110, 190, .7), inset 0 0 12px rgba(255, 150, 210, .8); }
 .lv-fx-tpo { width: 4%; aspect-ratio: 1; border: 2px solid rgba(197, 140, 255, .8); animation: fxOut var(--d) ease-in forwards; }
-.lv-fx-rc { width: 6.5%; aspect-ratio: 1; border: 2px dashed #8ec5ff; box-shadow: 0 0 14px 3px rgba(90, 170, 255, .6); animation: fxSpin var(--d) linear infinite; }
+.lv-fx-rc { width: 6.5%; aspect-ratio: 1; border: 2px dashed #8ec5ff; box-shadow: 0 0 14px 3px rgba(90, 170, 255, .6); animation: fxSpin calc(var(--d) / 6) linear infinite; }
 .lv-fx-rc.r { border-color: #ffb0bc; box-shadow: 0 0 14px 3px rgba(255, 120, 140, .6); }
 .lv-fx-fight { width: 9%; aspect-ratio: 1; background: radial-gradient(circle, rgba(255, 210, 120, .55), rgba(255, 120, 60, .15) 60%, transparent 70%); animation: fxBoom var(--d) ease-out; }
 .lv-fx-boom { width: 6%; aspect-ratio: 1; background: radial-gradient(circle, rgba(255, 255, 255, .8), rgba(255, 170, 70, .4) 50%, transparent 70%); animation: fxBoom var(--d) ease-out forwards; }
@@ -168,11 +169,14 @@
   .lv-tm b { font-size: 18px; }
   .lv-st { grid-template-columns: minmax(0, 1fr) 20px 48px 26px 58px 26px 48px 20px minmax(0, 1fr); font-size: 11.5px; }
   .lv-st .it-ic { width: 14px; height: 14px; }
+  .lv-stats { gap: 1px; padding: 3px 6px; }
+  .lv-st .sq-ic { width: 19px; height: 19px; }
   .lv-line { font-size: 12px; }
 }
 /* 세로로 낮은 화면 */
 @media (max-height: 640px) {
   .lv-bot { height: 100px; }
+  .lv-st .sq-ic { width: 17px; height: 17px; } .lv-st .it-ic { width: 12px; height: 12px; } .lv-st { font-size: 11px; }
   .lv-top { padding: 3px 10px; }
   .lv-ms { height: 30px; font-size: 22px; }
 }

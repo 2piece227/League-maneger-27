@@ -22,7 +22,7 @@ const Season = {
       const us = App.state.teamId === blue ? 'B' : App.state.teamId === red ? 'R' : null;
       const S = Draft.make({ series, teams: { B: blue, R: red }, us, mode: 'delegate', official: true });
       Draft.auto(S);
-      const g = Sim.create(S, S.game); let n = 0; while (!g.over && n++ < 400) Sim.step(g);
+      const g = Sim.create(S, S.game); let n = 0; while (!g.over && n++ < 4000) Sim.step(g);
       series.games[series.games.length - 1].result = this.gameResult(g);
     }
     return series;
