@@ -58,6 +58,7 @@ const Cond = {
         // 통치자: 한 번은 바닥(0 아래)으로 떨어지지 않고 버틴다. 다시 폭의 절반 위로 올라오면 재충전
         if (Traits.cfg && Traits.has(p.id, 'ruler')) { const F = (S.floor ||= {}); if (nf < 0 && !F[p.id]) { nf = .5; F[p.id] = 1; } else if (nf >= a * .5) F[p.id] = 0; }
         S.f[p.id] = nf;
+        const H = (S.hist ||= {}), h = (H[p.id] ||= []); h.push(nf); if (h.length > 12) h.shift();   // 최근 12경기 컨디션 흐름
       });
     });
     this.counsel();
@@ -111,7 +112,9 @@ const Cond = {
   },
   morale(pid) { const m = (World.morale()[pid] || 0); return Math.max(-1.5, Math.min(1.5, m * .25)); },
   // 엔진에 들어가는 개인 보정 (OVR 단위)
-  ovr(p) { return this.of(p.id) + this.morale(p.id) + (typeof Rel !== 'undefined' ? Rel.ovr(p.id) : 0); },
+  ovr(p) { return this.parts(p).total; },
+  parts(p) { const form = this.of(p.id), morale = this.morale(p.id), rel = typeof Rel !== 'undefined' ? Rel.ovr(p.id) : 0; return { form, morale, rel, total: form + morale + rel }; },
+  hist(pid) { return ((this.st().hist || {})[pid] || []); },
   // 팀 보정 (tpow 단위): 팀합 최대 +3, 소통 최대 -3
   team(t, line) { return this.chem(line) * .25 + this.comm(t, line); },
 };

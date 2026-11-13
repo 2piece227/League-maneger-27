@@ -75,7 +75,17 @@ const Traits = {
       });
       // 자동 특성은 무작위 순서로 (같은 선수는 항상 같은 순서)
       auto.sort((x, y) => G.rand(p.id, 'ord:' + x) - G.rand(p.id, 'ord:' + y));
-      map[p.id] = [...new Set([...got, ...auto])].filter(id => this.byId[id]).slice(0, max);
+      // 몇 개를 가질지: 3개는 리그 최상위(OVR 94+)만. 보통은 1~2개, 없는 선수도 많다
+      const o = p.ovr || 60, r = G.rand(p.id, 'trn');
+      const want = o >= 94 ? (r < .35 ? 3 : r < .8 ? 2 : 1) : o >= 88 ? (r < .05 ? 0 : r < .55 ? 1 : 2) : o >= 78 ? (r < .15 ? 0 : r < .75 ? 1 : 2) : (r < .35 ? 0 : r < .85 ? 1 : 2);
+      const cap = Math.min(max, o >= 94 ? 3 : 2), n = Math.min(cap, Math.max(want, Math.min(got.length, cap)));
+      // 후보가 모자라면: 이 선수가 가장 잘하는 능력치에 맞는 범용 특성으로 채운다
+      if (new Set([...got, ...auto]).size < n) {
+        const extra = this.defs.filter(t => t.auto && t.auto.attr && !['clutch'].includes(t.id) && (!t.auto.roles || t.auto.roles.includes(p.role)) && !got.includes(t.id) && !auto.includes(t.id))
+          .map(t => [t.id, this.val(p, t.auto, null) || 0]).sort((x, y) => y[1] - x[1]).map(x => x[0]);
+        auto.push(...extra);
+      }
+      map[p.id] = [...new Set([...got, ...auto])].filter(id => this.byId[id]).slice(0, n);
     });
     return map;
   },
