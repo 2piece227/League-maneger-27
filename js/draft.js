@@ -77,11 +77,16 @@ const Draft = {
   grade(r) { return r >= 17 ? '최상급' : r >= 13 ? '우수' : r >= 9 ? '보통' : r >= 5 ? '미흡' : '부족'; },
 
   // ---------- 평가 ----------
-  lineup(t) { return G.ROLES.map(r => { const ps = t.players.filter(p => p.role === r).sort((a, b) => (a.sub - b.sub) || (b.ovr || 0) - (a.ovr || 0)); return ps[0] || null; }); },
+  lineup(t) {
+    // 국제대회 기간: 우리 팀은 등록한 주전만
+    const reg = t && t.id === App.state.teamId && typeof Register !== 'undefined' && Register.active();
+    if (reg) return G.ROLES.map(r => { const id = reg.starters[r], hit = id && Player.find(id); return hit ? hit.p : null; });
+    return G.ROLES.map(r => { const ps = t.players.filter(p => p.role === r).sort((a, b) => (a.sub - b.sub) || (b.ovr || 0) - (a.ovr || 0)); return ps[0] || null; }); },
   metaMap() {
     if (this._meta) return this._meta;
     const agg = {};
-    Object.values(Mastery.pools || {}).forEach(l => l.forEach(e => { agg[e.c] = (agg[e.c] || 0) + (e.g26 || 0); }));
+    if (this.M) Champions.list.forEach(ch => { agg[ch.id] = this.blend(ch.nameEn); });
+    else Object.values(Mastery.pools || {}).forEach(l => l.forEach(e => { agg[e.c] = (agg[e.c] || 0) + (e.g26 || 0); }));
     const ranked = Object.entries(agg).filter(([, g]) => g > 0).sort((a, b) => b[1] - a[1]);
     this._meta = {}; ranked.forEach(([c], i) => { this._meta[c] = Math.pow(1 - i / ranked.length, 1.6); });
     return this._meta;
@@ -142,8 +147,13 @@ const Draft = {
     return { x: [this.metaNow(c), ck.v, co.v, flex, fit, fitO, syn, counter, threat, Stats.wr(c) - .5], ck, co, synW, cW, tW };
   },
   // 게임 안 메타: 시즌 전체 픽밴 비율을 기준으로, 2주마다 바뀌는 "패치"가 챔피언마다 위아래로 흔든다 (같은 메타가 시즌 내내 고정되지 않게)
+  // 시즌 메타 = 2026 프로 밴픽률 70% + 상위권 솔랭 밴픽률 30% (솔랭 자료 data/soloq-meta.json 이 없으면 프로만)
+  blend(nm) {
+    const pro = this.M ? (this.M.meta_season || this.M.meta)[nm] || 0 : 0, sq = Stats.soloq && Stats.soloq.champs;
+    return sq ? pro * .7 + ((sq[nm] || {}).presence || 0) * .3 : pro;
+  },
   metaNow(c) {
-    const nm = Stats.name(c), base = (this.M.meta_season || this.M.meta)[nm] || 0;
+    const nm = Stats.name(c), base = this.blend(nm);
     const patch = Math.floor(Fmt.daysBetween(`${Clock.year()}-01-01`, Clock.today()) / 14);
     const r1 = G.rand(nm + ':patch:' + Clock.year() + ':' + patch, 'mt'), r2 = G.rand(nm + ':patch:' + Clock.year() + ':' + (patch - 1), 'mt');
     const shift = Math.exp(((r1 - .5) * .9 + (r2 - .5) * .45));     // 지난 패치 영향도 조금 남는다
@@ -212,9 +222,10 @@ const Draft = {
   // ---------- 진행 ----------
   start(o) {
     const my = Roster.team(), opp = this.team(o.opp);
-    const prev = this.st(), series = o.continueSeries && prev && prev.series ? prev.series : { key: o.key || 'practice:' + Clock.today() + ':' + opp.id, bo: o.bo || 1, games: [] };
-    const us = o.side || 'B';
+    const prev = this.st(), series = o.continueSeries && prev && prev.series ? prev.series : { key: o.key || (o.scrim ? 'scrim:' + o.scrim : 'practice:' + Clock.today() + ':' + opp.id), bo: o.bo || 1, games: [], ...(o.fixed ? { fixed: o.fixed } : {}) };
+    const us = o.side || 'B', scrim = o.scrim || (o.continueSeries && prev && prev.scrim) || null;
     App.state.draft = this.make({ series, teams: us === 'B' ? { B: my.id, R: opp.id } : { B: opp.id, R: my.id }, us, mode: o.mode, official: !!o.key });
+    if (scrim) App.state.draft.scrim = scrim;
     this.sel = null; this.selRole = null; this.left = this.TIME;
   },
   // 드래프트 상태 만들기 (us: 우리 진영, 없으면 AI 대 AI)
@@ -225,6 +236,8 @@ const Draft = {
       fearless: series.games.flatMap(g => [...g.picks.B, ...g.picks.R].map(x => x.c)), official,
     };
   },
+  // 우리가 공식전에 쓴 팀 전술 (감독 프로필의 즐겨 쓰는 전술)
+  useTac(S) { if (!S.official || !S.us) return; const t = (S.tactics[S.us] || {}).team; if (t) { const u = (App.state.tacUse ||= {}); u[t] = (u[t] || 0) + 1; } },
   // 양 팀 코치가 끝까지 고르고 전술까지 확정 (AI 경기 · 자동 진행)
   auto(S) { while (!S.done) this.aiAct(S); S.phase = 'ready'; S.series.games.push({ game: S.game, teams: S.teams, bans: S.bans, picks: S.picks, tactics: S.tactics }); return S; },
   act(S, c, role) {
@@ -310,8 +323,9 @@ const Draft = {
 2군에서 올리거나 FA를 영입해 5포지션을 채워야 경기를 치를 수 있습니다.` });
       Router.go('roster-first-team'); return;
     }
-    const S = this.st(); if (S && S.series && S.series.key !== m.id && S.phase !== 'ready') App.state.draft = null;
-    if (S && S.series && S.series.key !== m.id) App.state.draft = null;
+    const S = this.st(); if (S && S.series && S.series.key !== m.id) App.state.draft = null;
+    // 준비 화면 없이 바로 밴픽으로 (1세트는 일정의 앞 팀이 블루)
+    if (!this.st()) { const my = Roster.team(); this.start({ opp: m.t1 === my.id ? m.t2 : m.t1, side: m.t1 === my.id ? 'B' : 'R', mode: 'direct', bo: m.bo, key: m.id }); }
     Router.go('match-draft');
   },
 
@@ -424,7 +438,7 @@ const Draft = {
               <div class="dr-lock">
                 ${mine && step[1] === 'pick' && this.sel ? `<div class="seg dr-role">${this.openRoles(S, S.us).map(r => `<button class="${(this.selRole || this.openRoles(S, S.us).find(x => this.fits(this.sel, x))) === r ? 'on' : ''}" data-r="${r}">${G.pos(r)} ${UI.esc((ourLine[G.ROLES.indexOf(r)] || { name: '공석' }).name)}</button>`).join('')}</div>` : ''}
                 <button class="btn-primary dr-lockin" ${mine && this.sel ? '' : 'disabled'}>${step[1] === 'ban' ? '밴 확정' : '선택 확정'}</button>
-                <div class="dr-tools"><button class="btn-ghost dr-timer-t">${this.timerOn ? '타이머 끄기' : '타이머 켜기'}</button><button class="btn-ghost dr-quit">밴픽 그만두기</button></div>
+                <div class="dr-tools"><button class="btn-ghost dr-timer-t">${this.timerOn ? '타이머 끄기' : '타이머 켜기'}</button>${S.mode === 'direct' ? '<button class="btn-ghost dr-deleg">코치에게 맡기기</button>' : ''}${S.official || S.scrim ? '<button class="btn-ghost dr-result">결과만 보기</button>' : '<button class="btn-ghost dr-quit">밴픽 그만두기</button>'}</div>
               </div>
             </div>
           </div>
@@ -440,7 +454,15 @@ const Draft = {
     const rb = $('.dr-role', el); if (rb) rb.onclick = e => { const b = e.target.closest('button'); if (!b) return; this.selRole = b.dataset.r; this.reboard(el, S); };
     $('.dr-lockin', el).onclick = () => { if (!mine || !this.sel) return; this.act(S, this.sel, this.selRole); this.next(el, S); };
     $('.dr-timer-t', el).onclick = () => { this.timerOn = !this.timerOn; this.left = this.TIME; this.board(el, S); };
-    $('.dr-quit', el).onclick = () => { if (!confirm('진행 중인 밴픽을 그만둘까요?')) return; clearInterval(this._tick); clearTimeout(this._ai); App.state.draft = null; this.render(el); };
+    const dg = $('.dr-deleg', el); if (dg) dg.onclick = () => { S.mode = 'delegate'; this.next(el, S); };
+    const rs = $('.dr-result', el); if (rs) rs.onclick = () => {
+      if (S.scrim) { if (!confirm('남은 판을 코치가 치르고 결과만 볼까요?')) return; clearInterval(this._tick); clearTimeout(this._ai); const sc = Scrim.find(S.scrim); Scrim.finish(S.scrim, Scrim.autoPlay(sc, S.series)); UI.toast(`스크림 ${sc.result}`, 3500); Router.go('training-scrims'); return; }
+      const m = Schedule.all.find(x => x.id === S.series.key); if (!m || !confirm('남은 세트를 코치가 치르고 결과만 볼까요?')) return;
+      clearInterval(this._tick); clearTimeout(this._ai);
+      const my = Roster.team(), s2 = Season.delegate(m), sc = Season.seriesScore(s2), o = Schedule.opponent(m, my.id);
+      UI.toast(`${my.short} ${sc[my.id] || 0} : ${sc[o.id] || 0} ${o.short} — 코치가 치른 결과입니다`, 4000); Router.go('match-history');
+    };
+    const qt = $('.dr-quit', el); if (qt) qt.onclick = () => { if (!confirm('진행 중인 밴픽을 그만둘까요?')) return; clearInterval(this._tick); clearTimeout(this._ai); App.state.draft = null; this.render(el); };
     this.drive(el, S);
   },
   // 보드 높이를 화면에 맞춘다 (태블릿에서도 확정 버튼이 항상 보이게)

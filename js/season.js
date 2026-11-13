@@ -9,7 +9,7 @@ const Season = {
       teams: { B: g.side.B.t.id, R: g.side.R.t.id }, stats: g.pl.map(p => [p.p.id, p.c, p.k, p.d, p.a, Math.round(p.cs)]) };
   },
   seriesScore(series) { const sc = {}; series.games.forEach(x => { if (x.result) sc[x.result.win] = (sc[x.result.win] || 0) + 1; }); return sc; },
-  seriesOver(series) { const need = Math.ceil((series.bo || 1) / 2); return Object.values(this.seriesScore(series)).some(v => v >= need); },
+  seriesOver(series) { if (series.fixed) return series.games.filter(x => x.result).length >= series.fixed; const need = Math.ceil((series.bo || 1) / 2); return Object.values(this.seriesScore(series)).some(v => v >= need); },
   // 시리즈를 끝까지 자동으로 (이미 치른 세트는 그대로 두고 이어서)
   autoSeries(m, series) {
     series ||= { key: m.id, bo: m.bo || 1, games: [] };
@@ -245,12 +245,12 @@ const Season = {
       if (id === App.state.teamId && typeof Inbox !== 'undefined') Inbox.push({ from: { name: '구단 사무국', role: 'board' }, subject: `${e.label} 우승!`, link: 'match-history', body: `${e.label} 우승을 축하합니다. 구단 모두가 자랑스러워합니다.` });
     });
   },
-  // Results.list = 지난 시즌 실제 기록 + 새 시즌 결과
+  // Results.list = 이 커리어에서 치른 경기만 (실제 지난 시즌 기록은 보여 주지 않는다)
   inject() {
     if (!Results.list) return;
     Results._base ||= Results.list.slice();
     const cur = Schedule.all.filter(m => this.st()[m.id]).map(m => { const r = this.st()[m.id], e = Schedule.eventOf(m); return { e: m.event, league: m.league, t1: m.t1, t2: m.t2, s1: r.s1, s2: r.s2, w: r.w, tab: m.tab || '', kst: Schedule.kst ? m.t : m.t, cur: true, n1: (Schedule.team(m.t1) || {}).name, n2: (Schedule.team(m.t2) || {}).name, evName: e ? e.label : m.event }; });
-    Results.list = Results._base.concat(cur);
+    Results.list = cur;
   },
 };
 
@@ -262,8 +262,7 @@ const Season = {
   Results.ev = id => (Results.meta.events || {})[id] || (Schedule.byEvent && Schedule.byEvent[id] ? { name: Schedule.byEvent[id].label, league: Schedule.byEvent[id].league, kind: Schedule.byEvent[id].kind } : ev(id));
   const reg = Results.regularEvents.bind(Results);
   Results.regularEvents = league => {
-    const cur = Object.values(Schedule.byEvent || {}).filter(e => e.league === league && e.kind === 'regular' && e.year === Schedule.season()).map(e => e.id).filter(id => Results.list.some(m => m.e === id));
-    return cur.length ? cur : reg(league);
+    return Object.values(Schedule.byEvent || {}).filter(e => e.league === league && e.kind === 'regular' && e.year === Schedule.season()).sort((a, b) => a.start.localeCompare(b.start)).map(e => e.id);
   };
 })();
 

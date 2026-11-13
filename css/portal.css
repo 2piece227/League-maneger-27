@@ -372,3 +372,4 @@
   .proc-cell { min-height: 44px; }
   .proc-cell small { display: none; }
 }
+.btn-continue.match { background: linear-gradient(180deg, #ff7a6b, #d94a3d); color: #fff; }

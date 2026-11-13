@@ -47,9 +47,35 @@ const Career = {
     return `<div class="card rs-head"><div class="rs-title"><h2>${title}</h2>${sub ? `<span>${sub}</span>` : ''}</div></div>`;
   },
 
+  // ---------- 감독 기록 (이 커리어에서 맡은 팀 · 치른 경기 · 우승) ----------
+  // 우승 종류: 대회 단계 → 트로피 칸
+  TROPHY_OF: { worlds: 'worlds', msi: 'msi', 'first-stand': 'fs', ewc: 'ewc', kespa: 'kespa', 'lck-po': 'league', 'lpl-gf': 'league', 'lec-summerpo': 'league', 'lcs-summerpo': 'league',
+    'lck-cup': 'cup', 'lpl-s1po': 'cup', 'lec-versuspo': 'cup', 'lcs-lockin': 'cup', 'lck-rtm': 'other', 'lpl-s2po': 'other', 'lpl-rf': 'other', 'lec-springpo': 'other', 'lcs-springpo': 'other' },
+  tenures() {
+    const m = this.m(), start = m.createdAt ? m.createdAt.slice(0, 10) : Clock.START, out = [];
+    let from = start;
+    (App.state.jobs || []).forEach(j => { out.push({ team: j.team, from, to: j.until }); from = j.until; });
+    out.push({ team: App.state.teamId, from, to: null });
+    return out;
+  },
+  stats() {
+    const ten = this.tenures(), mine = m => ten.find(x => (m.t1 === x.team || m.t2 === x.team) && m.kst.slice(0, 10) >= x.from && (!x.to || m.kst.slice(0, 10) <= x.to));
+    const games = (Results.list || []).filter(m => m.cur && mine(m)).map(m => ({ m, team: mine(m).team }));
+    const won = games.filter(x => Results.won(x.m, x.team));
+    const sets = games.reduce((s, x) => { const a = x.m.t1 === x.team; s.w += a ? x.m.s1 : x.m.s2; s.l += a ? x.m.s2 : x.m.s1; return s; }, { w: 0, l: 0 });
+    const titles = Object.entries(App.state.champs || {}).filter(([id, tid]) => { const e = Schedule.byEvent[id]; return e && ten.some(x => x.team === tid && e.end >= x.from && (!x.to || e.end <= x.to)); }).map(([id, tid]) => ({ e: Schedule.byEvent[id], team: tid, kind: this.TROPHY_OF[Schedule.byEvent[id].base] || 'other' }));
+    const intl = Object.entries(App.state.brk || {}).filter(([id, l]) => { const e = Schedule.byEvent[id]; return e && e.league === 'INTL' && ten.some(x => l.includes(x.team) && e.start >= x.from && (!x.to || e.start <= x.to)); }).map(([id]) => Schedule.byEvent[id]);
+    const years = {};
+    games.forEach(x => { const y = String(x.m.e).slice(0, 4), r = years[y] ||= { y, team: x.team, w: 0, l: 0, titles: [] }; Results.won(x.m, x.team) ? r.w++ : r.l++; });
+    titles.forEach(t => { (years[t.e.year] ||= { y: String(t.e.year), team: t.team, w: 0, l: 0, titles: [] }).titles.push(t.e.name); });
+    return { ten, games, won, sets, titles, intl, years: Object.values(years).sort((a, b) => b.y.localeCompare(a.y)), seasons: Object.keys(years).length };
+  },
+
   // ---------- 감독 프로필 ----------
   async profile(el) {
-    await Portal.ready;
+    await Promise.all([Portal.ready, Results.load()]);
+    const S = this.stats(), Y = String(Schedule.season()), cur = S.years.find(r => r.y === Y) || { w: 0, l: 0, titles: [] };
+    const tac = Object.entries(App.state.tacUse || {}).sort((a, b) => b[1] - a[1])[0];
     const m = this.m(), t = this.team(), c = this.contract(m, t);
     const bg = Manager.BACKGROUNDS[m.background.type];
     const age = Manager.age(m, this.today());
@@ -76,12 +102,12 @@ const Career = {
               <dt>출생지</dt><dd>${UI.esc(m.birthplace || '-')}</dd>
               <dt>사용 언어</dt><dd>${Manager.langs(m).join(', ')}</dd>
             </dl>
-            <div class="card-head" style="margin-top:16px"><h3>계약</h3><small class="cr-todo">협상 기능 준비 중</small></div>
+            <div class="card-head" style="margin-top:16px"><h3>계약</h3></div>
             <dl class="cr-dl">
               <dt>소속</dt><dd>${UI.esc(t.name)}</dd>
               <dt>직책</dt><dd>감독 (Head Coach)</dd>
               <dt>계약 기간</dt><dd>${this.ymd(c.from)} – ${this.ymd(c.to)}</dd>
-              <dt>연봉</dt><dd>${c.salary} <small>(추정)</small></dd>
+              <dt>연봉</dt><dd>${c.salary}</dd>
               <dt>이사회 기대</dt><dd>${UI.esc(t.boardGoal || '-')}</dd>
             </dl>
           </div>
@@ -91,6 +117,18 @@ const Career = {
             <p class="cr-bg"><b>${bg.label}</b> — ${bg.desc}</p>
             ${m.background.type === 'ex-pro' ? `<p class="cr-bg">선수 시절 ${G.ROLE_KO[m.background.role]} · ${m.background.years}년 · ${Manager.PRO_PEAK[m.background.peak][0]}${m.background.formerTeam ? ' · ' + UI.esc((Schedule.team(m.background.formerTeam) || {}).name || '') : ''}</p>` : ''}
             <p class="cr-bg">지도자 경력 ${m.coachYears ? m.coachYears + '년' : '없음'}</p>
+            ${tac ? `<p class="cr-bg">즐겨 쓰는 전술: <b>${UI.esc((Draft.TEAM_TAC[tac[0]] || {}).n || tac[0])}</b> (${tac[1]}경기)</p>` : ''}
+          </div>
+
+          <div class="card">
+            <div class="card-head"><h3>감독 성적</h3><a href="#career-record">커리어 기록</a></div>
+            <dl class="cr-dl">
+              <dt>${Y} 시즌</dt><dd>${cur.w}승 ${cur.l}패${cur.w + cur.l ? ` (${Math.round(cur.w / (cur.w + cur.l) * 100)}%)` : ''}</dd>
+              <dt>통산</dt><dd>${S.won.length}승 ${S.games.length - S.won.length}패 · 세트 ${S.sets.w}-${S.sets.l}</dd>
+              <dt>우승</dt><dd>${S.titles.length ? S.titles.map(t => UI.esc(t.e.label)).join(', ') : '아직 없음'}</dd>
+              <dt>국제대회</dt><dd>${S.intl.length ? [...new Set(S.intl.map(e => e.label))].map(UI.esc).join(', ') : '출전 기록 없음'}</dd>
+              <dt>맡은 팀</dt><dd>${S.ten.map(x => UI.esc((Schedule.team(x.team) || {}).short || x.team)).join(' → ')}</dd>
+            </dl>
           </div>
 
           <div class="card">
@@ -150,26 +188,27 @@ const Career = {
 
   // ---------- 커리어 기록 ----------
   async record(el) {
-    await Portal.ready;
-    const m = this.m(), t = this.team();
+    await Promise.all([Portal.ready, Results.load()]);
+    const m = this.m(), t = this.team(), S = this.stats();
     const y = +this.today().slice(0, 4);
-    const rows = [[`${this.ymd(m.createdAt || Clock.START)} –`, t, '감독', '현재', `${Schedule.season()} 시즌 진행 중`]];
+    const rows = S.ten.slice().reverse().map(x => { const tm = Schedule.team(x.team), g = S.games.filter(q => q.team === x.team), w = g.filter(q => Results.won(q.m, q.team)).length, ti = S.titles.filter(q => q.team === x.team);
+      return [`${this.ymd(x.from)} – ${x.to ? this.ymd(x.to) : ''}`, tm, '감독', x.to ? `${Math.max(1, Math.round(Fmt.daysBetween(x.from, x.to) / 30))}개월` : '현재', `${w}승 ${g.length - w}패${ti.length ? ' · ' + ti.map(q => q.e.name).join(', ') + ' 우승' : ''}`]; });
     if (m.coachYears) rows.push([`${y - m.coachYears} – ${y}`, null, '코칭스태프', `${m.coachYears}년`, '-']);
     if (m.background.type === 'ex-pro') {
       const end = y - (m.coachYears || 0) - 1, start = end - m.background.years + 1;
       rows.push([`${start} – ${end}`, Schedule.team(m.background.formerTeam), `프로게이머 (${G.ROLE_KO[m.background.role]})`, `${m.background.years}년`, Manager.PRO_PEAK[m.background.peak][0]]);
     }
     const TROPHIES = [['worlds', '월드 챔피언십'], ['msi', 'MSI'], ['fs', '퍼스트 스탠드'], ['ewc', 'e스포츠 월드컵'], ['league', `${t.league} 우승`], ['cup', { LCK: 'LCK컵', LPL: '스플릿 우승', LEC: 'Versus 우승', LCS: 'Lock-In 우승' }[t.league]], ['kespa', 'KeSPA컵']];
-    // TODO: 기능 연결 — 시즌 종료 시 기록·트로피 추가
+    const won = k => S.titles.filter(x => x.kind === k);
     el.innerHTML = `
       <div class="cr-page">
         ${this.head('커리어 기록', '감독으로서의 모든 기록. 시즌이 끝날 때마다 쌓입니다.')}
         <div class="cr-tiles">
-          ${[['감독 경기', '0'], ['승률', '-'], ['우승', '0'], ['국제대회 출전', '0'], ['감독 경력', '0시즌']].map(([k, v]) => `<div class="card"><span>${k}</span><b>${v}</b></div>`).join('')}
+          ${[['감독 경기', `${S.games.length}`], ['승률', S.games.length ? Math.round(S.won.length / S.games.length * 100) + '%' : '-'], ['우승', `${S.titles.length}`], ['국제대회 출전', `${new Set(S.intl.map(e => e.year + ':' + e.base.replace('-playin', ''))).size}`], ['감독 경력', `${S.seasons}시즌`]].map(([k, v]) => `<div class="card"><span>${k}</span><b>${v}</b></div>`).join('')}
         </div>
         <div class="card">
           <div class="card-head"><h3>트로피 진열장</h3></div>
-          <div class="cr-trophies">${TROPHIES.map(([k, l]) => `<div class="cr-trophy locked"><i>🏆</i><b>${l}</b><small>아직 없음</small></div>`).join('')}</div>
+          <div class="cr-trophies">${TROPHIES.map(([k, l]) => { const w = won(k); return `<div class="cr-trophy ${w.length ? '' : 'locked'}"><i>🏆</i><b>${l}</b><small>${w.length ? w.map(x => x.e.year).join(' · ') : '아직 없음'}</small></div>`; }).join('')}</div>
         </div>
         <div class="card">
           <div class="card-head"><h3>경력 이력</h3></div>
@@ -180,7 +219,7 @@ const Career = {
         </div>
         <div class="card">
           <div class="card-head"><h3>시즌별 기록</h3></div>
-          <p class="ms-none">아직 치른 시즌이 없습니다. ${Schedule.season()} 시즌이 끝나면 순위·플레이오프·국제대회 성적이 여기에 남습니다.</p>
+          ${S.years.length ? `<table class="rs-table cr-table"><thead><tr><th>시즌</th><th>팀</th><th class="num">승</th><th class="num">패</th><th class="num">승률</th><th>우승</th></tr></thead><tbody>${S.years.map(r => { const tm = Schedule.team(r.team); return `<tr><td class="num">${r.y}</td><td><span class="fx-team">${tm ? G.team(tm, 'xs') : ''}<b>${UI.esc(tm ? tm.short : '-')}</b></span></td><td class="num">${r.w}</td><td class="num">${r.l}</td><td class="num">${r.w + r.l ? Math.round(r.w / (r.w + r.l) * 100) + '%' : '-'}</td><td>${r.titles.map(UI.esc).join(', ') || '-'}</td></tr>`; }).join('')}</tbody></table>` : `<p class="ms-none">아직 치른 경기가 없습니다. ${Schedule.season()} 시즌 경기를 치르면 여기에 쌓입니다.</p>`}
         </div>
       </div>`;
   },

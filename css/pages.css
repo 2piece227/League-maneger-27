@@ -388,3 +388,11 @@
 #screen-game img[data-pp]:hover, #screen-game .pl-ph-empty[data-pp]:hover { outline: 2px solid var(--gold, #c9a13c); outline-offset: 1px; }
 #screen-game [data-tt]:hover { filter: brightness(1.2); }
 .modal [data-pp], .modal [data-tt] { cursor: default; }
+
+/* 국제대회 로스터 등록 */
+.rg-ev { margin-bottom: 10px; }
+.rg-row { display: flex; align-items: center; gap: 8px; padding: 6px 0; border-bottom: 1px solid var(--line, #1d2840); }
+.rg-row select { flex: 1; }
+.rg-sub small { color: var(--muted); margin-left: auto; }
+.rg-foot { display: flex; align-items: center; gap: 10px; justify-content: flex-end; }
+.rg-foot .cr-dim { margin-right: auto; }

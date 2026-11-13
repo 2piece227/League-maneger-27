@@ -206,7 +206,7 @@ const Club = {
           <div class="card"><div class="card-head"><h3>월드 챔피언십 우승</h3></div>
             ${titles.length ? `<div class="hs-titles">${titles.map(w => `<div class="hs-title">${w.photo ? `<img src="${w.photo}" alt="" referrerpolicy="no-referrer" loading="lazy">` : ''}<b>${w.year}</b><span>${UI.esc(w.team)}</span></div>`).join('')}</div>` : '<p class="ms-none">아직 월즈 우승이 없습니다. 첫 우승의 주인공이 되어 보세요.</p>'}
           </div>
-          <div class="card"><div class="card-head"><h3>${Schedule.BASE} 시즌 돌아보기</h3><a href="#match-history">경기 기록</a></div>
+          <div class="card"><div class="card-head"><h3>${Schedule.season()} 시즌</h3><a href="#match-history">경기 기록</a></div>
             <p class="pp-line">전체 <b>${rec.w}승 ${rec.l}패</b></p>
             ${Object.entries(evs).map(([id, v]) => `<div class="mh-row ${v.w >= v.l ? 'w' : 'l'}"><span>${UI.esc(Results.ev(id).name)}</span><b>${v.w}승 ${v.l}패</b></div>`).join('') || '<p class="ms-none">기록 없음</p>'}
           </div>

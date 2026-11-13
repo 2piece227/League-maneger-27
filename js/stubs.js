@@ -106,10 +106,14 @@ const Data = {
 
 const Game = {
   // TODO: 커리어 생성 → 시즌 캘린더/메인 화면으로 진입
+  // 새 커리어: 이전 커리어의 진행 상태(날짜·경기 결과·메시지·이적…)를 모두 비우고 시작한다.
+  // 이미 다른 커리어를 한 번 돌린 페이지면 선수 데이터가 메모리에서 바뀌어 있으므로 페이지를 새로 읽고 시작한다.
   start(manager, team) {
-    // 커리어 시드: 대진 추첨 등 커리어마다 달라지는 값의 기준. 저장에 함께 남는다.
-    App.state.seed = `${Date.now().toString(36)}-${Math.floor(Math.random() * 1e9).toString(36)}`;
-    console.info('[stub] Game.start', manager, team.id);
+    const fresh = { settings: App.state.settings, manager, leagueId: App.state.leagueId || team.league, teamId: team.id };
+    fresh.seed = `${Date.now().toString(36)}-${Math.floor(Math.random() * 1e9).toString(36)}`;
+    if (App.careerActive) return SaveSystem.restart({ state: fresh });
+    App.state = fresh;
+    App.careerActive = true;
   },
   // TODO: 브라우저에서는 창을 닫을 수 없는 경우가 많다. 데스크톱 래핑 시 교체.
   quit() {

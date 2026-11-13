@@ -3,7 +3,7 @@
 const Live = {
   g: null, speed: 1, timer: null, raf: null, tickAt: 0, feedSeen: 0, banners: [], bannerOn: false,
   SPEEDS: [1, 2, 4, 8],
-  start(S) { this.g = Sim.create(S, S.game); this.speed = 1; this.feedSeen = 0; this.banners = []; Router.go('match-live'); },
+  start(S) { Draft.useTac(S); this.g = Sim.create(S, S.game); this.speed = 1; this.feedSeen = 0; this.banners = []; Router.go('match-live'); },
   ico(n, cls = '') { return `<img class="ob-ic ${cls}" src="assets/obj/${n}.png" alt="">`; },
   // 인벤토리: 아이템 6칸(제어 와드 포함) + 장신구
   inventory(p) { return [...p.inv.map(it => Stats.icon(it)), p.wards ? `<span class="it-w">${Stats.icon(p.build.ward)}<b>${p.wards}</b></span>` : '', p.trinket ? `<span class="it-t">${Stats.icon(p.trinket)}</span>` : ''].join(''); },
@@ -221,6 +221,7 @@ const Live = {
     const plan = (App.state.plans || {})[S.series.key]; if (plan) plan.series = S.series;
     const my = App.state.teamId, sc = this.score(S), over = Season.seriesOver(S.series);
     if (over && S.official) Season.recordSeries(S.series.key, S.series);
+    if (over && S.scrim) Scrim.finish(S.scrim, S.series);
     // 상단 매치 스코어 갱신
     $('.lv-ms.b', el).textContent = sc.B; $('.lv-ms.r', el).textContent = sc.R;
     $('.lv-tm.blue .lv-pips', el).outerHTML = this.pips(sc.B, sc.need, 'b'); $('.lv-tm.red .lv-pips', el).outerHTML = this.pips(sc.R, sc.need, 'r');
@@ -228,17 +229,17 @@ const Live = {
     $('.lv-over', el).innerHTML = `<div class="lv-res ${mine ? 'win' : 'lose'}"><small>${Sim.clock(g.t)}${S.series.bo > 1 ? ` · ${S.game}세트` : ''}</small><b>${mine ? 'VICTORY' : 'DEFEAT'}</b><span>${G.team(w.t, 'sm')} ${UI.esc(w.t.name)} 승리 · 킬 ${g.side.B.kills} : ${g.side.R.kills}</span>
       ${S.series.bo > 1 ? `<span class="lv-series">매치 스코어 ${UI.esc(g.side[us].t.short)} ${sc[us]} : ${sc[them]} ${UI.esc(g.side[them].t.short)}${over ? ' · 경기 종료' : ''}</span>` : ''}
       <div class="lv-mvp">${SoloQ.ic(g.over.mvp.c)}<div><small>POG</small><b>${UI.esc(g.over.mvp.name)}</b><span>${g.over.mvp.k}/${g.over.mvp.d}/${g.over.mvp.a}</span></div></div>
-      <div class="lv-res-btn">${!over ? `<button class="btn-primary lv-next">${S.game + 1}세트 밴픽 → <small class="lv-cd"></small></button>` : `<button class="btn-primary lv-back">${S.official ? '계속' : '닫기'}</button>`}${!over ? '<button class="btn-ghost lv-stay">결과 더 보기</button>' : ''}</div></div>`;
+      <div class="lv-res-btn">${!over ? `<button class="btn-primary lv-next">${S.game + 1}세트 밴픽 → <small class="lv-cd"></small></button>` : `<button class="btn-primary lv-back">${S.official || S.scrim ? '계속' : '닫기'}</button>`}${!over ? '<button class="btn-ghost lv-stay">결과 더 보기</button>' : ''}</div></div>`;
     clearInterval(this._cd);
     const next = () => {
       clearInterval(this._cd);
       const oppT = Draft.side(S, them), lost = g.over.win !== us;
       // 진 팀이 다음 세트 진영을 고른다 (블루를 가져간다고 본다)
-      Draft.start({ opp: oppT.id, side: lost ? 'B' : 'R', mode: S.mode, bo: S.series.bo, key: S.official ? S.series.key : null, continueSeries: true });
+      Draft.start({ opp: oppT.id, side: S.scrim ? (S.game % 2 ? 'R' : 'B') : lost ? 'B' : 'R', mode: S.mode, bo: S.series.bo, key: S.official ? S.series.key : null, continueSeries: true });
       Router.go('match-draft');
     };
     const bk = $('.lv-back', el);
-    if (bk) bk.onclick = () => { if (S.official) App.state.draft = null; Router.go(S.official ? 'portal-overview' : 'match-draft'); };
+    if (bk) bk.onclick = () => { if (S.official || S.scrim) App.state.draft = null; Router.go(S.official ? 'portal-overview' : S.scrim ? 'training-scrims' : 'match-draft'); };
     const nx = $('.lv-next', el);
     if (nx) {
       nx.onclick = next;

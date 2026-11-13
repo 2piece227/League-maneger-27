@@ -43,8 +43,6 @@ const News = {
     // 우리 팀
     const exp = t.players.filter(p => !p.free && p.contractEnd && p.contractEnd > today && Player.days(p) <= 30);
     if (exp.length) out.push({ cat: 'team', date: Store.addDays(exp.map(p => p.contractEnd).sort()[0], -30), title: `${t.short}, ${exp.map(p => p.name).join('·')} 재계약 여부 주목`, body: `${t.name}의 ${exp.length}명이 곧 계약 만료를 맞습니다. 팬들의 시선이 재계약 협상에 쏠리고 있습니다.`, link: '#roster-contracts' });
-    const rec = Match.record(t.id);
-    out.push({ cat: 'team', date: seen(`recap:${t.id}:${Schedule.BASE}`), title: `${t.short}의 ${Schedule.BASE} 시즌 결산: ${rec.w}승 ${rec.l}패`, body: `${t.name}가 ${Schedule.BASE} 시즌을 ${rec.w}승 ${rec.l}패로 마쳤습니다. ${Schedule.season()} 시즌 준비가 시작됐습니다.`, link: '#match-history' });
     // 최근 30일 기사만 (날짜가 고정된 기사는 시간이 지나면 자연히 내려간다)
     return out.filter(x => x.date <= today && x.date >= d(30)).sort((a, b) => b.date.localeCompare(a.date));
   },

@@ -56,12 +56,25 @@ const SaveSystem = {
   },
   remove(slot) { Store.del(this.key(slot)); },
 
+  // 커리어를 바꿀 때(불러오기 · 새 커리어)는 페이지를 새로 읽어 메모리의 선수 데이터까지 원본으로 되돌린 뒤 그 상태로 들어간다
+  PENDING: 'lm27.pending',
+  restart(p) { try { sessionStorage.setItem(this.PENDING, JSON.stringify(p)); } catch (e) { console.warn(e); } location.reload(); },
+  // 새로 읽은 페이지에서: 미뤄 둔 커리어로 바로 들어간다
+  resume() {
+    let p = null; try { p = JSON.parse(sessionStorage.getItem(this.PENDING)); sessionStorage.removeItem(this.PENDING); } catch {}
+    if (!p || !p.state) return false;
+    App.state = { ...p.state, settings: App.state.settings };
+    App.careerActive = true;
+    App.show('game');
+    return true;
+  },
   load(slot) {
     const s = Store.get(this.key(slot));
     if (!s) return false;
+    if (App.careerActive) { this.restart({ state: s.state }); return true; }
     const settings = App.state.settings;
-    App.state = { ...App.state, ...s.state, settings };
-    // TODO: 기능 연결 — 저장된 날짜·시즌 진행 상황 복원 (지금은 날짜 진행이 없음)
+    App.state = { ...s.state, settings };      // 합치지 않고 통째로 바꾼다 (이전 커리어 값이 남지 않게)
+    App.careerActive = true;
     SoloQ.cache = null;
     // 이미 게임 화면이면 App.show가 아무것도 하지 않으므로 직접 다시 진입
     if (App.current && App.current.id === 'screen-game') Screens.game.enter();

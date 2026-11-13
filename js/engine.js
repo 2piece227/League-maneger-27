@@ -107,6 +107,7 @@ const Engine = {
     }
     // 경기날: 계속을 누르면 날짜를 넘기지 않고 경기(밴픽) 화면으로 간다
     if (Season.today()) { Draft.matchDay(); return; }
+    if (Scrim.today()) { Scrim.go(); return; }
     this.busy = true; this.stopReq = false;
     let reason = null, days = 0;
     const got = [];
@@ -131,6 +132,7 @@ const Engine = {
     await Portal.setTeam(Roster.team());
     Nav.render(Router.current());
     if (Season.today()) { UI.toast(reason, 3500); Draft.matchDay(); return; }
+    if (Scrim.today()) { UI.toast('오늘은 스크림 날입니다', 3000); Scrim.go(); return; }
     UI.toast(reason || (this.stopReq ? '진행을 멈췄습니다' : `${days}일이 지났습니다`));
   },
 
@@ -394,33 +396,7 @@ Engine.on(today => {
 
 // 우리 팀 계약 만료 처리는 js/contract.js
 
-Engine.on(today => {
-  // 스크림 답장 · 결과
-  const my = Roster.team();
-  (App.state.scrims ||= []).forEach((s, i) => {
-    const o = Schedule.team(s.team); if (!o) return;
-    const r = salt => G.rand(App.state.seed + s.team + s.date, salt);
-    const from = { name: `${o.short} 코칭스태프`, role: 'coach' };
-    if (!s.status && Fmt.daysBetween(s.date, today) >= 1 + Math.floor(r('wait') * 2)) {
-      const p = Math.max(.15, Math.min(.92, .72 - ((o.rep || 2) - (my.rep || 2)) * .14 - (o.league !== my.league ? .2 : 0)));
-      if (r('yes') < p) {
-        s.status = 'accepted'; s.on = Store.addDays(today, 1 + Math.floor(r('on') * 3));
-        Inbox.push({ from, subject: `${o.short}, 스크림 수락`, link: 'training-scrims', body: `${my.short} 측 스크림 제안을 받아들입니다.\n\n${Fmt.dayLabel(s.on)} 저녁, ${s.sets}세트로 진행하겠습니다.` });
-      } else {
-        s.status = 'declined';
-        Inbox.push({ from, subject: `${o.short}, 스크림 정중히 거절`, link: 'training-scrims', body: `제안 감사합니다. 이번 주는 일정이 이미 차 있어 어렵겠습니다. 다음 기회에 다시 이야기 나누시죠.` });
-      }
-    }
-    if (s.status === 'accepted' && s.on < today && !s.result) {
-      // TODO: 기능 연결 — 경기 로직이 생기면 세트 결과를 시뮬레이션으로
-      let w = 0;
-      for (let k = 0; k < s.sets; k++) if (r('set' + k) < .5 + ((my.rep || 2) - (o.rep || 2)) * .07) w++;
-      s.result = `${w}:${s.sets - w}`;
-      Inbox.push({ from: { name: `${((my.staff || [])[1] || (my.staff || [])[0] || {}).name || '코치'} 코치`, role: 'coach' }, subject: `${o.short} 스크림 결과 ${s.result}`, link: 'training-scrims',
-        body: `${o.name}와의 스크림을 ${s.result}로 마쳤습니다.\n\n${w > s.sets / 2 ? '준비한 운영이 잘 통했습니다.' : '초반 설계에서 밀렸습니다. 다음 스크림 전에 보완하겠습니다.'}` });
-    }
-  });
-});
+// 스크림 답장 · 결과는 js/scrim.js
 
 Engine.on(today => {
   // 솔랭 테스트 제의: 수락/거절 → 일주일 테스트 → 결과

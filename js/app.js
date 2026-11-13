@@ -33,5 +33,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (nav) App.show(nav.dataset.nav);
   });
 
+  if (SaveSystem.resume()) return;      // 커리어를 바꾸느라 새로 읽은 페이지
   App.show(App.state.settings.skipIntro ? 'title' : 'intro');
 });

@@ -55,10 +55,10 @@ const Market = {
       const gaps = G.ROLES.filter(r => n(r) < 2 && !asked(r)).map(role => ({ role, cur: this.best(t, role) })).sort((a, b) => a.cur - b.cur);
       const g = gaps[0]; if (!g) return;
       const empty = !g.cur;
-      if (!empty && (t.players.length >= 7 || this.rnd(t.id, today, 'shop') > (stove ? .35 : .08))) return;   // 빈자리는 매일 찾는다
+      if (!empty && (t.players.length >= 6 || this.rnd(t.id, today, 'shop') > (stove ? .35 : .08))) return;   // 빈자리는 매일 찾는다. 1군은 주전 5명 + 후보 1명까지 (LoL 팀은 후보를 거의 두지 않는다)
       if (!stove && !empty) return;
       let room = Club.wageRoom(t) + (empty ? 3 : 0);
-      const cands = free.filter(p => p.role === g.role && !(F[p.id] || []).some(o => o.team === t.id)).map(p => ({ p, s: Contract.score(p, t) }))
+      const cands = free.filter(p => p.role === g.role && !this.resting(p.id, today) && !(F[p.id] || []).some(o => o.team === t.id)).map(p => ({ p, s: Contract.score(p, t) }))
         .filter(({ p, s }) => s > g.cur + 4 && (s < 85 || (t.rep || 2) >= 3)
           && (p.nation !== 'South Korea' || t.league === 'LCK' || this.rnd(p.id, t.id, 'ko') < .35 + (s >= 80 ? .2 : 0))
           && (t.league !== 'LCK' || p.nation === 'South Korea' || this.rnd(p.id, t.id, 'imp') < .15)
@@ -89,9 +89,17 @@ const Market = {
       if (Neg.held(Contract.st().neg[pid])) return;                                       // 우리와 합의 후 사인 대기 중
       const p = hit.p;
       const util = o => { const t = App.db.teams.find(x => x.id === o.team); return o.mult * Contract.pay(p, Contract.score(p, t), t.league) / Contract.pay(p, Contract.score(p, t), 'LCK') * .5 + (t.rep || 2) * .08 + (p.nation === 'South Korea' && t.league === 'LCK' ? .25 : 0); };
-      const o = offers.filter(x => { const t = App.db.teams.find(y => y.id === x.team); return t && t.players.length < 7 && t.players.filter(y => y.role === p.role).length < 2; }).sort((a, b) => util(b) - util(a))[0];
+      const ok = offers.filter(x => { const t = App.db.teams.find(y => y.id === x.team); return t && t.players.length < 6 && t.players.filter(y => y.role === p.role).length < 2; }), o = ok.sort((a, b) => util(b) - util(a))[0];
       delete F[pid];
       if (!o) return;
+      // 높은 오버롤 선수에게 약팀 제안만 왔다면 계약 대신 휴식을 택하기도 한다
+      const best = App.db.teams.find(x => x.id === o.team);
+      if ((p.ovr || 0) >= 80 && (best.rep || 2) <= 2 && this.rnd(pid, today, 'rest') < .55) {
+        const st = Schedule.events.find(e => e.kind === 'stove' && e.start > today), until = stove ? (st ? st.start : Store.addDays(today, 300)) : Store.addDays(today, 90);
+        (Contract.st().rest ||= {})[pid] = until;
+        this.post(`[FA] ${p.name}, 휴식 선언`, `FA ${p.name}이(가) ${ok.length}개 팀의 제안을 받았지만 원하는 조건이 아니라며 당분간 휴식하기로 했습니다. ${Fmt.dayLabel(until)}까지 다른 구단의 제안을 받지 않을 전망입니다.`, pid);
+        return;
+      }
       const t = App.db.teams.find(x => x.id === o.team);
       this.write(p, t, this.deal(p, t, o.mult)); changed = true;
       const s = Contract.score(p, t);
@@ -107,6 +115,7 @@ const Market = {
     if (changed) Squad.apply();
   },
   rivals(pid) { return (this.fa()[pid] || []).length; },
+  resting(pid, today = Clock.today()) { const u = (Contract.st().rest || {})[pid]; return !!u && today < u; },
 };
 Engine.on(today => { if (!App.db.free) return; Market.expire(today); Market.shop(today); });
 

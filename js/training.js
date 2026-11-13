@@ -98,7 +98,7 @@ const Training = {
     if (!s.status) return '<span class="ot-st seeking">답변 대기</span>';
     if (s.status === 'declined') return '<span class="ot-st stable">거절됨</span>';
     if (s.result) return `<span class="ot-st mine">결과 ${s.result}</span>`;
-    return `<span class="ot-st vacant">${Fmt.dayLabel(s.on)} 확정</span>`;
+    return `<span class="ot-st vacant">${Fmt.dayLabel(s.on)} 확정${s.on === this.today() ? ' · 오늘' : ''}</span>`;
   },
 
   // ---------- 스크림 ----------
@@ -112,24 +112,31 @@ const Training = {
       const b = booked.find(s => s.team === x.id && (!s.status || (s.status === 'accepted' && !s.result)));
       return `<div class="sm-row">${G.team(x, 'sm')}<div><b>${UI.esc(x.name)}</b><span>${x.league} · ${UI.stars(x.rep || 2)}</span></div>
         <span class="sm-av ${avail(x) ? 'ok' : 'no'}">${avail(x) ? '이번 주 가능' : '일정 꽉 참'}</span>
-        <button class="btn-ghost sm-btn" data-t="${x.id}" ${!avail(x) || b ? 'disabled' : ''}>${b ? '신청함' : '스크림 신청'}</button></div>`;
+        <button class="btn-ghost sm-btn" data-t="${x.id}" ${!avail(x) || b ? 'disabled' : ''}>${b ? '신청함' : '신청'}</button></div>`;
     };
     el.innerHTML = `
       <div class="cr-page">
-        ${Career.head('스크림', '연습 경기 상대를 잡습니다. 답장과 결과는 메시지로 옵니다. 훈련 효과는 준비 중입니다.')}
+        ${Career.head('스크림', '날짜와 판수를 정해 신청합니다. 상대가 수락하면 그날 계속 버튼이 "스크림으로"가 되고, 실제 경기처럼 밴픽 → 전술 → 관전으로 치릅니다. 공식 기록에는 남지 않습니다.')}
+        ${Scrim.today() ? `<div class="card nx-draft"><span>오늘 ${UI.esc(Schedule.team(Scrim.today().team).name)}와 스크림이 있습니다.</span><button class="btn-primary sm-go">스크림 시작</button></div>` : ''}
         <div class="cr-grid">
           <div class="card"><div class="card-head"><h3>같은 리그 팀</h3></div>${others.map(row).join('')}</div>
           <div class="card"><div class="card-head"><h3>해외 팀 (온라인·부트캠프)</h3></div>${intl.map(row).join('')}
             <h4 class="sv-h">신청한 스크림</h4>
-            ${booked.length ? booked.map(s => { const x = Schedule.team(s.team); return `<div class="sm-row">${G.team(x, 'xs')}<div><b>${UI.esc(x.name)}</b><span>${s.date.replace(/-/g, '.')} ${s.incoming ? '요청받음' : '신청'} · ${s.sets}세트</span></div>${this.scrimState(s)}</div>`; }).join('') : '<p class="ms-none">아직 신청한 스크림이 없습니다.</p>'}
+            ${booked.length ? booked.slice().reverse().slice(0, 12).map(s => { const x = Schedule.team(s.team); return `<div class="sm-row">${G.team(x, 'xs')}<div><b>${UI.esc(x.name)}</b><span>${s.on ? Fmt.dayLabel(s.on) : s.date.replace(/-/g, '.')} · ${s.incoming ? '요청받음' : '신청'} · ${s.sets}판</span></div>${this.scrimState(s)}</div>`; }).join('') : '<p class="ms-none">아직 신청한 스크림이 없습니다.</p>'}
           </div>
         </div>
       </div>`;
+    const go = el.querySelector('.sm-go'); if (go) go.onclick = () => Scrim.go();
     el.querySelector('.cr-grid').onclick = e => {
       const b = e.target.closest('.sm-btn'); if (!b || b.disabled) return;
-      booked.push({ team: b.dataset.t, date: this.today(), sets: 3 }); // TODO: 기능 연결 — 상대 수락·스크림 결과
-      UI.toast('스크림을 신청했습니다');
-      this.scrims(el);
+      const x = Schedule.team(b.dataset.t), days = Scrim.days(x.id);
+      if (!days.length) { UI.toast('앞으로 7일 안에 양 팀 모두 비는 날이 없습니다'); return; }
+      UI.modal({ title: `${x.name} 스크림 신청`, body: `<label class="rg-row"><span>날짜</span><select class="ch-sort sm-day">${days.map(d => `<option value="${d}">${Fmt.dayLabel(d)}</option>`).join('')}</select></label>
+        <label class="rg-row"><span>판수</span><select class="ch-sort sm-sets"><option value="3">3판</option><option value="5">5판</option><option value="2">2판</option></select></label><p class="cr-dim">공식전이 있는 날은 고를 수 없습니다.</p>`,
+        actions: [{ label: '취소' }, { label: '신청', primary: true, onClick: () => {
+          const on = document.querySelector('.sm-day').value, sets = +document.querySelector('.sm-sets').value;
+          booked.push({ id: 's' + Date.now().toString(36), team: x.id, date: this.today(), on, sets }); UI.toast('스크림을 신청했습니다'); this.scrims(el);
+        } }] });
     };
   },
 };
