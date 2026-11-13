@@ -107,7 +107,10 @@ const Portal = {
   // 리그 순위: 실제 경기 결과(Results) 기준. 새 시즌 경기가 열리면 그 단계, 아니면 지난 시즌 실제 결과
   liveStandings(d) {
     const t = Roster.team(); if (!t || !Results.list) return;
-    const cur = Results.current(t.league), rows = Results.table(t.league, cur.ids);
+    const cur = Results.current(t.league);
+    let rows = Results.table(t.league, cur.ids);
+    // 개막 전: 리그 팀을 0승 0패로 (전력순)
+    if (!rows.length) rows = App.db.teams.filter(x => x.league === t.league).sort((a, b) => Season.power(b) - Season.power(a)).map(x => ({ t: x, w: 0, l: 0, sw: 0, sl: 0 }));
     d.standings.rows = rows.map((r, i) => ({ rank: i + 1, team: r.t, w: r.w, l: r.l, setDiff: r.sw - r.sl }));
     d.standings.competition = cur.name;
     if (d.nextMatch && d.nextMatch.opponent) {

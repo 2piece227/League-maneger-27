@@ -30,7 +30,7 @@ const Results = {
   // 지금 순위표: 경기가 열린 가장 최근 정규 단계
   current(league) {
     const evs = this.regularEvents(league), last = [...this.list].reverse().find(m => m.league === league && evs.includes(m.e));
-    const id = last ? last.e : evs.at(-1);
+    const id = last ? last.e : evs[0];
     return { ids: id ? [id] : [], name: id ? this.ev(id).name : '' };
   },
 };
