@@ -192,7 +192,7 @@ const Draft = {
     Champions.list.forEach(ch => {
       const c = ch.id; if (taken.has(c)) return;
       const f = this.feats(S, k, c); if (kind === 'pick' && !f.x[4]) return;
-      out.push({ c, f, s: W.reduce((a, v, j) => a + v * f.x[j], 0) + (kind === 'pick' ? this.slotRole(S, c, k) : 0) + (G.rand(`${S.id}:${i}:${k}:${c}`, 'cn') - .5) * (1 - r20) * 1.6 });
+      out.push({ c, f, s: W.reduce((a, v, j) => a + v * f.x[j], 0) + (kind === 'pick' ? this.slotRole(S, c, k) : 0) + (kind === 'ban' ? this.planBan(S, k, c) : 0) + (G.rand(`${S.id}:${i}:${k}:${c}`, 'cn') - .5) * (1 - r20) * 1.6 });
     });
     out.sort((a, b) => b.s - a.s);
     return out.slice(0, n).map(x => ({ c: x.c, s: x.s, role: kind === 'pick' ? this.bestRole(S, k, x.c) : undefined, why: this.reasons(x, W, kind) }));
@@ -284,8 +284,17 @@ const Draft = {
   pct: v => Math.max(5, Math.min(99, Math.round(v * 100))),
   teamFits(S, k) { const c = Style.comp(S.picks[k].map(x => x.c)); return Object.fromEntries(Object.entries(this.TEAM_TAC).map(([id, x]) => [id, this.pct(x.f(c))])); },
   roleFits(S, k, r) { const x = S.picks[k].find(y => y.role === r); const s = x ? Style.of(x.c) : null; return Object.fromEntries(this.ROLE_TAC[r].map(([id, , f]) => [id, s ? this.pct(f(s)) : 50])); },
-  // 코치가 고르는 전술: 적합도 1위 (역량이 낮으면 가끔 2위)
-  coachTac(S, k) {
+  // 라커룸에서 정한 밴 방향: 그 포지션 상대 선수가 다룰 줄 아는 챔피언에 가산 (상대 팀은 우리 에이스 쪽을 노린다)
+  plan(S, k) { const sr = S.series; return S.us ? (k === S.us ? sr.plan : sr.oppPlan) : null; },
+  planBan(S, k, c) {
+    const pl = this.plan(S, k); if (!pl || !pl.banRole) return 0;
+    const r = pl.banRole, sh = this.share(c)[r] || 0; if (sh < .25) return 0;
+    const o = this.lineup(this.side(S, k === 'B' ? 'R' : 'B'))[G.ROLES.indexOf(r)], known = o && Mastery.pool(o.id).some(e => e.c === c);
+    return .6 + (known ? .9 : 0);
+  },
+  // 코치가 고르는 전술: 적합도 1위 (역량이 낮으면 가끔 2위). 라커룸에서 정한 공략 라인이 있으면 정글은 갱킹, 그 라인은 압박
+  coachTac(S, k) { const t = this.coachTac0(S, k), pl = this.plan(S, k); if (pl && pl.focus) { const r = { top: 'TOP', mid: 'MID', bot: 'BOT' }[pl.focus]; t.roles.JGL = 'gank'; if (r && this.ROLE_TAC[r].some(x => x[0] === 'press')) t.roles[r] = 'press'; } return t; },
+  coachTac0(S, k) {
     const r20 = this.coach(this.side(S, k)).r / 20, best = (fits, key) => { const l = Object.entries(fits).sort((a, b) => b[1] - a[1]); return (G.rand(S.id + key + k, 'tac') < (1 - r20) * .6 && l[1] ? l[1] : l[0])[0]; };  // 역량 13이면 약 20% 확률로 2순위
     return { team: best(this.teamFits(S, k), 'team'), roles: Object.fromEntries(G.ROLES.map(r => [r, best(this.roleFits(S, k, r), r)])) };
   },

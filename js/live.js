@@ -229,15 +229,10 @@ const Live = {
     $('.lv-over', el).innerHTML = `<div class="lv-res ${mine ? 'win' : 'lose'}"><small>${Sim.clock(g.t)}${S.series.bo > 1 ? ` · ${S.game}세트` : ''}</small><b>${mine ? 'VICTORY' : 'DEFEAT'}</b><span>${G.team(w.t, 'sm')} ${UI.esc(w.t.name)} 승리 · 킬 ${g.side.B.kills} : ${g.side.R.kills}</span>
       ${S.series.bo > 1 ? `<span class="lv-series">매치 스코어 ${UI.esc(g.side[us].t.short)} ${sc[us]} : ${sc[them]} ${UI.esc(g.side[them].t.short)}${over ? ' · 경기 종료' : ''}</span>` : ''}
       <div class="lv-mvp">${SoloQ.ic(g.over.mvp.c)}<div><small>POG</small><b>${UI.esc(g.over.mvp.name)}</b><span>${g.over.mvp.k}/${g.over.mvp.d}/${g.over.mvp.a}</span></div></div>
-      <div class="lv-res-btn">${!over ? `<button class="btn-primary lv-next">${S.game + 1}세트 밴픽 → <small class="lv-cd"></small></button>` : `<button class="btn-primary lv-back">${S.official || S.scrim ? '계속' : '닫기'}</button>`}${!over ? '<button class="btn-ghost lv-stay">결과 더 보기</button>' : ''}</div></div>`;
+      <div class="lv-res-btn">${!over ? `<button class="btn-primary lv-next">라커룸으로 → <small class="lv-cd"></small></button>` : `<button class="btn-primary lv-back">${S.official || S.scrim ? '계속' : '닫기'}</button>`}${!over ? '<button class="btn-ghost lv-stay">결과 더 보기</button>' : ''}</div></div>`;
     clearInterval(this._cd);
-    const next = () => {
-      clearInterval(this._cd);
-      const oppT = Draft.side(S, them), lost = g.over.win !== us;
-      // 진 팀이 다음 세트 진영을 고른다 (블루를 가져간다고 본다)
-      Draft.start({ opp: oppT.id, side: S.scrim ? (S.game % 2 ? 'R' : 'B') : lost ? 'B' : 'R', mode: S.mode, bo: S.series.bo, key: S.official ? S.series.key : null, continueSeries: true });
-      Router.go('match-draft');
-    };
+    // 다음 세트 전에 라커룸 회의 (진영 선택 · 밴 방향 · 선수에게 한마디)
+    const next = () => { clearInterval(this._cd); Locker.open(S, g); };
     const bk = $('.lv-back', el);
     if (bk) bk.onclick = () => { if (S.official || S.scrim) App.state.draft = null; Router.go(S.official ? 'portal-overview' : S.scrim ? 'training-scrims' : 'match-draft'); };
     const nx = $('.lv-next', el);

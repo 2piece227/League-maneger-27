@@ -125,13 +125,13 @@ const Sim = {
         tac: (S.tactics[k] || {}).team || 'bal', comp: Style.comp(picks.map(x => x.c)),
         towers: { top: 3, mid: 3, bot: 3 }, inhib: { top: 1, mid: 1, bot: 1 }, nexusT: 2, down: 0,
         thp: { top: [1, 1, 1], mid: [1, 1, 1], bot: [1, 1, 1] }, ihp: { top: 1, mid: 1, bot: 1 }, ntp: [1, 1], nxhp: 1,
-        drag: [], grubs: 0, herald: 0, baron: 0, baronUntil: 0, push: null, reset: -999, jstart: r() < .5 ? 'top' : 'bot' };
+        drag: [], grubs: 0, herald: 0, baron: 0, baronUntil: 0, push: null, reset: -999, jstart: r() < .5 ? 'top' : 'bot', focus: ((k === S.us ? (S.series || {}).plan : S.us ? (S.series || {}).oppPlan : null) || {}).focus || null };
     });
     g.pl = [];
     ['B', 'R'].forEach(k => S.picks[k].slice().sort((a, b) => G.ROLES.indexOf(a.role) - G.ROLES.indexOf(b.role)).forEach(x => {
-      const hit = x.pid && Player.find(x.pid), p = hit ? hit.p : { id: 'x' + x.role, name: '공석', ovr: 55 };
+      const hit = x.pid && Player.find(x.pid), p = hit ? hit.p : { id: 'x' + x.role, name: '공석', ovr: 55 }, boost = ((S.series && S.series.boost) || {})[p.id] || 0;   // 라커룸에서 들은 말 (다음 세트만)
       const ms = Draft.mast(p, x.c);
-      g.pl.push({ side: k, role: x.role, c: x.c, p, name: p.name, ovr: p.ovr || 60, m: ms.m, sig: ms.sig, meta: Draft.meta(x.c), st: Style.of(x.c), curve: Stats.curve(x.c),
+      g.pl.push({ side: k, role: x.role, c: x.c, p, name: p.name, ovr: (p.ovr || 60) + boost, m: ms.m, sig: ms.sig, meta: Draft.meta(x.c), st: Style.of(x.c), curve: Stats.curve(x.c),
         k: 0, d: 0, a: 0, cs: 0, gold: 500, spent: 0, inv: [], wards: 0, trinket: null, build: Stats.build(x.c, x.role),
         tp: x.role === 'TOP' || (x.role !== 'JGL' && x.role !== 'SUP' && Stats.tp(x.c)), tpReady: 0, lvl: 1, hp: 1, dead: 0, pos: [...this.fountain(k)], trail: null, warp: 0,
         recall: 0, lastBack: 0, jq: [], cleared: false, roam: 0, roamTo: null, off: [this.OFF[x.role][0] * (k === 'B' ? 1 : -1) + (r() - .5), this.OFF[x.role][1] * (k === 'B' ? 1 : -1) + (r() - .5)], goal: null, hold: null, tpCh: null, tac: ((S.tactics[k] || {}).roles || {})[x.role] });
@@ -478,7 +478,7 @@ const Sim = {
       } else {
         const gankRate = .35 + p.st.early * .3 + (p.tac === 'gank' ? .25 : 0) - (p.tac === 'farm' ? .2 : 0) - (p.tac === 'invade' ? .1 : 0);
         if (m < 15 && g.r() < gankRate) {
-          const L = ['top', 'mid', 'bot'].map(l => { const e = g.pl.find(q => q.side !== p.side && !q.dead && !q.recall && this.LANE_OF[q.role] === l && q.role !== 'SUP' && this.distLane(q.pos, l) < 6 && this.dist(q.pos, this.fountain(q.side)) > 40); return { l, e, w: e ? (1.3 - e.hp) + g.r() * .6 : 0 }; }).sort((a, b) => b.w - a.w)[0];
+          const L = ['top', 'mid', 'bot'].map(l => { const e = g.pl.find(q => q.side !== p.side && !q.dead && !q.recall && this.LANE_OF[q.role] === l && q.role !== 'SUP' && this.distLane(q.pos, l) < 6 && this.dist(q.pos, this.fountain(q.side)) > 40); return { l, e, w: e ? (1.3 - e.hp) + g.r() * .6 + (s.focus === l ? .5 : 0) : 0 }; }).sort((a, b) => b.w - a.w)[0];   // 라커룸에서 정한 공략 라인을 먼저
           // 상대 서폿이 시야를 깔아 둔 쪽(바텀·미드)은 동선이 들켜 갱을 접기도 한다
           const ward = g.side[this.other(p.side)].ward, seen = L.e && ward && ward.until > g.t && ward.lanes.includes(L.l) && g.r() < .35;
           if (L.e && !seen) p.jq = [{ kind: 'gank', e: L.e, lane: L.l, pos: L.e.pos, left: 6 }];
