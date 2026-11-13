@@ -56,6 +56,7 @@ const Season = {
     this.st()[id] = { t1: m.t1, t2: m.t2, s1, s2, w: s1 > s2 ? 1 : 2, games: series.games.filter(x => x.result).map(x => ({ win: x.result.win, t: x.result.t, k: x.result.kills, mvp: x.result.mvp, teams: x.result.teams, picks: { B: (x.picks.B || []).map(p => p.c), R: (x.picks.R || []).map(p => p.c) } })) };
     this.rate(series, m);
     if (typeof Cond !== 'undefined') Cond.after(m, series);
+    if (typeof Talk !== 'undefined') Talk.after(m, series);
     this.resolve();
     this.inject();
     const my = App.state.teamId, t1 = Schedule.team(m.t1), t2 = Schedule.team(m.t2);
