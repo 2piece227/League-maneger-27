@@ -391,6 +391,9 @@ Engine.on(today => {
   // 경기일
   const m = Schedule.matches.find(x => (x.t1 === t.id || x.t2 === t.id) && x.t.slice(0, 10) === today);
   if (m && !(App.state.season || {})[m.id]) reason = `오늘 ${Schedule.opponent(m, t.id).short}전 경기날입니다`;
+  // 스크림 날도 멈춘다 (안 멈추면 그날이 지나가 코치가 대신 치르고 결과만 왔다)
+  const sc = !reason && typeof Scrim !== 'undefined' && Scrim.today();
+  if (sc) reason = `오늘 ${(Schedule.team(sc.team) || {}).short || ''}와 스크림이 있습니다`;
   return reason;
 });
 
