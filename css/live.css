@@ -198,3 +198,5 @@
 .lv-obj.baron { width: 6.4%; border-color: #b46cff; box-shadow: 0 0 12px rgba(180, 108, 255, .6); }
 .lv-obj .ob-ic { width: 78%; height: 78%; object-fit: contain; }
 @keyframes lvObjIn { from { transform: translate(-50%, -50%) scale(.3); opacity: 0; } to { transform: translate(-50%, -50%) scale(1); opacity: 1; } }
+
+.lv-line.hype b { color: #ff9d6b; }

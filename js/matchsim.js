@@ -217,7 +217,14 @@ const Sim = {
   win(g, kA, a, b, bonus = 0) { const d = this.tpow(g, kA, a) - this.tpow(g, this.other(kA), b) + (a.length - b.length) * 6 + bonus; return g.r() < 1 / (1 + Math.exp(-d / 11.5)); },   // 11.5: 실제 강팀·약팀 승률 곡선에 맞춘 값 (tools/validate-engine.md 참고)
 
   // ---------- 해설 ----------
-  CAST: { cast: '캐스터', anal: '해설' },
+  // 중계진 (가상 인물): 캐스터 — 장면을 크게 외친다 / 해설 정민 — 차분한 분석 / 해설 태오 — 텐션 높은 리액션
+  CAST: { cast: '캐스터 한도윤', anal: '해설 정민', hype: '해설 태오' },
+  // 궁극기 연출: 전장 어디든 합류하는 궁(텔레포트처럼 정신집중 3초) · 멀리서 도망가는 적을 잡는 궁
+  ULT_JOIN: ['Shen', 'TwistedFate', 'Galio', 'Pantheon', 'Nocturne', 'Taliyah'],
+  ULT_SNIPE: ['Jinx', 'Ezreal', 'Ashe', 'Senna', 'Draven', 'Karthus'],
+  rName(p) { const ch = Champions.byId[p.c]; return ((((ch && ch.spells || []).find(s => s.key === 'R') || {}).name) || '궁극기').split('/')[0].trim(); },
+  ultReady(g, p) { return !p.dead && !p.recall && !p.tpCh && g.t >= (p.ultAt || 0) && this.min(g) >= 6; },
+  useUlt(g, p) { p.ultAt = g.t + (this.min(g) < 14 ? 130 : 90); },
   say(g, who, text) { const n = (g.said ||= {})[text] || 0; if (n >= 2) return; g.said[text] = n + 1; g.comm.push({ t: g.t, who, text }); },   // 같은 문장은 한 경기에 두 번까지
   clock: t => `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(Math.floor(t % 60)).padStart(2, '0')}`,
   pick(g, arr) { return arr[Math.floor(g.r() * arr.length)]; },
@@ -283,9 +290,9 @@ const Sim = {
   },
 
   // ---------- 처치 · 교전 ----------
-  kill(g, killer, victim, assists = []) {
+  kill(g, killer, victim, assists = [], far = false) {
     if (victim.dead) return;
-    if (this.audit && this.dist(killer.pos, victim.pos) > 22) this.audit.push(`${this.clock(g.t)} 먼 거리 처치 ${killer.name}(${killer.pos.map(Math.round)}) → ${victim.name}(${victim.pos.map(Math.round)})`);
+    if (this.audit && !far && this.dist(killer.pos, victim.pos) > 22) this.audit.push(`${this.clock(g.t)} 먼 거리 처치 ${killer.name}(${killer.pos.map(Math.round)}) → ${victim.name}(${victim.pos.map(Math.round)})`);
     const first = !g.kills.length;
     victim.dead = g.t + Math.round(8 + this.min(g) * 1.3); victim.d++; victim.hp = 0; victim.recall = 0; victim.jq = []; victim.tpCh = null; victim.hold = null; victim.fled = 0;
     killer.k++; killer.gold += 300 + Math.min(700, Math.max(0, victim.k - victim.d) * 100) + (first ? 100 : 0);
@@ -315,6 +322,12 @@ const Sim = {
       this.teleport(g, p, this.toward(at, k, 6));
       this.say(g, 'cast', `${p.name}, 순간이동으로 합류합니다!`);
     }));
+    // 전장 어디든 합류하는 궁극기 (쉔 · 트페 · 갈리오 · 판테온 · 녹턴 · 탈리야)
+    if (A.length + Bp.length >= 4) g.pl.filter(p => this.ULT_JOIN.includes(p.c) && this.ultReady(g, p) && !A.includes(p) && !Bp.includes(p) && this.dist(p.pos, at) > 30 && g.r() < .5).forEach(p => {
+      const to = this.toward(at, p.side, 4); this.useUlt(g, p);
+      g.fx.push({ type: 'tp', side: p.side, at: to, from: [...p.pos], t: g.t, dur: 3 }); p.tpCh = { to, at: g.t + 3 }; p.hold = null;
+      this.say(g, 'cast', `${p.name}, ${this.josa(this.rName(p), '으로', '로')} 날아듭니다! ${this.cn(p)} 합류!`);
+    });
     let bonus = opt.bonus ? (opt.bonus.side === 'B' ? opt.bonus.v : -opt.bonus.v) : 0;
     // 자기 포탑 근처에서 싸우는 쪽이 유리하다
     ['B', 'R'].forEach(k => { if (['top', 'mid', 'bot'].some(l => { const st = this.structOf(g, k, l); return st.kind !== 'nexus' && this.dist(st.pos, at) < 12; })) bonus += k === 'B' ? 6 : -6; });
@@ -367,7 +380,7 @@ const Sim = {
         const ctb = f.dmg.get(v) || new Map(); ctb.set(a, (ctb.get(a) || 0) + dmg); f.dmg.set(v, ctb); v.lastHit = a;
         if (v.hp <= 0) {
           const helpers = [...ctb.keys()].filter(x => x !== a && !x.dead);
-          this.kill(g, a, v, helpers); f.kills[a.side]++;
+          this.kill(g, a, v, helpers); f.kills[a.side]++; (f.kb ||= new Map()).set(a, (f.kb.get(a) || 0) + 1);
         }
       });
       // 후퇴: 체력이 낮고 밀리면 (숫자 · 남은 체력)
@@ -378,6 +391,13 @@ const Sim = {
       // 팀 단위 후퇴: 이 싸움에서 둘 이상 잘렸고 숫자에서 밀리면 남은 팀원도 빠진다 (실제 한타는 끝까지 다 죽지 않는다)
       ['B', 'R'].forEach(k => { const o = this.other(k); if (f.kills[o] >= 2 && snap[k].length < snap[o].length) snap[k].forEach(p => { if (!go.includes(p) && g.r() < .75) go.push(p); }); });
       go.forEach(p => { p.fled = f.id; this.retreat(g, p, 18); });
+      // 멀리서 잡는 궁극기 (징크스 · 이즈리얼 · 애쉬 · 세나 · 드레이븐 · 카서스): 체력이 바닥난 채 도망가는 적
+      g.pl.filter(v => v.fled === f.id && !v.dead && v.hp < .22).forEach(v => {
+        const s = g.pl.find(p => p.side !== v.side && this.ULT_SNIPE.includes(p.c) && this.ultReady(g, p));
+        if (!s || g.r() > .3) return;
+        this.useUlt(g, s); this.kill(g, s, v, [], true); f.kills[s.side]++;
+        this.say(g, 'cast', `${s.name}, ${this.rName(s)}! 도망가던 ${this.josa(v.name, '을', '를')} 끝까지 잡아냅니다!`);
+      });
       // 서로 붙어 있도록 중심을 참가자 쪽으로
       const live = mem.filter(p => !p.dead && !p.fled);
       if (live.length) f.at = [live.reduce((a, p) => a + p.pos[0], 0) / live.length, live.reduce((a, p) => a + p.pos[1], 0) / live.length];
@@ -397,12 +417,19 @@ const Sim = {
     const wl = this.alive(g, wk).filter(p => this.dist(p.pos, f.at) < 30).length, deadL = g.pl.filter(p => p.side !== wk && p.dead).length;
     if (wl >= 3 && deadL >= 2 && this.min(g) >= 10) { const lane = ['top', 'mid', 'bot'].sort((a, b) => this.distLane(f.at, a) - this.distLane(f.at, b))[0]; g.side[wk].push = { lane, until: g.t + (ace ? 110 : 70) }; }
     if (f.onEnd) f.onEnd(res); else this.sayFight(g, res, f.where);
+    // 궁극기 장면: 그 싸움에서 가장 많이 잡은 선수
+    const star = f.kb && [...f.kb.entries()].filter(([p]) => p.side === wk).sort((a, b) => b[1] - a[1])[0];
+    if (star && star[1] >= 2 && g.r() < .8) {
+      const [p] = star, R = this.rName(p);
+      this.say(g, 'cast', res.big ? `${p.name}! ${this.cn(p)}의 ${this.josa(R, '으로', '로')} 한타를 승리합니다!` : `${p.name}의 ${R}! 진영을 휩쓸며 ${f.where ? f.where + ' ' : ''}교전을 가져옵니다!`);
+      if (res.big && g.r() < .6) this.say(g, 'hype', this.pick(g, [`와 이건 ${p.name}이 다 했어요! ${R} 각을 너무 잘 봤습니다!`, `${p.name} 미쳤습니다! 저 ${R} 하나로 한타가 끝났어요!`]));
+    }
   },
   sayFight(g, f, where) {
     if (!f) return;
     const ws = g.side[f.wk].t.short;
     if (!f.n && !f.t) { if (f.size >= 4 && g.r() < .4) this.say(g, 'anal', `${where ? where + '에서 ' : ''}부딪혔지만 둘 다 빠집니다. 킬 없이 체력만 주고받았어요.`); return; }
-    if (f.ace) this.say(g, 'cast', `에이스! ${this.josa(ws, '이', '가')} 상대를 전멸시킵니다!`);
+    if (f.ace) { this.say(g, 'cast', `에이스! ${this.josa(ws, '이', '가')} 상대를 전멸시킵니다!`); this.say(g, 'hype', this.pick(g, ['다 잡았어요! 이제 넥서스까지 갈 수 있습니다!', '전멸! 이건 경기 끝날 수도 있어요!'])); }
     else if (f.big && f.n + f.t >= 3) this.say(g, 'cast', this.pick(g, [`한타 열립니다! ${this.josa(ws, '이', '가')} ${f.n}킬을 가져가요!`, `대규모 교전! ${ws} 쪽으로 기웁니다, ${f.n} 대 ${f.t}!`]));
     else if (where) this.say(g, 'cast', f.t ? `${where} 교전, ${f.n} 대 ${f.t}로 ${this.josa(ws, '이', '가')} 조금 더 챙깁니다.` : `${where} 교전, ${this.josa(ws, '이', '가')} ${f.n}킬을 챙깁니다.`);
   },
@@ -841,6 +868,16 @@ const Sim = {
     this.say(g, 'anal', `오늘의 POG는 ${mvp.name}, ${this.josa(this.cn(mvp), '으로', '로')} ${this.josa(`${mvp.k}/${mvp.d}/${mvp.a}`, '을', '를')} 기록했습니다.`);
   },
   filler(g, m) {
+    // 흐름 해설: 3분 전보다 앞서던 팀의 격차가 크게 줄었거나 뒤집혔을 때
+    if (g.t % 60 === 0) {
+      (g.leadHist ||= []).push(this.lead(g, 'B'));
+      const h = g.leadHist, now = h[h.length - 1], before = h[h.length - 4];
+      if (before != null && Math.abs(before) > 3000) {
+        const k = before > 0 ? 'B' : 'R', o = this.other(k), ks = g.side[k].t.short, os = g.side[o].t.short, cur = k === 'B' ? now : -now, was = Math.abs(before);
+        if (cur < 0) { this.say(g, 'hype', `역전입니다! ${this.josa(os, '이', '가')} 골드를 뒤집었어요!`); g.leadHist = [now]; return; }
+        if (was - cur > 2500) { this.say(g, 'anal', `사실 조금 전까지는 ${this.josa(ks, '이', '가')} 꽤 유리했거든요. 근데 ${(was / 1000).toFixed(1)}K에서 ${(cur / 1000).toFixed(1)}K까지 많이 따라잡혔습니다.`); g.leadHist = [now]; return; }
+      }
+    }
     if (g.t % 90 || g.over) return;
     const dg = this.lead(g, 'B'), s = g.side[dg > 0 ? 'B' : 'R'];
     if (Math.abs(dg) > 3000) this.say(g, 'anal', `${this.josa(s.t.short, '이', '가')} 골드 ${(Math.abs(dg) / 1000).toFixed(1)}K 앞서 있습니다. ${m > 25 ? '이제 굳히기에 들어갈 시간이에요.' : '스노우볼을 굴릴 수 있는 차이죠.'}`);
