@@ -8,7 +8,7 @@ const Stats = {
     if (!this._p) this._p = Promise.all([
       fetch('data/champ-stats.json').then(r => r.ok ? r.json() : null).catch(() => null),
       fetch('data/items.json').then(r => r.ok ? r.json() : null).catch(() => null),
-      Champions.load(),
+      Champions.load().then(() => typeof Traits !== 'undefined' ? Traits.load() : null),
       fetch('data/draft-model.json').then(r => r.ok ? r.json() : null).catch(() => null),
       fetch('data/soloq-meta.json').then(r => r.ok ? r.json() : null).catch(() => null),
     ]).then(([s, it, , dm, sq]) => {

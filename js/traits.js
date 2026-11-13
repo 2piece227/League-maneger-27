@@ -1,5 +1,5 @@
 // 선수 특성(플레이스타일): data/traits.json 정의 + 부여 규칙
-// 효과(fx)는 경기 엔진이 생기면 적용한다. TODO: 기능 연결 — 경기 시뮬레이션·숙련도 성장에 fx 반영
+// 효과(fx)는 경기 엔진(js/matchsim.js) · 컨디션(js/condition.js) · 숙련도(js/mastery.js)가 읽는다
 const Traits = {
   defs: [],
   byId: {},
@@ -16,6 +16,7 @@ const Traits = {
         this.defs = d.traits || [];
         this.byId = Object.fromEntries(this.defs.map(t => [t.id, t]));
         this.cache = null;
+        if (Mastery.pools) Mastery.recalc();     // 특성이 숙련 경험치에 닿는다
       });
     }
     return this._p;
@@ -36,49 +37,51 @@ const Traits = {
     };
   },
 
-  // 기록 기반 특성: 포지션 안에서 상위 top 비율
-  statWinners() {
+  // 자동 부여 후보: 포지션 안에서 기준 값 상위 top 비율 (능력치 attr · 프로 기록 stat · 숨은 능력치 hidden)
+  val(p, a, sum) {
+    if (a.stat) return sum ? sum[a.stat] : null;
+    if (a.attr) { const A = p.attributes || {}; for (const g of ['physical', 'macro', 'mental', 'role']) if (A[g] && A[g][a.attr] != null) return A[g][a.attr]; return null; }
+    return null;
+  },
+  ranked() {
     const players = Player.all().map(x => x.p).filter(p => p.role !== 'COACH');
-    const sums = new Map(players.map(p => [p.id, this.summary(p.id)]).filter(([, s]) => s));
+    const sums = new Map(players.map(p => [p.id, this.summary(p.id)]));
     const out = {};
-    this.defs.filter(t => t.auto && t.auto.stat).forEach(t => {
-      const a = t.auto;
-      const byRole = {};
-      players.forEach(p => {
-        if (!sums.has(p.id) || (a.roles && !a.roles.includes(p.role))) return;
-        (byRole[p.role] ||= []).push(p.id);
-      });
-      Object.values(byRole).forEach(ids => {
-        ids.sort((x, y) => sums.get(y)[a.stat] - sums.get(x)[a.stat]);
-        ids.slice(0, Math.max(1, Math.round(ids.length * a.top))).forEach(id => (out[id] ||= []).push(t.id));
+    this.defs.filter(t => t.auto && (t.auto.attr || t.auto.stat)).forEach(t => {
+      const a = t.auto, byRole = {};
+      players.forEach(p => { if (a.roles && !a.roles.includes(p.role)) return; const v = this.val(p, a, sums.get(p.id)); if (v == null) return; (byRole[p.role] ||= []).push([p.id, v]); });
+      Object.entries(byRole).forEach(([role, l]) => {
+        l.sort((x, y) => y[1] - x[1]);
+        const top = a.top * ((a.roleBoost || {})[role] || 1);
+        l.slice(0, Math.max(1, Math.round(l.length * top))).forEach(([id]) => { if (G.rand(id, 'tr:' + t.id) < (a.chance ?? 1)) (out[id] ||= []).push(t.id); });
       });
     });
     return out;
   },
 
+  // 부여: 지정(give) 먼저, 그다음 자동 규칙. 한 사람당 최대 max(3)개. 특성이 없는 선수도 있다
   build() {
-    const c = this.cfg || {}, set = c.set || {}, add = c.add || {}, max = c.max || 3;
-    const stat = this.statWinners();
-    const map = {};
+    const c = this.cfg || {}, give = c.give || {}, max = c.max || 3, ranked = this.ranked(), map = {};
     Player.all().forEach(({ p }) => {
       if (p.role === 'COACH') return;
-      if (set[p.id]) { map[p.id] = set[p.id].filter(id => this.byId[id]); return; }
-      const got = [...(stat[p.id] || [])];
+      const got = [...(give[p.id] || [])];
+      const auto = [...(ranked[p.id] || [])];
       this.defs.forEach(t => {
-        const a = t.auto;
-        if (!a || a.stat || got.includes(t.id)) return;
-        if (a.age) {
-          if (!p.age || (a.age.max && p.age > a.age.max) || (a.age.min && p.age < a.age.min)) return;
-          if (G.rand(p.id, 'tr:' + t.id) < (a.chance ?? 1)) got.push(t.id);
-          return;
-        }
+        const a = t.auto; if (!a || a.attr || a.stat) return;
+        if (a.hidden) { const v = ((p.attributes || {}).hidden || {})[a.hidden]; if (v == null || (a.min != null && v < a.min) || (a.max != null && v > a.max)) return; if (G.rand(p.id, 'tr:' + t.id) < (a.chance ?? 1)) auto.push(t.id); return; }
+        if (a.age) { if (!p.age || (a.age.max && p.age > a.age.max) || (a.age.min && p.age < a.age.min)) return; if (G.rand(p.id, 'tr:' + t.id) < (a.chance ?? 1)) auto.push(t.id); return; }
         const pr = typeof a.rand === 'number' ? a.rand : (a.rand || {})[p.role] || 0;
-        if (G.rand(p.id, 'tr:' + t.id) < pr) got.push(t.id);
+        if (G.rand(p.id, 'tr:' + t.id) < pr) auto.push(t.id);
       });
-      map[p.id] = [...new Set([...got.slice(0, max), ...(add[p.id] || [])])].filter(id => this.byId[id]);
+      // 자동 특성은 무작위 순서로 (같은 선수는 항상 같은 순서)
+      auto.sort((x, y) => G.rand(p.id, 'ord:' + x) - G.rand(p.id, 'ord:' + y));
+      map[p.id] = [...new Set([...got, ...auto])].filter(id => this.byId[id]).slice(0, max);
     });
     return map;
   },
+  has(pid, id) { if (!this.cfg) return false; if (!this.cache) this.cache = this.build(); return (this.cache[pid] || []).includes(id); },
+  // 이 선수 특성들의 효과 값 (없으면 dflt)
+  fx(pid, key, dflt) { if (!this.cfg) return dflt; for (const t of this.of(pid)) if (t.fx && t.fx[key] != null) return t.fx[key]; return dflt; },
 
   of(pid) {
     if (!this.cfg) return [];

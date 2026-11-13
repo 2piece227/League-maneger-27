@@ -1,43 +1,589 @@
 {
-  "_note": "선수 특성(플레이스타일). 효과는 작게, 중복 보유 가능. fx는 경기 엔진이 생기면 쓰는 계수(지금은 표시만). 부여 방식: set(이 선수는 이 특성만) > add(자동 부여에 추가) > 자동(stat: 최근 3시즌 프로 기록 포지션 내 상위 비율 / rand: 선수별 고정 확률 / age: 나이). 한 선수당 자동 부여는 최대 max개.",
-  "max": 3,
-  "traits": [
-    { "id": "immortal", "icon": "😈", "name": "불사대마왕", "desc": "데스 빈도가 약간 줄어듭니다.", "fx": { "deaths": -0.08 },
-      "auto": { "stat": "deathsLow", "top": 0.12 } },
-    { "id": "dice", "icon": "🎲", "name": "주사위", "desc": "한계를 뛰어넘는 플레이를 하지만 기복이 생깁니다.", "fx": { "peak": 0.1, "variance": 0.5 },
-      "auto": { "rand": 0.05 } },
-    { "id": "cs-king", "icon": "💰", "name": "CS 킹", "desc": "CS 확보가 뛰어납니다.", "fx": { "cs": 0.08 },
-      "auto": { "rand": { "BOT": 0.12, "MID": 0.07, "TOP": 0.07 } } },
-    { "id": "clutch", "icon": "☠️", "name": "클러치", "desc": "팀이 불리할 때 능력이 올라갑니다.", "fx": { "behind": 0.07 },
-      "auto": { "rand": 0.04 } },
-    { "id": "worlds", "icon": "🏆", "name": "월즈의 남자", "desc": "월즈 기간에는 폼이 항상 최고로 유지됩니다.", "fx": { "worldsForm": "max" } },
-    { "id": "big-stage", "icon": "🌟", "name": "큰 무대 체질", "desc": "결승과 국제 대회에서 능력이 조금 올라갑니다.", "fx": { "bigMatch": 0.05 },
-      "auto": { "rand": 0.04 } },
-    { "id": "killer", "icon": "🗡️", "name": "킬 결정력", "desc": "교전에서 마무리를 잘 짓습니다.", "fx": { "kills": 0.08 },
-      "auto": { "stat": "killsHigh", "top": 0.12, "roles": ["TOP", "JGL", "MID", "BOT"] } },
-    { "id": "selfless", "icon": "🛡️", "name": "살신성인", "desc": "팀을 위한 희생으로 아군의 교전 능력이 조금 오릅니다.", "fx": { "teamFight": 0.03 },
-      "auto": { "stat": "assistsHigh", "top": 0.15, "roles": ["JGL", "SUP"] } },
-    { "id": "ocean", "icon": "🌊", "name": "챔피언 바다", "desc": "다양한 챔피언을 무리 없이 다룹니다. 밴에 흔들리지 않습니다.", "fx": { "banResist": 0.5 },
-      "auto": { "stat": "poolWide", "top": 0.07 } },
-    { "id": "otp", "icon": "🔨", "name": "장인", "desc": "주력 챔피언을 잡으면 능력이 올라갑니다.", "fx": { "signature": 0.06 },
-      "auto": { "stat": "oneTrick", "top": 0.07 } },
-    { "id": "lane-bully", "icon": "🔥", "name": "라인전 귀재", "desc": "라인전 단계에서 우위를 잘 가져옵니다.", "fx": { "laning": 0.06 },
-      "auto": { "rand": { "TOP": 0.08, "MID": 0.08, "BOT": 0.08 } } },
-    { "id": "roamer", "icon": "🏃", "name": "로밍 전문가", "desc": "다른 라인 개입이 잦고 효과적입니다.", "fx": { "roam": 0.07 },
-      "auto": { "rand": { "MID": 0.08, "SUP": 0.1, "JGL": 0.05 } } },
-    { "id": "vision", "icon": "👁️", "name": "시야 장악", "desc": "와드와 시야 싸움에서 앞섭니다.", "fx": { "vision": 0.08 },
-      "auto": { "rand": { "SUP": 0.12, "JGL": 0.08 } } },
-    { "id": "objective", "icon": "🐉", "name": "오브젝트 사냥꾼", "desc": "용·바론 싸움에서 강세를 보입니다.", "fx": { "objective": 0.06 },
-      "auto": { "rand": { "JGL": 0.12 } } },
-    { "id": "iron-mind", "icon": "🧊", "name": "강철 멘탈", "desc": "연패 중에도 사기가 잘 떨어지지 않습니다.", "fx": { "moraleLoss": -0.5 },
-      "auto": { "rand": 0.06 } },
-    { "id": "prospect", "icon": "🌱", "name": "성장형", "desc": "숙련도와 능력치가 빠르게 오릅니다.", "fx": { "growth": 0.2 },
-      "auto": { "age": { "max": 19 }, "chance": 0.6 } },
-    { "id": "veteran", "icon": "🦉", "name": "베테랑", "desc": "경험이 많아 큰 흔들림 없이 경기를 운영합니다.", "fx": { "variance": -0.3 },
-      "auto": { "age": { "min": 27 }, "chance": 0.5 } }
-  ],
-  "set": {
-    "faker": ["worlds", "immortal", "clutch"]
+ "_note": "선수 특성. 한 사람당 최대 3개(max). give: 지정 선수(전용·범용 모두) → 그다음 auto 규칙으로 채운다. auto: attr(능력치)·stat(프로 기록)·hidden(숨은 능력치) 포지션 안 상위 top 비율 · chance 확률 · rand 고정 확률 · age 나이. auto가 없으면 전용 특성. fx는 js/matchsim.js · js/condition.js · js/mastery.js 가 읽는다.",
+ "max": 3,
+ "traits": [
+  {
+   "id": "big-game",
+   "icon": "🏆",
+   "name": "빅게임 헌터",
+   "desc": "플레이오프·국제대회 같은 중요한 경기에서 기량이 오릅니다.",
+   "fx": {
+    "bigOvr": 3
+   },
+   "auto": {
+    "rand": 0.03
+   }
   },
-  "add": {}
+  {
+   "id": "clutch",
+   "icon": "⏱️",
+   "name": "클러치",
+   "desc": "팀이 불리할 때 오히려 집중력이 올라갑니다.",
+   "fx": {
+    "behindOvr": 2
+   },
+   "auto": {
+    "attr": "composure",
+    "top": 0.06
+   }
+  },
+  {
+   "id": "shield",
+   "icon": "🛡️",
+   "name": "불굴의 방패",
+   "desc": "컨디션 기복이 적습니다.",
+   "fx": {
+    "formAmp": 0.6
+   },
+   "auto": {
+    "hidden": "consistency",
+    "min": 17,
+    "chance": 0.5
+   }
+  },
+  {
+   "id": "kill-catch",
+   "icon": "🎯",
+   "name": "킬 캐치",
+   "desc": "체력이 낮은 적을 놓치지 않습니다.",
+   "fx": {
+    "finish": 1.15
+   },
+   "auto": {
+    "stat": "killsHigh",
+    "top": 0.08,
+    "roleBoost": {
+     "BOT": 2
+    }
+   }
+  },
+  {
+   "id": "lone-wolf",
+   "icon": "🐺",
+   "name": "독고다이",
+   "desc": "1대1 싸움에 강합니다.",
+   "fx": {
+    "duel": 4
+   },
+   "auto": {
+    "attr": "laning",
+    "top": 0.12,
+    "roles": [
+     "TOP"
+    ]
+   }
+  },
+  {
+   "id": "selfless",
+   "icon": "🙏",
+   "name": "살신성인",
+   "desc": "몸을 던져 싸움을 이기게 만듭니다. 대신 자주 쓰러집니다.",
+   "fx": {
+    "takeDmg": 1.12,
+    "teamDmg": 1.03
+   },
+   "auto": {
+    "rand": {
+     "SUP": 0.06,
+     "JGL": 0.04,
+     "TOP": 0.03
+    }
+   }
+  },
+  {
+   "id": "otp",
+   "icon": "🎖️",
+   "name": "장인",
+   "desc": "주력 챔피언을 들면 더 강해집니다.",
+   "fx": {
+    "mainOvr": 2
+   },
+   "auto": {
+    "stat": "oneTrick",
+    "top": 0.08
+   }
+  },
+  {
+   "id": "obj-thief",
+   "icon": "🦝",
+   "name": "오브젝트 도둑",
+   "desc": "상대가 치는 오브젝트를 가로챌 때가 있습니다.",
+   "fx": {
+    "steal": 0.1
+   },
+   "auto": {
+    "attr": "smite",
+    "top": 0.12,
+    "roles": [
+     "JGL"
+    ]
+   }
+  },
+  {
+   "id": "why-yours",
+   "icon": "🫳",
+   "name": "이게 왜 니꺼야",
+   "desc": "상대 정글 캠프를 자주 빼앗습니다.",
+   "fx": {
+    "invade": 1.8
+   },
+   "auto": {
+    "attr": "pathing",
+    "top": 0.1,
+    "roles": [
+     "JGL"
+    ]
+   }
+  },
+  {
+   "id": "dice",
+   "icon": "🎲",
+   "name": "주사위",
+   "desc": "컨디션 기복이 두 배입니다. 터지는 날과 안 되는 날이 분명합니다.",
+   "fx": {
+    "formAmp": 2
+   },
+   "auto": {
+    "hidden": "consistency",
+    "max": 6,
+    "chance": 0.25
+   }
+  },
+  {
+   "id": "soloq-king",
+   "icon": "👑",
+   "name": "솔랭의 제왕",
+   "desc": "솔랭에서 얻는 숙련 경험치가 늘어납니다.",
+   "fx": {
+    "soloqXp": 1.3
+   },
+   "auto": {
+    "hidden": "ambition",
+    "min": 16,
+    "chance": 0.3
+   }
+  },
+  {
+   "id": "worlds",
+   "icon": "🌍",
+   "name": "월즈의 남자",
+   "desc": "월즈 기간에는 컨디션이 최상이 됩니다.",
+   "fx": {
+    "worldsForm": 1
+   },
+   "exclusive": true
+  },
+  {
+   "id": "cs-king",
+   "icon": "🌾",
+   "name": "CS 킹",
+   "desc": "CS 차이를 잘 벌립니다.",
+   "fx": {
+    "cs": 1.1
+   },
+   "auto": {
+    "attr": "farming",
+    "top": 0.08,
+    "roles": [
+     "TOP",
+     "MID",
+     "BOT"
+    ]
+   }
+  },
+  {
+   "id": "immortal",
+   "icon": "😈",
+   "name": "불사대마왕",
+   "desc": "좀처럼 죽지 않습니다.",
+   "fx": {
+    "takeDmg": 0.88
+   },
+   "exclusive": true
+  },
+  {
+   "id": "kitten",
+   "icon": "🐱",
+   "name": "엄마 찾는 아기 고양이",
+   "desc": "서포터가 곁에 있으면 우리 원딜이 잘 죽지 않습니다.",
+   "fx": {
+    "adcGuard": 0.88
+   },
+   "auto": {
+    "attr": "protect",
+    "top": 0.12,
+    "roles": [
+     "SUP"
+    ]
+   }
+  },
+  {
+   "id": "iron-mind",
+   "icon": "🧱",
+   "name": "강철 멘탈",
+   "desc": "연패 중에도 컨디션과 사기가 잘 떨어지지 않습니다.",
+   "fx": {
+    "ironMind": 1
+   },
+   "auto": {
+    "attr": "composure",
+    "top": 0.1,
+    "chance": 0.6
+   }
+  },
+  {
+   "id": "human-nexus",
+   "icon": "🏰",
+   "name": "인간 넥서스",
+   "desc": "후반 한타에서 잘 죽지 않습니다.",
+   "fx": {
+    "lateGuard": 0.86
+   },
+   "auto": {
+    "attr": "survival",
+    "top": 0.1,
+    "roles": [
+     "BOT"
+    ]
+   }
+  },
+  {
+   "id": "roamer",
+   "icon": "⚡",
+   "name": "동에 번쩍 서에 번쩍",
+   "desc": "로밍이 잦고 효과적입니다.",
+   "fx": {
+    "roam": 1.6
+   },
+   "auto": {
+    "attr": "roaming",
+    "top": 0.12,
+    "roles": [
+     "MID"
+    ]
+   }
+  },
+  {
+   "id": "clairvoyant",
+   "icon": "👁️",
+   "name": "천리안",
+   "desc": "시야를 더 넓게 잡습니다.",
+   "fx": {
+    "vision": 1
+   },
+   "auto": {
+    "attr": "vision",
+    "top": 0.12,
+    "roles": [
+     "SUP"
+    ]
+   }
+  },
+  {
+   "id": "first-blood",
+   "icon": "🩸",
+   "name": "퍼블 전문가",
+   "desc": "경기 초반 첫 킬을 잘 따냅니다.",
+   "fx": {
+    "firstBlood": 1.15
+   },
+   "auto": {
+    "rand": 0.04
+   }
+  },
+  {
+   "id": "never-give-up",
+   "icon": "🔥",
+   "name": "중꺾마",
+   "desc": "불리할수록 기량이 오릅니다.",
+   "fx": {
+    "behindScale": 4
+   },
+   "exclusive": true
+  },
+  {
+   "id": "adc-god",
+   "icon": "🐍",
+   "name": "원딜의 신",
+   "desc": "상대 원딜이 위축됩니다.",
+   "fx": {
+    "enemyBotOvr": -2
+   },
+   "exclusive": true
+  },
+  {
+   "id": "reverse",
+   "icon": "🔄",
+   "name": "역천괴",
+   "desc": "모든 챔피언 숙련도가 1 높습니다.",
+   "fx": {
+    "mastery": 1
+   },
+   "exclusive": true
+  },
+  {
+   "id": "lane-expert",
+   "icon": "⚔️",
+   "name": "라인전 전문가",
+   "desc": "라인전 단계에서 솔로킬을 잘 냅니다.",
+   "fx": {
+    "duel": 2,
+    "trade": 1.2
+   },
+   "auto": {
+    "attr": "laning",
+    "top": 0.08,
+    "roles": [
+     "TOP",
+     "MID",
+     "BOT"
+    ]
+   }
+  },
+  {
+   "id": "librarian",
+   "icon": "📚",
+   "name": "도서관장",
+   "desc": "집중력이 높습니다.",
+   "fx": {
+    "ovr": 1
+   },
+   "exclusive": true
+  },
+  {
+   "id": "maestro",
+   "icon": "🎼",
+   "name": "마에스트로",
+   "desc": "팀 전체의 사기를 끌어올립니다.",
+   "fx": {
+    "teamPow": 1.2
+   },
+   "exclusive": true
+  },
+  {
+   "id": "leader",
+   "icon": "📣",
+   "name": "리더십",
+   "desc": "팀 전체의 사기를 끌어올립니다.",
+   "fx": {
+    "teamPow": 0.8
+   },
+   "auto": {
+    "age": {
+     "min": 24
+    },
+    "chance": 0.06
+   }
+  },
+  {
+   "id": "crown",
+   "icon": "👑",
+   "name": "빛나는 왕관",
+   "desc": "잘 죽지 않습니다.",
+   "fx": {
+    "takeDmg": 0.93
+   },
+   "exclusive": true
+  },
+  {
+   "id": "on-god",
+   "icon": "✨",
+   "name": "역시 온신",
+   "desc": "교전에서 한 끗 더 강합니다.",
+   "fx": {
+    "dmg": 1.05
+   },
+   "exclusive": true
+  },
+  {
+   "id": "silver-scraps",
+   "icon": "🥈",
+   "name": "실버스크랩스",
+   "desc": "풀세트(2:2) 마지막 판에서 기량이 오릅니다.",
+   "fx": {
+    "decider": 3
+   },
+   "auto": {
+    "rand": 0.02
+   }
+  },
+  {
+   "id": "agumon",
+   "icon": "🦖",
+   "name": "아구몬",
+   "desc": "팀원들의 컨디션이 나쁠 때 오히려 더 잘합니다.",
+   "fx": {
+    "carryTeam": 2
+   },
+   "exclusive": true
+  },
+  {
+   "id": "lck-killer",
+   "icon": "🗡️",
+   "name": "LCK 킬러",
+   "desc": "상대 LCK 탑 라이너가 위축됩니다.",
+   "fx": {
+    "lckTop": -2
+   },
+   "exclusive": true
+  },
+  {
+   "id": "stamina",
+   "icon": "💪",
+   "name": "체급의 신",
+   "desc": "지쳐도 잘 무너지지 않습니다. 패배 뒤 컨디션이 덜 떨어집니다.",
+   "fx": {
+    "lossDrop": 0.8
+   },
+   "exclusive": true
+  },
+  {
+   "id": "white-tiger",
+   "icon": "🐯",
+   "name": "백호",
+   "desc": "미드 챔피언 숙련 경험치를 1.3배로 얻습니다.",
+   "fx": {
+    "xpRole": [
+     "MID",
+     1.3
+    ]
+   },
+   "exclusive": true
+  },
+  {
+   "id": "north-bear",
+   "icon": "🐻",
+   "name": "북부대곰",
+   "desc": "정글 챔피언 숙련 경험치를 1.3배로 얻습니다.",
+   "fx": {
+    "xpRole": [
+     "JGL",
+     1.3
+    ]
+   },
+   "exclusive": true
+  },
+  {
+   "id": "fast-ending",
+   "icon": "🏁",
+   "name": "빠른 엔딩",
+   "desc": "원딜 챔피언 숙련도가 17까지는 빠르게 오릅니다.",
+   "fx": {
+    "xpFast17": [
+     "BOT",
+     1.6
+    ]
+   },
+   "exclusive": true
+  },
+  {
+   "id": "ruler",
+   "icon": "📏",
+   "name": "통치자",
+   "desc": "자로 잰 듯 관리합니다. 한 번은 컨디션이 바닥까지 떨어지지 않고 버팁니다(다시 좋아지면 재충전).",
+   "fx": {
+    "floor": 1
+   },
+   "exclusive": true
+  }
+ ],
+ "give": {
+  "kingen": [
+   "big-game",
+   "stamina"
+  ],
+  "bin-chen-ze-bin": [
+   "big-game",
+   "lck-killer"
+  ],
+  "scout": [
+   "big-game"
+  ],
+  "faker": [
+   "clutch",
+   "immortal",
+   "worlds"
+  ],
+  "kiin": [
+   "shield",
+   "otp"
+  ],
+  "peyz": [
+   "kill-catch"
+  ],
+  "ruler": [
+   "kill-catch",
+   "ruler"
+  ],
+  "aiming": [
+   "kill-catch"
+  ],
+  "zeus": [
+   "lone-wolf"
+  ],
+  "siwoo": [
+   "lone-wolf"
+  ],
+  "gumayusi": [
+   "selfless",
+   "obj-thief",
+   "worlds"
+  ],
+  "lucid-choi-yong-hyeok": [
+   "obj-thief"
+  ],
+  "kanavi": [
+   "why-yours"
+  ],
+  "doran-choi-hyeon-jun": [
+   "dice"
+  ],
+  "on": [
+   "dice",
+   "on-god"
+  ],
+  "chovy": [
+   "cs-king",
+   "white-tiger"
+  ],
+  "teddy": [
+   "cs-king",
+   "human-nexus"
+  ],
+  "delight": [
+   "kitten"
+  ],
+  "kellin": [
+   "kitten"
+  ],
+  "viper-park-do-hyeon": [
+   "adc-god"
+  ],
+  "keria": [
+   "reverse"
+  ],
+  "showmaker": [
+   "librarian",
+   "silver-scraps"
+  ],
+  "bdd": [
+   "maestro",
+   "agumon"
+  ],
+  "caps": [
+   "crown"
+  ],
+  "poby": [
+   "immortal"
+  ],
+  "zeka-kim-geon-woo": [
+   "stamina"
+  ],
+  "canyon": [
+   "north-bear"
+  ],
+  "jackeylove": [
+   "fast-ending"
+  ]
+ }
 }

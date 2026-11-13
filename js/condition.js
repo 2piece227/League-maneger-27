@@ -12,7 +12,10 @@ const Cond = {
   st() { const s = (App.state.cond ||= { f: {}, streak: {}, season: null }); return s; },
   ALL() { return [...App.db.teams.flatMap(t => [...t.players, ...(t.cl || [])]), ...((App.db.free && App.db.free.players) || [])].filter(p => p.role !== 'COACH'); },
   consistency(p) { return ((p.attributes || {}).hidden || {}).consistency || 11; },
-  amp(p) { return (5 + (20 - this.consistency(p)) / 19 * 2) * (typeof Traits !== 'undefined' && Traits.has && Traits.has(p.id, 'dice') ? 2 : 1); },
+  // 폭: 꾸준함에 반비례 · 불굴의 방패 0.6배 · 주사위 2배
+  amp(p) { return (5 + (20 - this.consistency(p)) / 19 * 2) * (typeof Traits !== 'undefined' && Traits.cfg ? Traits.fx(p.id, 'formAmp', 1) : 1); },
+  // 월즈 기간 (월즈의 남자)
+  worldsOn() { const d = Clock.today(); return Schedule.events.some(e => /^worlds/.test(e.base) && e.start <= d && d <= e.end); },
   half: v => Math.round(v * 2) / 2,
   // 시즌 시작: 모두 새로 (같은 커리어 · 같은 시즌이면 같은 값)
   ensure() {
@@ -21,7 +24,11 @@ const Cond = {
     S.season = Y; S.f = {}; S.streak = {};
     this.ALL().forEach(p => { const r = G.rand((App.state.seed || '') + ':cond:' + Y + ':' + p.id, 'c0'); S.f[p.id] = this.half((r * 2 - 1) * this.amp(p)); });
   },
-  of(pid) { this.ensure(); return this.st().f[pid] || 0; },
+  of(pid) {
+    this.ensure();
+    if (typeof Traits !== 'undefined' && Traits.cfg && Traits.has(pid, 'worlds') && this.worldsOn()) { const hit = Player.find(pid); if (hit) return this.amp(hit.p); }
+    return this.st().f[pid] || 0;
+  },
   // 화면용 0~100 · 말
   pct(p) { const a = this.amp(p); return Math.round(50 + this.of(p.id) / a * 45); },
   word(p) { const v = this.of(p.id) / this.amp(p); return v >= .6 ? '최상' : v >= .2 ? '좋음' : v > -.2 ? '보통' : v > -.6 ? '나쁨' : '최악'; },
@@ -45,9 +52,12 @@ const Cond = {
           const streak = S.streak[tid], iron = typeof Traits !== 'undefined' && Traits.has && Traits.has(p.id, 'iron-mind');
           let up = .5 + (won ? .12 : -.12) + (streak <= -2 ? -.07 * Math.min(4, -streak - 1) : 0) * (iron ? .3 : 1);
           const mag = .5 + Math.floor(r('m') * 5) * .5;                                      // 0.5 ~ 2.5
-          d = r('u') < up ? mag * (streak >= 2 ? 1 + .15 * Math.min(4, streak - 1) : 1) : -mag * (iron ? .5 : 1);
+          d = r('u') < up ? mag * (streak >= 2 ? 1 + .15 * Math.min(4, streak - 1) : 1) : -mag * (iron ? .5 : 1) * (!won && Traits.cfg ? Traits.fx(p.id, 'lossDrop', 1) : 1);
         } else d = (Math.floor(r('s') * 9) - 4) * .5;                                          // 후보 · 2군: -2 ~ +2
-        S.f[p.id] = Math.max(-a, Math.min(a, this.half(cur * .95 + d)));
+        let nf = Math.max(-a, Math.min(a, this.half(cur * .95 + d)));
+        // 통치자: 한 번은 바닥(0 아래)으로 떨어지지 않고 버틴다. 다시 폭의 절반 위로 올라오면 재충전
+        if (Traits.cfg && Traits.has(p.id, 'ruler')) { const F = (S.floor ||= {}); if (nf < 0 && !F[p.id]) { nf = .5; F[p.id] = 1; } else if (nf >= a * .5) F[p.id] = 0; }
+        S.f[p.id] = nf;
       });
     });
     this.counsel();
