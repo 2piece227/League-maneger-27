@@ -18,7 +18,7 @@ const Club = {
   async finance(el) {
     await Promise.all([Portal.ready, Mastery.load()]);
     const t = this.team(), B = this.budget(t);
-    const inc = [['리그 분배금', B * .28], ['스폰서', B * (.3 + this.r(t, 'sp') * .15)], ['스트리밍·굿즈', B * (.08 + (t.rep || 2) * .03)], ['상금', B * .04 * (t.rep || 2)]];
+    const inc = [['리그 분배금', B * .28], ['스폰서', this.sponsorIncome(t)], ['스트리밍·굿즈', B * (.08 + (t.rep || 2) * .03)], ['상금', B * .04 * (t.rep || 2)]];
     const exp = [['선수 연봉', this.payroll(t)], ['스태프 인건비', this.staffPay(t)], ['숙소·운영', B * .12], ['마케팅·콘텐츠', B * .06]];
     const ti = inc.reduce((s, x) => s + x[1], 0), te = exp.reduce((s, x) => s + x[1], 0);
     const months = Array.from({ length: 12 }, (_, i) => (this.r(t, 'm' + i) - .45) * B * .08);
@@ -112,20 +112,25 @@ const Club = {
 
   // ---------- 스폰서 ----------
   SLOTS: [['메인 파트너', '통신·금융'], ['유니폼 스폰서', '자동차·식품'], ['장비 파트너', '주변기기'], ['음료 파트너', '에너지 음료'], ['가구 파트너', '게이밍 의자'], ['디지털 파트너', '플랫폼·앱']],
-  async sponsors(el) {
-    await Portal.ready;
-    const t = this.team(), B = this.budget(t);
-    const rows = this.SLOTS.map(([slot, cat], i) => {
+  // 스폰서 목록 (재정 화면의 스폰서 수입도 여기서 계산한다). 재계약 협상 중인 곳도 아직 계약 기간이라 수입에 넣는다
+  sponsorRows(t) {
+    const B = this.budget(t);
+    return this.SLOTS.map(([slot, cat], i) => {
       const r = this.r(t, 'spn' + i), st = r < .12 ? 'vacant' : r < .3 ? 'talk' : 'ok';
       return { slot, cat, st, value: B * (i === 0 ? .14 : .05) * (.7 + r * .6), end: `${Clock.year() + 1 + (i % 2)}-12-31` };
     });
-    const total = rows.filter(x => x.st === 'ok').reduce((s, x) => s + x.value, 0);
+  },
+  sponsorIncome(t) { return this.sponsorRows(t).filter(x => x.st !== 'vacant').reduce((s, x) => s + x.value, 0); },
+  async sponsors(el) {
+    await Portal.ready;
+    const t = this.team(), rows = this.sponsorRows(t);
+    const total = this.sponsorIncome(t);
     const ST = { ok: ['계약 중', 'stable'], talk: ['재계약 협상', 'unstable'], vacant: ['공석', 'vacant'] };
     el.innerHTML = `
       <div class="cr-page">
         <div class="card rs-head">
           <div class="rs-title"><h2>스폰서</h2><span>스폰서 금액은 구단 평판·성적에 따라 달라집니다 (추정)</span></div>
-          <div class="rs-stats"><div><span class="k">연간 스폰서 수입</span><b>${this.money(total)}</b></div><div><span class="k">계약 중</span><b>${rows.filter(x => x.st === 'ok').length}/${rows.length}</b></div></div>
+          <div class="rs-stats"><div><span class="k">연간 스폰서 수입</span><b>${this.money(total)}</b></div><div><span class="k">스폰서</span><b>${rows.filter(x => x.st !== 'vacant').length}/${rows.length}</b></div></div>
         </div>
         <div class="sp-grid">${rows.map(x => `
           <div class="card sp-card ${x.st}">
@@ -195,9 +200,11 @@ const Club = {
     await Promise.all([Portal.ready, Results.load()]);
     const t = this.team(), names = this.ALIAS[t.id] || [t.name];
     const titles = App.db.history.worlds.filter(w => names.some(n => w.team.toLowerCase() === n.toLowerCase()));
-    const rec = Match.record(t.id);
-    const evs = {};
-    Results.forTeam(t.id).forEach(m => { (evs[m.e] ||= { w: 0, l: 0 }); Results.won(m, t.id) ? evs[m.e].w++ : evs[m.e].l++; });
+    // 이번 시즌 기록 (시즌 첫 경기 전이면 지난 시즌)
+    const all = Results.forTeam(t.id), yr = y => all.filter(m => String(m.e).startsWith(y + ':'));
+    let Y = Schedule.season(), list = yr(Y); if (!list.length && yr(Y - 1).length) { Y -= 1; list = yr(Y); }
+    const evs = {}, rec = { w: 0, l: 0 };
+    list.forEach(m => { const w = Results.won(m, t.id); (evs[m.e] ||= { w: 0, l: 0 }); w ? (evs[m.e].w++, rec.w++) : (evs[m.e].l++, rec.l++); });
     el.innerHTML = `
       <div class="cr-page">
         <div class="card cr-id">${G.team(t, 'lg')}<div class="cr-id-main"><h2>${UI.esc(t.name)}</h2><div class="cr-id-meta">${t.league} · ${UI.esc(G.country(t))} · 구단 평판 ${UI.stars(t.rep || 2)} <b>${Fame.team(t)}</b> ${Fame.teamTitle(Fame.team(t))}</div></div>
@@ -206,7 +213,7 @@ const Club = {
           <div class="card"><div class="card-head"><h3>월드 챔피언십 우승</h3></div>
             ${titles.length ? `<div class="hs-titles">${titles.map(w => `<div class="hs-title">${w.photo ? `<img src="${w.photo}" alt="" referrerpolicy="no-referrer" loading="lazy">` : ''}<b>${w.year}</b><span>${UI.esc(w.team)}</span></div>`).join('')}</div>` : '<p class="ms-none">아직 월즈 우승이 없습니다. 첫 우승의 주인공이 되어 보세요.</p>'}
           </div>
-          <div class="card"><div class="card-head"><h3>${Schedule.season()} 시즌</h3><a href="#match-history">경기 기록</a></div>
+          <div class="card"><div class="card-head"><h3>${Y} 시즌</h3><a href="#match-history">경기 기록</a></div>
             <p class="pp-line">전체 <b>${rec.w}승 ${rec.l}패</b></p>
             ${Object.entries(evs).map(([id, v]) => `<div class="mh-row ${v.w >= v.l ? 'w' : 'l'}"><span>${UI.esc(Results.ev(id).name)}</span><b>${v.w}승 ${v.l}패</b></div>`).join('') || '<p class="ms-none">기록 없음</p>'}
           </div>

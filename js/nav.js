@@ -143,7 +143,14 @@ Screens.game = {
     Router.pos = -1;
     Router.go(Router.current() && Nav.parse(Router.current()) ? Router.current() : Nav.DEFAULT);
     // 일정이 읽힌 뒤 경기 중 표시(대회 이름)를 다시 쓴다
-    Portal.ready.then(() => { if (MatchLock.on()) $('#subtabs').innerHTML = MatchLock.bar(Router.current()); });
+    // 일정이 읽힌 뒤: 경기 중 표시(대회 이름)와 계속 버튼(경기날이면 경기로)을 다시 쓴다
+    Portal.ready.then(() => { this.continueLabelLater(); });
+  },
+  continueLabelLater() {
+    Promise.resolve(typeof Results !== 'undefined' && Results.load ? Results.load() : null).finally(() => {
+      Nav.continueLabel();
+      if (MatchLock.on()) $('#subtabs').innerHTML = MatchLock.bar(Router.current());
+    });
   },
 
   leave() {

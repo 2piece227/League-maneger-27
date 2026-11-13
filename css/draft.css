@@ -284,3 +284,6 @@
 .dr-tac .dr-pk .sq-ic { width: 30px; height: 30px; }
 .dr-tac .dr-tac-foot { margin-top: 0; }
 .dr-tac .dr-tac-foot .btn-primary, .dr-tac .dr-tac-foot .btn-ghost { padding-top: 7px; padding-bottom: 7px; }
+/* 포지션별 지시 버튼: 예전 % 자리(오른쪽 여백) 때문에 긴 이름이 옆 버튼으로 넘쳤다 */
+.dr-tac .dr-opt.sm { flex: 1 1 auto; overflow: hidden; }
+.dr-tac .dr-opt.sm b { padding-right: 0; overflow: hidden; text-overflow: ellipsis; }
