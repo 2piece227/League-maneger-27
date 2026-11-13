@@ -98,6 +98,8 @@ const Engine = {
     // 처리 중에 다시 누르면 그날까지만 처리하고 멈춘다
     if (this.busy) { this.stopReq = true; Proc.status('이 날짜까지만 처리하고 멈춥니다'); return; }
     if (!App.state.teamId) return;
+    // 경기 중에는 날짜를 넘기지 않고 경기 화면으로 돌려보낸다
+    if (MatchLock.on()) { Router.go(MatchLock.home()); return; }
     const block = Inbox.blocking()[0];
     if (block) {
       UI.toast('먼저 답해야 하는 메시지가 있습니다');
@@ -131,8 +133,9 @@ const Engine = {
     if (SaveSystem.autosave()) console.info('[save] 자동 저장');
     await Portal.setTeam(Roster.team());
     Nav.render(Router.current());
-    if (Season.today()) { UI.toast(reason, 3500); Draft.matchDay(); return; }
-    if (Scrim.today()) { UI.toast('오늘은 스크림 날입니다', 3000); Scrim.go(); return; }
+    // 경기날·스크림 날에는 멈추기만 한다. 경기 준비를 마치고 [경기로]를 누르면 시작 (그때부터 경기가 끝날 때까지 잠김)
+    if (Season.today()) { UI.toast(`${reason || '오늘은 경기날입니다'} · 준비가 끝나면 [경기로]를 누르세요`, 4000); return; }
+    if (Scrim.today()) { UI.toast('오늘은 스크림 날입니다 · 준비가 끝나면 [스크림으로]를 누르세요', 4000); return; }
     UI.toast(reason || (this.stopReq ? '진행을 멈췄습니다' : `${days}일이 지났습니다`));
   },
 

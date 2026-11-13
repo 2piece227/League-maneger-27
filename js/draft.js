@@ -394,7 +394,11 @@ const Draft = {
     await Promise.all([Portal.ready, Mastery.load(), Champions.load(), Results.load(), Stats.load()]);
     this.el = el; clearInterval(this._tick); clearTimeout(this._ai);
     const S = this.st();
+    // 오늘 경기가 있으면 준비 화면 대신 그 경기 밴픽으로 (경기로 버튼과 같은 흐름)
+    if (!S && Season.today() && !this.missing().length) return this.matchDay();
     if (!S) return this.setup(el);
+    // 세트가 끝나고 라커룸 회의가 남아 있으면 그쪽으로
+    if (App.state.locker && App.state.locker.key === S.series.key) return Router.go('match-locker');
     if (S.phase === 'draft') return this.board(el, S);
     return this.tacticsView(el, S);
   },
@@ -440,7 +444,7 @@ const Draft = {
     };
     $('.dr-go', el).onclick = () => {
       const v = c => $(c + ' .on', el).dataset.v, oppId = $('.dr-opp', el).value;
-      const official = nOpp && nOpp.id === oppId;
+      const official = nOpp && nOpp.id === oppId && nm.t.slice(0, 10) === Clock.today();   // 다른 날 경기는 연습 밴픽으로
       this.start({ opp: oppId, side: v('.dr-side'), mode: v('.dr-mode'), bo: +v('.dr-bo'), key: official ? nm.id : null });
       this.render(el);
     };
@@ -589,9 +593,12 @@ const Draft = {
               <div class="dr-rt-opts">${this.ROLE_TAC[r].map(([id, n]) => `<button class="dr-opt sm ${T.roles[r] === id ? 'on' : ''}" data-role="${r}" data-v="${id}" ${ready ? 'disabled' : ''}><b>${n}${star(S.rec.roles[r] === id)}</b></button>`).join('')}</div></div>`; }).join('')}</div>
         </div>
         <div class="dr-tac-foot"><span class="dr-series">${S.series.bo > 1 ? `Bo${S.series.bo} · ${S.game}세트 · ${UI.esc(my.short)} ${Season.seriesScore(S.series)[my.id] || 0} : ${Season.seriesScore(S.series)[ot.id] || 0} ${UI.esc(ot.short)}` : '단판'} · ★ 코치 추천</span>
-          ${ready ? `<span class="cr-dim">${played ? (Season.seriesOver(S.series) ? '경기가 끝났습니다.' : '다음 세트로 넘어갈 수 있습니다.') : '밴픽·전술이 저장됐습니다.'}</span>
-            ${played ? '' : `<button class="btn-primary dr-watch">${S.game}세트 경기 시작</button>`}
-            <button class="btn-ghost dr-done">밴픽 마치기</button>`
+          ${ready ? (() => {
+            const over = played && Season.seriesOver(S.series), real = S.official || S.scrim;
+            if (over) return `<span class="cr-dim">경기가 끝났습니다.</span><button class="btn-primary dr-done">${real ? '계속' : '밴픽 마치기'}</button>`;
+            if (played) return `<span class="cr-dim">${S.game}세트가 끝났습니다.</span><button class="btn-primary dr-nextset">${S.game + 1}세트 밴픽 →</button>`;
+            return `<span class="cr-dim">밴픽·전술이 저장됐습니다.</span><button class="btn-primary dr-watch">${S.game}세트 경기 시작</button>${MatchLock.on() ? '' : '<button class="btn-ghost dr-done">밴픽 마치기</button>'}`;
+          })()
           : `<button class="btn-ghost dr-rec">코치 추천대로</button><button class="btn-primary dr-ok">전술 확정 · 경기 시작 ▶</button>`}
         </div>
       </div>`;
@@ -603,7 +610,16 @@ const Draft = {
       else if (b.classList.contains('dr-rec')) { T.team = S.rec.team; T.roles = { ...S.rec.roles }; T.ins = { ...this.insOf(S.rec) }; }
       else if (b.classList.contains('dr-watch')) return Live.start(S);
       else if (b.classList.contains('dr-ok')) { if (!this.confirm(S)) return; return Live.start(S); }
-      else if (b.classList.contains('dr-done')) { App.state.draft = null; return this.render(el); }
+      else if (b.classList.contains('dr-done')) {
+        const real = S.official || S.scrim; App.state.draft = null;
+        return real ? Router.go(S.official ? 'portal-overview' : 'training-scrims') : this.render(el);
+      }
+      // 라커룸 기록이 없을 때 (예전 저장): 진 팀이 블루로 다음 세트
+      else if (b.classList.contains('dr-nextset')) {
+        const lost = played.win !== my.id;
+        this.start({ opp: ot.id, side: lost ? 'B' : 'R', mode: S.mode, bo: S.series.bo, key: S.official ? S.series.key : null, continueSeries: true });
+        return this.render(el);
+      }
       else return;
       this.tacticsView(el, S);
     };

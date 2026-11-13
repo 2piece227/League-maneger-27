@@ -9,6 +9,42 @@ const NAV = [
   { id: 'career', label: '커리어', tabs: [['profile', '감독 프로필'], ['reputation', '평판'], ['record', '커리어 기록'], ['other-teams', '다른 팀 보기'], ['settings', '설정·저장']] },
 ];
 
+// 경기 중 잠금 (FM 방식): 경기로·스크림으로 들어가면 그 시리즈가 끝날 때까지 밴픽 · 경기 · 라커룸 화면만 쓴다.
+// 잠금 여부는 저장 상태에서 계산한다(진행 중인 오늘의 공식전 또는 스크림 밴픽이 있으면 잠김). 저장을 불러와도 이어진다.
+const MatchLock = {
+  ROUTES: ['match-draft', 'match-live', 'match-locker'],
+  on() {
+    const D = App.state.draft; if (!D || !App.state.teamId) return false;
+    // 일정 데이터가 아직 안 읽혔어도(불러오기 직후) 저장 상태만으로 판단한다
+    // 일정을 읽은 뒤에는 오늘 경기인지까지 본다 (예전 저장에 남은 다른 날 밴픽으로 갇히지 않게)
+    const today = Clock.today();
+    if (D.official) {
+      if ((App.state.season || {})[D.series.key]) return false;
+      const m = typeof Schedule !== 'undefined' && (Schedule.all || []).find(x => x.id === D.series.key);
+      return !m || m.t.slice(0, 10) === today;
+    }
+    if (D.scrim) { const s = (App.state.scrims || []).find(x => x.id === D.scrim); return !!s && !s.result && (!s.on || s.on === today); }
+    return false;
+  },
+  // 지금 있어야 할 화면
+  home() {
+    const D = App.state.draft, L = App.state.locker;
+    if (L && D && L.key === D.series.key) return 'match-locker';
+    if (typeof Live !== 'undefined' && Live.g && Live.g.S === D && !Live.g.over) return 'match-live';
+    return 'match-draft';
+  },
+  allows(route) { return !this.on() || this.ROUTES.includes(route); },
+  // 하위 탭 자리에 보이는 진행 표시
+  bar(route) {
+    const D = App.state.draft, my = Roster.team(), opp = Draft.side(D, D.us === 'B' ? 'R' : 'B');
+    const m = D.official && (Schedule.all || []).find(x => x.id === D.series.key), title = D.official ? (m && (Schedule.eventOf(m) || {}).label) || '공식전' : '스크림';
+    const steps = [['match-draft', '밴픽·전술'], ['match-live', '경기'], ['match-locker', '라커룸']];
+    return `<span class="ml-title"><b>${UI.esc(title)}</b> ${UI.esc(my.short)} vs ${UI.esc(opp.short)} · ${D.series.bo > 1 ? `Bo${D.series.bo} ${D.game}세트` : '단판'}</span>
+      ${steps.map(([r, l]) => `<span class="ml-step ${r === route ? 'on' : ''}">${l}</span>`).join('')}
+      <span class="ml-note">경기가 끝나면 다른 화면으로 이동할 수 있습니다</span>`;
+  },
+};
+
 const Nav = {
   DEFAULT: 'portal-overview',
 
@@ -47,6 +83,9 @@ const Nav = {
 
   // 경기날이면 계속 버튼이 "경기로"가 된다
   continueLabel() {
+    const lock = typeof MatchLock !== 'undefined' && MatchLock.on();
+    document.querySelectorAll('.btn-continue').forEach(b => { b.classList.toggle('locked', lock); b.disabled = lock; });
+    if (lock) { document.querySelectorAll('.btn-continue').forEach(b => { b.classList.remove('match'); b.firstChild.textContent = '경기 중 '; }); return; }
     const day = typeof Season !== 'undefined' && App.state.teamId && Season.today(), scr = !day && typeof Scrim !== 'undefined' && App.state.teamId && Scrim.today();
     document.querySelectorAll('.btn-continue').forEach(b => { b.classList.toggle('match', !!(day || scr)); b.firstChild.textContent = day ? '경기로 ' : scr ? '스크림으로 ' : '계속 '; });
   },
@@ -54,11 +93,20 @@ const Nav = {
     if (!App.current || App.current.id !== 'screen-game') return;
     const hit = this.parse(route);
     if (!hit) { Router.go(this.DEFAULT); return; }
+    // 경기 중에는 밴픽 · 경기 · 라커룸 밖으로 나갈 수 없다
+    const lock = MatchLock.on();
+    if (lock && !MatchLock.ROUTES.includes(route)) {
+      if (Router.pos > 0) UI.toast('경기가 끝날 때까지 다른 화면으로 이동할 수 없습니다');
+      history.replaceState(null, '', '#' + MatchLock.home()); Router.onChange(); return;
+    }
+    $('#screen-game').classList.toggle('locked', lock);
+    $('#screen-game').classList.remove('menu-open');
     const { menu, tab } = hit;
 
     $$('.tb-item').forEach(el => el.classList.toggle('on', el.dataset.menu === menu.id));
     this.continueLabel();
-    $('#subtabs').innerHTML = menu.tabs.filter(t => !t[2] || t[0] === tab.id).map(([id, label]) =>
+    if (lock) $('#subtabs').innerHTML = MatchLock.bar(route);
+    else $('#subtabs').innerHTML = menu.tabs.filter(t => !t[2] || t[0] === tab.id).map(([id, label]) =>
       `<a href="#${menu.id}-${id}" class="${id === tab.id ? 'on' : ''}">${label}</a>`).join('');
     const active = $('#subtabs a.on');
     if (active) active.scrollIntoView({ block: 'nearest', inline: 'nearest' });
@@ -94,6 +142,8 @@ Screens.game = {
     Router.stack = [];
     Router.pos = -1;
     Router.go(Router.current() && Nav.parse(Router.current()) ? Router.current() : Nav.DEFAULT);
+    // 일정이 읽힌 뒤 경기 중 표시(대회 이름)를 다시 쓴다
+    Portal.ready.then(() => { if (MatchLock.on()) $('#subtabs').innerHTML = MatchLock.bar(Router.current()); });
   },
 
   leave() {

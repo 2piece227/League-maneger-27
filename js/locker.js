@@ -9,7 +9,10 @@
 const Locker = {
   st() { return App.state.locker || null; },
   // Live.finish 에서: 방금 세트를 요약해 두고 라커룸으로
-  open(S, g) {
+  open(S, g) { this.prepare(S, g); Router.go('match-locker'); },
+  // 세트가 끝나자마자 회의 내용을 만들어 저장한다 (이미 만든 세트면 그대로 둔다)
+  prepare(S, g) {
+    const cur = this.st(); if (cur && cur.key === S.series.key && cur.game === S.game) return;
     const us = S.teams.B === App.state.teamId ? 'B' : 'R', them = us === 'B' ? 'R' : 'B', won = g.over.win === us;
     const rate = p => Math.round(Math.max(3, Math.min(10, 6 + (p.side === g.over.win ? .6 : -.3) + p.k * .32 + p.a * .16 - p.d * .28 + (g.over.mvp === p ? .8 : 0))) * 10) / 10;
     const pl = g.pl.map(p => ({ id: p.p.id, name: p.name, role: p.role, side: p.side, c: p.c, k: p.k, d: p.d, a: p.a, gold: Math.round(p.gold), r: rate(p) }));
@@ -25,7 +28,6 @@ const Locker = {
       oppTeam: Draft.side(S, them).id, mode: S.mode, bo: S.series.bo, scrim: S.scrim || null, official: !!S.official,
       step: 0, log: [], picks: {},
     };
-    Router.go('match-locker');
   },
   coach() { const t = Roster.team(); return ((t.staff || [])[1] || (t.staff || [])[0] || { name: '코치' }); },
   // 선수 성격: 침착함(멘탈) · 야망(숨은) · 특성
@@ -85,9 +87,10 @@ const Locker = {
 
   // ---------- 화면 ----------
   async render(el) {
-    await Portal.ready;
+    el.innerHTML = '<div class="placeholder-view"><p>라커룸 준비 중…</p></div>';
+    await Promise.all([Portal.ready, Champions.load(), Mastery.load()]);   // 새로고침 직후 라커룸으로 바로 올 수 있다
     const L = this.st();
-    if (!L) { el.innerHTML = `<div class="cr-page">${Career.head('라커룸', '진행 중인 회의가 없습니다.')}</div>`; return; }
+    if (!L) { if (MatchLock.on()) return Router.go('match-draft'); el.innerHTML = `<div class="cr-page">${Career.head('라커룸', '진행 중인 회의가 없습니다.')}</div>`; return; }
     this.el = el; L.sc ||= this.script(L);
     const my = Roster.team(), opp = Schedule.team(L.oppTeam);
     el.innerHTML = `<div class="lk-wrap">
@@ -112,19 +115,21 @@ const Locker = {
     d.innerHTML = `${this.face(x.who)}<div><small>${UI.esc(this.nameOf(x.who))}</small><p>${UI.esc(x.text)}</p></div>`;
     this.chat.appendChild(d); this.chat.scrollTop = this.chat.scrollHeight;
   },
-  push(who, text) { const L = this.st(), x = { who, text }; L.log.push(x); this.bubble(x); },
+  push(who, text) { const L = this.st(); if (!L) return; const x = { who, text }; L.log.push(x); this.bubble(x); },
   // 대본을 한 줄씩 (타이핑하듯 약간의 간격)
   async run() {
     const L = this.st(), el = this.el;
     const wait = ms => new Promise(r => setTimeout(r, ms));
+    const gone = () => this.st() !== L || !document.body.contains(el);   // 회의를 건너뛰었거나 화면을 떠났다
     while (L.step < L.sc.say.length) {
-      if (!document.body.contains(el)) return;
+      if (gone()) return;
       await wait(L.log.length ? 650 : 250);
+      if (gone()) return;
       const [who, text] = L.sc.say[L.step]; L.step++; this.push(who, text);
     }
     const ti = L.step - L.sc.say.length, tp = L.sc.topics[ti];
     if (!tp) return this.end();
-    await wait(500); if (!document.body.contains(el)) return;
+    await wait(500); if (gone()) return;
     if (!L.asked || L.asked !== tp.id) { this.push('coach', tp.ask); L.asked = tp.id; }
     this.opts.innerHTML = tp.opts.map(o => `<button class="${o[0] === tp.rec ? 'btn-primary' : 'btn-ghost'}" data-v="${o[0]}">${UI.esc(o[1])}</button>`).join('');
     this.opts.onclick = async e => {

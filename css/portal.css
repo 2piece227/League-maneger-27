@@ -373,3 +373,15 @@
   .proc-cell small { display: none; }
 }
 .btn-continue.match { background: linear-gradient(180deg, #ff7a6b, #d94a3d); color: #fff; }
+
+/* ---------- 경기 중 잠금: 메뉴 대신 진행 표시 ---------- */
+#screen-game.locked .tb-menu, #screen-game.locked .tb-hist, #screen-game.locked .tb-burger { visibility: hidden; pointer-events: none; }
+.btn-continue.locked, .btn-continue.locked:hover { background: #222b3d; color: var(--muted); box-shadow: 0 0 0 1px var(--line); filter: none; cursor: default; }
+.btn-continue.locked svg { display: none; }
+#screen-game.locked .subtabs { align-items: center; gap: 6px; }
+.subtabs .ml-title { margin-right: 10px; font-size: 13px; color: var(--text); white-space: nowrap; }
+.subtabs .ml-title b { color: var(--gold-2); margin-right: 4px; }
+.subtabs .ml-step { flex: none; padding: 4px 10px; border-radius: 999px; font-size: 12px; color: var(--muted); border: 1px solid transparent; white-space: nowrap; }
+.subtabs .ml-step.on { color: var(--gold-2); border-color: var(--gold); background: rgba(200, 162, 74, .12); font-weight: 700; }
+.subtabs .ml-note { margin-left: auto; font-size: 12px; color: var(--muted); white-space: nowrap; }
+@media (max-width: 760px) { .subtabs .ml-note { display: none; } }

@@ -15,7 +15,7 @@ const Live = {
     clearInterval(this.timer); cancelAnimationFrame(this.raf); this.el = el;
     try {
       await Promise.all([Portal.ready, Mastery.load(), Champions.load(), Stats.load()]);
-      if (!this.g) return this.empty(el);
+      if (!this.g || this.g.S !== App.state.draft && MatchLock.on()) { if (MatchLock.on()) return Router.go('match-draft'); return this.empty(el); }
       this.build(el);
     } catch (e) {
       console.error('[live]', e);
@@ -50,7 +50,7 @@ const Live = {
         </div>
         <div class="lv-panel">
           <div class="lv-ctrl">
-            <button class="btn-ghost lv-exit" title="밴픽 화면으로">✕ 나가기</button>
+            ${MatchLock.on() ? '' : '<button class="btn-ghost lv-exit" title="밴픽 화면으로">✕ 나가기</button>'}
             <button class="btn-ghost lv-pause">일시정지</button>
             <div class="seg lv-speed">${this.SPEEDS.map(s => `<button class="${this.speed === s ? 'on' : ''}" data-s="${s}">${s}x</button>`).join('')}</div>
             <button class="btn-ghost lv-skip">결과로</button>
@@ -63,7 +63,7 @@ const Live = {
     $('.lv-speed', el).onclick = e => { const b = e.target.closest('button'); if (!b) return; this.acc = this.acc * this.speed / +b.dataset.s; this.speed = +b.dataset.s; $$('.lv-speed button', el).forEach(x => x.classList.toggle('on', x === b)); };
     $('.lv-pause', el).onclick = e => { if (g.over) return; this.playing = !this.playing; e.target.textContent = this.playing ? '일시정지' : '계속'; };
     $('.lv-skip', el).onclick = () => { this.playing = false; while (!g.over) Sim.step(g); this.feedSeen = g.feed.length; this.banners = []; this.acc = 1e9; this.draw(); this.finish(); };
-    $('.lv-exit', el).onclick = () => { this.playing = false; Router.go(this.exitTo || 'match-draft'); };
+    const ex = $('.lv-exit', el); if (ex) ex.onclick = () => { this.playing = false; Router.go('match-draft'); };
     this.feedSeen = Math.max(this.feedSeen, g.feed.length); this.banners = []; this.bannerOn = false;
     this.fit(); this._fit ||= (() => { if (this.el && document.body.contains(this.el)) this.fit(); }); window.removeEventListener('resize', this._fit); window.addEventListener('resize', this._fit);
     this.acc = 0; this.playing = !g.over; this.draw(); this.animate();
@@ -228,6 +228,8 @@ const Live = {
     const my = App.state.teamId, sc = this.score(S), over = Season.seriesOver(S.series);
     if (over && S.official) Season.recordSeries(S.series.key, S.series);
     if (over && S.scrim) Scrim.finish(S.scrim, S.series);
+    // 시리즈가 안 끝났으면 라커룸을 바로 준비해 둔다 (새로고침해도 라커룸으로 이어진다)
+    if (!over) Locker.prepare(S, g);
     // 상단 매치 스코어 갱신
     $('.lv-ms.b', el).textContent = sc.B; $('.lv-ms.r', el).textContent = sc.R;
     $('.lv-tm.blue .lv-pips', el).outerHTML = this.pips(sc.B, sc.need, 'b'); $('.lv-tm.red .lv-pips', el).outerHTML = this.pips(sc.R, sc.need, 'r');
@@ -238,7 +240,7 @@ const Live = {
       <div class="lv-res-btn">${!over ? `<button class="btn-primary lv-next">라커룸으로 → <small class="lv-cd"></small></button>` : `<button class="btn-primary lv-back">${S.official || S.scrim ? '계속' : '닫기'}</button>`}${!over ? '<button class="btn-ghost lv-stay">결과 더 보기</button>' : ''}</div></div>`;
     clearInterval(this._cd);
     // 다음 세트 전에 라커룸 회의 (진영 선택 · 밴 방향 · 선수에게 한마디)
-    const next = () => { clearInterval(this._cd); Locker.open(S, g); };
+    const next = () => { clearInterval(this._cd); Router.go('match-locker'); };
     const bk = $('.lv-back', el);
     if (bk) bk.onclick = () => { if (S.official || S.scrim) App.state.draft = null; Router.go(S.official ? 'portal-overview' : S.scrim ? 'training-scrims' : 'match-draft'); };
     const nx = $('.lv-next', el);
