@@ -39,7 +39,7 @@ const MatchLock = {
     const D = App.state.draft, my = Roster.team(), opp = Draft.side(D, D.us === 'B' ? 'R' : 'B');
     const m = D.official && (Schedule.all || []).find(x => x.id === D.series.key), title = D.official ? (m && (Schedule.eventOf(m) || {}).label) || '공식전' : '스크림';
     const steps = [['match-draft', '밴픽·전술'], ['match-live', '경기'], ['match-locker', '라커룸']];
-    return `<span class="ml-title"><b>${UI.esc(title)}</b> ${UI.esc(my.short)} vs ${UI.esc(opp.short)} · ${D.series.bo > 1 ? `Bo${D.series.bo} ${D.game}세트` : '단판'}</span>
+    return `<span class="ml-title"><b>${UI.esc(title)}</b> ${UI.esc(my.short)} vs ${UI.esc(opp.short)} · ${D.series.fixed ? `${D.series.fixed}판 중 ${D.game}판` : D.series.bo > 1 ? `Bo${D.series.bo} ${D.game}세트` : '단판'}</span>
       ${steps.map(([r, l]) => `<span class="ml-step ${r === route ? 'on' : ''}">${l}</span>`).join('')}
       <span class="ml-note">경기가 끝나면 다른 화면으로 이동할 수 있습니다</span>`;
   },

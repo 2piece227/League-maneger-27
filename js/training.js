@@ -97,6 +97,7 @@ const Training = {
   scrimState(s) {
     if (!s.status) return '<span class="ot-st seeking">답변 대기</span>';
     if (s.status === 'declined') return '<span class="ot-st stable">거절됨</span>';
+    if (s.status === 'cancelled') return '<span class="ot-st stable">취소됨 (공식전)</span>';
     if (s.result) return `<span class="ot-st mine">결과 ${s.result}</span>`;
     return `<span class="ot-st vacant">${Fmt.dayLabel(s.on)} 확정${s.on === this.today() ? ' · 오늘' : ''}</span>`;
   },

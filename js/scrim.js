@@ -58,6 +58,12 @@ Engine.on(today => {
         Inbox.push({ from, subject: `${o.short}, 스크림 정중히 거절`, link: 'training-scrims', body: '제안 감사합니다. 그날은 일정이 이미 차 있어 어렵겠습니다. 다음 기회에 다시 이야기 나누시죠.' });
       }
     }
+    // 잡아 둔 날에 공식전(나중에 대진이 정해진 플레이오프 등)이 생기면 스크림은 취소
+    if (s.status === 'accepted' && !s.result && s.on >= today && (Scrim.busy(my.id, s.on) || Scrim.busy(s.team, s.on))) {
+      s.status = 'cancelled';
+      Inbox.push({ from, subject: `${o.short} 스크림 취소 (공식전 일정)`, link: 'training-scrims', body: `${Fmt.dayLabel(s.on)}에 공식전 일정이 잡혀 그날 스크림은 취소합니다.` });
+      return;
+    }
     if (s.status === 'accepted' && s.on < today && !s.result) {
       const D = App.state.draft; Scrim.finish(s.id, Scrim.autoPlay(s, D && D.scrim === s.id ? D.series : null));
     }
