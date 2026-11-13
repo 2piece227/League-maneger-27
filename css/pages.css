@@ -431,3 +431,11 @@
 
 .un-banner { grid-column: 1 / -1; display: flex; align-items: center; gap: 12px; border-left: 3px solid #e2575c; }
 .un-banner span { color: var(--muted); font-size: 13px; flex: 1; }
+
+/* 패치 노트 */
+.pt-notes { padding: 0 12px 10px; display: grid; gap: 10px; }
+.pt-patch > b { margin-right: 8px; } .pt-patch > small { color: var(--muted); }
+.pt-row { display: grid; grid-template-columns: 24px 90px 70px 1fr; gap: 8px; align-items: center; font-size: 12.5px; padding: 3px 0; }
+.pt-row .sq-ic { width: 22px; height: 22px; }
+.pt-row.up em { color: #5fd38d; font-style: normal; } .pt-row.dn em { color: #ff8a8e; font-style: normal; }
+.pt-row small { color: var(--muted); }

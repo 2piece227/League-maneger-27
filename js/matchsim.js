@@ -137,7 +137,7 @@ const Sim = {
     ['B', 'R'].forEach(k => S.picks[k].slice().sort((a, b) => G.ROLES.indexOf(a.role) - G.ROLES.indexOf(b.role)).forEach(x => {
       const hit = x.pid && Player.find(x.pid), p = hit ? hit.p : { id: 'x' + x.role, name: '공석', ovr: 55 }, boost = ((S.series && S.series.boost) || {})[p.id] || 0;   // 라커룸에서 들은 말 (다음 세트만)
       const ms = Draft.mast(p, x.c);
-      g.pl.push({ side: k, role: x.role, c: x.c, p, name: p.name, ovr: (p.ovr || 60) + boost + (hit ? Cond.ovr(p) : 0), m: ms.m, sig: ms.sig, meta: Draft.meta(x.c), st: Style.of(x.c), curve: Stats.curve(x.c),
+      g.pl.push({ side: k, role: x.role, c: x.c, p, name: p.name, ovr: (p.ovr || 60) + boost + (hit ? Cond.ovr(p) : 0), patch: typeof Patch !== 'undefined' ? Patch.adj(x.c) : 0, m: ms.m, sig: ms.sig, meta: Draft.meta(x.c), st: Style.of(x.c), curve: Stats.curve(x.c),
         k: 0, d: 0, a: 0, cs: 0, gold: 500, spent: 0, inv: [], wards: 0, trinket: null, build: Stats.build(x.c, x.role),
         tp: x.role === 'TOP' || (x.role !== 'JGL' && x.role !== 'SUP' && Stats.tp(x.c)), tpReady: 0, lvl: 1, hp: 1, dead: 0, pos: [...this.fountain(k)], trail: null, warp: 0,
         recall: 0, lastBack: 0, jq: [], cleared: false, roam: 0, roamTo: null, off: [this.OFF[x.role][0] * (k === 'B' ? 1 : -1) + (r() - .5), this.OFF[x.role][1] * (k === 'B' ? 1 : -1) + (r() - .5)], goal: null, hold: null, tpCh: null, tac: ((S.tactics[k] || {}).roles || {})[x.role] });
@@ -198,7 +198,7 @@ const Sim = {
   // 선수 전투력: OVR + 숙련 + 메타 + 레벨 + 완성 아이템 + 시간대별 실제 승률
   ppow(p, m = 15) {
     const ph = m < 22 ? p.curve[0] : m < 30 ? p.curve[1] : p.curve[2], items = p.inv.filter(i => i.gold >= 2000).length;
-    return p.ovr * .6 + p.m * .4 + (p.sig ? 2 : 0) + p.meta * 3 + p.lvl * .2 + items * .6 + (ph - .5) * 20 + Math.min(2.5, p.k * .15) - Math.min(2, p.d * .1) - (1 - p.hp) * 3;
+    return p.ovr * .6 + p.m * .4 + (p.sig ? 2 : 0) + p.meta * 3 + (p.patch || 0) + p.lvl * .2 + items * .6 + (ph - .5) * 20 + Math.min(2.5, p.k * .15) - Math.min(2, p.d * .1) - (1 - p.hp) * 3;
   },
   tpow(g, k, who) {
     const s = g.side[k], ps = (who || this.alive(g, k)), m = this.min(g), c = s.comp;
