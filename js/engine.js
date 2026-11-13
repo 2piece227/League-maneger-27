@@ -373,9 +373,9 @@ const Events = {
 
 // ---------- 매일 처리 ----------
 Engine.on(today => {
-  // 생일: 나이 갱신
+  // 생일: 나이 갱신 (1군·2군·아카데미·스태프·FA 모두)
   const md = today.slice(5);
-  App.db.teams.forEach(t => t.players.concat(t.staff || []).forEach(p => { if (p.birthdate && p.birthdate.slice(5) === md) p.age = Data.ageOn(p.birthdate, today); }));
+  Player.all().forEach(({ p }) => { if (p.birthdate && p.birthdate.slice(5) === md) p.age = Data.ageOn(p.birthdate, today); });
 });
 
 Engine.on(today => {

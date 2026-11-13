@@ -137,6 +137,9 @@ Screens.game = {
   },
 
   enter() {
+    // 나이는 데이터를 읽을 때 커리어 시작일 기준이라, 게임에 들어올 때 오늘 날짜로 다시 계산한다 (불러오기 후 나이가 되돌아가던 문제)
+    const today = Clock.today();
+    Player.all().forEach(({ p }) => { if (p.birthdate) p.age = Data.ageOn(p.birthdate, today); });
     const team = App.db.teams.find(t => t.id === App.state.teamId);
     Portal.setTeam(team);
     Router.stack = [];
