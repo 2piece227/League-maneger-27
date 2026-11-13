@@ -28,7 +28,7 @@ const Season = {
     return series;
   },
   // 경량 시뮬 (다른 팀끼리의 경기): 주전 평균 OVR + 코치 + 그날 컨디션으로 세트 승패만 빠르게 정한다
-  power(t) { const l = Draft.lineup(t).filter(Boolean); return (l.reduce((a, p) => a + (p.ovr || 60), 0) / (l.length || 1)) - (5 - l.length) * 4 + (Draft.coach(t).r - 10) * .25; },
+  power(t) { const l = Draft.lineup(t).filter(Boolean), C = typeof Cond !== 'undefined'; return (l.reduce((a, p) => a + (p.ovr || 60) + (C ? Cond.ovr(p) : 0), 0) / (l.length || 1)) - (5 - l.length) * 4 + (Draft.coach(t).r - 10) * .25 + (C ? Cond.team(t, l) : 0); },
   lightSeries(m) {
     const r = Sim.rng((App.state.seed || '') + ':light:' + m.id), t1 = Schedule.team(m.t1), t2 = Schedule.team(m.t2);
     const p1 = this.power(t1) + (r() - .5) * 5, p2 = this.power(t2) + (r() - .5) * 5, series = { key: m.id, bo: m.bo || 1, games: [] };
@@ -55,6 +55,7 @@ const Season = {
     const sc = this.seriesScore(series), s1 = sc[m.t1] || 0, s2 = sc[m.t2] || 0;
     this.st()[id] = { t1: m.t1, t2: m.t2, s1, s2, w: s1 > s2 ? 1 : 2, games: series.games.filter(x => x.result).map(x => ({ win: x.result.win, t: x.result.t, k: x.result.kills, mvp: x.result.mvp, teams: x.result.teams, picks: { B: (x.picks.B || []).map(p => p.c), R: (x.picks.R || []).map(p => p.c) } })) };
     this.rate(series, m);
+    if (typeof Cond !== 'undefined') Cond.after(m, series);
     this.resolve();
     this.inject();
     const my = App.state.teamId, t1 = Schedule.team(m.t1), t2 = Schedule.team(m.t2);

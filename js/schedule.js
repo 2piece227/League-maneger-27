@@ -121,8 +121,11 @@ const Schedule = {
       // 이 단계의 팀 재배치 (리그별, 시즌·단계마다 새로 추첨)
       const ids = App.db.teams.filter(t => t.league === e.league).map(t => t.id).sort();
       const perm = this.shuffle(ids, this.rng(`perm:${seed}:${Y}:${e.id}`));
+      // LCK컵: 전년도 시드 주장의 그룹 드래프트 결과로 (js/cupdraft.js)
+      const cup = e.id === 'lck-cup' && typeof CupDraft !== 'undefined' && App.state.teamId ? CupDraft.map(e, Y) : null;
       const map = tok => {
         if (!tok) return null;
+        if (cup && cup[tok]) return cup[tok];
         if (tok.startsWith('X:')) return false;           // 게임에 없는 팀 → 경기 제외
         if (tok.startsWith('S:')) return null;            // 앞 단계 순위 확정 전 → Season.resolve 가 순위로 채운다
         const i = ids.indexOf(tok.slice(2));

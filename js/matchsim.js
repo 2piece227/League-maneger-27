@@ -124,7 +124,7 @@ const Sim = {
     ['B', 'R'].forEach(k => {
       const t = Draft.side(S, k), co = Draft.coach(t), picks = S.picks[k];
       let syn = 0; picks.forEach((a, i) => picks.slice(i + 1).forEach(b => { const q = Stats.synergy(a.role, a.c, b.role, b.c); if (q) syn += q.wr - .5; }));
-      g.side[k] = { k, t, coach: co.r, kills: 0, syn, fit: Draft.fitTotal(S, k) || 50, form: (r() - .5) * 6,   // form: 그날 컨디션 (임시)
+      g.side[k] = { k, t, coach: co.r, kills: 0, syn, fit: Draft.fitTotal(S, k) || 50, form: (r() - .5) * 2,   // 그날의 작은 흔들림. 선수 컨디션 · 팀합 · 소통은 js/condition.js
         tac: (S.tactics[k] || {}).team || 'bal', comp: Style.comp(picks.map(x => x.c)),
         towers: { top: 3, mid: 3, bot: 3 }, inhib: { top: 1, mid: 1, bot: 1 }, nexusT: 2, down: 0,
         thp: { top: [1, 1, 1], mid: [1, 1, 1], bot: [1, 1, 1] }, ihp: { top: 1, mid: 1, bot: 1 }, ntp: [1, 1], nxhp: 1,
@@ -137,11 +137,12 @@ const Sim = {
     ['B', 'R'].forEach(k => S.picks[k].slice().sort((a, b) => G.ROLES.indexOf(a.role) - G.ROLES.indexOf(b.role)).forEach(x => {
       const hit = x.pid && Player.find(x.pid), p = hit ? hit.p : { id: 'x' + x.role, name: '공석', ovr: 55 }, boost = ((S.series && S.series.boost) || {})[p.id] || 0;   // 라커룸에서 들은 말 (다음 세트만)
       const ms = Draft.mast(p, x.c);
-      g.pl.push({ side: k, role: x.role, c: x.c, p, name: p.name, ovr: (p.ovr || 60) + boost, m: ms.m, sig: ms.sig, meta: Draft.meta(x.c), st: Style.of(x.c), curve: Stats.curve(x.c),
+      g.pl.push({ side: k, role: x.role, c: x.c, p, name: p.name, ovr: (p.ovr || 60) + boost + (hit ? Cond.ovr(p) : 0), m: ms.m, sig: ms.sig, meta: Draft.meta(x.c), st: Style.of(x.c), curve: Stats.curve(x.c),
         k: 0, d: 0, a: 0, cs: 0, gold: 500, spent: 0, inv: [], wards: 0, trinket: null, build: Stats.build(x.c, x.role),
         tp: x.role === 'TOP' || (x.role !== 'JGL' && x.role !== 'SUP' && Stats.tp(x.c)), tpReady: 0, lvl: 1, hp: 1, dead: 0, pos: [...this.fountain(k)], trail: null, warp: 0,
         recall: 0, lastBack: 0, jq: [], cleared: false, roam: 0, roamTo: null, off: [this.OFF[x.role][0] * (k === 'B' ? 1 : -1) + (r() - .5), this.OFF[x.role][1] * (k === 'B' ? 1 : -1) + (r() - .5)], goal: null, hold: null, tpCh: null, tac: ((S.tactics[k] || {}).roles || {})[x.role] });
     }));
+    ['B', 'R'].forEach(k => { g.side[k].team = Cond.team(g.side[k].t, g.pl.filter(p => p.side === k && !String(p.p.id).startsWith('x')).map(p => p.p)); });   // 팀합 + 소통
     g.pl.forEach(p => { const o = g.pl.find(q => q.side !== p.side && q.role === p.role); p.mu = o ? Stats.matchup(p.role, p.c, o.c) : { wr: .5, gd: 0, g: 0 }; });
     g.pl.forEach(p => this.shop(g, p));
     // 드래곤: 첫 두 마리는 서로 다른 속성, 세 번째부터는 같은 속성(협곡 속성)
@@ -179,7 +180,7 @@ const Sim = {
   tpow(g, k, who) {
     const s = g.side[k], ps = (who || this.alive(g, k)), m = this.min(g), c = s.comp;
     if (!ps.length) return 0;
-    let v = ps.reduce((a, p) => a + this.ppow(p, m), 0) / ps.length + s.form + s.syn * 8;
+    let v = ps.reduce((a, p) => a + this.ppow(p, m), 0) / ps.length + s.form + s.syn * 8 + (s.team || 0);
     v += m < 14 ? (c.early - .4) * 10 : m < 26 ? ((c.fight + c.engage) / 2 - .4) * 9 : (c.late - .4) * 10;
     v += (s.coach - 10) * .15;   // 전술 적합도 보너스는 없다: 전술은 경기 중 판단(교전·오브젝트·운영·목표·시야)으로만 결과에 닿는다
     v += Math.max(-9, Math.min(9, this.lead(g, k) / 1000 * .8));   // 스노우볼 (실제: 이긴 팀 골드 +1만, 킬 2배)
