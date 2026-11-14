@@ -41,7 +41,7 @@ const Patch = {
     if (Draft) Draft._meta = null;
     const nm = c => Champions.byId[c].name, up = changes.filter(x => x.d > 0), dn = changes.filter(x => x.d < 0);
     Market.post(`[패치] ${v} ${big ? '대규모 ' : ''}패치 — ${dn.slice(0, 3).map(x => nm(x.c)).join('·')} 너프${up.length ? `, ${up.slice(0, 3).map(x => nm(x.c)).join('·')} 버프` : ''}`,
-      `패치 ${v}가 적용됐습니다. ${changes.map(x => `${nm(x.c)} ${x.d > 0 ? '▲' : '▼'} ${x.txt}`).join(' / ')}`, null);
+      `패치 ${Sim.josa(v, '이', '가')} 적용됐습니다. ${changes.map(x => `${nm(x.c)} ${x.d > 0 ? '▲' : '▼'} ${x.txt}`).join(' / ')}`, null);
     // 우리 선수 중 버프 받은 챔피언 숙련도가 낮으면 코치가 연습을 권한다
     const t = Roster.team(); if (!t) return;
     const tips = up.map(x => { const ch = Champions.byId[x.c], r = (ch.positions || [])[0], p = t.players.find(q => q.role === r && !q.sub); if (!p) return null; const e = Mastery.pool(p.id).find(q => q.c === x.c); return (!e || e.m < 12) ? `${p.name} — ${ch.name}` : null; }).filter(Boolean);

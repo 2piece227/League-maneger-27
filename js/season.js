@@ -69,11 +69,13 @@ const Season = {
     }
   },
   // 경기 평점 (1~10): 정식 엔진 경기는 KDA·승패·POG로, 경량 시뮬은 승패와 약간의 편차로. 선수마다 최근 5경기만 둔다
+  // 한 경기 평점. 보통 승리 7점대 · 캐리 8~9 · 패배 4~5 (예전 식은 이긴 팀 대부분이 10점 상한에 걸렸다)
+  rating(k, d, a, won, mvp) { return 5.5 + (won ? .5 : -.4) + k * .22 + a * .09 - d * .3 + (mvp ? .7 : 0); },
   rate(series, m) {
     const R = (App.state.ratings ||= {}), push = (id, v) => { if (!id) return; const l = R[id] ||= []; l.push(Math.round(Math.max(3, Math.min(10, v)) * 10) / 10); if (l.length > 5) l.shift(); };
     series.games.forEach((x, gi) => {
       const res = x.result; if (!res) return;
-      if (res.stats && res.stats.length) res.stats.forEach(([pid, , k, d, a]) => { const t = Player.find(pid), won = t && t.t.id === res.win; push(pid, 6 + (won ? .6 : -.3) + k * .32 + a * .16 - d * .28 + (res.mvp === pid ? .8 : 0)); });
+      if (res.stats && res.stats.length) res.stats.forEach(([pid, , k, d, a]) => { const t = Player.find(pid), won = t && t.t.id === res.win; push(pid, Season.rating(k, d, a, won, res.mvp === pid)); });
       else [m.t1, m.t2].forEach(tid => { const t = Schedule.team(tid); if (!t) return; Draft.lineup(t).forEach((p, i) => { if (p) push(p.id, 6.3 + (tid === res.win ? .6 : -.5) + (G.rand(p.id + m.id + gi, 'rt') - .5) * 2 + (res.mvp === p.id ? .9 : 0)); }); });
     });
   },

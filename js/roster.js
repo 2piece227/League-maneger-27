@@ -12,16 +12,16 @@ const Roster = {
   // 사기 = 성격(고정) + 최근 폼 + 사건(World.morale: 약속·면담·이적 등). 컨디션은 훈련 부하 몫이라 따로 간다.
   status(p) {
     const r = k => G.rand(p.id, k), rs = ((App.state.ratings || {})[p.id] || []).slice(-5);
-    const form = rs.length ? rs.map(v => v.toFixed(1)) : Array.from({ length: 5 }, (_, i) => (5.8 + r('f' + i) * 2.2).toFixed(1));
+    const form = rs.length ? rs.map(v => v.toFixed(1)) : Array.from({ length: 5 }, (_, i) => (5 + r('f' + i) * 2.2).toFixed(1));
     const avg = form.reduce((a, v) => a + +v, 0) / form.length, ev = (typeof World !== 'undefined' ? World.morale()[p.id] : 0) || 0;
     return {
       condition: typeof Cond !== 'undefined' ? Cond.pct(p) : Math.round(78 + r('cond') * 22),
       condWord: typeof Cond !== 'undefined' ? Cond.word(p) : '',
-      morale: Math.max(0, Math.min(4, Math.round(1.2 + r('mor') * 1.6 + (avg - 6.8) * 1.3 + ev / 3))),
+      morale: Math.max(0, Math.min(4, Math.round(1.2 + r('mor') * 1.6 + (avg - 6.1) * 1.3 + ev / 3))),
       form,
     };
   },
-  formCls(v) { return +v >= 7.5 ? 'hi' : +v >= 6.5 ? 'mid' : 'lo'; },
+  formCls(v) { return +v >= 7.2 ? 'hi' : +v >= 5.8 ? 'mid' : 'lo'; },
   MORALE: [['낮음', 'bad'], ['보통', 'mid'], ['좋음', 'ok'], ['매우 좋음', 'good'], ['최상', 'best']],
 
   days(p) {

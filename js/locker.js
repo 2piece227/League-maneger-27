@@ -14,7 +14,7 @@ const Locker = {
   prepare(S, g) {
     const cur = this.st(); if (cur && cur.key === S.series.key && cur.game === S.game) return;
     const us = S.teams.B === App.state.teamId ? 'B' : 'R', them = us === 'B' ? 'R' : 'B', won = g.over.win === us;
-    const rate = p => Math.round(Math.max(3, Math.min(10, 6 + (p.side === g.over.win ? .6 : -.3) + p.k * .32 + p.a * .16 - p.d * .28 + (g.over.mvp === p ? .8 : 0))) * 10) / 10;
+    const rate = p => Math.round(Math.max(3, Math.min(10, Season.rating(p.k, p.d, p.a, p.side === g.over.win, g.over.mvp === p))) * 10) / 10;
     const pl = g.pl.map(p => ({ id: p.p.id, name: p.name, role: p.role, side: p.side, c: p.c, k: p.k, d: p.d, a: p.a, gold: Math.round(p.gold), r: rate(p) }));
     const lane = r => { const a = pl.find(x => x.side === us && x.role === r), b = pl.find(x => x.side === them && x.role === r); return a && b ? a.gold - b.gold : 0; };
     const early = s => g.kills.filter(x => x.t < 900 && x.k.side === s).length;
@@ -53,16 +53,16 @@ const Locker = {
     if (gl && gl[1] >= 2) say.push(['coach', `상대 정글이 ${this.laneKo[gl[0]]} 쪽으로 자주 옵니다. 초반 ${gl[1]}번 거기서 킬이 났어요.`]);
     // 2. 선수 한마디
     const mb = this.mind(best.id);
-    say.push([best.id, best.r >= 8 ? (mb.amb >= 14 ? `${cn(best.c)} 손에 잘 맞았어요. 다음 판도 저한테 몰아주셔도 됩니다.` : '오늘 컨디션 괜찮아요. 하던 대로 가면 될 것 같아요.') : '다들 수고했어요. 다음 판 집중해요.']);
+    say.push([best.id, best.r >= 7.6 ? (mb.amb >= 14 ? `${cn(best.c)} 손에 잘 맞았어요. 다음 판도 저한테 몰아주셔도 됩니다.` : '오늘 컨디션 괜찮아요. 하던 대로 가면 될 것 같아요.') : '다들 수고했어요. 다음 판 집중해요.']);
     if (worst.id !== best.id) {
       const mw = this.mind(worst.id);
-      say.push([worst.id, worst.r < 6 ? (mw.calm <= 9 ? '죄송해요... 제가 너무 말렸어요.' : mw.wild ? '아 그 싸움은 될 줄 알았는데. 다음엔 제가 풀게요.' : '라인전이 생각보다 힘드네요. 정글 도움이 좀 필요해요.') : '저는 괜찮아요. 상대 정글 동선만 봐 주세요.']);
+      say.push([worst.id, worst.r < 5 ? (mw.calm <= 9 ? '죄송해요... 제가 너무 말렸어요.' : mw.wild ? '아 그 싸움은 될 줄 알았는데. 다음엔 제가 풀게요.' : '라인전이 생각보다 힘드네요. 정글 도움이 좀 필요해요.') : '저는 괜찮아요. 상대 정글 동선만 봐 주세요.']);
     }
     if (star) say.push([mine.find(x => x.role === star.role)?.id || best.id, `${opp.short} ${star.name} 오늘 감이 좋아 보여요. ${cn(star.c)} 같은 거 또 주면 안 될 것 같아요.`]);
     // 3. 주제
     const topics = [];
-    if (worst.r < 6.6 && worst.id !== best.id) topics.push({ id: 'talk', pid: worst.id, ask: `${worst.name}에게 한마디 하시겠습니까?`, opts: [['enc', '격려한다', `${worst.name}, 괜찮아. 한 판 졌다고 네 실력이 어디 가는 거 아니야. 네 플레이 해.`], ['firm', '강하게 말한다', `${worst.name}, 이렇게 하면 다음 판 장담 못 한다. 정신 차려.`], ['calm', '무리하지 말라고 한다', `${worst.name}, 지금은 뭐 하려고 하지 마. 기본만 하자. 보여줄 건 더 큰 무대에서 보여줘.`], ['none', '넘어간다', '(아무 말 없이 다음으로 넘어간다)']] });
-    if (best.r >= 7.8) topics.push({ id: 'praise', pid: best.id, ask: `${best.name}이(가) 잘했습니다.`, opts: [['praise', '칭찬한다', `${best.name}, 좋았어. 다음 판도 그 감 그대로.`], ['steady', '들뜨지 말라고 한다', `${best.name}, 잘했는데 아직 안 끝났다. 들뜨지 말자.`], ['none', '넘어간다', '(고개만 끄덕인다)']] });
+    if (worst.r < 5.6 && worst.id !== best.id) topics.push({ id: 'talk', pid: worst.id, ask: `${worst.name}에게 한마디 하시겠습니까?`, opts: [['enc', '격려한다', `${worst.name}, 괜찮아. 한 판 졌다고 네 실력이 어디 가는 거 아니야. 네 플레이 해.`], ['firm', '강하게 말한다', `${worst.name}, 이렇게 하면 다음 판 장담 못 한다. 정신 차려.`], ['calm', '무리하지 말라고 한다', `${worst.name}, 지금은 뭐 하려고 하지 마. 기본만 하자. 보여줄 건 더 큰 무대에서 보여줘.`], ['none', '넘어간다', '(아무 말 없이 다음으로 넘어간다)']] });
+    if (best.r >= 7.4) topics.push({ id: 'praise', pid: best.id, ask: `${best.name}이(가) 잘했습니다.`, opts: [['praise', '칭찬한다', `${best.name}, 좋았어. 다음 판도 그 감 그대로.`], ['steady', '들뜨지 말라고 한다', `${best.name}, 잘했는데 아직 안 끝났다. 들뜨지 말자.`], ['none', '넘어간다', '(고개만 끄덕인다)']] });
     const roleOpts = ['TOP', 'JGL', 'MID', 'BOT', 'SUP'].map(r => { const o = theirs.find(x => x.role === r); return [r, `상대 ${G.ROLE_KO[r]}${o ? ` (${o.name})` : ''} 묶기`, `밴은 상대 ${G.ROLE_KO[r]} 쪽으로 가자.`]; });
     const sr = star ? star.role : 'MID';
     topics.push({ id: 'ban', ask: `다음 밴은 어디로 갈까요? 저는 ${G.ROLE_KO[sr]} 쪽을 묶는 게 좋아 보입니다.`, rec: sr, opts: [roleOpts.find(o => o[0] === sr), ...roleOpts.filter(o => o[0] !== sr).slice(0, 3), ['none', '평소대로', '밴은 코치 판단대로 가자.']] });
