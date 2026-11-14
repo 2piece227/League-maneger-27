@@ -3,6 +3,26 @@
 const Live = {
   g: null, speed: 1, timer: null, raf: null, tickAt: 0, feedSeen: 0, banners: [], bannerOn: false,
   SPEEDS: [1, 2, 4, 8],
+  mode: (() => { try { return localStorage.getItem('lm27.lvmode') || 'hl'; } catch (e) { return 'hl'; } })(),   // hl 하이라이트 · full 전체 보기
+  // 하이라이트 보기의 진행 속도 배율: 조용할 때 2배, 장면이 클수록 느리게 (5인 이상 한타는 0.15배 = 거의 실시간)
+  pace(g) {
+    if (this.mode !== 'hl' || g.over) return 1;
+    const big = g.fights.reduce((a, f) => Math.max(a, f.size), 0);
+    if (big) return big >= 5 ? .15 : big >= 3 ? .28 : .5;
+    if (g.t < 12) return 1;
+    if (g.pl.some(p => p.tpCh)) return .6;
+    const lk = g.kills[g.kills.length - 1]; if (lk && g.t - lk.t <= 3) return .5;
+    if (Object.values(g.obj).some(ob => ob.prog && (ob.prog.B || ob.prog.R))) return .8;
+    if (g.side.B.nxhp < 1 || g.side.R.nxhp < 1 || g.side.B.nexusT < 2 || g.side.R.nexusT < 2) return .6;
+    return 2;
+  },
+  // 확대할 장면: 4인 이상 교전의 중심 (하이라이트 보기에서만). 끝난 뒤에도 잠깐 머문다
+  zoomTo(g, now) {
+    if (this.mode !== 'hl' || g.over) return null;
+    const f = g.fights.filter(x => x.size >= 4).sort((a, b) => b.size - a.size)[0];
+    if (f) { this.zHold = { at: f.at, until: now + 1300 }; return f.at; }
+    return this.zHold && this.zHold.until > now ? this.zHold.at : null;
+  },
   start(S) { Draft.useTac(S); this.g = Sim.create(S, S.game); this.speed = 1; this.feedSeen = 0; this.banners = []; Router.go('match-live'); },
   ico(n, cls = '') { return `<img class="ob-ic ${cls}" src="assets/obj/${n}.png" alt="">`; },
   // 인벤토리: 아이템 6칸(제어 와드 포함) + 장신구
@@ -39,7 +59,7 @@ const Live = {
           </div>
           <div class="lv-mid">
             <div class="lv-side b"></div>
-            <div class="lv-mapbox"><div class="lv-map"><img class="lv-bg" src="assets/map/rift.webp" alt=""><svg class="lv-svg" viewBox="0 0 100 100" preserveAspectRatio="none">${this.structures()}</svg><div class="lv-objs"></div><canvas class="lv-cv"></canvas><div class="lv-feed"></div><div class="lv-klog"></div><div class="lv-over"></div></div></div>
+            <div class="lv-mapbox"><div class="lv-map"><div class="lv-zoom"><img class="lv-bg" src="assets/map/rift.webp" alt=""><svg class="lv-svg" viewBox="0 0 100 100" preserveAspectRatio="none">${this.structures()}</svg><div class="lv-objs"></div><canvas class="lv-cv"></canvas></div><div class="lv-feed"></div><div class="lv-klog"></div><div class="lv-cap"></div><div class="lv-over"></div></div></div>
             <div class="lv-side r"></div>
           </div>
           <div class="lv-bot">
@@ -55,18 +75,21 @@ const Live = {
             <div class="seg lv-speed">${this.SPEEDS.map(s => `<button class="${this.speed === s ? 'on' : ''}" data-s="${s}">${s}x</button>`).join('')}</div>
             <button class="btn-ghost lv-skip">결과로</button>
           </div>
+          <div class="seg lv-mode" title="하이라이트: 평소에는 빠르게 넘기고, 교전 · 오브젝트 · 순간이동 때는 느리게 보여 주며 한타는 확대합니다">${[['hl', '하이라이트'], ['full', '전체 보기']].map(([m, n]) => `<button class="${this.mode === m ? 'on' : ''}" data-m="${m}">${n}</button>`).join('')}</div>
           <div class="lv-info">${S.series.bo > 1 ? `Bo${S.series.bo} · ${S.game}세트` : '단판'} · ${S.official ? '공식 경기' : '연습 경기'}</div>
           <div class="lv-evs"></div>
           <div class="lv-comm"></div>
         </div>
       </div></div>`;
     $('.lv-speed', el).onclick = e => { const b = e.target.closest('button'); if (!b) return; this.acc = this.acc * this.speed / +b.dataset.s; this.speed = +b.dataset.s; $$('.lv-speed button', el).forEach(x => x.classList.toggle('on', x === b)); };
+    $('.lv-mode', el).onclick = e => { const b = e.target.closest('button'); if (!b) return; this.mode = b.dataset.m; try { localStorage.setItem('lm27.lvmode', this.mode); } catch (x) {} $$('.lv-mode button', el).forEach(x => x.classList.toggle('on', x === b)); };
     $('.lv-pause', el).onclick = e => { if (g.over) return; this.playing = !this.playing; e.target.textContent = this.playing ? '일시정지' : '계속'; };
-    $('.lv-skip', el).onclick = () => { this.playing = false; while (!g.over) Sim.step(g); this.feedSeen = g.feed.length; this.banners = []; this.acc = 1e9; this.draw(); this.finish(); };
+    $('.lv-skip', el).onclick = () => { this.playing = false; while (!g.over) Sim.step(g); this.feedSeen = g.feed.length; this.banners = []; this.capQ = []; this.capSeen = g.comm.length; this.acc = 1e9; this.draw(); this.finish(); };
     const ex = $('.lv-exit', el); if (ex) ex.onclick = () => { this.playing = false; Router.go('match-draft'); };
     this.feedSeen = Math.max(this.feedSeen, g.feed.length); this.banners = []; this.bannerOn = false;
     this.fit(); this._fit ||= (() => { if (this.el && document.body.contains(this.el)) this.fit(); }); window.removeEventListener('resize', this._fit); window.addEventListener('resize', this._fit);
-    this.acc = 0; this.playing = !g.over; this.draw(); this.animate();
+    this.acc = 0; this.pk = 1; this.zm = { s: 1, x: 50, y: 50 }; this.capQ = []; this.capSeen = g.comm.length; this.capUntil = 0;
+    this.playing = !g.over; this.draw(); this.animate();
     if (g.over) this.finish();
   },
   // 맵을 남는 공간에 맞춰 최대 크기로 (가로세로 비율 유지)
@@ -75,8 +98,8 @@ const Live = {
     const w = box.clientWidth, h = box.clientHeight, r = 1000 / 946, mw = Math.min(w, h * r);
     map.style.width = Math.floor(mw) + 'px'; map.style.height = Math.floor(mw / r) + 'px';
     this.mw = Math.floor(mw); this.mh = Math.floor(mw / r);
-    // 캔버스: 화면 배율(레티나)에 맞춰 선명하게, 최대 2배
-    const cv = map.querySelector('.lv-cv'); if (cv) { const d = Math.min(2, window.devicePixelRatio || 1); cv.width = Math.round(this.mw * d); cv.height = Math.round(this.mh * d); this.dpr = d; this.ctx = cv.getContext('2d'); }
+    // 캔버스: 화면 배율보다 넉넉히 (확대해도 흐려지지 않게), 최대 3배
+    const cv = map.querySelector('.lv-cv'); if (cv) { const d = Math.min(3, (window.devicePixelRatio || 1) * 1.5); cv.width = Math.round(this.mw * d); cv.height = Math.round(this.mh * d); this.dpr = d; this.ctx = cv.getContext('2d'); }
   },
   structures() {
     Rift.init();
@@ -90,7 +113,8 @@ const Live = {
   // 한 틱(경기 1초) = 실제 0.1초 / 배속 (1배속 = 경기 10초가 실제 1초). 화면 프레임마다 시간을 쌓고, 한 틱이 차면 그 프레임에서 바로 다음 틱을 계산한다
   TICK: 100,
   advance(dt) {
-    const g = this.g, period = this.TICK / this.speed;
+    const g = this.g, want = this.pace(g); this.pk += (want - this.pk) * (want < this.pk ? .5 : .06);   // 느려질 때는 바로, 빨라질 때는 천천히
+    const period = this.period = this.TICK / (this.speed * this.pk);
     if (!this.playing || g.over) return;
     this.acc += Math.min(dt, 250);                                   // 탭이 잠깐 멈췄다 돌아와도 한꺼번에 몰아 돌지 않게
     let n = 0;
@@ -117,17 +141,40 @@ const Live = {
       if (!this.el || !document.body.contains(this.el) || !this.el.querySelector('.lv-wrap')) return;
       this.advance(now - last); last = now;
       if (this.dirty) { this.dirty = false; this.draw(); }
-      const g = this.g, f = g.over ? 1 : Math.min(1, this.acc / (this.TICK / this.speed));
+      const g = this.g, f = g.over ? 1 : Math.min(1, this.acc / (this.period || this.TICK / this.speed));
+      this.camera(g, now); this.caption(now);
       this.paint(g, f);
       this.raf = requestAnimationFrame(tick);
     };
     this.raf = requestAnimationFrame(tick);
   },
+  // 한타 확대: 맵 층(.lv-zoom)을 교전 중심으로 부드럽게 당긴다
+  camera(g, now) {
+    const z = this.zm ||= { s: 1, x: 50, y: 50 }, to = this.zoomTo(g, now), ts = to ? 1.9 : 1, k = .1;
+    if (to) { z.x += (to[0] - z.x) * k; z.y += (to[1] - z.y) * k; }
+    z.s += (ts - z.s) * k; if (Math.abs(z.s - ts) < .004) z.s = ts;
+    const key = z.s === 1 ? '1' : `${z.s.toFixed(3)},${z.x.toFixed(1)},${z.y.toFixed(1)}`; if (key === this._zk) return; this._zk = key;
+    const el = this.el && this.el.querySelector('.lv-zoom'); if (!el) return;
+    const W = this.mw, H = this.mh, cl = (v, lo) => Math.max(lo, Math.min(0, v));
+    el.style.transform = z.s === 1 ? '' : `translate(${cl(W / 2 - z.x / 100 * W * z.s, W - W * z.s).toFixed(1)}px, ${cl(H / 2 - z.y / 100 * H * z.s, H - H * z.s).toFixed(1)}px) scale(${z.s.toFixed(3)})`;
+  },
+  // 자막 해설: 맵 아래쪽에 한 줄씩. 선수 이름이 나오면 그 선수 사진, 아니면 중계진 표시
+  caption(now) {
+    const g = this.g, box = this.el && this.el.querySelector('.lv-cap'); if (!box) return;
+    for (; this.capSeen < g.comm.length; this.capSeen++) this.capQ.push(g.comm[this.capSeen]);
+    if (this.capQ.length > 3) this.capQ = this.capQ.slice(-3);
+    if (now < this.capUntil) return;
+    const c = this.capQ.shift(); if (!c) { if (box.firstChild && now > this.capUntil + 1500) box.innerHTML = ''; return; }
+    const p = g.pl.filter(x => x.name && x.name.length >= 2 && c.text.includes(x.name)).sort((a, b) => c.text.indexOf(a.name) - c.text.indexOf(b.name))[0];
+    const who = Sim.CAST[c.who] || '', face = p && p.p.photo ? `<img class="${p.side === 'B' ? 'b' : 'r'}" src="${p.p.photo}" alt="" referrerpolicy="no-referrer" onerror="this.outerHTML='<i class=&quot;${c.who}&quot;>${UI.esc(who.slice(-2, -1))}</i>'">` : p ? `<span class="${p.side === 'B' ? 'b' : 'r'}">${SoloQ.ic(p.c)}</span>` : `<i class="${c.who}">${UI.esc(who.slice(-2, -1))}</i>`;
+    box.innerHTML = `<div class="lv-cap-in ${c.who}">${face}<div><b>${UI.esc(who)}</b><p>${UI.esc(c.text)}</p></div></div>`;
+    this.capUntil = now + Math.max(2000, Math.min(4200, 1300 + c.text.length * 42)) / Math.sqrt(this.speed);
+  },
   // 맵 위 챔피언 · 효과를 캔버스 한 장에 그린다 (프레임마다). f = 이번 틱의 진행도 0~1
   icon(p) { const m = (this.imgs ||= new Map()); let im = m.get(p.c); if (!im) { im = new Image(); im.src = Champions.byId[p.c].icon; m.set(p.c, im); } return im; },
   paint(g, f) {
     const c = this.ctx; if (!c) return;
-    const W = this.mw, H = this.mh, X = v => v * W / 100, Y = v => v * H / 100, now = g.t + (g.over ? 0 : f), R = W * .024, TAU = Math.PI * 2;
+    const W = this.mw, H = this.mh, X = v => v * W / 100, Y = v => v * H / 100, now = g.t + (g.over ? 0 : f), R = W * .024 / (1 + ((this.zm ? this.zm.s : 1) - 1) * .45), TAU = Math.PI * 2;
     c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0); c.clearRect(0, 0, W, H);
     const col = k => k === 'B' ? '59,140,255' : '239,75,95';
     // 효과: 귀환(점선 고리가 돌고 흰 고리가 차오른다) · 텔레포트(도착 지점 고리 + 출발 지점) · 교전 · 파괴
