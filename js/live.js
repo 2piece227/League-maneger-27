@@ -39,7 +39,7 @@ const Live = {
           </div>
           <div class="lv-mid">
             <div class="lv-side b"></div>
-            <div class="lv-mapbox"><div class="lv-map"><img class="lv-bg" src="assets/map/rift.webp" alt=""><svg class="lv-svg" viewBox="0 0 100 100" preserveAspectRatio="none">${this.structures()}</svg><div class="lv-fx"></div><div class="lv-objs"></div><div class="lv-icons"></div><div class="lv-feed"></div><div class="lv-klog"></div><div class="lv-over"></div></div></div>
+            <div class="lv-mapbox"><div class="lv-map"><img class="lv-bg" src="assets/map/rift.webp" alt=""><svg class="lv-svg" viewBox="0 0 100 100" preserveAspectRatio="none">${this.structures()}</svg><div class="lv-objs"></div><canvas class="lv-cv"></canvas><div class="lv-feed"></div><div class="lv-klog"></div><div class="lv-over"></div></div></div>
             <div class="lv-side r"></div>
           </div>
           <div class="lv-bot">
@@ -75,6 +75,8 @@ const Live = {
     const w = box.clientWidth, h = box.clientHeight, r = 1000 / 946, mw = Math.min(w, h * r);
     map.style.width = Math.floor(mw) + 'px'; map.style.height = Math.floor(mw / r) + 'px';
     this.mw = Math.floor(mw); this.mh = Math.floor(mw / r);
+    // 캔버스: 화면 배율(레티나)에 맞춰 선명하게, 최대 2배
+    const cv = map.querySelector('.lv-cv'); if (cv) { const d = Math.min(2, window.devicePixelRatio || 1); cv.width = Math.round(this.mw * d); cv.height = Math.round(this.mh * d); this.dpr = d; this.ctx = cv.getContext('2d'); }
   },
   structures() {
     Rift.init();
@@ -116,12 +118,54 @@ const Live = {
       this.advance(now - last); last = now;
       if (this.dirty) { this.dirty = false; this.draw(); }
       const g = this.g, f = g.over ? 1 : Math.min(1, this.acc / (this.TICK / this.speed));
-      if (!this.ics || !this.ics[0] || !this.ics[0].isConnected) this.ics = $$('.lv-ic', this.el);
-      const W = this.mw || 1, H = this.mh || 1;
-      for (const ic of this.ics) { const p = g.pl[ic._i ?? (ic._i = +ic.dataset.i)], pos = this.at(p.trail, f) || p.pos; ic.style.transform = `translate3d(${(pos[0] * W / 100).toFixed(1)}px, ${(pos[1] * H / 100).toFixed(1)}px, 0) translate(-50%, -50%)`; }
+      this.paint(g, f);
       this.raf = requestAnimationFrame(tick);
     };
     this.raf = requestAnimationFrame(tick);
+  },
+  // 맵 위 챔피언 · 효과를 캔버스 한 장에 그린다 (프레임마다). f = 이번 틱의 진행도 0~1
+  icon(p) { const m = (this.imgs ||= new Map()); let im = m.get(p.c); if (!im) { im = new Image(); im.src = Champions.byId[p.c].icon; m.set(p.c, im); } return im; },
+  paint(g, f) {
+    const c = this.ctx; if (!c) return;
+    const W = this.mw, H = this.mh, X = v => v * W / 100, Y = v => v * H / 100, now = g.t + (g.over ? 0 : f), R = W * .024, TAU = Math.PI * 2;
+    c.setTransform(this.dpr, 0, 0, this.dpr, 0, 0); c.clearRect(0, 0, W, H);
+    const col = k => k === 'B' ? '59,140,255' : '239,75,95';
+    // 효과: 귀환(점선 고리가 돌고 흰 고리가 차오른다) · 텔레포트(도착 지점 고리 + 출발 지점) · 교전 · 파괴
+    for (const e of g.fx) {
+      const q = Math.max(0, Math.min(1, (now - e.t) / (e.dur || 2))), x = X(e.at[0]), y = Y(e.at[1]);
+      if (e.type === 'recall') {
+        c.save(); c.translate(x, y); c.rotate(now * 1.6); c.setLineDash([R * .5, R * .35]); c.lineWidth = 2; c.strokeStyle = `rgba(${e.side === 'B' ? '142,197,255' : '255,176,188'},.9)`; c.beginPath(); c.arc(0, 0, R * 1.35, 0, TAU); c.stroke(); c.restore();
+        c.lineWidth = 3; c.strokeStyle = 'rgba(255,255,255,.85)'; c.beginPath(); c.arc(x, y, R * 1.35, -Math.PI / 2, -Math.PI / 2 + TAU * q); c.stroke();
+      } else if (e.type === 'tp') {
+        const pc = e.side === 'B' ? '197,140,255' : '255,154,208';
+        c.lineWidth = 2; c.strokeStyle = `rgba(${pc},${.5 + q * .5})`; c.fillStyle = `rgba(${pc},${.12 + q * .2})`; c.beginPath(); c.arc(x, y, R * (2 - q * .7), 0, TAU); c.fill(); c.stroke();
+        c.strokeStyle = `rgba(${pc},${.8 * (1 - q)})`; c.beginPath(); c.arc(X(e.from[0]), Y(e.from[1]), R * (1 + q * .6), 0, TAU); c.stroke();
+      } else {
+        const big = e.type === 'fight' ? 2 : 1.4, rr = R * big * (.6 + q), gr = c.createRadialGradient(x, y, 0, x, y, rr), a = 1 - q;
+        gr.addColorStop(0, e.type === 'fight' ? `rgba(255,210,120,${.5 * a})` : `rgba(255,255,255,${.8 * a})`); gr.addColorStop(.6, `rgba(255,130,60,${.2 * a})`); gr.addColorStop(1, 'rgba(255,120,60,0)');
+        c.fillStyle = gr; c.beginPath(); c.arc(x, y, rr, 0, TAU); c.fill();
+      }
+    }
+    const P = g.pl.map(p => ({ p, pos: this.at(p.trail, f) || p.pos })).filter(o => !o.p.dead);
+    const where = new Map(P.map(o => [o.p, o.pos]));
+    // 공격선: 이번 1초에 누가 누구를 쳤나 (원거리는 가늘고 길게, 근접은 굵고 짧게 보인다)
+    c.lineCap = 'round';
+    for (const { p, pos } of P) {
+      const t = p.hitAt === g.t && p.hitTo && where.get(p.hitTo); if (!t) continue;
+      c.strokeStyle = `rgba(${col(p.side)},${(.75 - f * .5).toFixed(2)})`; c.lineWidth = p.rng > 5 ? 1.6 : 2.6; c.beginPath(); c.moveTo(X(pos[0]), Y(pos[1])); c.lineTo(X(t[0]), Y(t[1])); c.stroke();
+    }
+    // 챔피언: 아래쪽에 있는 선수가 위에 그려진다
+    P.sort((a, b) => a.pos[1] - b.pos[1]);
+    for (const { p, pos } of P) {
+      const x = X(pos[0]), y = Y(pos[1]), im = this.icon(p);
+      c.save(); c.shadowColor = p.recall ? 'rgba(90,170,255,.9)' : 'rgba(0,0,0,.8)'; c.shadowBlur = p.recall ? 12 : 5; c.fillStyle = '#0b111d'; c.beginPath(); c.arc(x, y, R, 0, TAU); c.fill(); c.restore();
+      if (im.complete && im.naturalWidth) { c.save(); c.beginPath(); c.arc(x, y, R - 1, 0, TAU); c.clip(); c.drawImage(im, x - R, y - R, R * 2, R * 2); c.restore(); }
+      c.lineWidth = 2; c.strokeStyle = `rgb(${col(p.side)})`; c.beginPath(); c.arc(x, y, R - 1, 0, TAU); c.stroke();
+      // 체력 막대
+      const bw = R * 1.9, bh = Math.max(3, R * .22), bx = x - bw / 2, by = y + R + 2;
+      c.fillStyle = 'rgba(5,8,14,.85)'; c.fillRect(bx - 1, by - 1, bw + 2, bh + 2);
+      c.fillStyle = p.hp > .5 ? '#4cd964' : p.hp > .25 ? '#f0b400' : '#ef4b5f'; c.fillRect(bx, by, bw * Math.max(0, Math.min(1, p.hp)), bh);
+    }
   },
   draw() {
     const g = this.g, el = this.el; if (!el || !document.body.contains(el) || !el.querySelector('.lv-wrap')) return;
@@ -149,7 +193,6 @@ const Live = {
             <div class="lv-pi"><small>${UI.esc(g.side[k].t.short)} ${UI.esc(p.name)}</small><div class="lv-hp"><i></i></div><div class="lv-items"></div></div>
           </div>`).join('');
       });
-      $('.lv-icons', el).innerHTML = g.pl.map((p, i) => `<div class="lv-ic ${p.side === 'B' ? 'b' : 'r'}" data-i="${i}" title="${UI.esc(p.name)}"><img src="${Champions.byId[p.c].icon}" alt=""></div>`).join('');
     }
     $$('.lv-pl', el).forEach(row => {
       const p = g.pl[row.dataset.i];
@@ -159,25 +202,10 @@ const Live = {
       const its = row.querySelector('.lv-items'), key = p.inv.map(x => x.id).join(',') + '|' + p.wards + '|' + (p.trinket ? p.trinket.id : '');
       if (its.dataset.k !== key) { its.dataset.k = key; its.innerHTML = this.inventory(p); }
     });
-    $$('.lv-ic', el).forEach(ic => { const p = g.pl[ic.dataset.i]; ic.classList.toggle('dead', !!p.dead); ic.classList.toggle('recalling', !!p.recall); });
     ['B', 'R'].forEach(k => ['top', 'mid', 'bot'].forEach(l => {
       Rift.TOWER[k][l].forEach((n, i) => { const c = el.querySelector(`[data-tw="${k}-${l}-${i}"]`); if (c) c.classList.toggle('down', g.side[k].thp[l][i] <= 0); });
       const ih = el.querySelector(`[data-ih="${k}-${l}"]`); if (ih) ih.classList.toggle('down', !g.side[k].inhib[l]);
     }));
-    // 효과: 귀환(8초) · 텔레포트(4초) · 교전 · 파괴. 효과마다 따로 붙였다 떼서, 다른 효과가 생겨도 진행 중인 애니메이션이 처음부터 다시 돌지 않게
-    const fxBox = $('.lv-fx', el), live = new Set();
-    g.fx.forEach(f => {
-      const key = `${f.type}:${f.t}:${f.at.map(v => v.toFixed(1)).join(',')}`; live.add(key);
-      if (fxBox.querySelector(`[data-k="${key}"]`)) return;
-      const [x, y] = f.at, sd = f.side === 'B' ? 'b' : 'r', d = ((f.dur || 2) * this.TICK / 1000 / this.speed).toFixed(2), late = (-(g.t - f.t) * this.TICK / 1000 / this.speed).toFixed(2);
-      const css = `left:${x}%;top:${y}%;--d:${d}s;animation-delay:${late}s`;
-      const html = f.type === 'tp' ? `<div class="lv-fx-tp ${sd}" style="${css}"></div><div class="lv-fx-tpo ${sd}" style="left:${f.from[0]}%;top:${f.from[1]}%;--d:${d}s;animation-delay:${late}s"></div>`
-        : f.type === 'recall' ? `<div class="lv-fx-rc ${sd}" style="${css}"></div>`
-        : f.type === 'fight' ? `<div class="lv-fx-fight" style="${css}"></div>`
-        : `<div class="lv-fx-boom ${sd}" style="${css}"></div>`;
-      const w = document.createElement('div'); w.dataset.k = key; w.className = 'lv-fx-one'; w.innerHTML = html; fxBox.appendChild(w);
-    });
-    [...fxBox.children].forEach(c => { if (!live.has(c.dataset.k)) c.remove(); });
     // 킬·오브젝트 로그(맵 오른쪽 위, 최근 5개) + 가운데 알림은 새 사건마다 한 번씩
     set('.lv-klog', g.feed.slice(-5).reverse().map(f => f.obj
       ? `<div class="lv-kl ${f.side === 'B' ? 'b' : 'r'}"><span>${Sim.clock(f.t)}</span>${G.team(g.side[f.side].t, 'xs')}<i>›</i>${this.ico(f.icon)}</div>`

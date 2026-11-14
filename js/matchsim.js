@@ -3,7 +3,8 @@
 //   · 조합 성향 · 전술 적합도 · 코치 · 골드 · 버프. 라인전 → 오브젝트 → 한타 → 넥서스.
 // 원칙: 모든 사건은 "그 자리에 실제로 있는 선수"끼리만 일어난다. 이동은 라인·정글 길을 따라가고,
 //       순간 이동은 귀환 · 부활 · 텔레포트뿐이다. (Sim.audit 을 켜면 이 원칙을 어긴 경우를 기록한다)
-// TODO: 정식 엔진 — 시야 판정, 스킬·특성·컨디션
+// 지형: js/riftwalk.js (맵 이미지에서 뽑은 벽 격자). 이동은 벽을 피해 걷고(Rift.path), 한타는 챔피언 유형별 진형(Sim.form)으로 싸운다
+// TODO: 시야 판정, 스킬
 
 // ---------- 맵 (assets/map/rift.webp 기준 %, 블루 = 왼쪽 아래) ----------
 const Rift = {
@@ -407,8 +408,8 @@ const Sim = {
   // 챔피언 유형별 한타 행동: 사거리(맵 %) · 주는 피해 · 받는 피해 · 붙는 속도(돌진기)
   //   tank 앞라인·이니시(먼저 들어가 가까운 적과 부딪힌다) / bruiser 브루저(앞라인 뒤를 따라 붙는다) / dive 암살·돌진(옆으로 돌아 딜러를 문다)
   //   adc 원딜(사거리 끝에서 가까운 적부터, 붙으면 물러난다) / mage 메이지 / arti 포킹(가장 멀리서) / ench 보호형 서폿(우리 딜러 곁)
-  KIND: { tank: { rng: 3.5, deal: .75, take: .72, dash: 1.3 }, bruiser: { rng: 3.5, deal: .95, take: .88, dash: 1.2 }, dive: { rng: 3.5, deal: 1.2, take: 1, dash: 1.5 },
-    adc: { rng: 6.5, deal: 1.25, take: 1.18, dash: 1 }, mage: { rng: 7, deal: 1.1, take: 1.1, dash: 1 }, arti: { rng: 9, deal: 1, take: 1.15, dash: 1 }, ench: { rng: 6.5, deal: .5, take: 1, dash: 1 } },
+  KIND: { tank: { rng: 4.5, deal: .75, take: .72, dash: 1.3 }, bruiser: { rng: 4.5, deal: .95, take: .88, dash: 1.2 }, dive: { rng: 4.5, deal: 1.2, take: 1, dash: 1.5 },
+    adc: { rng: 7.5, deal: 1.25, take: 1.18, dash: 1 }, mage: { rng: 8, deal: 1.1, take: 1.1, dash: 1 }, arti: { rng: 10, deal: 1, take: 1.15, dash: 1 }, ench: { rng: 7, deal: .5, take: 1, dash: 1 } },
   KIND_KO: { tank: '앞라인', bruiser: '브루저', dive: '암살·돌진', adc: '원거리 딜러', mage: '메이지', arti: '포킹', ench: '보호' },
   kindOf(p) {
     const ch = Champions.byId[p.c] || {}, R = ch.roles || [], has = (...a) => a.some(x => R.includes(x)), melee = ch.attackType !== 'RANGED';
@@ -428,30 +429,33 @@ const Sim = {
     ['B', 'R'].forEach(k => {
       const us = live.filter(p => p.side === k), foes = live.filter(p => p.side !== k); if (!us.length) return;
       if (!foes.length) { us.forEach(p => { p.hold = { to: this.clampP([f.at[0] + p.off[0], f.at[1] + p.off[1]]), until: g.t + 2 }; }); return; }
-      const O = cen(us), E = cen(foes), u = unit(O, E), front = us.some(p => p.kind === 'tank' || p.kind === 'bruiser');
+      const O = cen(us), E = cen(foes), u = unit(O, E), front = us.some(p => p.kind === 'tank' || p.kind === 'bruiser'), taken = [];
       us.forEach((p, i) => {
         const nf = foes.slice().sort((a, b) => D(a.pos, p.pos) - D(b.pos, p.pos))[0], dn = D(nf.pos, p.pos), K = this.KIND[p.kind];
         const stick = (t, gap) => { const v = unit(t.pos, p.pos); return [t.pos[0] + v[0] * gap, t.pos[1] + v[1] * gap]; };
         let to;
         if (p.kind === 'tank' || p.kind === 'bruiser') {
           // 앞라인: 가장 가까운 적에게 붙는다. 브루저는 앞라인이 있으면 한 박자 늦게
-          to = p.kind === 'bruiser' && front && us.some(q => q.kind === 'tank') && g.t - f.t0 < 2 ? [O[0] + u[0] * 2, O[1] + u[1] * 2] : stick(nf, 1.8);
+          to = p.kind === 'bruiser' && front && us.some(q => q.kind === 'tank') && g.t - f.t0 < 2 ? [O[0] + u[0] * 2, O[1] + u[1] * 2] : stick(nf, 3.2);
         } else if (p.kind === 'dive') {
           // 암살·돌진: 앞라인이 부딪히는 동안 옆으로 돌고, 그다음 상대 딜러에게
           const tg = foes.filter(q => this.isCarry(q) || q.kind === 'ench').sort((a, b) => (a.hp - b.hp) + (D(a.pos, p.pos) - D(b.pos, p.pos)) * .03)[0] || nf;
           if (front && foes.length >= 2 && g.t - f.t0 < 3) { const sg = (g.pl.indexOf(p) % 2 ? 1 : -1); to = [E[0] - u[1] * 6 * sg - u[0] * 1, E[1] + u[0] * 6 * sg - u[1] * 1]; p.flank = f.id; }
-          else to = stick(tg, 1.8);
+          else to = stick(tg, 3.2);
         } else if (p.kind === 'ench') {
           // 보호: 우리 딜러 바로 뒤
           const c = us.filter(q => q !== p && this.isCarry(q)).sort((a, b) => (a.kind === 'adc' ? 0 : 1) - (b.kind === 'adc' ? 0 : 1) || a.hp - b.hp)[0] || us.filter(q => q !== p).sort((a, b) => a.hp - b.hp)[0];
-          to = c ? [c.pos[0] - u[0] * 1.2 + u[1] * 1.2, c.pos[1] - u[1] * 1.2 - u[0] * 1.2] : stick(nf, K.rng - .8);
+          to = c ? [c.pos[0] - u[0] * 2 + u[1] * 2.4, c.pos[1] - u[1] * 2 - u[0] * 2.4] : stick(nf, K.rng - .8);
         } else {
           // 원거리 딜러: 사거리 끝을 유지한다. 근접이 붙으면 뒤로 빠지면서 친다
-          const th = foes.filter(q => this.KIND[q.kind].rng < 5 && D(q.pos, p.pos) < 4.5).sort((a, b) => D(a.pos, p.pos) - D(b.pos, p.pos))[0];
+          const th = foes.filter(q => this.KIND[q.kind].rng < 5 && D(q.pos, p.pos) < 5.5).sort((a, b) => D(a.pos, p.pos) - D(b.pos, p.pos))[0];
           if (th) { const v = unit(th.pos, p.pos); to = [p.pos[0] + v[0] * 2.4 - u[0] * 1.2, p.pos[1] + v[1] * 2.4 - u[1] * 1.2]; }
           else if (dn > K.rng - .5) to = stick(nf, K.rng - .8);
           else to = [p.pos[0] + u[1] * Math.sin((g.t + i * 3) / 2) * .8, p.pos[1] - u[0] * Math.sin((g.t + i * 3) / 2) * .8];
         }
+        // 같은 팀끼리 겹쳐 서지 않는다 (3 이상 벌린다)
+        for (let n = 0; n < 3; n++) for (const q of taken) { const d = D(to, q); if (d < 3) { const v = d > .05 ? [(to[0] - q[0]) / d, (to[1] - q[1]) / d] : [-u[1] * (i % 2 ? 1 : -1), u[0] * (i % 2 ? 1 : -1)]; to = [q[0] + v[0] * 3, q[1] + v[1] * 3]; } }
+        taken.push(to);
         p.hold = { to: this.clampP(to), until: g.t + 2 }; p.dash = g.t + 1;
       });
     });
@@ -474,7 +478,7 @@ const Sim = {
       const hits = [];
       [...B, ...R].forEach(a => {
         const KA = this.KIND[a.kind], near = q => Math.max(0, (a.rng - this.dist(q.pos, a.pos)) / a.rng);
-        const foes = g.pl.filter(q => q.side !== a.side && !q.dead && !q.recall && !q.tpCh && this.dist(q.pos, a.pos) <= a.rng && (f.mem.has(q) || q.fled === f.id) && (a.rng > 5 || Rift.los(a.pos, q.pos)));   // 근접은 벽 너머를 못 친다
+        const foes = g.pl.filter(q => q.side !== a.side && !q.dead && !q.recall && !q.tpCh && this.dist(q.pos, a.pos) <= a.rng && (f.mem.has(q) || q.fled === f.id) && (a.rng > 6 || Rift.los(a.pos, q.pos)));   // 근접은 벽 너머를 못 친다
         if (!foes.length) return;
         // 대상: 체력이 낮고 몸이 약한 쪽을 노린다 (가끔 앞라인)
         // 대상: 한타 목표 지시 — 딜러 노리기(원딜·미드) / 앞라인부터(가까운 적) / 보호(평소대로)
@@ -490,7 +494,7 @@ const Sim = {
           * (mem.some(q => q.side === a.side && (q.fx || {}).teamDmg) ? 1.03 : 1);
         const guard = mem.some(q => q.side === v.side && q !== v && q.kind === 'ench' && !q.dead && this.dist(q.pos, v.pos) < 6) ? .9 : 1;   // 보호형 서폿 곁에서는 덜 아프다
         const dmg = tfx * peel * guard * this.FIGHT_K * KA.deal * early * mult[a.side] * (1 + (this.ppow(a, m) - av[a.side]) / 40) * this.KIND[v.kind].take * (.75 + g.r() * .5) * (v.fled ? .55 : 1);
-        hits.push([a, v, dmg]);
+        hits.push([a, v, dmg]); a.hitTo = v; a.hitAt = g.t;   // 중계 화면의 공격선
       });
       hits.forEach(([a, v, dmg]) => {
         if (v.dead) return;

@@ -1,5 +1,5 @@
 // 엔진 벤치 (브라우저 콘솔): await import('/tools/bench.js') 후 await LMBench.setup(); LMBench.run(60)
-// tools/validate-engine.md 표와 같은 항목을 센다. Sim.audit 위반도 함께.
+// tools/validate-engine.md 표와 같은 항목을 센다. Sim.audit 위반도 함께. (벽 안 · 순간 이동 · 먼 거리 처치 · 맵 밖)
 window.LMBench = {
   async setup(team = 't1') {
     if (!Roster.team || !App.state.teamId) {
