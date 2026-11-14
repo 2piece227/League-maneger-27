@@ -14,10 +14,11 @@ const Career = {
 
   // 목업 계약·관계 수치. TODO: 기능 연결 — 계약 협상·이사회·여론 시스템
   contract(m, t) {
+    const mc = typeof Board !== 'undefined' && Board.contract();
     const pay = { LCK: ['원', [0, 1.2, 2, 3.5, 5.5, 8]], LPL: ['원', [0, 1.5, 2.5, 4, 6.5, 9]], LEC: ['원', [0, .8, 1.3, 2, 3, 4.5]], LCS: ['원', [0, .9, 1.4, 2.2, 3.2, 4.8]] }[t.league];
     const v = pay[1][t.rep || 2] * (0.8 + m.reputation / 100);
     const from = m.createdAt || Clock.START;
-    return { from, to: `${Clock.year(from) + 2}-11-30`, salary: `연 ${v.toFixed(1)}억 원` };
+    return { from: mc ? mc.from : from, to: mc ? mc.to : `${Clock.year(from) + 2}-11-30`, salary: `연 ${v.toFixed(1)}억 원` };
   },
   // 관계 수치: 배경·평판 기준 출발점. TODO: 기능 연결 — 성적·인터뷰·선수 면담으로 변동
   // 진행 중에는 저장된 관계 수치(World), 처음에는 배경·평판으로 정한 값

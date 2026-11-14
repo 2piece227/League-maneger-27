@@ -197,6 +197,7 @@ const Match = {
         <div class="card rs-head">
           <div class="rs-title"><h2>메타</h2><span>${sq ? `2026 프로 밴픽률 70% + 상위권 솔랭(한국 챌린저·그랜드마스터 ${sq.games}게임, 패치 ${UI.esc(sq.patch || '')}) 밴픽률 30%` : '2026 프로 밴픽률 기준 · 상위권 솔랭 자료를 받으면 7:3으로 합산합니다'}</span></div>
         </div>
+        <div class="card"><div class="card-head"><h3>패치 노트</h3></div><div class="pt-notes">${typeof Patch !== 'undefined' ? Patch.notes() : ''}</div></div>
         <div class="mt-roles">${G.ROLES.map(r => `
           <div class="card"><div class="card-head"><h3>${G.pos(r, true)} ${G.ROLE_KO[r]}</h3></div>
             ${byRole(r).map(x => { const c = Champions.byId[x.c], i = ranked.indexOf(x); return `<div class="mt-row">${SoloQ.ic(x.c)}<b>${UI.esc(c.name)}</b><i class="mt-tier t${tier(i)}">${tier(i)}</i><span class="num" title="프로 ${pc(x.pro)}${sq ? ' · 솔랭 ' + pc(x.sq) : ''}">${pc(x.v)}</span></div>`; }).join('') || '<p class="ms-none">데이터 없음</p>'}

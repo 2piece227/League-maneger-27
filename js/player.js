@@ -67,6 +67,7 @@ const Player = {
             ${st ? `<h4>상태</h4>
               ${Career.meter('컨디션', st.condition)}
               <div class="pp-morale"><span>사기</span><b class="morale ${Roster.MORALE[st.morale][1]}">${Roster.MORALE[st.morale][0]}</b></div>
+              ${this.isMine(t) && typeof Rel !== 'undefined' ? `<div class="pp-morale"><span>감독과의 관계</span><b>${Rel.word(p.id)}</b></div>` : ''}
               <div class="pp-morale"><span>최근 폼</span><span class="form-pts">${st.form.map(v => `<i class="${Roster.formCls(v)}">${v}</i>`).join('')}</span></div>` : ''}
             ${sq ? `<h4>솔랭</h4><p class="pp-line">${SoloQ.SERVER[t.league]} 서버 <b>${sq.rank}위</b> · ${sq.lpNow.toLocaleString()} LP · 승률 ${SoloQ.wr(sq)}%</p>` : ''}
           </div>
@@ -81,7 +82,7 @@ const Player = {
         <div class="pp-foot">
           ${this.isMine(t) && p.role !== 'COACH' ? `<span class="pp-mv" data-pid="${p.id}">${Squad.buttons(p)}</span>` : ''}
           <button class="btn-ghost pp-list">${listed ? '관심 목록에서 빼기' : '관심 목록에 추가'}</button>
-          ${this.isMine(t) ? '<button class="btn-primary pp-talk">재계약 협상</button>' : (p.free || this.days(p) < 0 ? '<button class="btn-primary pp-ask">계약 협상</button>' : '<button class="btn-primary pp-ask">영입 문의</button>')}
+          ${this.isMine(t) ? '<button class="btn-primary pp-talk">재계약 협상</button>' : (p.free || this.days(p) < 0 ? '<button class="btn-primary pp-ask">계약 협상</button>' : '<button class="btn-ghost pp-trade">트레이드 제안</button><button class="btn-primary pp-ask">영입 문의</button>')}
         </div>
       </div>`;
     document.body.appendChild(back);
@@ -95,6 +96,7 @@ const Player = {
     // 협상 창을 열면 프로필은 닫는다 (사인 뒤 예전 정보가 뒤에 남지 않게)
     if (talk) talk.onclick = () => { close(); this.contractModal(p.id); };
     if (ask) ask.onclick = () => { close(); this.inquiryModal(p.id); };
+    const trd = $('.pp-trade', back); if (trd) trd.onclick = () => { close(); Trade.propose(p.id); };
   },
 
   toggleShortlist(id) {
@@ -208,7 +210,7 @@ const Player = {
     const extra = p => ({ fatigue: Math.round(10 + G.rand(p.id, 'fat') * 50), load: ['낮음', '보통', '높음'][Math.floor(G.rand(p.id, 'load') * 3)], sleep: (6 + G.rand(p.id, 'slp') * 2.5).toFixed(1) });
     el.innerHTML = `
       <div class="cr-page">
-        ${Career.head('컨디션·폼', `${UI.esc(t.name)} 선수단 상태. 최근 폼은 공식전 최근 5경기 평점(10점 만점)입니다.`)}
+        ${Career.head('컨디션·폼', `${UI.esc(t.name)} 선수단 상태. 최근 폼은 공식전 최근 5경기 평점(10점 만점). 경기 오버롤 = 오버롤 + 컨디션 · 사기 · 감독 관계 보정 (오버롤 옆 ▲▼).`)}
         <div class="cd-grid">${t.players.map(p => {
           const st = Roster.status(p), x = extra(p);
           const avg = (st.form.reduce((s, v) => s + +v, 0) / st.form.length).toFixed(1);
@@ -216,6 +218,9 @@ const Player = {
           <div class="card cd-card" data-id="${p.id}">
             <div class="cd-head">${G.face(p, 'pl-ph')}<div>${G.ovr(p)}<b>${UI.esc(p.name)}</b>${G.pos(p.role, true)}${p.sub ? '<i class="sub-tag">후보</i>' : ''}</div><span class="morale ${Roster.MORALE[st.morale][1]}">${Roster.MORALE[st.morale][0]}</span></div>
             ${Career.meter('컨디션', st.condition)}
+            ${(() => { const b = Cond.parts(p), e = Math.round(p.ovr + b.total), sg = v => (v >= 0 ? '+' : '') + v.toFixed(1), h = Cond.hist(p.id), a = Cond.amp(p);
+              return `<div class="cd-eff"><span>경기 오버롤</span><b class="num">${p.ovr} → ${e}</b><small>컨디션 ${sg(b.form)} · 사기 ${sg(b.morale)} · 관계 ${sg(b.rel)}</small></div>
+              <div class="cd-form"><span>컨디션 흐름</span>${h.length > 1 ? `<svg viewBox="0 0 100 30" preserveAspectRatio="none"><line x1="0" y1="15" x2="100" y2="15" stroke="#2a3550"/><polyline fill="none" stroke="#7fb0ff" stroke-width="2" points="${h.map((v, i) => `${(i / (h.length - 1) * 100).toFixed(1)},${(15 - v / a * 13).toFixed(1)}`).join(' ')}"/></svg>` : '<small class="cr-dim">경기를 치르면 쌓입니다</small>'}<b class="num">${Cond.word(p)}</b></div>`; })()}
             ${Career.meter('피로도', x.fatigue, 'inv')}
             <div class="cd-form"><span>최근 폼</span>
               <svg viewBox="0 0 100 30" preserveAspectRatio="none"><polyline fill="none" stroke="var(--gold)" stroke-width="2" points="${st.form.map((v, i) => `${i * 25},${30 - (+v - 3) * 4}`).join(' ')}"/></svg>

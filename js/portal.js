@@ -135,6 +135,7 @@ const Portal = {
     await Promise.all([Results.load(), Mastery.load(), Champions.load()]); this.liveStandings(d); this.liveSolo(d);
     el.innerHTML = `
       <div class="portal">
+        ${App.state.unemployed ? `<div class="card un-banner"><b>무직 — 구직 중</b><span>${Fmt.dayLabel(App.state.unemployed.since)} 해임. 커리어 › 다른 팀 보기에서 이력서를 낼 수 있습니다.</span><a class="btn-primary" href="#career-other-teams">다른 팀 보기</a></div>` : ''}
         <section class="msg-panel panel" id="msg-panel"></section>
         <aside class="portal-cards">
           ${this.cardNextMatch(d)}

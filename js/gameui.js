@@ -15,7 +15,10 @@ const G = {
   ovr(p, cls = '') {
     if (!p || p.role === 'COACH' || p.ovr == null) return '';
     const v = p.ovr, c = v >= 90 ? 'top' : v >= 80 ? 'hi' : v >= 70 ? 'mid' : 'lo';
-    return `<i class="ovr-b ${c} ${cls}" data-pp="${p.id}" title="오버롤 · 누르면 프로필">${v}</i>`;
+    // 컨디션 · 사기 · 감독 관계로 오르내린 만큼 (경기에 실제로 들어가는 값). 1 미만이면 표시하지 않는다
+    const b = typeof Cond !== 'undefined' && App.state.teamId && !p.free ? Cond.parts(p) : null, d = b ? Math.round(b.total) : 0;
+    const tip = b ? `오버롤 ${v} · 컨디션 ${b.form >= 0 ? '+' : ''}${b.form.toFixed(1)} · 사기 ${b.morale >= 0 ? '+' : ''}${b.morale.toFixed(1)} · 관계 ${b.rel >= 0 ? '+' : ''}${b.rel.toFixed(1)} → 경기 오버롤 ${Math.round(v + b.total)}` : '오버롤 · 누르면 프로필';
+    return `<i class="ovr-b ${c} ${cls}" data-pp="${p.id}" title="${tip}">${v}${d ? `<em class="ovr-d ${d > 0 ? 'up' : 'dn'}">${d > 0 ? '▲' : '▼'}${Math.abs(d)}</em>` : ''}</i>`;
   },
 
   // 선수 사진(없으면 이니셜)

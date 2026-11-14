@@ -3,7 +3,7 @@ const NAV = [
   { id: 'portal', label: '포털', tabs: [['overview', '개요'], ['messages', '메시지'], ['calendar', '캘린더'], ['news', '뉴스'], ['fixtures', '경기 일정'], ['opponent-report', '상대 분석 리포트']] },
   { id: 'roster', label: '로스터', tabs: [['first-team', '1군'], ['challengers', '챌린저스'], ['academy', '아카데미'], ['compare', '선수 비교'], ['mastery', '챔피언 숙련도'], ['condition', '컨디션·폼'], ['contracts', '계약 현황']] },
   { id: 'recruit', label: '영입', tabs: [['search', '스카우트 검색'], ['teams', '팀 검색'], ['shortlist', '관심 목록'], ['reports', '스카우트 리포트'], ['fa', 'FA 시장'], ['offers', '이적 제안'], ['assignments', '스카우트 배정']] },
-  { id: 'match', label: '경기', tabs: [['next', '다음 경기'], ['draft', '밴픽', 'hidden'], ['live', '경기', 'hidden'], ['opponent', '상대 분석'], ['history', '경기 기록'], ['register', '국제대회 등록', 'hidden'], ['locker', '라커룸', 'hidden'], ['meta', '메타'], ['champions', '챔피언'], ['standings', '순위표']] },
+  { id: 'match', label: '경기', tabs: [['next', '다음 경기'], ['draft', '밴픽', 'hidden'], ['live', '경기', 'hidden'], ['opponent', '상대 분석'], ['history', '경기 기록'], ['register', '국제대회 등록', 'hidden'], ['locker', '라커룸', 'hidden'], ['cupdraft', 'LCK컵 그룹', 'hidden'], ['meta', '메타'], ['champions', '챔피언'], ['standings', '순위표']] },
   { id: 'training', label: '훈련', tabs: [['schedule', '팀 훈련 일정'], ['individual', '개인 훈련'], ['soloq', '솔랭 순위'], ['scrims', '스크림']] },
   { id: 'club', label: '구단', tabs: [['finance', '재정'], ['salary-cap', '샐러리캡'], ['staff', '코칭스태프'], ['sponsors', '스폰서'], ['board', '이사회 기대치'], ['history', '구단 역사']] },
   { id: 'career', label: '커리어', tabs: [['profile', '감독 프로필'], ['reputation', '평판'], ['record', '커리어 기록'], ['other-teams', '다른 팀 보기'], ['settings', '설정·저장']] },

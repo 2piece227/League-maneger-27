@@ -43,6 +43,8 @@ const News = {
     // 우리 팀
     const exp = t.players.filter(p => !p.free && p.contractEnd && p.contractEnd > today && Player.days(p) <= 30);
     if (exp.length) out.push({ cat: 'team', date: Store.addDays(exp.map(p => p.contractEnd).sort()[0], -30), title: `${t.short}, ${exp.map(p => p.name).join('·')} 재계약 여부 주목`, body: `${t.name}의 ${exp.length}명이 곧 계약 만료를 맞습니다. 팬들의 시선이 재계약 협상에 쏠리고 있습니다.`, link: '#roster-contracts' });
+    // 감독 부임 기사 (커리어 시작일 · 팀을 옮긴 날)
+    const mg = App.state.manager; if (mg) { const since = ((App.state.jobs || []).at(-1) || {}).until || (mg.createdAt || Clock.START).slice(0, 10); out.push({ cat: 'team', date: since, hire: true, title: `[오피셜] ${t.name}, 신임 감독 ${mg.displayName || mg.name} 선임`, body: `${t.name}가 ${mg.displayName || mg.name} 감독과 계약했습니다. ${Manager.BACKGROUNDS[mg.background.type].label} 출신으로, 팬들의 관심이 쏠리고 있습니다.` }); }
     // 최근 30일 기사만 (날짜가 고정된 기사는 시간이 지나면 자연히 내려간다)
     return out.filter(x => x.date <= today && x.date >= d(30)).sort((a, b) => b.date.localeCompare(a.date));
   },
@@ -54,10 +56,10 @@ const News = {
     const [hero, ...rest] = list;
     const art = (x, big = false) => {
       const hit = x.pid && Player.find(x.pid);
-      return `<a class="card nw-card ${big ? 'hero' : ''}" href="${x.link || '#portal-news'}" ${x.pid ? `data-pid="${x.pid}"` : ''}>
+      return `<a class="card nw-card ${big ? 'hero' : ''}" href="javascript:void 0" data-i="${list.indexOf(x)}" ${x.pid ? `data-pid="${x.pid}"` : ''}>
         ${hit ? G.face(hit.p, 'nw-ph') : ''}
         <div><span class="nw-tag ${x.cat}">${this.CATS[x.cat]}</span><small>${Fmt.dayLabel(x.date)}</small>
-        <b>${UI.esc(x.title)}</b><p>${UI.esc(x.body)}</p></div></a>`;
+        <b>${UI.esc(x.title)}</b><p>${UI.esc(x.body)}</p><small class="nw-cm">💬 커뮤니티 반응 보기</small></div></a>`;
     };
     el.innerHTML = `
       <div class="cr-page">
@@ -69,6 +71,7 @@ const News = {
       </div>`;
     $('.nw-cat', el).onclick = e => { const b = e.target.closest('button'); if (!b) return; this.cat = b.dataset.c; this.shown = 40; this.render(el); };
     const more = $('.nw-more', el); if (more) more.onclick = () => { this.shown += 40; this.render(el); };
+    el.querySelectorAll('.nw-card').forEach(a => a.onclick = e => { e.preventDefault(); Community.open(list[+a.dataset.i]); });   // 기사 열기: 본문 + 커뮤니티 반응
   },
 
   async messages(el) {

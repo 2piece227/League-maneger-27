@@ -156,7 +156,9 @@ const Draft = {
     const nm = Stats.name(c), base = this.blend(nm);
     const patch = Math.floor(Fmt.daysBetween(`${Clock.year()}-01-01`, Clock.today()) / 14);
     const r1 = G.rand(nm + ':patch:' + Clock.year() + ':' + patch, 'mt'), r2 = G.rand(nm + ':patch:' + Clock.year() + ':' + (patch - 1), 'mt');
-    const shift = Math.exp(((r1 - .5) * .9 + (r2 - .5) * .45));     // 지난 패치 영향도 조금 남는다
+    // 패치: 패치 AI가 있으면 그 조정값이 주된 흐름, 무작위 흔들림은 작게
+    const pa = typeof Patch !== 'undefined' && Patch.st().list.length, adj = pa ? Patch.adj(c) : 0;
+    const shift = Math.exp(adj * .3 + ((r1 - .5) * .9 + (r2 - .5) * .45) * (pa ? .4 : 1));
     return Math.min(.9, base * shift + (base < .02 && r1 > .97 ? .12 : 0));   // 가끔 안 쓰이던 챔피언이 떠오른다
   },
   // 픽 순서별 포지션 비율 (프로 피어리스 시기): 탑·서폿을 늦게 고르는 경향 등

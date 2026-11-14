@@ -15,7 +15,8 @@ const Roster = {
     const form = rs.length ? rs.map(v => v.toFixed(1)) : Array.from({ length: 5 }, (_, i) => (5.8 + r('f' + i) * 2.2).toFixed(1));
     const avg = form.reduce((a, v) => a + +v, 0) / form.length, ev = (typeof World !== 'undefined' ? World.morale()[p.id] : 0) || 0;
     return {
-      condition: Math.round(78 + r('cond') * 22),
+      condition: typeof Cond !== 'undefined' ? Cond.pct(p) : Math.round(78 + r('cond') * 22),
+      condWord: typeof Cond !== 'undefined' ? Cond.word(p) : '',
       morale: Math.max(0, Math.min(4, Math.round(1.2 + r('mor') * 1.6 + (avg - 6.8) * 1.3 + ev / 3))),
       form,
     };

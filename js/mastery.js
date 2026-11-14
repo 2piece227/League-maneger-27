@@ -16,13 +16,17 @@ const Mastery = {
   },
 
   // 원본 기록 → 숙련도(솔랭+대회)와 시그니처. 솔랭·대회 결과가 쌓이면 다시 호출한다.
-  // TODO: 기능 연결 — 선수 특성(mods)을 MasteryModel.calc 두 번째 인자로 전달
+  // 특성: 솔랭의 제왕(솔랭 경험치) · 백호/북부대곰(포지션 챔피언 경험치) · 빠른 엔딩(원딜 17까지 빠르게) · 역천괴(모든 챔피언 +1)
   recalc() {
-    const M = MasteryModel;
-    for (const list of Object.values(this.pools)) {
+    const M = MasteryModel, T = typeof Traits !== 'undefined' && Traits.cfg ? Traits : null;
+    for (const [pid, list] of Object.entries(this.pools)) {
+      const solo = T ? T.fx(pid, 'soloqXp', 1) : 1, xr = T && T.fx(pid, 'xpRole', null), fast = T && T.fx(pid, 'xpFast17', null), plus = T ? T.fx(pid, 'mastery', 0) : 0;
       list.forEach(e => {
-        const r = M.calc(e);
-        e.xp = r.xp; e.mv = r.value; e.m = r.level; e.next = r.next; e.need = r.need; e.sig = false;
+        const pos = ((Champions.byId[e.c] || {}).positions || [])[0];
+        let mul = xr && pos === xr[0] ? xr[1] : 1;
+        if (fast && pos === fast[0] && M.calc(e).value < 17) mul *= fast[1];
+        const r = M.calc(e, { soloMul: solo * mul, proMul: mul });
+        e.xp = r.xp; e.mv = Math.min(M.MAX, r.value + plus); e.m = Math.min(M.MAX, r.level + plus); e.next = r.next; e.need = r.need; e.sig = false;
       });
       list.sort((a, b) => b.mv - a.mv || b.g - a.g);
       list.filter(e => e.m >= M.SIG_MIN).slice(0, M.SIG_MAX).forEach(e => { e.sig = true; });
