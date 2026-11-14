@@ -94,7 +94,7 @@ const Match = {
       <div class="cr-page">
         <div class="card nx-head">
           <div class="nx-side">${G.team(t, 'lg')}<b>${UI.esc(t.name)}</b>${this.formDots(this.form(t.id))}</div>
-          <div class="nx-mid"><span>${UI.esc(ev.label)}${nm.tab ? ' · ' + UI.esc(nm.tab) : ''}</span><b>VS</b><small>${Fmt.dateTime(nm.t)} · Bo${nm.bo}${Schedule.orderLabel(nm) ? ' · ' + Schedule.orderLabel(nm) : ''}</small><em>D-${Fmt.daysBetween(this.today(), nm.t)}</em></div>
+          <div class="nx-mid"><span>${UI.esc(ev.label)}${nm.tab ? ' · ' + UI.esc(nm.tab) : ''}</span>${Rivalry.badge(Rivalry.ofMatch(nm))}<b>VS</b><small>${Fmt.dateTime(nm.t)} · Bo${nm.bo}${Schedule.orderLabel(nm) ? ' · ' + Schedule.orderLabel(nm) : ''}</small><em>D-${Fmt.daysBetween(this.today(), nm.t)}</em></div>
           <div class="nx-side">${opp ? G.team(opp, 'lg') : ''}<b>${opp ? UI.esc(opp.name) : '미정'}</b>${opp ? this.formDots(this.form(opp.id)) : ''}</div>
         </div>
         ${opp && nm.t.slice(0, 10) === this.today() ? `<div class="nx-draft"><span>오늘 경기입니다. 위의 <b>경기로</b> 버튼을 누르면 밴픽이 시작됩니다.</span></div>` : ""}

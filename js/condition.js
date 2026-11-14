@@ -86,7 +86,8 @@ const Cond = {
     const p = hit.p, a = this.amp(p), mor = World.morale(), calm = ((p.attributes || {}).mental || {}).composure || 12, amb = ((p.attributes || {}).hidden || {}).ambition || 11, vet = (p.age || 20) >= 26;
     const gain = { enc: calm <= 11 ? 2.5 : 1.5, rest: 2, review: vet ? 2.5 : 2, firm: amb >= 14 || vet ? 3 : calm <= 9 ? -1 : 1 }[how];
     const S = this.st(); S.f[pid] = Math.max(-a, Math.min(a, this.half((S.f[pid] || 0) + gain)));
-    mor[pid] = (mor[pid] || 0) + ({ enc: 1, rest: 1, review: 1, firm: gain > 1 ? 1 : -2 })[how];
+    const dm = ({ enc: 1, rest: 1, review: 1, firm: gain > 1 ? 1 : -2 })[how]; mor[pid] = (mor[pid] || 0) + dm;
+    if (typeof Rel !== 'undefined') Rel.add(pid, dm * 3, `면담: ${({ enc: '다독임', rest: '휴식', review: '영상 분석', firm: '질책' })[how]}`);
   },
 
   // ---------- 팀합 · 언어 ----------

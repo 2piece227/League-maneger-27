@@ -218,6 +218,7 @@ const Club = {
             ${Object.entries(evs).map(([id, v]) => `<div class="mh-row ${v.w >= v.l ? 'w' : 'l'}"><span>${UI.esc(Results.ev(id).name)}</span><b>${v.w}승 ${v.l}패</b></div>`).join('') || '<p class="ms-none">기록 없음</p>'}
           </div>
         </div>
+        ${Rivalry.forTeam(t.id).length ? `<div class="card"><div class="card-head"><h3>라이벌</h3></div><div class="rv-list">${Rivalry.forTeam(t.id).map(r => { const o = Schedule.team(Rivalry.other(r, t.id)), rec = t.id === App.state.teamId ? Rivalry.record(r) : null; return `<div class="rv-row">${G.team(o, 'sm')}<div>${Rivalry.badge(r)} <b>vs ${UI.esc(o.name)}</b><p>${UI.esc(r.desc)}</p></div>${rec ? `<span class="num">${rec.w}승 ${rec.l}패</span>` : ''}</div>`; }).join('')}</div></div>` : ''}
         <div class="card"><div class="card-head"><h3>리그 우승·명예의 전당</h3></div><p class="ms-none">역대 리그 우승과 구단 레전드 기록은 데이터 수집 후 채울 예정입니다.</p></div>
       </div>`;
   },

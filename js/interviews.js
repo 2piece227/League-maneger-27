@@ -11,6 +11,7 @@ const Talk = {
   // 중요 경기: 플레이오프 · 국제대회 · 리그 상위 3팀
   big(m) {
     const e = Schedule.eventOf(m); if (e && (e.kind === 'playoffs' || e.kind === 'intl')) return true;
+    if (typeof Rivalry !== 'undefined' && Rivalry.ofMatch(m)) return true;
     const o = Schedule.opponent(m, App.state.teamId); if (!o) return false;
     const rows = Results.table(o.league, Results.current(o.league).ids); return rows.slice(0, 3).some(x => x.t.id === o.id);
   },
@@ -82,7 +83,7 @@ const Talk = {
     // 약속 기한
     if (S.promise && today > S.promise.due) {
       const hit = Player.find(S.promise.pid);
-      if (hit) { World.apply({ morale: -4, squad: -2 }, { pid: hit.p.id, player: hit.p.name }); Inbox.push({ from: { name: hit.p.name, role: 'player', photo: hit.p.photo }, subject: `${hit.p.name}, 약속이 지켜지지 않았다며 실망했습니다`, body: '감독님이 기회를 주신다고 하셨는데… 솔직히 실망했습니다.', priority: 'normal' }); }
+      if (hit) { World.apply({ morale: -4, squad: -2 }, { pid: hit.p.id, player: hit.p.name, why: '출전 약속 어김' }); Inbox.push({ from: { name: hit.p.name, role: 'player', photo: hit.p.photo }, subject: `${hit.p.name}, 약속이 지켜지지 않았다며 실망했습니다`, body: '감독님이 기회를 주신다고 하셨는데… 솔직히 실망했습니다.', priority: 'normal' }); }
       S.promise = null;
     }
   },
@@ -95,10 +96,10 @@ const Talk = {
     if (S.trash[m.id]) {
       delete S.trash[m.id];
       if (won) { World.apply({ fans: 2, media: 1 }, {}); Market.post(`[이슈] 도발하고 이겼다… ${t.short}, ${o.short}전 티저 화제`, `경기 전 도발 티저를 공개했던 ${Sim.josa(t.name, '이', '가')} ${Sim.josa(o.name, '을', '를')} 꺾었습니다. 팬들은 "말한 대로 했다"며 열광하고 있습니다.`, null); }
-      else { World.apply({ fans: -5, media: -3, moraleAll: -1 }, {}); Market.post(`[이슈] 도발 티저의 역풍… ${t.short}, ${o.short}에 패배`, `경기 전 상대를 도발했던 ${Sim.josa(t.name, '이', '가')} ${o.name}에 졌습니다. 커뮤니티에는 조롱 섞인 반응이 쏟아지고 있습니다.`, null); }
+      else { World.apply({ fans: -5, media: -3, moraleAll: -1 }, { why: '도발 티저 역풍' }); Market.post(`[이슈] 도발 티저의 역풍… ${t.short}, ${o.short}에 패배`, `경기 전 상대를 도발했던 ${Sim.josa(t.name, '이', '가')} ${o.name}에 졌습니다. 커뮤니티에는 조롱 섞인 반응이 쏟아지고 있습니다.`, null); }
     }
     // 후보 약속: 그 선수가 뛰었으면 지킨 것
-    if (S.promise && series.games.some(x => x.result && x.result.stats && x.result.stats.some(s => s[0] === S.promise.pid))) { const hit = Player.find(S.promise.pid); if (hit) World.apply({ morale: 2, squad: 1 }, { pid: hit.p.id, player: hit.p.name }); S.promise = null; }
+    if (S.promise && series.games.some(x => x.result && x.result.stats && x.result.stats.some(s => s[0] === S.promise.pid))) { const hit = Player.find(S.promise.pid); if (hit) World.apply({ morale: 2, squad: 1 }, { pid: hit.p.id, player: hit.p.name, why: '출전 약속 지킴' }); S.promise = null; }
     // 패배 소감
     if (!won && Engine.once('talk:loss:' + m.id)) this.push({ from: { name: '경기 후 기자회견', role: 'media' }, subject: `${o.short}전 패배 — 소감을 묻습니다`, ctx: {},
       body: `${o.name}에 ${sc[t.id] || 0}:${sc[o.id] || 0}로 졌습니다. 기자들이 패배 원인을 묻습니다.`,

@@ -145,6 +145,7 @@ const Locker = {
     if ((tp.id === 'talk' || tp.id === 'praise') && v !== 'none') {
       const r = this.react(tp.pid, v); (L.boost ||= {})[tp.pid] = r.v;
       const mor = World.morale(); mor[tp.pid] = (mor[tp.pid] || 0) + Math.sign(r.v);
+      if (typeof Rel !== 'undefined') Rel.add(tp.pid, Math.sign(r.v) * 2, `라커룸: ${o[1]}`);
       setTimeout(() => this.push(tp.pid, r.line), 450);
     }
     if (tp.id === 'ban' && v !== 'none') setTimeout(() => this.push('coach', `알겠습니다. ${G.ROLE_KO[v]} 쪽 위주로 밴 준비하겠습니다.`), 450);

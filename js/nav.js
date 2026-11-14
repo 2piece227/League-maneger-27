@@ -1,7 +1,7 @@
 // 메인 게임 화면의 상단 바: 대메뉴 7개 + 하위 탭
 const NAV = [
   { id: 'portal', label: '포털', tabs: [['overview', '개요'], ['messages', '메시지'], ['calendar', '캘린더'], ['news', '뉴스'], ['fixtures', '경기 일정'], ['opponent-report', '상대 분석 리포트']] },
-  { id: 'roster', label: '로스터', tabs: [['first-team', '1군'], ['challengers', '챌린저스'], ['academy', '아카데미'], ['compare', '선수 비교'], ['mastery', '챔피언 숙련도'], ['condition', '컨디션·폼'], ['contracts', '계약 현황']] },
+  { id: 'roster', label: '로스터', tabs: [['first-team', '1군'], ['challengers', '챌린저스'], ['academy', '아카데미'], ['compare', '선수 비교'], ['mastery', '챔피언 숙련도'], ['condition', '컨디션·폼'], ['relations', '선수 관계'], ['contracts', '계약 현황']] },
   { id: 'recruit', label: '영입', tabs: [['search', '스카우트 검색'], ['teams', '팀 검색'], ['shortlist', '관심 목록'], ['reports', '스카우트 리포트'], ['fa', 'FA 시장'], ['offers', '이적 제안'], ['assignments', '스카우트 배정']] },
   { id: 'match', label: '경기', tabs: [['next', '다음 경기'], ['draft', '밴픽', 'hidden'], ['live', '경기', 'hidden'], ['opponent', '상대 분석'], ['history', '경기 기록'], ['register', '국제대회 등록', 'hidden'], ['locker', '라커룸', 'hidden'], ['cupdraft', 'LCK컵 그룹', 'hidden'], ['meta', '메타'], ['champions', '챔피언'], ['standings', '순위표']] },
   { id: 'training', label: '훈련', tabs: [['schedule', '팀 훈련 일정'], ['individual', '개인 훈련'], ['soloq', '솔랭 순위'], ['scrims', '스크림']] },
@@ -39,7 +39,8 @@ const MatchLock = {
     const D = App.state.draft, my = Roster.team(), opp = Draft.side(D, D.us === 'B' ? 'R' : 'B');
     const m = D.official && (Schedule.all || []).find(x => x.id === D.series.key), title = D.official ? (m && (Schedule.eventOf(m) || {}).label) || '공식전' : '스크림';
     const steps = [['match-draft', '밴픽·전술'], ['match-live', '경기'], ['match-locker', '라커룸']];
-    return `<span class="ml-title"><b>${UI.esc(title)}</b> ${UI.esc(my.short)} vs ${UI.esc(opp.short)} · ${D.series.fixed ? `${D.series.fixed}판 중 ${D.game}판` : D.series.bo > 1 ? `Bo${D.series.bo} ${D.game}세트` : '단판'}</span>
+    const rv = Rivalry.of(my.id, opp.id);
+    return `<span class="ml-title"><b>${UI.esc(title)}</b>${rv ? ` <em class="ml-rv">⚔ ${UI.esc(rv.name)}</em>` : ''} ${UI.esc(my.short)} vs ${UI.esc(opp.short)} · ${D.series.fixed ? `${D.series.fixed}판 중 ${D.game}판` : D.series.bo > 1 ? `Bo${D.series.bo} ${D.game}세트` : '단판'}</span>
       ${steps.map(([r, l]) => `<span class="ml-step ${r === route ? 'on' : ''}">${l}</span>`).join('')}
       <span class="ml-note">경기가 끝나면 다른 화면으로 이동할 수 있습니다</span>`;
   },

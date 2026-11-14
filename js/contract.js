@@ -164,7 +164,7 @@ Engine.on(today => {
       Inbox.push({ from: board, subject: `${p.name}, 선수 옵션 포기 — FA 시장으로`, priority: 'urgent', link: 'recruit-fa', body: `${p.name}이(가) 선수 옵션을 쓰지 않고 FA 시장에 나가기로 했습니다.\n\n다시 데려오려면 FA 시장에서 새 계약을 제시해야 합니다.` });
     } else Inbox.push({ from: board, subject: `${p.name}, 계약 만료로 FA`, priority: 'urgent', link: 'recruit-fa',
       body: `${p.name}의 계약이 끝나 FA가 됐습니다. 이제 다른 팀도 자유롭게 영입을 시도할 수 있습니다.\n\n다시 데려오려면 FA 시장에서 새 계약을 제시해야 합니다.` });
-    Market.post(`[FA] ${p.name}, ${t.short}와 계약 만료 — FA 시장으로`, `${t.name}의 ${G.ROLE_KO[p.role] || ''} ${p.name}(${p.age || '-'}세)이(가) 재계약하지 않고 FA 시장에 나왔습니다.`, p.id);
+    Market.post(`[FA] ${p.name}, ${Sim.josa(t.short, '과', '와')} 계약 만료 — FA 시장으로`, `${t.name}의 ${G.ROLE_KO[p.role] || ''} ${p.name}(${p.age || '-'}세)이(가) 재계약하지 않고 FA 시장에 나왔습니다.`, p.id);
     Contract.release(p.id);
   });
 });

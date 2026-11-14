@@ -107,9 +107,12 @@ const Market = {
       this.post(back ? `[오피셜] ${p.name}, ${t.short} 잔류` : `[오피셜] ${p.name}, ${t.short} 입단`,
         (back ? `FA ${p.name}이(가) 원 소속팀 ${t.name}과(와) 다시 계약했습니다.` : `FA ${p.name}이(가) ${t.name}과(와) 계약했습니다.`) + (offers.length > 1 ? ` ${offers.length}개 팀이 경쟁한 끝에 ${t.short}을(를) 택했습니다.` : ''), p.id);
       const neg = Contract.st().neg[pid], talking = !!(neg && !neg.signed && neg.mode === 'fa' && Fmt.daysBetween(neg.date, today) <= 14);
-      if (talking || Player.shortlist().includes(pid) || s >= 82)
-        Inbox.push({ from: { name: '스카우트 팀', role: 'coach' }, subject: `${p.name}, ${Sim.josa(t.short, '과', '와')} 계약`, priority: talking ? 'todo' : 'normal', link: 'portal-news',
-          body: `${talking ? (neg.deal ? '합의했지만 사인하지 않았던 ' : '협상 중이던 ') : Player.shortlist().includes(pid) ? '관심 목록에 있던 ' : ''}${p.name}이(가) ${t.name}과(와) 계약했습니다.` });
+      // 메시지함에는 우리와 관련 있는 계약만: 협상 중이던 선수 · 관심 목록 · 라이벌 구단 · 같은 리그 구단. 나머지는 뉴스로만
+      const from = p._o && p._o.team ? App.db.teams.find(x => x.id === p._o.team) : null, myT = Roster.team();
+      const shortl = Player.shortlist().includes(pid), rival = [t.id, from && from.id].some(id => id && Rivalry.isRival(id)), local = myT && [t, from].some(x => x && x.league === myT.league && x.id !== myT.id);
+      if (!App.state.unemployed && (talking || shortl || rival || local))
+        Inbox.push({ from: { name: '스카우트 팀', role: 'coach' }, subject: `${p.name}, ${Sim.josa(t.short, '과', '와')} 계약${rival ? ' (라이벌)' : ''}`, priority: talking ? 'todo' : 'normal', link: 'portal-news', ctx: { pid },
+          body: `${talking ? (neg.deal ? '합의했지만 사인하지 않았던 ' : '협상 중이던 ') : shortl ? '관심 목록에 있던 ' : rival ? '라이벌 구단 관련 소식입니다. ' : ''}${p.name}이(가) ${t.name}과(와) 계약했습니다.` });
       if (neg) { neg.done = true; neg.lapsed = true; }
     });
     if (changed) Squad.apply();

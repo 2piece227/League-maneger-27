@@ -69,7 +69,7 @@ const Trade = {
     Market.post(`[오피셜] ${A.short}·${B.short} 트레이드 — ${a.name} ↔ ${b.name}`, `${A.name}의 ${Sim.josa(a.name, '과', '와')} ${B.name}의 ${Sim.josa(b.name, '이', '가')} 맞교환됐습니다.`, a.id);
   },
   rumor(p, other) {
-    Rel.add(p.id, -15); const mor = World.morale(); mor[p.id] = (mor[p.id] || 0) - 2;
+    Rel.add(p.id, -15, `트레이드설 (${other.short})`); const mor = World.morale(); mor[p.id] = (mor[p.id] || 0) - 2;
     Market.post(`[이적설] ${p.name}, ${Sim.josa(other.short, '과', '와')} 트레이드 카드로?`, `${Sim.josa(Roster.team().name, '이', '가')} ${p.name}을(를) 트레이드 카드로 쓰려 한다는 이야기가 돌고 있습니다. 선수 본인은 당황스럽다는 반응입니다.`, p.id);
     Inbox.push({ from: { name: p.name, role: 'player', photo: p.photo }, subject: `${p.name}, 트레이드설에 대해 묻습니다`, body: '감독님, 제가 트레이드 카드라는 기사가 사실인가요? 솔직히 충격입니다.' });
   },

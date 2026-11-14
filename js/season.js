@@ -57,12 +57,14 @@ const Season = {
     this.rate(series, m);
     if (typeof Cond !== 'undefined') Cond.after(m, series);
     if (typeof Talk !== 'undefined') Talk.after(m, series);
+    if (typeof Rivalry !== 'undefined') Rivalry.after(m, series);
     this.resolve();
     this.inject();
     const my = App.state.teamId, t1 = Schedule.team(m.t1), t2 = Schedule.team(m.t2);
     if ((m.t1 === my || m.t2 === my) && !App.state.unemployed) {
       const won = (m.t1 === my) === (s1 > s2), ev = Schedule.eventOf(m);
-      Market.post(`[결과] ${t1.short} ${s1}:${s2} ${t2.short}`, `${ev ? ev.label + ' ' : ''}${Sim.josa(t1.name, '과', '와')} ${t2.name}의 경기가 ${Sim.josa(`${s1}:${s2}`, '으로', '로')} 끝났습니다.`, null);
+      const rv = typeof Rivalry !== 'undefined' && Rivalry.ofMatch(m);
+      Market.post(`[결과] ${t1.short} ${s1}:${s2} ${t2.short}${rv ? ` · ${rv.name}` : ''}`, `${rv ? `라이벌전 '${rv.name}'. ` : ''}${ev ? ev.label + ' ' : ''}${Sim.josa(t1.name, '과', '와')} ${t2.name}의 경기가 ${Sim.josa(`${s1}:${s2}`, '으로', '로')} 끝났습니다.`, null);
       // 결과 메시지 시각: 오늘 경기면 경기 시작 + 세트당 약 50분, 지난 경기를 오늘 처리하면 아침
       const end = m.t.slice(0, 10) === Clock.today() ? Math.min(23 * 60 + 50, +m.t.slice(11, 13) * 60 + +m.t.slice(14, 16) + (s1 + s2) * 50) : 8 * 60, time = `${String(Math.floor(end / 60)).padStart(2, '0')}:${String(end % 60).padStart(2, '0')}`;
       if (typeof Inbox !== 'undefined') Inbox.push({ time, from: { name: '코칭스태프', role: 'coach' }, subject: `${won ? '승리' : '패배'} — ${t1.short} ${s1}:${s2} ${t2.short}`, link: 'match-history', body: `${ev ? ev.label + ' ' : ''}경기를 ${s1}:${s2}로 ${won ? '이겼습니다' : '졌습니다'}.` });

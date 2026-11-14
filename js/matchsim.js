@@ -153,6 +153,9 @@ const Sim = {
     g.wph = { top: r() * 6.283, mid: r() * 6.283, bot: r() * 6.283 };
     g.said = {}; g.fights = []; g.fid = 0; g.core3 = {};
     this.say(g, 'cast', `${this.josa(g.side.B.t.name, '과', '와')} ${g.side.R.t.name}의 ${gameNo ? gameNo + '세트' : '경기'}, 지금 시작합니다!`);
+    // 라이벌전 첫 멘트 (점수가 높을수록 들뜬다)
+    const rv = typeof Rivalry !== 'undefined' && Rivalry.of(g.side.B.t.id, g.side.R.t.id);
+    if (rv) this.say(g, rv.score >= 4.5 ? 'hype' : 'anal', rv.score >= 4.5 ? this.pick(g, [`${rv.name}입니다! 오늘은 순위 같은 거 다 필요 없어요!`, `팬들이 제일 기다리는 경기, ${rv.name}! 분위기가 벌써 뜨겁습니다!`]) : `${this.josa(rv.name, '이', '')}죠. ${rv.desc}`);
     this.say(g, 'anal', `${this.josa(g.side.B.t.short, "은", "는")} ${Draft.TEAM_TAC[g.side.B.tac].n}, ${this.josa(g.side.R.t.short, "은", "는")} ${Draft.TEAM_TAC[g.side.R.tac].n} 전술입니다. ${this.compTalk(g)}`);
     const lop = g.pl.filter(p => p.side === 'B' && p.mu.g >= 5 && Math.abs(p.mu.wr - .5) >= .08)[0];
     if (lop) { const o = g.pl.find(q => q.side === 'R' && q.role === lop.role), fav = lop.mu.wr > .5 ? lop : o; this.say(g, 'anal', `${G.ROLE_KO[lop.role]} 매치업은 ${this.cn(fav)} 쪽이 유리합니다. 프로 경기 ${lop.mu.g}판 기준 승률 ${Math.round((fav === lop ? lop.mu.wr : 1 - lop.mu.wr) * 100)}%예요.`); }

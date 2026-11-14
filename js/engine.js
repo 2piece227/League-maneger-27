@@ -34,8 +34,10 @@ const Inbox = {
       const p = typeof c.odds === 'number' ? c.odds : World.rel()[c.odds] / 100;
       out = G.rand(App.state.seed + m.id, 'odds') < p ? c.outcomes[0] : c.outcomes[1];
     }
+    if (typeof Rel !== 'undefined') Rel.why = m.subject;            // 관계 기록에 남길 이유
     const fx = World.apply(out.fx || {}, m.ctx || {});
     if (out.act) Engine.ACTS[out.act](m, out.arg);
+    if (typeof Rel !== 'undefined') Rel.why = null;
     m.answered = i;
     m.done = true;
     m.reply = Events.fill(out.reply || '', m.ctx || {});
