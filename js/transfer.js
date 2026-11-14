@@ -16,6 +16,7 @@ const Transfer = {
 
   // ---------- 우리 → 다른 구단: 단장 채팅 ----------
   open(pid) {
+    if (App.state.unemployed) { UI.toast('무직 상태에서는 구단 업무를 볼 수 없습니다. 커리어 › 다른 팀 보기에서 새 팀을 구하세요.', 3500); return; }
     const hit = Player.find(pid); if (!hit) return;
     const { p, t } = hit, my = Roster.team();
     if (p.free || Player.days(p) < 0) { Neg.open(pid, 'fa'); return; }
@@ -138,4 +139,4 @@ const Transfer = {
 };
 Engine.ACTS.bidAccept = (m, mult) => { const b = Transfer.bids().find(x => x.id === m.ctx.bid); if (b && b.status === 'pending') Transfer.sell(b, mult || 1); };
 Engine.ACTS.bidReject = m => { const b = Transfer.bids().find(x => x.id === m.ctx.bid); if (b) b.status = 'rejected'; };
-Engine.on(today => { if (Roster.team()) Transfer.bidFor(today); });
+Engine.on(today => { if (Roster.team() && !App.state.unemployed) Transfer.bidFor(today); });

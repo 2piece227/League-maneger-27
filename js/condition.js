@@ -65,7 +65,7 @@ const Cond = {
   },
   // 컨디션이 많이 떨어진 우리 선수: 감독 면담 신청 (30일에 한 번)
   counsel() {
-    const t = Roster.team(); if (!t) return;
+    const t = Roster.team(); if (!t || App.state.unemployed) return;
     t.players.forEach(p => {
       if (p.role === 'COACH' || this.of(p.id) > -.7 * this.amp(p)) return;
       const k = 'counsel:' + p.id + ':' + Clock.today().slice(0, 7);

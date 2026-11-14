@@ -89,13 +89,13 @@ const Talk = {
 
   // 공식전 시리즈가 끝난 뒤 (Season.recordSeries)
   after(m, series) {
-    const t = this.my(); if (!t || (m.t1 !== t.id && m.t2 !== t.id)) return;
+    const t = this.my(); if (!t || App.state.unemployed || (m.t1 !== t.id && m.t2 !== t.id)) return;
     const S = this.st(), sc = Season.seriesScore(series), o = Schedule.opponent(m, t.id), won = (sc[t.id] || 0) > (sc[o.id] || 0);
     // 트래시토크 결과
     if (S.trash[m.id]) {
       delete S.trash[m.id];
-      if (won) { World.apply({ fans: 2, media: 1 }, {}); Market.post(`[이슈] 도발하고 이겼다… ${t.short}, ${o.short}전 티저 화제`, `경기 전 도발 티저를 공개했던 ${t.name}가 ${o.name}를 꺾었습니다. 팬들은 "말한 대로 했다"며 열광하고 있습니다.`, null); }
-      else { World.apply({ fans: -5, media: -3, moraleAll: -1 }, {}); Market.post(`[이슈] 도발 티저의 역풍… ${t.short}, ${o.short}에 패배`, `경기 전 상대를 도발했던 ${t.name}가 ${o.name}에 졌습니다. 커뮤니티에는 조롱 섞인 반응이 쏟아지고 있습니다.`, null); }
+      if (won) { World.apply({ fans: 2, media: 1 }, {}); Market.post(`[이슈] 도발하고 이겼다… ${t.short}, ${o.short}전 티저 화제`, `경기 전 도발 티저를 공개했던 ${Sim.josa(t.name, '이', '가')} ${Sim.josa(o.name, '을', '를')} 꺾었습니다. 팬들은 "말한 대로 했다"며 열광하고 있습니다.`, null); }
+      else { World.apply({ fans: -5, media: -3, moraleAll: -1 }, {}); Market.post(`[이슈] 도발 티저의 역풍… ${t.short}, ${o.short}에 패배`, `경기 전 상대를 도발했던 ${Sim.josa(t.name, '이', '가')} ${o.name}에 졌습니다. 커뮤니티에는 조롱 섞인 반응이 쏟아지고 있습니다.`, null); }
     }
     // 후보 약속: 그 선수가 뛰었으면 지킨 것
     if (S.promise && series.games.some(x => x.result && x.result.stats && x.result.stats.some(s => s[0] === S.promise.pid))) { const hit = Player.find(S.promise.pid); if (hit) World.apply({ morale: 2, squad: 1 }, { pid: hit.p.id, player: hit.p.name }); S.promise = null; }
@@ -111,8 +111,9 @@ const Talk = {
   },
 };
 Engine.ACTS.predict = (m, tid) => { (Talk.st().predict ||= {})[Schedule.season()] = tid; };
-Engine.ACTS.trash = (m, mid) => { Talk.st().trash[mid] = true; };
+// 경기가 이미 끝난 뒤에 답하면 티저는 없던 일 (끝난 경기에 도발 효과만 챙기지 못하게)
+Engine.ACTS.trash = (m, mid) => { if (Season.st()[mid]) { m.choices[0].reply = '경기가 이미 끝나 티저는 내보내지 않았습니다.'; return; } Talk.st().trash[mid] = true; };
 Engine.ACTS.subPromise = (m, pid) => { Talk.st().promise = { pid, due: Store.addDays(Clock.today(), 14) }; };
 Engine.ACTS.condDelta = (m, v) => { const S = Cond.st(), hit = Player.find(m.ctx.pid); if (hit) S.f[m.ctx.pid] = Math.max(-Cond.amp(hit.p), Math.min(Cond.amp(hit.p), (S.f[m.ctx.pid] || 0) + v)); };
 Engine.ACTS.condAll = (m, v) => { const S = Cond.st(); Roster.team().players.forEach(p => { S.f[p.id] = Math.max(-Cond.amp(p), Math.min(Cond.amp(p), (S.f[p.id] || 0) + v)); }); };
-Engine.on(today => { if (App.state.teamId && Schedule.events && Results.list) Talk.daily(today); });
+Engine.on(today => { if (App.state.teamId && !App.state.unemployed && Schedule.events && Results.list) Talk.daily(today); });

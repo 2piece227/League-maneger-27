@@ -45,7 +45,7 @@ const Patch = {
     // 우리 선수 중 버프 받은 챔피언 숙련도가 낮으면 코치가 연습을 권한다
     const t = Roster.team(); if (!t) return;
     const tips = up.map(x => { const ch = Champions.byId[x.c], r = (ch.positions || [])[0], p = t.players.find(q => q.role === r && !q.sub); if (!p) return null; const e = Mastery.pool(p.id).find(q => q.c === x.c); return (!e || e.m < 12) ? `${p.name} — ${ch.name}` : null; }).filter(Boolean);
-    if (tips.length) Inbox.push({ from: { name: '코칭스태프', role: 'coach' }, subject: `패치 ${v} — 연습이 필요한 챔피언`, link: 'training-individual', body: `이번 패치로 ${tips.join(', ')}이(가) 좋아졌는데, 우리 선수의 숙련도가 아직 낮습니다.\n\n개인 훈련에서 연습 챔피언으로 지정하는 걸 추천합니다.` });
+    if (tips.length && !App.state.unemployed) Inbox.push({ from: { name: '코칭스태프', role: 'coach' }, subject: `패치 ${v} — 연습이 필요한 챔피언`, link: 'training-individual', body: `이번 패치로 ${tips.join(', ')}이(가) 좋아졌는데, 우리 선수의 숙련도가 아직 낮습니다.\n\n개인 훈련에서 연습 챔피언으로 지정하는 걸 추천합니다.` });
   },
   daily(today) {
     const Y = Schedule.season(), S = this.st();

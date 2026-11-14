@@ -351,6 +351,7 @@ const Events = {
 
   // 하루에 무작위 이벤트는 최대 하나
   run(today) {
+    if (App.state.unemployed) return;                             // 무직이면 구단 이벤트는 오지 않는다
     if (!this.defs) { this.load(); return; }                     // 이벤트 목록을 아직 못 읽었으면 오늘은 건너뛴다
     const last = (App.state.evLast ||= {});
     const ok = this.defs.filter(d => (d.cond || []).every(c => this.COND[c](today))
@@ -396,9 +397,9 @@ Engine.on(today => {
   });
   // 경기일
   const m = Schedule.matches.find(x => (x.t1 === t.id || x.t2 === t.id) && x.t.slice(0, 10) === today);
-  if (m && !(App.state.season || {})[m.id]) reason = `오늘 ${Schedule.opponent(m, t.id).short}전 경기날입니다`;
+  if (m && !App.state.unemployed && !(App.state.season || {})[m.id]) reason = `오늘 ${Schedule.opponent(m, t.id).short}전 경기날입니다`;
   // 스크림 날도 멈춘다 (안 멈추면 그날이 지나가 코치가 대신 치르고 결과만 왔다)
-  const sc = !reason && typeof Scrim !== 'undefined' && Scrim.today();
+  const sc = !reason && !App.state.unemployed && typeof Scrim !== 'undefined' && Scrim.today();
   if (sc) reason = `오늘 ${Sim.josa((Schedule.team(sc.team) || {}).short || '', '과', '와')} 스크림이 있습니다`;
   return reason;
 });
@@ -459,7 +460,7 @@ Engine.on(today => {
         a.status = '불합격';
         Inbox.push({ from, subject: `${t.name} 감독직 지원 결과`, body: '지원해 주셔서 감사합니다. 신중히 검토했으나 이번에는 다른 후보와 함께하기로 했습니다.' });
       }
-      if (r('leak') < .3) Inbox.push({ from: { name: '사무국장', role: 'board' }, subject: '다른 구단 지원 소문에 대해', priority: 'urgent', ctx: {},
+      if (!App.state.unemployed && r('leak') < .3) Inbox.push({ from: { name: '사무국장', role: 'board' }, subject: '다른 구단 지원 소문에 대해', priority: 'urgent', ctx: {},
         body: `감독님이 ${t.short}에 이력서를 냈다는 이야기가 이사회에 들어왔습니다. 사실이라면 유감입니다.`,
         choices: [{ label: '사실이다. 솔직하게 인정한다', fx: { board: -4 }, reply: '이사회는 실망했지만 솔직함은 인정했습니다.' }, { label: '헛소문이다', outcomes: [{ fx: { board: -1 }, reply: '이사회가 일단 해명을 받아들였습니다.' }, { fx: { board: -8, media: -2 }, reply: '거짓 해명이 기사로 드러나 이사회의 신뢰가 크게 떨어졌습니다.' }], odds: .6 }] });
     }
@@ -479,13 +480,18 @@ Engine.on(today => {
 
 Engine.on(today => Events.run(today));
 
+const KEEP_ACTS = ['optExercise', 'optDecline', 'negSign', 'interview', 'declineJob', 'takeJob', 'mgrExtend'];
 // 답하지 않은 제안은 기한이 지나면 넘어간다 (날짜가 있는 요청은 그날이 지나면, 이벤트·이적 제안은 7일 뒤).
 // 꼭 답해야 하는 메시지(required)와 계약 옵션·구직처럼 자기 기한이 따로 있는 메시지는 건드리지 않는다.
 Engine.on(today => {
   Inbox.list().forEach(m => {
     if (!m.choices || m.answered != null || m.expired || m.required) return;
-    const bid = m.ctx && m.ctx.bid; if (!m.ev && !bid) return;
-    if (today <= (m.ctx && m.ctx.on ? m.ctx.on : Store.addDays(m.date, 7))) return;
+    // 자기 기한이 따로 있는 메시지(계약 옵션 · 사인 대기 · 구직 · 감독 재계약)는 제외. 나머지 선택 메시지(이벤트 · 인터뷰 · 면담 · 트레이드 · 이적 제안)는 모두 만료 대상
+    if (m.choices.some(c => KEEP_ACTS.includes(c.act))) return;
+    const bid = m.ctx && m.ctx.bid, ctx = m.ctx || {};
+    // 기한: 날짜가 있는 요청은 그날, 경기 전 티저는 그 경기일, 그 밖에는 7일
+    const mt = ctx.mid && (Schedule.all || []).find(x => x.id === ctx.mid);
+    if (today <= (ctx.on || (mt ? mt.t.slice(0, 10) : Store.addDays(m.date, 7)))) return;
     m.expired = true; m.done = true;
     if (bid && typeof Transfer !== 'undefined') { const b = Transfer.bids().find(x => x.id === bid); if (b && b.status === 'pending') b.status = 'rejected'; }
   });

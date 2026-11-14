@@ -117,6 +117,11 @@ const Nav = {
     const view = Views[route];
     const body = $('#game-body');
     body.scrollTop = 0;
+    // 무직이면 구단 운영 화면(로스터 · 훈련 · 구단)은 볼 수 없다. 옛 구단은 이미 다른 감독이 맡고 있다
+    if (App.state.unemployed && ['roster', 'training', 'club'].includes(menu.id)) {
+      body.innerHTML = `<div class="cr-page"><div class="card fx-empty"><b>무직 — 맡은 구단이 없습니다</b><span>${menu.label} 화면은 새 팀에 부임하면 다시 열립니다.</span><a class="btn-primary" href="#career-other-teams">다른 팀 보기</a></div></div>`;
+      return;
+    }
     if (view) view(body);
     else body.innerHTML = `
       <div class="placeholder-view">

@@ -140,7 +140,7 @@ const Roster = {
           <div class="rs-bar">
             <div class="seg">${[['general', '일반'], ['attrs', '능력치'], ['contract', '계약']].map(([k, l]) => `<button class="${this.view === k ? 'on' : ''}" data-view="${k}">${l}</button>`).join('')}</div>
             <div class="chips">${[['all', `전체 ${ps.length}`], ['starters', `주전 ${ps.filter(p => !p.sub).length}`], ['subs', `후보 ${ps.filter(p => p.sub).length}`]].map(([k, l]) => `<button class="chip ${this.filter === k ? 'on' : ''}" data-filter="${k}">${l}</button>`).join('')}</div>
-            <span class="rs-note">컨디션·폼·사기는 목업 값</span>
+            
           </div>
 
           <div class="panel rs-table-wrap">
@@ -211,8 +211,8 @@ const Roster = {
         <div class="rs-facts">
           <div><span class="k">나이</span><b>${p.age ?? '-'}</b><small>${p.birthdate ? p.birthdate.replace(/-/g, '.') : ''}</small></div>
           <div><span class="k">OVR</span><b>${p.ovr}</b><small>1–99</small></div>
-          <div><span class="k">컨디션</span><b>${s.condition}%</b><small>목업</small></div>
-          <div><span class="k">사기</span><b class="morale ${mc}">${ml}</b><small>목업</small></div>
+          <div><span class="k">컨디션</span><b>${s.condition}%</b></div>
+          <div><span class="k">사기</span><b class="morale ${mc}">${ml}</b></div>
           <div class="wide"><span class="k">계약 만료</span><b>${p.contractEnd ? p.contractEnd.replace(/-/g, '.') : '정보 없음'}</b><small>${this.cell(p, 'left')}</small></div>
         </div>
         <div class="rs-attrs">

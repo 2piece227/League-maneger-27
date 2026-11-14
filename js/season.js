@@ -60,7 +60,7 @@ const Season = {
     this.resolve();
     this.inject();
     const my = App.state.teamId, t1 = Schedule.team(m.t1), t2 = Schedule.team(m.t2);
-    if (m.t1 === my || m.t2 === my) {
+    if ((m.t1 === my || m.t2 === my) && !App.state.unemployed) {
       const won = (m.t1 === my) === (s1 > s2), ev = Schedule.eventOf(m);
       Market.post(`[결과] ${t1.short} ${s1}:${s2} ${t2.short}`, `${ev ? ev.label + ' ' : ''}${Sim.josa(t1.name, '과', '와')} ${t2.name}의 경기가 ${Sim.josa(`${s1}:${s2}`, '으로', '로')} 끝났습니다.`, null);
       // 결과 메시지 시각: 오늘 경기면 경기 시작 + 세트당 약 50분, 지난 경기를 오늘 처리하면 아침

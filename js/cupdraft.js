@@ -76,4 +76,4 @@ const CupDraft = {
   },
 };
 Views['match-cupdraft'] = el => CupDraft.render(el);
-Engine.on(today => { if (App.state.teamId && Schedule.events && Schedule.tpl) CupDraft.daily(today); });
+Engine.on(today => { if (App.state.teamId && !App.state.unemployed && Schedule.events && Schedule.tpl) CupDraft.daily(today); });

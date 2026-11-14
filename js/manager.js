@@ -48,7 +48,8 @@ const Manager = {
   headCoach(t) { return (t.staff || [])[0] || null; },
   // 상태: mine | vacant(공석) | seeking(감독 구함) | unstable(경질설) | stable(재임)
   jobStatus(t, today) {
-    if (t.id === App.state.teamId) return 'mine';
+    if (t.id === App.state.teamId && !App.state.unemployed) return 'mine';
+    if (App.state.unemployed && t.id === App.state.unemployed.from) return 'stable';   // 나를 내보낸 구단은 새 감독을 앉혔다
     const hc = this.headCoach(t);
     if (!hc) return 'vacant';
     if (hc.contractEnd && hc.contractEnd <= Store.addDays(today, 45)) return 'seeking';

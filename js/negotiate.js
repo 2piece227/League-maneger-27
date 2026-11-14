@@ -142,6 +142,7 @@ const Neg = {
 
   // ---------- 채팅 창 ----------
   can(p, mode) {
+    if (App.state.unemployed) return '무직 상태에서는 구단 업무를 볼 수 없습니다. 커리어 › 다른 팀 보기에서 새 팀을 구하세요.';
     const hit = Player.find(p.id); if (!hit) return '선수를 찾을 수 없습니다.';
     if (mode === 'transfer') { const b = Transfer.open$(p.id); if (!b || b.status !== 'agreed') return '먼저 원 소속 구단과 이적료를 합의해야 합니다.'; }
     if (mode === 'fa' && !p.free && !(Player.days(p) < 0)) return `계약 기간 중인 선수입니다. 계약이 끝나는 ${p.contractEnd ? p.contractEnd.replace(/-/g, '.') : '-'} 이후에 협상할 수 있습니다.`;
@@ -264,6 +265,7 @@ const Neg = {
 
   // ---------- 2군·아카데미·코치: 계약서 한 장 ----------
   sheet(pid, mode) {
+    if (App.state.unemployed) { UI.toast('무직 상태에서는 구단 업무를 볼 수 없습니다. 커리어 › 다른 팀 보기에서 새 팀을 구하세요.', 3500); return; }
     const { p, t } = Player.find(pid), my = Roster.team();
     if (mode === 'fa') { const no = this.can(p, mode); if (no) { UI.toast(no, 3200); return; } }
     const tier = p.role === 'COACH' ? 'first' : Contract.tier(p);

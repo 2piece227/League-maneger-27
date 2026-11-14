@@ -88,7 +88,7 @@ const Career = {
             <h2>${UI.esc(m.displayName || m.name)}</h2>
             ${m.nick && m.display === 'name' ? `<span class="cr-nick">'${UI.esc(m.nick)}'</span>` : ''}
             <div class="cr-id-meta">${G.flag(m.nation)} ${G.nationName(m.nation)} · ${age}세 · ${bg.label}</div>
-            <div class="cr-job">${G.team(t, 'sm')}<div><b>${UI.esc(t.name)} 감독</b><small>${t.league} · ${this.ymd(c.from)} 부임</small></div></div>
+            ${App.state.unemployed ? `<div class="cr-job"><div><b>무직 — 구직 중</b><small>전 ${UI.esc(t.name)} 감독 · ${this.ymd(App.state.unemployed.since)} 해임</small></div></div>` : `<div class="cr-job">${G.team(t, 'sm')}<div><b>${UI.esc(t.name)} 감독</b><small>${t.league} · ${this.ymd(c.from)} 부임</small></div></div>`}
           </div>
           <div class="cr-id-rep"><span>평판</span><b>${Manager.repLabel(m.reputation)}</b>${UI.stars(Manager.repStars(m.reputation))}</div>
         </div>
@@ -105,11 +105,11 @@ const Career = {
             </dl>
             <div class="card-head" style="margin-top:16px"><h3>계약</h3></div>
             <dl class="cr-dl">
-              <dt>소속</dt><dd>${UI.esc(t.name)}</dd>
+              ${App.state.unemployed ? `<dt>소속</dt><dd>없음 (무직)</dd><dt>이전 소속</dt><dd>${UI.esc(t.name)} · ${this.ymd(App.state.unemployed.since)} 해임</dd>` : `<dt>소속</dt><dd>${UI.esc(t.name)}</dd>
               <dt>직책</dt><dd>감독 (Head Coach)</dd>
               <dt>계약 기간</dt><dd>${this.ymd(c.from)} – ${this.ymd(c.to)}</dd>
               <dt>연봉</dt><dd>${c.salary}</dd>
-              <dt>이사회 기대</dt><dd>${UI.esc(t.boardGoal || '-')}</dd>
+              <dt>이사회 기대</dt><dd>${UI.esc(t.boardGoal || '-')}</dd>`}
             </dl>
           </div>
 

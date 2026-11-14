@@ -42,7 +42,7 @@ const Scrim = {
 
 // 답장 · 지나간 스크림은 코치가 대신
 Engine.on(today => {
-  const my = Roster.team();
+  const my = Roster.team(); if (App.state.unemployed) return;
   Scrim.list().forEach((s, i) => {
     s.id ||= 's' + i + ':' + s.date + ':' + s.team;
     const o = Schedule.team(s.team); if (!o) return;

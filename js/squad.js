@@ -117,6 +117,7 @@ const Squad = {
 
   // 이동: 1군 ↔ 챌린저스 ↔ 아카데미, 방출
   move(pid, lv) {
+    if (App.state.unemployed) { UI.toast('무직 상태에서는 구단 업무를 볼 수 없습니다. 커리어 › 다른 팀 보기에서 새 팀을 구하세요.', 3500); return false; }
     const t = this.team();
     if (lv === 'cl' && t.cl.length >= this.CL_MAX) { UI.toast(`챌린저스 정원(${this.CL_MAX}명)이 찼습니다`); return false; }
     const p = [...t.players, ...t.cl, ...t.academy].find(x => x.id === pid);
@@ -278,7 +279,7 @@ const Squad = {
 };
 
 Engine.on(today => {
-  const me = Squad.team(); if (!me) return;
+  const me = Squad.team(); if (!me || App.state.unemployed) return;
   me.academy.forEach(p => Squad.grow(p, 'academy'));
   me.cl.forEach(p => Squad.grow(p, 'cl'));
   me.players.filter(p => p.gen).forEach(p => Squad.grow(p, 'first'));

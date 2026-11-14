@@ -76,4 +76,4 @@ const Register = {
   draftFor(k, saved) { return (this._d[k] ||= JSON.parse(JSON.stringify(saved ? { starters: saved.starters, subs: saved.subs } : this.autoPick()))); },
 };
 Views['match-register'] = el => Register.render(el);
-Engine.on(today => { if (App.state.teamId && Schedule.events) Register.daily(today); });
+Engine.on(today => { if (App.state.teamId && !App.state.unemployed && Schedule.events) Register.daily(today); });

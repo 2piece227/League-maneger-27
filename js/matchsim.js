@@ -422,7 +422,7 @@ const Sim = {
     if (star && star[1] >= 2 && g.r() < .8) {
       const [p] = star, R = this.rName(p);
       this.say(g, 'cast', res.big ? `${p.name}! ${this.cn(p)}의 ${this.josa(R, '으로', '로')} 한타를 승리합니다!` : `${p.name}의 ${R}! 진영을 휩쓸며 ${f.where ? f.where + ' ' : ''}교전을 가져옵니다!`);
-      if (res.big && g.r() < .6) this.say(g, 'hype', this.pick(g, [`와 이건 ${p.name}이 다 했어요! ${R} 각을 너무 잘 봤습니다!`, `${p.name} 미쳤습니다! 저 ${R} 하나로 한타가 끝났어요!`]));
+      if (res.big && g.r() < .6) this.say(g, 'hype', this.pick(g, [`와 이건 ${this.josa(p.name, '이', '가')} 다 했어요! ${R} 각을 너무 잘 봤습니다!`, `${p.name} 미쳤습니다! 저 ${R} 하나로 한타가 끝났어요!`]));
     }
   },
   sayFight(g, f, where) {

@@ -40,16 +40,22 @@ const Board = {
     const t = Roster.team();
     App.state.unemployed = { since: today, from: t.id };
     if (App.state.manager) App.state.manager.reputation = Math.max(0, (App.state.manager.reputation || 50) - 5);
-    App.state.draft = null;
+    App.state.draft = null; App.state.locker = null;
+    (App.state.scrims || []).forEach(s => { if (!s.result && s.status !== 'declined') s.status = 'cancelled'; });
+    Inbox.list().forEach(x => { if (x.choices && x.answered == null && !x.expired && !x.choices.some(c => ['interview', 'takeJob', 'declineJob'].includes(c.act))) { x.expired = true; x.done = true; } });
     Inbox.push({ from: { name: '이사회', role: 'board' }, subject: `${t.short} 감독직 해임`, priority: 'urgent', stop: true, link: 'career-other-teams', body: `${why}\n\n이제 무직입니다. 커리어 › 다른 팀 보기에서 지금 평판으로 이력서를 낼 수 있습니다.` });
-    Market.post(`[오피셜] ${t.short}, ${(App.state.manager || {}).name || ''} 감독과 결별`, `${t.name}가 성적 부진을 이유로 감독과 계약을 해지했습니다.`, null);
+    Market.post(`[오피셜] ${t.short}, ${(App.state.manager || {}).name || ''} 감독과 결별`, `${Sim.josa(t.name, '이', '가')} 성적 부진을 이유로 감독과 계약을 해지했습니다.`, null);
   },
 };
 Engine.ACTS.mgrExtend = () => { const c = Board.contract(); c.to = Store.addDays(c.to, 730); };
 // 무직이면: 우리 경기 없음(그 팀 경기는 AI가 치른다), 새 팀에 부임하면 풀린다
 (() => {
   const today = Season.today.bind(Season); Season.today = () => App.state.unemployed ? null : today();
-  const sw = Engine.switchTeam.bind(Engine); Engine.switchTeam = t => { App.state.unemployed = null; sw(t); App.state.mgrContract = { team: t.id, from: Clock.today(), to: `${Clock.year(Clock.today()) + 2}-11-30` }; };
+  const sw = Engine.switchTeam.bind(Engine); Engine.switchTeam = t => {
+    const un = App.state.unemployed; App.state.unemployed = null; sw(t);
+    // 무직이었으면 옛 구단 재임 기간은 해임일까지. 상단 배지·포털도 새 팀으로
+    if (un) { const j = (App.state.jobs || []).at(-1); if (j && j.team === un.from) j.until = un.since; }
+    if (typeof Portal !== 'undefined') Portal.setTeam(Roster.team()); App.state.mgrContract = { team: t.id, from: Clock.today(), to: `${Clock.year(Clock.today()) + 2}-11-30` }; };
 })();
 Engine.on(today => { if (App.state.teamId && Results.list) Board.monthly(today); });
 
@@ -60,15 +66,16 @@ const Trade = {
   swap(a, b) {
     const A = Player.find(a.id).t, B = Player.find(b.id).t, M = Contract.st();
     M.moves[a.id] = B.id; M.moves[b.id] = A.id; Squad.apply();
-    Market.post(`[오피셜] ${A.short}·${B.short} 트레이드 — ${a.name} ↔ ${b.name}`, `${A.name}의 ${a.name}와 ${B.name}의 ${b.name}가 맞교환됐습니다.`, a.id);
+    Market.post(`[오피셜] ${A.short}·${B.short} 트레이드 — ${a.name} ↔ ${b.name}`, `${A.name}의 ${Sim.josa(a.name, '과', '와')} ${B.name}의 ${Sim.josa(b.name, '이', '가')} 맞교환됐습니다.`, a.id);
   },
   rumor(p, other) {
     Rel.add(p.id, -15); const mor = World.morale(); mor[p.id] = (mor[p.id] || 0) - 2;
-    Market.post(`[이적설] ${p.name}, ${other.short}와 트레이드 카드로?`, `${Roster.team().name}가 ${p.name}을(를) 트레이드 카드로 쓰려 한다는 이야기가 돌고 있습니다. 선수 본인은 당황스럽다는 반응입니다.`, p.id);
+    Market.post(`[이적설] ${p.name}, ${Sim.josa(other.short, '과', '와')} 트레이드 카드로?`, `${Sim.josa(Roster.team().name, '이', '가')} ${p.name}을(를) 트레이드 카드로 쓰려 한다는 이야기가 돌고 있습니다. 선수 본인은 당황스럽다는 반응입니다.`, p.id);
     Inbox.push({ from: { name: p.name, role: 'player', photo: p.photo }, subject: `${p.name}, 트레이드설에 대해 묻습니다`, body: '감독님, 제가 트레이드 카드라는 기사가 사실인가요? 솔직히 충격입니다.' });
   },
   // 우리 → 다른 구단
   propose(theirId) {
+    if (App.state.unemployed) { UI.toast('무직 상태에서는 구단 업무를 볼 수 없습니다. 커리어 › 다른 팀 보기에서 새 팀을 구하세요.', 3500); return; }
     const hit = Player.find(theirId); if (!hit) return;
     const { p, t } = hit, my = Roster.team();
     const mine = my.players.filter(x => x.role !== 'COACH');
@@ -88,7 +95,8 @@ const Trade = {
     // 그 팀이 약한 포지션의 우리 선수를 노린다
     const weak = G.ROLES.map(r => [r, Math.max(0, ...t.players.filter(x => x.role === r).map(x => x.ovr || 0))]).sort((a, b) => a[1] - b[1])[0][0];
     const want = my.players.filter(x => x.role === weak && x.role !== 'COACH').sort((a, b) => (b.ovr || 0) - (a.ovr || 0))[0]; if (!want) return;
-    const V = Contract.value(want, t), give = t.players.filter(x => x.role !== 'COACH' && x !== want && this.roleOk(t, x, want) && this.roleOk(my, want, x) && this.val(x, t) <= V * 1.1 && !Transfer.price(x, t).locked)   // 받는 선수보다 비싸거나 핵심 선수는 내주지 않는다.map(x => [x, Math.abs(this.val(x, t) - V)]).sort((a, b) => a[1] - b[1])[0];
+    const V = Contract.value(want, t), give = t.players.filter(x => x.role !== 'COACH' && x !== want && this.roleOk(t, x, want) && this.roleOk(my, want, x) && this.val(x, t) <= V * 1.1 && !Transfer.price(x, t).locked)
+      .map(x => [x, Math.abs(this.val(x, t) - V)]).sort((a, b) => a[1] - b[1])[0];   // 받는 선수보다 비싸거나 핵심 선수는 내주지 않는다. 가치가 가장 비슷한 선수를 낸다 (주석이 줄 중간에 있어 이 정렬이 통째로 빠져 있었다)
     if (!give || !Engine.once('trade:' + t.id + ':' + want.id + ':' + today.slice(0, 7))) return;
     const x = give[0];
     Inbox.push({ from: { name: `${t.short} 단장`, role: 'board' }, subject: `${t.short} 트레이드 제안: ${x.name} ↔ ${want.name}`, priority: 'todo', ctx: { a: want.id, b: x.id },
@@ -97,6 +105,11 @@ const Trade = {
     if (G.rand(today + want.id, 'leak') < .4) this.rumor(want, t);
   },
 };
-Engine.ACTS.tradeYes = m => { const a = Player.find(m.ctx.a), b = Player.find(m.ctx.b); if (a && b) Trade.swap(a.p, b.p); };
+// 제안을 받은 뒤 상황이 바뀌었으면(선수가 이미 팀을 옮겼거나 포지션이 비게 되면) 무산
+Engine.ACTS.tradeYes = m => {
+  const a = Player.find(m.ctx.a), b = Player.find(m.ctx.b), my = Roster.team();
+  const ok = a && b && a.t === my && b.t !== my && b.t.id !== 'free' && Trade.roleOk(my, a.p, b.p) && Trade.roleOk(b.t, b.p, a.p);
+  if (ok) Trade.swap(a.p, b.p); else m.choices[0].reply = '그사이 상황이 바뀌어 트레이드는 무산됐습니다.';
+};
 Engine.ACTS.tradeNo = () => {};
 Engine.on(today => { if (App.state.teamId && App.db.free) Trade.daily(today); });

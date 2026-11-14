@@ -125,7 +125,7 @@ const Contract = {
 Engine.ACTS.optExercise = m => Contract.exercise(m.ctx.pid);
 Engine.ACTS.optDecline = m => { const M = Contract.st(); M.contracts[m.ctx.pid] = { ...Contract.of(Player.find(m.ctx.pid).p), option: null }; };
 Engine.on(today => {
-  const t = Roster.team(); if (!t) return;
+  const t = Roster.team(); if (!t || App.state.unemployed) return;   // 무직이면 옛 구단 계약은 AI가 처리한다 (Market.ai)
   const board = { name: '사무국장', role: 'board' };
   // 코칭스태프는 사무국이 1년씩 자동 연장한다 (코치 영입·해임은 추후)
   (t.staff || []).forEach(p => {
@@ -172,7 +172,7 @@ Engine.on(today => {
 // 계약서의 역할 약속: 매달 1일 확인. 주전 보장인데 후보·2군이면 사기가 떨어지고, 두 달 연속이면 이적을 요청한다.
 Engine.on(today => {
   if (today.slice(8) !== '01') return;
-  const t = Roster.team(); if (!t) return;
+  const t = Roster.team(); if (!t || App.state.unemployed) return;
   const all = [...t.players, ...(t.cl || []), ...(t.academy || [])], mor = World.morale();
   (App.state.promises || []).filter(x => x.src === 'contract' && !x.over).forEach(pr => {
     const p = all.find(x => x.id === pr.pid);
@@ -198,7 +198,7 @@ Engine.on(today => {
 
 // LCK 균형 지출 제도: 상위 5인 연봉 합산이 상한을 넘으면 11월 1일에 부담금을 낸다. 6월 1일에 예상액을 알린다.
 Engine.on(today => {
-  const t = Roster.team(); if (!t || t.league !== 'LCK') return;
+  const t = Roster.team(); if (!t || t.league !== 'LCK' || App.state.unemployed) return;
   const md = today.slice(5);
   if (md !== '06-01' && md !== '11-01') return;
   const { used, tax } = Club.tax(t);

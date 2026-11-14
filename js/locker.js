@@ -65,9 +65,9 @@ const Locker = {
     if (best.r >= 7.8) topics.push({ id: 'praise', pid: best.id, ask: `${best.name}이(가) 잘했습니다.`, opts: [['praise', '칭찬한다', `${best.name}, 좋았어. 다음 판도 그 감 그대로.`], ['steady', '들뜨지 말라고 한다', `${best.name}, 잘했는데 아직 안 끝났다. 들뜨지 말자.`], ['none', '넘어간다', '(고개만 끄덕인다)']] });
     const roleOpts = ['TOP', 'JGL', 'MID', 'BOT', 'SUP'].map(r => { const o = theirs.find(x => x.role === r); return [r, `상대 ${G.ROLE_KO[r]}${o ? ` (${o.name})` : ''} 묶기`, `밴은 상대 ${G.ROLE_KO[r]} 쪽으로 가자.`]; });
     const sr = star ? star.role : 'MID';
-    topics.push({ id: 'ban', ask: `${co} 코치: 다음 밴은 어디로 갈까요? 저는 ${G.ROLE_KO[sr]} 쪽을 묶는 게 좋아 보입니다.`, rec: sr, opts: [roleOpts.find(o => o[0] === sr), ...roleOpts.filter(o => o[0] !== sr).slice(0, 3), ['none', '평소대로', '밴은 코치 판단대로 가자.']] });
+    topics.push({ id: 'ban', ask: `다음 밴은 어디로 갈까요? 저는 ${G.ROLE_KO[sr]} 쪽을 묶는 게 좋아 보입니다.`, rec: sr, opts: [roleOpts.find(o => o[0] === sr), ...roleOpts.filter(o => o[0] !== sr).slice(0, 3), ['none', '평소대로', '밴은 코치 판단대로 가자.']] });
     const fr = ahead[1] > 800 ? this.laneOf[ahead[0]] : gl ? gl[0] : 'bot';
-    topics.push({ id: 'focus', ask: `${co} 코치: 이번엔 어디서 풀어갈까요?`, rec: fr, opts: [['top', '탑 위주', '이번 판은 탑에서 풀어 가자. 정글 동선 탑 쪽으로.'], ['mid', '미드 위주', '미드 주도권부터 잡자. 정글은 미드 중심.'], ['bot', '바텀 위주', '바텀 2대2부터 이기자. 드래곤 쪽으로.'], ['none', '맡긴다', '라인 동선은 정글 판단에 맡기자.']].sort((a, b) => (b[0] === fr) - (a[0] === fr)) });
+    topics.push({ id: 'focus', ask: `이번엔 어디서 풀어갈까요?`, rec: fr, opts: [['top', '탑 위주', '이번 판은 탑에서 풀어 가자. 정글 동선 탑 쪽으로.'], ['mid', '미드 위주', '미드 주도권부터 잡자. 정글은 미드 중심.'], ['bot', '바텀 위주', '바텀 2대2부터 이기자. 드래곤 쪽으로.'], ['none', '맡긴다', '라인 동선은 정글 판단에 맡기자.']].sort((a, b) => (b[0] === fr) - (a[0] === fr)) });
     if (!L.won && !L.scrim) topics.push({ id: 'side', ask: '진영은 우리가 고릅니다.', opts: [['B', '블루', '블루로 가자. 첫 픽 가져간다.'], ['R', '레드', '레드로 가자. 마지막 픽으로 받아친다.']] });
     return { say, topics };
   },

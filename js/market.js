@@ -5,7 +5,7 @@ const Market = {
   // delay 1 = 다음 날 오피셜 (우리 구단 계약은 사인 다음 날 발표)
   post(title, body, pid, delay = 0) { const n = this.news(); n.unshift({ date: delay ? Store.addDays(Clock.today(), delay) : Clock.today(), title, body, pid }); if (n.length > 300) n.length = 300; },
   fa() { return (Contract.st().fa ||= {}); },
-  ai() { return App.db.teams.filter(t => t.id !== App.state.teamId); },
+  ai() { return App.db.teams.filter(t => App.state.unemployed || t.id !== App.state.teamId); },   // 무직이면 옛 구단도 AI가 운영한다
   rnd(...k) { return G.rand((App.state.seed || '') + '|' + k.join('|'), 'mk'); },
   best(t, role, except) { return t.players.filter(x => x.role === role && x !== except).reduce((b, x) => Math.max(b, Contract.score(x, t)), 0); },
   stove(today) { return Schedule.events.some(e => e.kind === 'stove' && e.start <= today && today <= e.end); },
