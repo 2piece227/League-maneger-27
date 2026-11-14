@@ -9,7 +9,7 @@
 const Rift = {
   BLUE: { F: [7, 93], N: [14, 85], T1: [11, 31], T2: [11, 50], T3: [11, 66], M1: [41, 56], M2: [34, 63], M3: [28, 69], B1: [69, 90], B2: [47, 90], B3: [32, 90],
     JB: [24, 50], JG: [16, 45], JW: [25, 60], JR: [43, 64], JD: [49, 74], JK: [55, 83], RE: [26, 38] },
-  NEUTRAL: { TOPC: [12, 11], BOTC: [89, 89], MID: [50, 48], BAR: [34, 30], DRA: [64, 69], RVt: [19, 22], RVb: [81, 78], RVtm: [43, 40], RVbm: [57, 57] },
+  NEUTRAL: { TOPC: [13.5, 11.5], BOTC: [87.5, 88.5], MID: [50, 48], BAR: [35.5, 30], DRA: [64.6, 68.2], RVt: [19, 22], RVb: [81, 78], RVtm: [43, 40], RVbm: [57, 57] },
   MIRN: { TOPC: 'BOTC', BOTC: 'TOPC', MID: 'MID', BAR: 'DRA', DRA: 'BAR', RVt: 'RVb', RVb: 'RVt', RVtm: 'RVbm', RVbm: 'RVtm' },
   EDGES: [['F', 'N'], ['N', 'T3'], ['T3', 'T2'], ['T2', 'T1'], ['T1', 'TOPC'], ['N', 'M3'], ['M3', 'M2'], ['M2', 'M1'], ['M1', 'MID'], ['N', 'B3'], ['B3', 'B2'], ['B2', 'B1'], ['B1', 'BOTC'],
     ['T2', 'JG'], ['JG', 'JB'], ['JB', 'JW'], ['JW', 'M2'], ['JB', 'RE'], ['RE', 'T1'], ['RE', 'RVt'], ['RE', 'BAR'], ['JW', 'JR'], ['JR', 'M1'], ['JR', 'JD'], ['JD', 'JK'], ['JK', 'B2'], ['JR', 'RVbm'], ['JD', 'DRA'], ['JK', 'B1']],
@@ -18,33 +18,22 @@ const Rift = {
   TOWER: { B: { top: ['bT1', 'bT2', 'bT3'], mid: ['bM1', 'bM2', 'bM3'], bot: ['bB1', 'bB2', 'bB3'] }, R: { top: ['rB1', 'rB2', 'rB3'], mid: ['rM1', 'rM2', 'rM3'], bot: ['rT1', 'rT2', 'rT3'] } },
   INHIB: { B: { top: [11, 73], mid: [24, 74], bot: [27, 89] }, R: { top: [73, 11], mid: [76, 26], bot: [89, 27] } },
   CAMPS: ['JB', 'JG', 'JW', 'JR', 'JD', 'JK'],
+  MOUTH: { BAR: [33, 35.5], DRA: [67, 63.5] },   // 둥지 입구 (강 쪽). 둥지는 이쪽으로만 드나든다
   init() {
     if (this.N) return;
     const m = ([x, y]) => [100 - x, 100 - y], N = {}, adj = {};
     Object.entries(this.BLUE).forEach(([k, p]) => { N['b' + k] = p; N['r' + k] = m(p); });
     Object.assign(N, this.NEUTRAL);
+    this.terrain();
+    Object.keys(N).forEach(k => { N[k] = /^[br][TB]\d$/.test(k) ? this.center(N[k], 2) : this.snap(N[k], /F$/.test(k) ? 0 : 2); });   // 사이드 라인 노드는 통로 한가운데로   // 그림과 어긋나 벽에 걸친 노드는 가장 가까운 길 위로
     const link = (a, b) => { const d = Math.hypot(N[a][0] - N[b][0], N[a][1] - N[b][1]); (adj[a] ||= []).push([b, d]); (adj[b] ||= []).push([a, d]); };
     const bn = k => this.NEUTRAL[k] ? k : 'b' + k, rn = k => this.NEUTRAL[k] ? this.MIRN[k] : 'r' + k;
     this.EDGES.forEach(([a, b]) => { link(bn(a), bn(b)); link(rn(a), rn(b)); });
     this.NEDGES.forEach(([a, b]) => link(a, b));
-    this.N = N; this.adj = adj; this.cache = {}; this.L = {};
+    this.N = N; this.adj = adj; this.cache = {}; this.L = {}; this.nav();
     Object.keys(this.LANES).forEach(l => { const pts = this.LANES[l].map(n => N[n]), cum = [0]; for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1])); this.L[l] = { pts, cum, len: cum[cum.length - 1] }; });
   },
   pos(n) { return this.N[n]; },
-  near(p) { let best = null, bd = 1e9; for (const [k, q] of Object.entries(this.N)) { const d = Math.hypot(p[0] - q[0], p[1] - q[1]); if (d < bd) { bd = d; best = k; } } return best; },
-  route(a, b) {
-    if (a === b) return [a];
-    const key = a + '>' + b; if (this.cache[key]) return this.cache[key];
-    const dist = { [a]: 0 }, prev = {}, todo = new Set(Object.keys(this.N));
-    while (todo.size) {
-      let u = null; for (const k of todo) if (dist[k] != null && (u == null || dist[k] < dist[u])) u = k;
-      if (u == null || u === b) break;
-      todo.delete(u);
-      for (const [v, w] of this.adj[u] || []) if (todo.has(v) && (dist[v] == null || dist[u] + w < dist[v])) { dist[v] = dist[u] + w; prev[v] = u; }
-    }
-    const out = [b]; let c = b; while (prev[c]) { c = prev[c]; out.unshift(c); }
-    return (this.cache[key] = out[0] === a ? out : [a, b]);
-  },
   // 라인 위의 점 (s=0 블루 넥서스 → 1 레드 넥서스)
   lane(l, s) {
     const L = this.L[l], rest = Math.max(0, Math.min(1, s)) * L.len;
@@ -61,24 +50,93 @@ const Rift = {
     }
     return best;
   },
-  // 같은 라인 위 두 위치 사이의 꺾이는 점들 (가는 순서)
-  between(l, s1, s2) {
-    const L = this.L[l], lo = Math.min(s1, s2), hi = Math.max(s1, s2);
-    const vs = L.cum.map((c, i) => ({ s: c / L.len, p: L.pts[i] })).filter(v => v.s > lo + 1e-6 && v.s < hi - 1e-6).map(v => v.p);
-    return s1 > s2 ? vs.reverse() : vs;
+  // ---------- 지형 (js/riftwalk.js: 0.5% 칸, 1 = 벽) ----------
+  terrain() {
+    const n = RIFT_WALK.n, w = new Uint8Array(n * n), c = new Float32Array(n * n);
+    RIFT_WALK.rows.forEach((row, y) => { for (let i = 0; i < row.length; i++) { const h = parseInt(row[i], 16); for (let b = 0; b < 4; b++) w[y * n + i * 4 + b] = (h >> (3 - b)) & 1; } });
+    // 벽까지 거리 (칸 단위, 두 번 훑는 근사)
+    for (let i = 0; i < n * n; i++) c[i] = w[i] ? 0 : 99;
+    const at = (x, y) => x < 0 || y < 0 || x >= n || y >= n ? 0 : c[y * n + x];
+    for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) { const i = y * n + x; if (c[i]) c[i] = Math.min(c[i], at(x - 1, y) + 1, at(x, y - 1) + 1, at(x - 1, y - 1) + 1.4, at(x + 1, y - 1) + 1.4); }
+    for (let y = n - 1; y >= 0; y--) for (let x = n - 1; x >= 0; x--) { const i = y * n + x; if (c[i]) c[i] = Math.min(c[i], at(x + 1, y) + 1, at(x, y + 1) + 1, at(x + 1, y + 1) + 1.4, at(x - 1, y + 1) + 1.4); }
+    this.G = n; this.W = w; this.C = c; this.K = n / 100; this.snapC = new Map();
   },
-  // 걸어가는 길: 같은 라인이면 라인을 따라, 아니면 정글·강 길(노드)을 따라
+  wall(p) { const x = Math.floor(p[0] * this.K), y = Math.floor(p[1] * this.K); return x < 0 || y < 0 || x >= this.G || y >= this.G || this.W[y * this.G + x] === 1; },
+  // 두 점 사이가 벽에 막히지 않았나
+  los(a, b) {
+    const dx = b[0] - a[0], dy = b[1] - a[1], n = Math.ceil(Math.hypot(dx, dy) / .2), K = this.K, G = this.G, W = this.W;
+    for (let i = 1; i <= n; i++) { const f = i / n, x = Math.floor((a[0] + dx * f) * K), y = Math.floor((a[1] + dy * f) * K); if (x < 0 || y < 0 || x >= G || y >= G || W[y * G + x]) return false; }
+    return true;
+  },
+  // 벽 안(또는 벽에 너무 붙은) 점을 가장 가까운 길 위로. min = 벽에서 떨어져야 하는 칸 수
+  snap(p, min = 0) {
+    const G = this.G, K = this.K, cx = Math.floor(p[0] * K), cy = Math.floor(p[1] * K), ok = (x, y) => x >= 0 && y >= 0 && x < G && y < G && this.C[y * G + x] > min;
+    if (ok(cx, cy)) return p;
+    const key = (cy * G + cx) * 8 + min, hit = this.snapC.get(key); if (hit) return hit;
+    let best = null, bd = 1e9;
+    for (let r = 1; r < 60 && (!best || r <= bd + 1); r++) for (let y = cy - r; y <= cy + r; y++) for (let x = cx - r; x <= cx + r; x += (y === cy - r || y === cy + r) ? 1 : 2 * r) {
+      if (!ok(x, y)) continue; const d = Math.hypot(x - cx, y - cy); if (d < bd) { bd = d; best = [(x + .5) / K, (y + .5) / K]; }
+    }
+    best ||= p; this.snapC.set(key, best); return best;
+  },
+  // p 근처(r %)에서 벽에서 가장 먼 자리
+  center(p, r) {
+    const G = this.G, K = this.K, cx = Math.floor(p[0] * K), cy = Math.floor(p[1] * K), R = Math.round(r * K); let best = null, bc = 0;
+    for (let y = cy - R; y <= cy + R; y++) for (let x = cx - R; x <= cx + R; x++) { if (x < 0 || y < 0 || x >= G || y >= G) continue; const c = this.C[y * G + x] - Math.hypot(x - cx, y - cy) * .3; if (c > bc) { bc = c; best = [(x + .5) / K, (y + .5) / K]; } }
+    return best || this.snap(p, 2);
+  },
+  // 길찾기 그물: 이름 있는 노드 + 3% 칸마다 가장 넓은 자리 하나. 서로 보이는(벽에 안 막힌) 가까운 점끼리 잇는다
+  nav() {
+    const G = this.G, B = 6, D = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]); let P = Object.values(this.N).map(p => [...p]);
+    for (let by = 0; by < G; by += B) for (let bx = 0; bx < G; bx += B) {
+      let best = -1, bc = 0;
+      for (let y = by; y < by + B && y < G; y++) for (let x = bx; x < bx + B && x < G; x++) { const c = this.C[y * G + x]; if (c > bc) { bc = c; best = y * G + x; } }
+      if (best < 0) continue; const q = [(best % G + .5) / this.K, (Math.floor(best / G) + .5) / this.K];
+      if (!P.some(o => D(o, q) < 1.2)) P.push(q);
+    }
+    const link = () => { const adj = P.map(() => []); for (let i = 0; i < P.length; i++) for (let j = i + 1; j < P.length; j++) { const d = D(P[i], P[j]); if (d <= 8 && this.los(P[i], P[j])) { adj[i].push([j, d]); adj[j].push([i, d]); } } return adj; };
+    let adj = link();
+    // 다른 점과 이어지지 않는 외딴 점은 뺀다
+    const seen = new Set([0]), todo = [0]; while (todo.length) { const u = todo.pop(); for (const [v] of adj[u]) if (!seen.has(v)) { seen.add(v); todo.push(v); } }
+    if (seen.size < P.length) { P = P.filter((_, i) => seen.has(i)); adj = link(); }
+    const bk = new Map(), bkey = p => Math.floor(p[1] / 4) * 32 + Math.floor(p[0] / 4);
+    P.forEach((p, i) => { const k = bkey(p); bk.has(k) ? bk.get(k).push(i) : bk.set(k, [i]); });
+    this.P = P; this.padj = adj; this.bk = bk; this.rc = new Map();
+  },
+  // p에서 보이는 가장 가까운 그물 점
+  nodeNear(p) {
+    const cand = [], bx = Math.floor(p[0] / 4), by = Math.floor(p[1] / 4);
+    for (let y = by - 2; y <= by + 2; y++) for (let x = bx - 2; x <= bx + 2; x++) { const l = this.bk.get(y * 32 + x); if (l) for (const i of l) cand.push([Math.hypot(this.P[i][0] - p[0], this.P[i][1] - p[1]), i]); }
+    cand.sort((a, b) => a[0] - b[0]);
+    for (const [, i] of cand) if (this.los(p, this.P[i])) return i;
+    return cand.length ? cand[0][1] : -1;
+  },
+  // 그물 위 최단 경로 (A*, 결과는 기억해 둔다)
+  route(a, b) {
+    const key = a * 4096 + b, hit = this.rc.get(key); if (hit) return hit;
+    const P = this.P, n = P.length, gs = new Float32Array(n).fill(1e9), prev = new Int32Array(n).fill(-1), done = new Uint8Array(n), h = i => Math.hypot(P[i][0] - P[b][0], P[i][1] - P[b][1]);
+    const heap = [[h(a), a]]; gs[a] = 0;
+    const push = e => { let i = heap.push(e) - 1; while (i > 0) { const q = (i - 1) >> 1; if (heap[q][0] <= heap[i][0]) break; [heap[q], heap[i]] = [heap[i], heap[q]]; i = q; } };
+    const pop = () => { const top = heap[0], last = heap.pop(); if (heap.length) { heap[0] = last; let i = 0; for (;;) { const l = i * 2 + 1, r = l + 1; let m = i; if (l < heap.length && heap[l][0] < heap[m][0]) m = l; if (r < heap.length && heap[r][0] < heap[m][0]) m = r; if (m === i) break; [heap[m], heap[i]] = [heap[i], heap[m]]; i = m; } } return top; };
+    while (heap.length) {
+      const [, u] = pop(); if (done[u]) continue; done[u] = 1; if (u === b) break;
+      for (const [v, w] of this.padj[u]) { const g2 = gs[u] + w; if (g2 < gs[v]) { gs[v] = g2; prev[v] = u; push([g2 + h(v), v]); } }
+    }
+    const out = []; for (let c = b; c >= 0; c = prev[c]) out.unshift(c);
+    if (this.rc.size > 30000) this.rc.clear();
+    this.rc.set(key, out); return out;
+  },
+  // 걸어가는 길 (꺾이는 점들): 바로 보이면 곧장, 아니면 그물을 따라가되 보이는 데까지는 질러간다
   path(start, to) {
-    const D = (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]);
-    if (D(start, to) < 6) return [to];
-    let best = null;
-    for (const l of ['top', 'mid', 'bot']) { const a = this.proj(l, start), b = this.proj(l, to); if (a.d < 4 && b.d < 4 && (!best || a.d + b.d < best.c)) best = { l, a, b, c: a.d + b.d }; }
-    if (best) return [...this.between(best.l, best.a.s, best.b.s), to];
-    const pts = [...this.route(this.near(start), this.near(to)).map(n => this.N[n]), to];
-    while (pts.length >= 2 && D(start, pts[1]) <= D(pts[0], pts[1]) + 1) pts.shift();                                          // 이미 지나친 첫 노드로 되돌아가지 않는다
-    while (pts.length >= 3 && D(pts[pts.length - 3], to) <= D(pts[pts.length - 3], pts[pts.length - 2]) + 1) pts.splice(pts.length - 2, 1);
-    return pts;
+    if (this.los(start, to)) return [to];
+    const a = this.nodeNear(start), b = this.nodeNear(to); if (a < 0 || b < 0) return [to];
+    const pts = this.route(a, b).map(i => this.P[i]); pts.push(to);
+    const out = []; let cur = start, i = 0;
+    while (i < pts.length) { let j = Math.min(pts.length - 1, i + 10); while (j > i && !this.los(cur, pts[j])) j--; out.push(pts[j]); cur = pts[j]; i = j + 1; }
+    return out;
   },
+  // 걸어서 가는 거리
+  wdist(a, b) { if (this.los(a, b)) return Math.hypot(a[0] - b[0], a[1] - b[1]); let d = 0, c = a; for (const q of this.path(a, b)) { d += Math.hypot(q[0] - c[0], q[1] - c[1]); c = q; } return d; },
 };
 
 const Sim = {
@@ -95,7 +153,7 @@ const Sim = {
   TRADE: .036,
   // 교전 성향: 두 팀 평균 (적극적인 팀이 있으면 싸움이 잦다)
   agr(g) { const f = { safe: .7, norm: 1, aggr: 1.35 }; return (f[g.side.B.ins.aggr] + f[g.side.R.ins.aggr]) / 2; },   // 라인 맞상대가 붙어 있을 때 10초마다 딜교환이 시작될 확률
-  SIEGE_K: 1.0,   // 1초 이동으로 바꾸면서 공성 위치 도착이 늦어진 만큼 (검증표의 경기 시간에 맞춘 값)   // 텔레포트 · 귀환 정신집중 (초)
+  SIEGE_K: .6, CLOSE: 3,   // CLOSE: 골드 6천~1만4천 앞설수록 공성이 최대 (1 + CLOSE)배 빨라진다   // 1초 이동으로 바꾸면서 공성 위치 도착이 늦어진 만큼 (검증표의 경기 시간에 맞춘 값)   // 텔레포트 · 귀환 정신집중 (초)
   // 역할별 기본 자리 (같은 팀이 한 점에 겹치지 않게)
   OFF: { TOP: [-2.2, -1.2], JGL: [.4, -2.6], MID: [0, 0], BOT: [2.2, 1.2], SUP: [-.6, 2.4] },
   audit: null, // 배열을 넣으면 원칙 위반을 기록한다 (검사용)
@@ -105,7 +163,7 @@ const Sim = {
   min: g => g.t / 60,
   other: k => k === 'B' ? 'R' : 'B',
   dist: (a, b) => Math.hypot(a[0] - b[0], a[1] - b[1]),
-  clampP: p => [Math.max(4, Math.min(96, p[0])), Math.max(4, Math.min(96, p[1]))],
+  clampP: p => Rift.snap([Math.max(4, Math.min(96, p[0])), Math.max(4, Math.min(96, p[1]))]),   // 맵 안 + 벽 밖
   alive(g, k) { return g.pl.filter(p => p.side === k && !p.dead); },
   gold(g, k) { return g.pl.filter(p => p.side === k).reduce((a, p) => a + p.gold, 0); },
   lead(g, k) { return this.gold(g, k) - this.gold(g, this.other(k)); },
@@ -145,6 +203,7 @@ const Sim = {
     ['B', 'R'].forEach(k => { g.side[k].team = Cond.team(g.side[k].t, g.pl.filter(p => p.side === k && !String(p.p.id).startsWith('x')).map(p => p.p)); });   // 팀합 + 소통
     g.pl.forEach(p => { const o = g.pl.find(q => q.side !== p.side && q.role === p.role); p.mu = o ? Stats.matchup(p.role, p.c, o.c) : { wr: .5, gd: 0, g: 0 }; });
     this.traitsIn(g, S);
+    g.pl.forEach(p => { p.kind = this.kindOf(p); p.rng = this.KIND[p.kind].rng; });
     g.pl.forEach(p => this.shop(g, p));
     // 드래곤: 첫 두 마리는 서로 다른 속성, 세 번째부터는 같은 속성(협곡 속성)
     const ds = this.DRAGONS.slice().sort(() => r() - .5); g.dragSeq = [ds[0], ds[1], ds[2]];
@@ -211,7 +270,7 @@ const Sim = {
     const ld = this.lead(g, k); if (ld < -3000) v += ps.reduce((a, p) => a + ((p.fx || {}).behindOvr || 0) + Math.min(((p.fx || {}).behindScale || 0), -ld / 2000), 0) / ps.length * .6;
     v += m < 14 ? (c.early - .4) * 10 : m < 26 ? ((c.fight + c.engage) / 2 - .4) * 9 : (c.late - .4) * 10;
     v += (s.coach - 10) * .15;   // 전술 적합도 보너스는 없다: 전술은 경기 중 판단(교전·오브젝트·운영·목표·시야)으로만 결과에 닿는다
-    v += Math.max(-9, Math.min(9, this.lead(g, k) / 1000 * .8));   // 스노우볼 (실제: 이긴 팀 골드 +1만, 킬 2배)
+    v += Math.max(-this.SNOW_MAX, Math.min(this.SNOW_MAX, this.lead(g, k) / 1000 * this.SNOW));   // 스노우볼 (실제: 이긴 팀 골드 +1만, 킬 2배)
     if (s.baronUntil > g.t) v += 6;
     if (s.drag.length >= 4) v += 4;
     if (s.elderUntil > g.t) v += 8;
@@ -336,15 +395,67 @@ const Sim = {
     ['B', 'R'].forEach(k => { if (['top', 'mid', 'bot'].some(l => { const st = this.structOf(g, k, l); return st.kind !== 'nexus' && this.dist(st.pos, at) < 12; })) bonus += k === 'B' ? 6 : -6; });
     g.calm = g.t + 40;
     const f = { id: ++g.fid, at: [...at], r: radius + 4, t0: g.t, bonus, where: opt.where || null, onEnd: opt.onEnd || null, kills: { B: 0, R: 0 }, size: A.length + Bp.length, mem: new Set([...A, ...Bp]), dmg: new Map(), quiet: 0 };
-    [...A, ...Bp].forEach(p => this.engage(g, p, at, 4));
+    this.form(g, f, [...A, ...Bp]);
     g.fights.push(f);
     g.fx.push({ type: 'fight', at, t: g.t, side: null, dur: 6 });
     return f;
   },
   // 교전 1초: 사거리(7) 안의 상대를 친다. 팀 힘(조합·골드·버프·코치·전술·컨디션: tpow)은 피해 배율로, 개인 실력은 개인 배율로.
   // 체력이 낮고 밀리면 빠진다(뒤쫓기면 맞으면서). 체력이 0이 되면 마지막에 때린 선수가 처치, 피해를 준 선수는 어시스트.
-  FIGHT_K: .09, FIGHT_S: 34, RANGE: 7,
+  FIGHT_K: .17, FIGHT_S: 26, RANGE: 7, SNOW: .25, SNOW_MAX: 4,   // SNOW: 골드 1천 차이당 전투력
   TANK: { TOP: .8, JGL: .85, MID: 1.08, BOT: 1.18, SUP: .9 },
+  // 챔피언 유형별 한타 행동: 사거리(맵 %) · 주는 피해 · 받는 피해 · 붙는 속도(돌진기)
+  //   tank 앞라인·이니시(먼저 들어가 가까운 적과 부딪힌다) / bruiser 브루저(앞라인 뒤를 따라 붙는다) / dive 암살·돌진(옆으로 돌아 딜러를 문다)
+  //   adc 원딜(사거리 끝에서 가까운 적부터, 붙으면 물러난다) / mage 메이지 / arti 포킹(가장 멀리서) / ench 보호형 서폿(우리 딜러 곁)
+  KIND: { tank: { rng: 3.5, deal: .75, take: .72, dash: 1.3 }, bruiser: { rng: 3.5, deal: .95, take: .88, dash: 1.2 }, dive: { rng: 3.5, deal: 1.2, take: 1, dash: 1.5 },
+    adc: { rng: 6.5, deal: 1.25, take: 1.18, dash: 1 }, mage: { rng: 7, deal: 1.1, take: 1.1, dash: 1 }, arti: { rng: 9, deal: 1, take: 1.15, dash: 1 }, ench: { rng: 6.5, deal: .5, take: 1, dash: 1 } },
+  KIND_KO: { tank: '앞라인', bruiser: '브루저', dive: '암살·돌진', adc: '원거리 딜러', mage: '메이지', arti: '포킹', ench: '보호' },
+  kindOf(p) {
+    const ch = Champions.byId[p.c] || {}, R = ch.roles || [], has = (...a) => a.some(x => R.includes(x)), melee = ch.attackType !== 'RANGED';
+    if (!melee && (has('ENCHANTER') || (p.role === 'SUP' && p.st.peel >= .6 && !has('VANGUARD', 'WARDEN')))) return 'ench';
+    if (melee && (has('VANGUARD', 'WARDEN') || (has('TANK') && !has('ASSASSIN')) || p.st.engage >= .9)) return 'tank';
+    if (melee && has('ASSASSIN', 'DIVER', 'SKIRMISHER')) return 'dive';
+    if (melee) return 'bruiser';
+    if (has('MARKSMAN') && p.role !== 'SUP') return 'adc';
+    if (has('ARTILLERY') || p.st.poke >= .9) return 'arti';
+    return 'mage';
+  },
+  isCarry: p => p.kind === 'adc' || p.kind === 'mage' || p.kind === 'arti',
+  // 한타 진형: 매초 유형에 맞는 자리를 정한다 (이동은 walk가 벽을 피해 간다)
+  form(g, f, live) {
+    const D = this.dist, cen = ps => [ps.reduce((a, p) => a + p.pos[0], 0) / ps.length, ps.reduce((a, p) => a + p.pos[1], 0) / ps.length];
+    const unit = (a, b) => { const d = D(a, b) || 1; return [(b[0] - a[0]) / d, (b[1] - a[1]) / d]; };
+    ['B', 'R'].forEach(k => {
+      const us = live.filter(p => p.side === k), foes = live.filter(p => p.side !== k); if (!us.length) return;
+      if (!foes.length) { us.forEach(p => { p.hold = { to: this.clampP([f.at[0] + p.off[0], f.at[1] + p.off[1]]), until: g.t + 2 }; }); return; }
+      const O = cen(us), E = cen(foes), u = unit(O, E), front = us.some(p => p.kind === 'tank' || p.kind === 'bruiser');
+      us.forEach((p, i) => {
+        const nf = foes.slice().sort((a, b) => D(a.pos, p.pos) - D(b.pos, p.pos))[0], dn = D(nf.pos, p.pos), K = this.KIND[p.kind];
+        const stick = (t, gap) => { const v = unit(t.pos, p.pos); return [t.pos[0] + v[0] * gap, t.pos[1] + v[1] * gap]; };
+        let to;
+        if (p.kind === 'tank' || p.kind === 'bruiser') {
+          // 앞라인: 가장 가까운 적에게 붙는다. 브루저는 앞라인이 있으면 한 박자 늦게
+          to = p.kind === 'bruiser' && front && us.some(q => q.kind === 'tank') && g.t - f.t0 < 2 ? [O[0] + u[0] * 2, O[1] + u[1] * 2] : stick(nf, 1.8);
+        } else if (p.kind === 'dive') {
+          // 암살·돌진: 앞라인이 부딪히는 동안 옆으로 돌고, 그다음 상대 딜러에게
+          const tg = foes.filter(q => this.isCarry(q) || q.kind === 'ench').sort((a, b) => (a.hp - b.hp) + (D(a.pos, p.pos) - D(b.pos, p.pos)) * .03)[0] || nf;
+          if (front && foes.length >= 2 && g.t - f.t0 < 3) { const sg = (g.pl.indexOf(p) % 2 ? 1 : -1); to = [E[0] - u[1] * 6 * sg - u[0] * 1, E[1] + u[0] * 6 * sg - u[1] * 1]; p.flank = f.id; }
+          else to = stick(tg, 1.8);
+        } else if (p.kind === 'ench') {
+          // 보호: 우리 딜러 바로 뒤
+          const c = us.filter(q => q !== p && this.isCarry(q)).sort((a, b) => (a.kind === 'adc' ? 0 : 1) - (b.kind === 'adc' ? 0 : 1) || a.hp - b.hp)[0] || us.filter(q => q !== p).sort((a, b) => a.hp - b.hp)[0];
+          to = c ? [c.pos[0] - u[0] * 1.2 + u[1] * 1.2, c.pos[1] - u[1] * 1.2 - u[0] * 1.2] : stick(nf, K.rng - .8);
+        } else {
+          // 원거리 딜러: 사거리 끝을 유지한다. 근접이 붙으면 뒤로 빠지면서 친다
+          const th = foes.filter(q => this.KIND[q.kind].rng < 5 && D(q.pos, p.pos) < 4.5).sort((a, b) => D(a.pos, p.pos) - D(b.pos, p.pos))[0];
+          if (th) { const v = unit(th.pos, p.pos); to = [p.pos[0] + v[0] * 2.4 - u[0] * 1.2, p.pos[1] + v[1] * 2.4 - u[1] * 1.2]; }
+          else if (dn > K.rng - .5) to = stick(nf, K.rng - .8);
+          else to = [p.pos[0] + u[1] * Math.sin((g.t + i * 3) / 2) * .8, p.pos[1] - u[0] * Math.sin((g.t + i * 3) / 2) * .8];
+        }
+        p.hold = { to: this.clampP(to), until: g.t + 2 }; p.dash = g.t + 1;
+      });
+    });
+  },
   fightTick(g) {
     if (!g.fights.length) return;
     const m = this.min(g);
@@ -362,19 +473,23 @@ const Sim = {
       const early = m < 10 ? .7 : m < 18 ? .9 : 1;                     // 초반은 피해가 낮다 (레벨·아이템)
       const hits = [];
       [...B, ...R].forEach(a => {
-        const foes = g.pl.filter(q => q.side !== a.side && !q.dead && !q.recall && !q.tpCh && this.dist(q.pos, a.pos) <= this.RANGE && (f.mem.has(q) || q.fled === f.id));
+        const KA = this.KIND[a.kind], near = q => Math.max(0, (a.rng - this.dist(q.pos, a.pos)) / a.rng);
+        const foes = g.pl.filter(q => q.side !== a.side && !q.dead && !q.recall && !q.tpCh && this.dist(q.pos, a.pos) <= a.rng && (f.mem.has(q) || q.fled === f.id) && (a.rng > 5 || Rift.los(a.pos, q.pos)));   // 근접은 벽 너머를 못 친다
         if (!foes.length) return;
         // 대상: 체력이 낮고 몸이 약한 쪽을 노린다 (가끔 앞라인)
         // 대상: 한타 목표 지시 — 딜러 노리기(원딜·미드) / 앞라인부터(가까운 적) / 보호(평소대로)
         const tg = g.side[a.side].ins.target, carry = q => q.role === 'BOT' || q.role === 'MID';
-        const v = foes.map(q => ({ q, w: (1.4 - q.hp) * this.TANK[q.role] * (q.fled ? .6 : 1) * (tg === 'carry' ? (carry(q) ? 1.6 : .75) : tg === 'front' ? (carry(q) ? .8 : 1.25) + (this.RANGE - this.dist(q.pos, a.pos)) / this.RANGE * .5 : 1) + g.r() * .5 })).sort((x, y) => y.w - x.w)[0].q;
+        // 유형별 대상: 앞라인·원딜은 가까운 적부터, 암살자는 딜러, 메이지는 약한 쪽
+        const kf = q => a.kind === 'tank' ? .5 + near(q) * 1.5 : a.kind === 'bruiser' ? .8 + near(q) * .7 : a.kind === 'dive' ? (this.isCarry(q) || q.kind === 'ench' ? 1.7 : .7) : a.kind === 'adc' ? .7 + near(q) : a.kind === 'ench' ? .6 + near(q) : 1;
+        const v = foes.map(q => ({ q, w: (1.4 - q.hp) * this.KIND[q.kind].take * kf(q) * (q.fled ? .6 : 1) * (tg === 'carry' ? (carry(q) ? 1.6 : .75) : tg === 'front' ? (carry(q) ? .8 : 1.25) + near(q) * .5 : 1) + g.r() * .5 })).sort((x, y) => y.w - x.w)[0].q;
         // 보호 지시: 우리 딜러가 받는 피해가 줄고, 대신 우리 딜은 조금 준다
         const peel = (g.side[v.side].ins.target === 'peel' && carry(v) ? .8 : 1) * (tg === 'peel' ? .93 : 1);
         // 특성: 받는 피해(살신성인 ↑ · 불사대마왕 · 빛나는 왕관 ↓) · 주는 피해(온신) · 마무리(킬 캐치) · 퍼블 · 아기 고양이 · 인간 넥서스 · 살신성인 팀 효과
         const af = a.fx || {}, vf = v.fx || {}, kit = v.role === 'BOT' && g.pl.some(q => q.side === v.side && q.role === 'SUP' && !q.dead && (q.fx || {}).adcGuard && this.dist(q.pos, v.pos) < 8);
         const tfx = (af.dmg || 1) * (af.finish && v.hp < .35 ? af.finish : 1) * (af.firstBlood && !g.kills.length ? af.firstBlood : 1) * (vf.takeDmg || 1) * (kit ? .88 : 1) * (vf.lateGuard && m >= 25 ? vf.lateGuard : 1)
           * (mem.some(q => q.side === a.side && (q.fx || {}).teamDmg) ? 1.03 : 1);
-        const dmg = tfx * peel * this.FIGHT_K * early * mult[a.side] * (1 + (this.ppow(a, m) - av[a.side]) / 40) * this.TANK[v.role] * (.75 + g.r() * .5) * (v.fled ? .55 : 1);
+        const guard = mem.some(q => q.side === v.side && q !== v && q.kind === 'ench' && !q.dead && this.dist(q.pos, v.pos) < 6) ? .9 : 1;   // 보호형 서폿 곁에서는 덜 아프다
+        const dmg = tfx * peel * guard * this.FIGHT_K * KA.deal * early * mult[a.side] * (1 + (this.ppow(a, m) - av[a.side]) / 40) * this.KIND[v.kind].take * (.75 + g.r() * .5) * (v.fled ? .55 : 1);
         hits.push([a, v, dmg]);
       });
       hits.forEach(([a, v, dmg]) => {
@@ -384,6 +499,7 @@ const Sim = {
         if (v.hp <= 0) {
           const helpers = [...ctb.keys()].filter(x => x !== a && !x.dead);
           this.kill(g, a, v, helpers); f.kills[a.side]++; (f.kb ||= new Map()).set(a, (f.kb.get(a) || 0) + 1);
+          if (a.kind === 'dive' && a.flank === f.id && this.isCarry(v) && f.size >= 5 && g.r() < .7) this.say(g, 'hype', this.pick(g, [`${a.name}, 옆으로 돌아 들어가서 ${this.josa(v.name, '을', '를')} 물었습니다! ${this.cn(v)} 삭제!`, `측면을 파고든 ${a.name}의 ${this.cn(a)}! 뒷라인이 무너집니다!`]));
         }
       });
       // 후퇴: 체력이 낮고 밀리면 (숫자 · 남은 체력)
@@ -404,7 +520,7 @@ const Sim = {
       // 서로 붙어 있도록 중심을 참가자 쪽으로
       const live = mem.filter(p => !p.dead && !p.fled);
       if (live.length) f.at = [live.reduce((a, p) => a + p.pos[0], 0) / live.length, live.reduce((a, p) => a + p.pos[1], 0) / live.length];
-      live.forEach(p => { if (!p.hold || p.hold.until <= g.t + 1) this.engage(g, p, f.at, 2); });
+      this.form(g, f, live);
     });
     g.fights.filter(f => f.done).forEach(f => this.fightEnd(g, f));
     g.fights = g.fights.filter(f => !f.done);
@@ -492,7 +608,7 @@ const Sim = {
       const deep = st.kind === 'inhib' || (st.kind === 'tower' && st.i === 2) || st.kind === 'nexusT' || st.kind === 'nexus';
       if ((deep && m < 14) || ((st.kind === 'nexusT' || st.kind === 'nexus') && m < 21)) return;   // 실제 경기에서 이 시간 전에는 거의 안 깨진다
       const early = st.kind === 'tower' && st.i === 1 && m < 14 ? .6 : deep && m < 23 ? .18 : deep && m < 28 ? .45 : 1;
-      const dmg = atk.length * (plate ? .05 : st.kind === 'nexus' ? .2 : st.i === 0 ? .14 : deep ? .14 : .11) * (g.side[k].baronUntil > g.t ? 1.6 : 1) * early * this.SIEGE_K;
+      const dmg = atk.length * (plate ? .05 : st.kind === 'nexus' ? .2 : st.i === 0 ? .14 : deep ? .14 : .11) * (g.side[k].baronUntil > g.t ? 1.6 : 1) * early * this.SIEGE_K * (1 + Math.max(0, Math.min(1, (this.lead(g, k) - 6000) / 8000)) * this.CLOSE);   // 크게 앞선 팀은 킬을 쌓지 않고 경기를 끝낸다
       this.hit(g, k, lane, st, dmg);
     });
     // 웨이브 압박: 전선이 상대 포탑 앞까지 밀리면 미니언이 (수비가 있어도) 포탑을 깎는다. 라인에 아군이 있어야 웨이브가 버틴다
@@ -777,14 +893,16 @@ const Sim = {
       if (p.hold && p.hold.until <= g.t) p.hold = null;
       let to = p.hold ? p.hold.to : p.goal; if (!to) return;
       if (this.dist(p.pos, to) < 2.5) to = this.clampP([to[0] + Math.sin((g.t + i * 13) / 6) * 1.1, to[1] + Math.cos((g.t + i * 7) / 8) * 1.1]);
-      this.walk(p, to, v);
+      const dv = p.dash >= g.t && p.hold ? v * this.KIND[p.kind].dash : v; p.budget = dv;
+      this.walk(p, to, dv);
     });
     this.fightTick(g);
     if (dec && !g.over) this.decide(g, m);
     g.fx = g.fx.filter(f => g.t - f.t <= (f.dur || 2));
     if (prev) g.pl.forEach((p, i) => {
       const d = this.dist(prev[i], p.pos);
-      if (d > v + .3 && p.warp !== g.t && !p.dead) this.audit.push(`${this.clock(g.t)} 순간 이동 ${p.name} ${prev[i].map(Math.round)} → ${p.pos.map(Math.round)} (${d.toFixed(1)})`);
+      if (d > v * (p.dash >= g.t - 1 ? this.KIND[p.kind].dash : 1) + .6 && p.warp !== g.t && !p.dead) this.audit.push(`${this.clock(g.t)} 순간 이동 ${p.name} ${prev[i].map(Math.round)} → ${p.pos.map(Math.round)} (${d.toFixed(1)})`);
+      if (!p.dead && Rift.wall(p.pos)) this.audit.push(`${this.clock(g.t)} 벽 안 ${p.name} ${p.pos.map(v => v.toFixed(1))}`);
       if (p.pos[0] < 2 || p.pos[0] > 98 || p.pos[1] < 2 || p.pos[1] > 98) this.audit.push(`${this.clock(g.t)} 맵 밖 ${p.name} ${p.pos.map(Math.round)}`);
       if (!p.dead && m < 12 && dec && this.dist(p.pos, this.fountain(this.other(p.side))) < 22) this.audit.push(`${this.clock(g.t)} 초반 상대 본진 ${p.name} ${p.pos.map(Math.round)}`);
     });
@@ -906,14 +1024,16 @@ const Sim = {
   walk(p, to, maxD = this.SPEED / 10) {
     to = this.clampP(to); maxD = Math.min(maxD, p.budget ?? maxD);
     const trail = p.trail && p.trail.length ? p.trail.slice() : [p.pos];
-    if (!p.rt || this.dist(p.rt.to, to) > 3 || !p.rt.pts.length) p.rt = { to, pts: Rift.path(p.pos, to) };
-    else p.rt.pts[p.rt.pts.length - 1] = to;
+    const n0 = p.rt ? p.rt.pts.length : 0;
+    if (!p.rt || this.dist(p.rt.to, to) > 3 || !n0 || !Rift.los(n0 > 1 ? p.rt.pts[n0 - 2] : p.pos, to)) p.rt = { to, pts: Rift.path(p.pos, to) };
+    else p.rt.pts[n0 - 1] = to;
     let left = maxD, cur = p.pos;
     while (left > 0 && p.rt.pts.length) {
       const q = p.rt.pts[0], d = this.dist(cur, q);
       if (d <= left) { trail.push(q); left -= d; cur = q; p.rt.pts.shift(); }
       else { const f = left / d; cur = [cur[0] + (q[0] - cur[0]) * f, cur[1] + (q[1] - cur[1]) * f]; trail.push(cur); left = 0; }
     }
+    if (Rift.wall(cur)) { const q = Rift.snap(cur); cur = this.dist(q, p.pos) <= maxD + .5 ? q : p.pos; trail.push(cur); p.rt = null; }   // 모서리를 스치다 벽 칸에 걸치면 길 위로
     p.pos = cur; p.trail = trail; p.budget = (p.budget ?? maxD) - (maxD - left);
   },
 };
