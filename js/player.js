@@ -206,8 +206,9 @@ const Player = {
   async condition(el) {
     await Portal.ready;
     const t = this.team();
-    // 목업 피로도·훈련 부하. TODO: 기능 연결 — 훈련·경기·솔랭 판수로 계산
-    const extra = p => ({ fatigue: Math.round(10 + G.rand(p.id, 'fat') * 50), load: ['낮음', '보통', '높음'][Math.floor(G.rand(p.id, 'load') * 3)], sleep: (6 + G.rand(p.id, 'slp') * 2.5).toFixed(1) });
+    // 피로도: 팀 훈련 피로(Training) + 개인 훈련 강도 · 훈련 부하는 개인 강도
+    const F = typeof Training !== 'undefined' ? Training.st().fat : 30, IND = App.state.individual || {};
+    const extra = p => { const it = (IND[p.id] || {}).int; return { fatigue: Math.max(0, Math.min(100, Math.round(F + (it === 'high' ? 12 : it === 'low' ? -10 : 0) + (G.rand(p.id, 'fat') - .5) * 10))), load: it === 'high' ? '높음' : it === 'low' ? '낮음' : '보통', sleep: (6 + G.rand(p.id, 'slp') * 2.5).toFixed(1) }; };
     el.innerHTML = `
       <div class="cr-page">
         ${Career.head('컨디션·폼', `${UI.esc(t.name)} 선수단 상태. 최근 폼은 공식전 최근 5경기 평점(10점 만점). 경기 오버롤 = 오버롤 + 컨디션 · 사기 · 감독 관계 보정 (오버롤 옆 ▲▼).`)}

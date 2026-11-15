@@ -131,7 +131,7 @@ const Recruit = {
     };
     el.innerHTML = `
       <div class="cr-page">
-        ${Career.head('스카우트 리포트', '관심 목록 선수와 스카우트 팀이 주목한 선수. 평가는 챔피언 폭·나이·계약 기반 목업입니다.')}
+        ${Career.head('스카우트 리포트', '관심 목록 선수와 스카우트 팀이 주목한 선수. 평가는 챔피언 폭·나이·계약과 스카우트 팀의 눈을 바탕으로 합니다.')}
         <div class="rp-grid">${picks.map(report).join('') || '<p class="ms-none">리포트가 없습니다.</p>'}</div>
       </div>`;
     this.bindStars($('.rp-grid', el), () => this.reports(el));

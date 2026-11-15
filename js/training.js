@@ -1,4 +1,4 @@
-// 훈련: 팀 훈련 일정 · 개인 훈련 · 스크림 (레이아웃 + 상태 저장, 효과는 TODO)
+// 훈련: 팀 훈련 일정(매일 효과: 컨디션 · 팀워크 · 피로) · 개인 훈련 · 스크림
 const Training = {
   ACT: {
     scrim: ['스크림', '#3aa0ff'], soloq: ['솔랭', '#a770ff'], review: ['리뷰·분석', '#c8a24a'], ind: ['개인 훈련', '#3fbf7f'],
@@ -19,6 +19,33 @@ const Training = {
   },
   today() { return Clock.today(); },
 
+  // ---------- 훈련 효과 (매일) ----------
+  // 그날 요일 칸 3개로: 휴식은 컨디션 회복 · 피로 감소, 스크림·리뷰는 팀워크, 솔랭·스크림·강한 개인 훈련은 피로, 미팅은 사기
+  // 팀워크(0~10, 처음 5)는 경기에서 팀 힘으로(6 = 다른 팀과 같음, -0.9 ~ +0.6), 피로(0~100)가 60을 넘으면 매일 컨디션이 깎인다
+  EFF: { rest: { cond: .25, fat: -12 }, scrim: { tw: .07, fat: 4 }, review: { tw: .05, fat: 1 }, soloq: { fat: 2 }, ind: { fat: 3 }, meet: { mor: 1 }, media: { fat: 1 } },
+  st() { const s = (App.state.trainFx ||= { tw: 5, fat: 25 }); return s; },
+  dayIdx(d) { return (new Date(d + 'T00:00:00').getDay() + 6) % 7; },   // 월 = 0
+  weekFx(grid) {
+    const o = { cond: 0, tw: 0, fat: 0, mor: 0 }; grid.flat().forEach(a => { const e = this.EFF[a] || {}; Object.keys(o).forEach(k => { o[k] += e[k] || 0; }); });
+    o.tw -= .03 * 7; o.fat -= 3 * 7; return o;   // 팀워크는 하루 0.03씩, 피로는 하루 3씩 자연히 빠진다
+  },
+  daily(today) {
+    const t = Roster.team(); if (!t || App.state.unemployed) return;
+    const s = this.plan(), F = this.st(), acts = s.grid[this.dayIdx(today)] || [], ind = App.state.individual || {};
+    let cond = 0, tw = -.03, fat = -3, mor = 0;
+    acts.forEach(a => { const e = this.EFF[a] || {}; cond += e.cond || 0; tw += e.tw || 0; fat += e.fat || 0; mor += e.mor || 0; });
+    F.tw = Math.max(0, Math.min(10, F.tw + tw)); F.fat = Math.max(0, Math.min(100, F.fat + fat));
+    const S = Cond.st();
+    t.players.forEach(p => {
+      if (p.role === 'COACH') return;
+      const a = Cond.amp(p), it = (ind[p.id] || {}).int, d = cond + (F.fat > 60 ? -(F.fat - 60) / 80 : F.fat < 25 ? .08 : 0) + (it === 'high' ? -.12 : it === 'low' ? .06 : 0);
+      if (d) S.f[p.id] = Math.max(-a, Math.min(a, Math.round(((S.f[p.id] || 0) + d) * 100) / 100));
+    });
+    if (mor) { const M = World.morale(); t.players.forEach(p => { if ((M[p.id] || 0) < 3 && G.rand(p.id + today, 'mt') < .25) M[p.id] = (M[p.id] || 0) + mor; }); }
+  },
+  // 경기에 들어가는 팀워크 보정 (tpow 단위, 우리 팀만 — 다른 팀은 늘 보통)
+  teamPow(t) { return t && t.id === App.state.teamId && !App.state.unemployed ? (this.st().tw - 6) * .15 : 0; },
+
   // ---------- 팀 훈련 일정 ----------
   async schedule(el) {
     await Portal.ready;
@@ -27,7 +54,7 @@ const Training = {
     el.innerHTML = `
       <div class="cr-page">
         <div class="card rs-head">
-          <div class="rs-title"><h2>팀 훈련 일정</h2><span>칸을 누르면 활동이 바뀝니다 · 훈련 효과(컨디션·숙련도·팀워크)는 준비 중</span></div>
+          <div class="rs-title"><h2>팀 훈련 일정</h2><span>칸을 누르면 활동이 바뀝니다 · 매일 그날 요일의 계획대로 컨디션 · 팀워크 · 피로가 움직입니다</span></div>
           <select class="ch-sort tr-preset">${Object.entries(this.PRESETS).map(([k, p]) => `<option value="${k}" ${s.preset === k ? 'selected' : ''}>${p.label}</option>`).join('')}</select>
         </div>
         <div class="card tr-wrap">
@@ -40,19 +67,18 @@ const Training = {
           <div class="card"><div class="card-head"><h3>주간 비중</h3></div>
             ${keys.map(k => { const v = Math.round((count[k] || 0) / 21 * 100); return `<div class="cr-meter"><span><i class="tr-dot" style="background:${this.ACT[k][1]}"></i>${this.ACT[k][0]}</span><div class="cr-bar"><i style="width:${v}%;background:${this.ACT[k][1]}"></i></div><b class="num">${count[k] || 0}</b></div>`; }).join('')}
           </div>
-          <div class="card"><div class="card-head"><h3>예상 효과 <small>목업</small></h3></div>
-            ${Career.meter('컨디션 회복', Math.min(95, 30 + (count.rest || 0) * 7))}
-            ${Career.meter('팀워크', Math.min(95, 25 + (count.scrim || 0) * 6 + (count.review || 0) * 3))}
-            ${Career.meter('개인 기량', Math.min(95, 25 + (count.ind || 0) * 7 + (count.soloq || 0) * 3))}
-            ${Career.meter('피로 누적', Math.min(95, 15 + ((count.scrim || 0) + (count.soloq || 0)) * 4 - (count.rest || 0) * 2), 'inv')}
-          </div>
+          ${(() => { const F = this.st(), w = this.weekFx(s.grid), sg = v => (v > 0 ? '▲' : v < 0 ? '▼' : '–') + ' ' + Math.abs(v).toFixed(1);
+            return `<div class="card"><div class="card-head"><h3>지금 상태 · 이 계획의 한 주</h3></div>
+            ${Career.meter('팀워크', Math.round(F.tw * 10))}<p class="tr-fx">한 주에 ${sg(w.tw)} · 스크림 · 리뷰로 오르고 하루 0.03씩 빠집니다. 60 위면 경기에서 다른 팀보다 손발이 잘 맞고, 아래면 덜 맞습니다.</p>
+            ${Career.meter('피로', Math.round(F.fat), 'inv')}<p class="tr-fx">한 주에 ${(w.fat > 0 ? '▲ ' : '▼ ') + Math.round(Math.abs(w.fat))} · 60을 넘으면 매일 선수 컨디션이 깎이고, 25 아래면 조금씩 오릅니다.</p>
+            <p class="tr-fx">휴식 칸 하나 = 컨디션 +0.25 · 미팅은 선수 사기 · 솔랭은 숙련(개인 훈련 연습 챔피언)</p></div>`; })()}
         </div>
       </div>`;
     $('.tr-preset', el).onchange = e => { s.preset = e.target.value; s.grid = this.PRESETS[s.preset].grid.map(r => r.split(',')); this.schedule(el); };
     $('.tr-grid', el).onclick = e => {
       const c = e.target.closest('.tr-cell'); if (!c) return;
       const row = s.grid[+c.dataset.d], i = +c.dataset.s;
-      row[i] = keys[(keys.indexOf(row[i]) + 1) % keys.length]; // TODO: 기능 연결 — 하루 진행 시 훈련 효과 반영
+      row[i] = keys[(keys.indexOf(row[i]) + 1) % keys.length];
       this.schedule(el);
     };
   },
@@ -89,7 +115,7 @@ const Training = {
     });
     $('.in-table', el).addEventListener('click', e => {
       const b = e.target.closest('button[data-k]'); if (!b) return;
-      const tr = b.closest('tr'); s[tr.dataset.id].int = b.dataset.v; // TODO: 기능 연결 — 강도에 따른 성장·피로
+      const tr = b.closest('tr'); s[tr.dataset.id].int = b.dataset.v;   // 강도: 강하게는 매일 컨디션 -0.12, 가볍게는 +0.06 (Training.daily)
       $$('button', b.parentNode).forEach(x => x.classList.toggle('on', x === b));
     });
   },
@@ -145,3 +171,4 @@ const Training = {
 Views['training-schedule'] = el => Training.schedule(el);
 Views['training-individual'] = el => Training.individual(el);
 Views['training-scrims'] = el => Training.scrims(el);
+Engine.on(today => Training.daily(today));

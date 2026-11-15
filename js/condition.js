@@ -117,6 +117,6 @@ const Cond = {
   parts(p) { const form = this.of(p.id), morale = this.morale(p.id), rel = typeof Rel !== 'undefined' ? Rel.ovr(p.id) : 0; return { form, morale, rel, total: form + morale + rel }; },
   hist(pid) { return ((this.st().hist || {})[pid] || []); },
   // 팀 보정 (tpow 단위): 팀합 최대 +3, 소통 최대 -3
-  team(t, line) { return this.chem(line) * .25 + this.comm(t, line); },
+  team(t, line) { return this.chem(line) * .25 + this.comm(t, line) + (typeof Training !== 'undefined' && Training.teamPow ? Training.teamPow(t) : 0); },
 };
 Engine.ACTS.counsel = (m, how) => Cond.counselAct(m.ctx.pid, how);

@@ -1,5 +1,5 @@
 // 구단: 재정 · 샐러리캡 · 코칭스태프 · 스폰서 · 이사회 기대치 · 구단 역사
-// 금액은 모두 "억 원(환산)" 목업. TODO: 기능 연결 — 실제 재정 시스템
+// 금액은 모두 "억 원(환산)". 월별 수지는 시즌 예상 + 장부(World.ledger)
 const Club = {
   team() { return Roster.team(); },
   today() { return Clock.today(); },
@@ -21,7 +21,10 @@ const Club = {
     const inc = [['리그 분배금', B * .28], ['스폰서', this.sponsorIncome(t)], ['스트리밍·굿즈', B * (.08 + (t.rep || 2) * .03)], ['상금', B * .04 * (t.rep || 2)]];
     const exp = [['선수 연봉', this.payroll(t)], ['스태프 인건비', this.staffPay(t)], ['숙소·운영', B * .12], ['마케팅·콘텐츠', B * .06]];
     const ti = inc.reduce((s, x) => s + x[1], 0), te = exp.reduce((s, x) => s + x[1], 0);
-    const months = Array.from({ length: 12 }, (_, i) => (this.r(t, 'm' + i) - .45) * B * .08);
+    // 월별 수지: 시즌 예상 수지를 12로 나눈 기본값 + 장부(이적료 · 계약금 · 부담금 · 이벤트 수입)를 그 달에 더한다
+    const [cy, cm] = this.today().split('-').map(Number), led = World.ledger(), base = (ti - te) / 12;
+    const mk = Array.from({ length: 12 }, (_, i) => { const d = new Date(cy, cm - 12 + i, 1); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; });
+    const months = mk.map((k, i) => base * (.85 + this.r(t, 'm' + k) * .3) + led.filter(x => (x.date || '').slice(0, 7) === k).reduce((s, x) => s + x.amount / 1e8, 0));
     const max = Math.max(...months.map(Math.abs)) || 1;
     el.innerHTML = `
       <div class="cr-page">
@@ -38,10 +41,10 @@ const Club = {
           <div class="card"><div class="card-head"><h3>수입 <small>시즌 예상</small></h3></div>${inc.map(([l, v]) => this.bar(l, v, ti, '#3fbf7f')).join('')}</div>
           <div class="card"><div class="card-head"><h3>지출 <small>시즌 예상</small></h3></div>${exp.map(([l, v]) => this.bar(l, v, te, '#e2575c')).join('')}</div>
         </div>
-        <div class="card"><div class="card-head"><h3>월별 수지 <small>지난 12개월 · 목업</small></h3></div>
+        <div class="card"><div class="card-head"><h3>월별 수지 <small>지난 12개월 · 이적료·계약금 등 장부 반영</small></h3></div>
           <svg class="fn-chart" viewBox="0 0 240 80" preserveAspectRatio="none">
             <line x1="0" y1="40" x2="240" y2="40" stroke="#2a3550"/>
-            ${months.map((v, i) => { const h = Math.abs(v) / max * 36; return `<rect x="${i * 20 + 4}" y="${v >= 0 ? 40 - h : 40}" width="12" height="${h}" fill="${v >= 0 ? '#3fbf7f' : '#e2575c'}" rx="1.5"/>`; }).join('')}
+            ${months.map((v, i) => { const h = Math.abs(v) / max * 36; return `<rect x="${i * 20 + 4}" y="${v >= 0 ? 40 - h : 40}" width="12" height="${Math.max(.5, h)}" fill="${v >= 0 ? '#3fbf7f' : '#e2575c'}" rx="1.5"><title>${mk[i].replace('-', '년 ')}월 ${v >= 0 ? '+' : '−'}${this.money(Math.abs(v))}</title></rect>`; }).join('')}
           </svg>
         </div>
       </div>`;
@@ -129,7 +132,7 @@ const Club = {
     el.innerHTML = `
       <div class="cr-page">
         <div class="card rs-head">
-          <div class="rs-title"><h2>스폰서</h2><span>스폰서 금액은 구단 평판·성적에 따라 달라집니다 (추정)</span></div>
+          <div class="rs-title"><h2>스폰서</h2><span>스폰서 금액은 구단 평판·성적에 따라 달라집니다</span></div>
           <div class="rs-stats"><div><span class="k">연간 스폰서 수입</span><b>${this.money(total)}</b></div><div><span class="k">스폰서</span><b>${rows.filter(x => x.st !== 'vacant').length}/${rows.length}</b></div></div>
         </div>
         <div class="sp-grid">${rows.map(x => `
