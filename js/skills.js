@@ -181,3 +181,18 @@ const Skills = {
     });
   },
 };
+// 정글 펫: 몬스터를 잡을수록 자란다 (새끼 → 성장 → 완전 성장). 완전히 자라면 강타가 강화된다. 정글러는 끝까지 펫 아이템을 들고 간다
+const JunglePet = {
+  STAGE_CS: [0, 42, 80],                     // 정글 CS 기준 (실제 프로 정글: 첫 진화 약 5~6분, 완전 성장 약 13~15분)
+  NAME: ['새끼', '성장', '완전 성장'],
+  stage(p) { return p.role !== 'JGL' ? 0 : this.STAGE_CS.filter(c => p.cs >= c).length; },
+  tick(g) {
+    g.pl.forEach(p => {
+      if (p.role !== 'JGL' || p.dead) return;
+      const st = this.stage(p); if (st <= (p.pet || 1)) { p.pet ||= 1; return; }
+      p.pet = st;
+      if (st === 3) { p.smite2 = g.t; Sim.say(g, 'anal', Sim.pick(g, [`${p.name}의 정글 펫이 다 자랐습니다. 강타가 강화돼서 오브젝트 싸움에서 한결 든든해요.`, `${Sim.cn(p)} 정글 펫 완전 성장! ${p.name}, 이제 강화된 강타를 씁니다.`])); }
+    });
+  },
+};
+(() => { const decide = Sim.decide.bind(Sim); Sim.decide = (g, m) => { decide(g, m); if (!g.over) JunglePet.tick(g); }; })();
