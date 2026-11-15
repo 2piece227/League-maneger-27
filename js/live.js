@@ -232,7 +232,7 @@ const Live = {
     const vm = this.vmode, srcOf = k => typeof Vision !== 'undefined' ? Vision.sources(g, k) : [];
     if (vm === 'B' || vm === 'R') {
       const fog = this.fog ||= document.createElement('canvas'); fog.width = c.canvas.width; fog.height = c.canvas.height; const fc = fog.getContext('2d');
-      fc.setTransform(this.dpr, 0, 0, this.dpr, 0, 0); fc.fillStyle = 'rgba(2,4,10,.62)'; fc.fillRect(0, 0, W, H); fc.globalCompositeOperation = 'destination-out';
+      fc.setTransform(this.dpr, 0, 0, this.dpr, 0, 0); fc.fillStyle = 'rgba(2,4,10,.74)'; fc.fillRect(0, 0, W, H); fc.globalCompositeOperation = 'destination-out';
       for (const [sx, sy, r] of srcOf(vm)) { const gx = X(sx), gy = Y(sy), rr = X(r), gd = fc.createRadialGradient(gx, gy, rr * .7, gx, gy, rr); gd.addColorStop(0, 'rgba(0,0,0,1)'); gd.addColorStop(1, 'rgba(0,0,0,0)'); fc.fillStyle = gd; fc.beginPath(); fc.arc(gx, gy, rr, 0, TAU); fc.fill(); }
       fc.globalCompositeOperation = 'source-over'; c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.drawImage(fog, 0, 0); c.restore();
     } else if (vm === 'all') {

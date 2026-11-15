@@ -4,3 +4,4 @@ node_modules/
 tools/scrape/.cache/
 tools/scrape/.env
 tools/scrape/out/
+screenshots/
