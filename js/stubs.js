@@ -14,7 +14,7 @@ const Data = {
       Contract.stars = c.stars || {};
       this.attachCl(db.teams, cl);
       this.applyMilitary([...db.teams, db.free], c.military || {});
-      db.history.worlds = MOCK.worldsHistory.map(w => ({ ...w, logo: (h.worldsLogos || {})[w.page || w.team] || null, photo: (h.worldsPhotos || {})[w.year] || null }));
+      db.history.worlds = MOCK.worldsHistory.map(w => ({ ...w, logo: (h.worldsLogos || {})[w.page || w.team] || ((db.teams || []).find(t => t.name === w.team) || {}).logo || null, photo: (h.worldsPhotos || {})[w.year] || w.photo0 || null }));
       db.source = 'scraped';
     } catch (e) {
       console.info('[data] 수집 데이터 없음 → 목업 사용', e.message);

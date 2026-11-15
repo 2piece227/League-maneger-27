@@ -172,7 +172,8 @@ const MOCK = (() => {
     [2023, 'T1', 'KR', '#e2012d'],
     [2024, 'T1', 'KR', '#e2012d'],
     [2025, 'T1', 'KR', '#e2012d'],
-  ].map(([year, team, region, color]) => ({ year, team, region, color }));
+    [2026, 'Bilibili Gaming', 'CN', '#00a1d6', 'Knight', 'assets/ceremony/2026-blg.webp'],
+  ].map(([year, team, region, color, mvp, photo]) => ({ year, team, region, color, mvp, photo0: photo }));
 
   // 포지션별 첫 선수만 주전, 나머지는 후보
   function markSubs(players) {

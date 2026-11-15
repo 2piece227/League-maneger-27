@@ -33,6 +33,7 @@ Screens.title = {
     ['2022-drx', 2022, 'DRX'],
     ['2024-t1', 2024, 'T1'],
     ['2025-t1', 2025, 'T1'],
+    ['2026-blg', 2026, 'Bilibili Gaming', 'Knight'],
   ],
 
   startCeremony() {
@@ -44,15 +45,15 @@ Screens.title = {
     const slides = [...box.children];
     const show = i => {
       slides.forEach((s, j) => s.classList.toggle('on', j === i));
-      const [, year, team] = this.CEREMONY[i];
+      const [, year, team, mvp] = this.CEREMONY[i];
       cap.classList.add('hide');
       setTimeout(() => {
-        cap.innerHTML = `${year ? `<b>${year}</b>` : ''}${UI.esc(team)} · WORLD CHAMPION`;
+        cap.innerHTML = `${year ? `<b>${year}</b>` : ''}${UI.esc(team)} · WORLD CHAMPION${mvp ? ` <small>· FINALS MVP ${UI.esc(mvp)}</small>` : ''}`;
         cap.classList.remove('hide');
       }, 900);
     };
     clearInterval(this.cerTimer);
-    this.cerIndex = this.cerIndex ?? Math.floor(Math.random() * slides.length);
+    this.cerIndex = this.cerIndex ?? slides.length - 1;   // 처음에는 가장 최근 우승팀부터
     show(this.cerIndex);
     this.cerTimer = setInterval(() => {
       this.cerIndex = (this.cerIndex + 1) % slides.length;
@@ -68,7 +69,7 @@ Screens.title = {
         <img class="win-photo" src="${w.photo}" alt="${UI.esc(w.team)} ${w.year}" referrerpolicy="no-referrer" onerror="this.closest('.win-card').classList.remove('photo');this.remove()">
         ${logo(w)}
         <div class="win-head"><div class="win-year">${w.year}</div><div class="win-team">${UI.esc(w.team)}</div></div>
-        <div class="win-meta">WORLD CHAMPION · ${w.region}</div>
+        <div class="win-meta">WORLD CHAMPION · ${w.region}${w.mvp ? ` · FINALS MVP ${UI.esc(w.mvp)}` : ''}</div>
       </div>` : `
       <div class="win-card" style="--c:${w.color}">
         ${logo(w)}
