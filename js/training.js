@@ -171,4 +171,4 @@ const Training = {
 Views['training-schedule'] = el => Training.schedule(el);
 Views['training-individual'] = el => Training.individual(el);
 Views['training-scrims'] = el => Training.scrims(el);
-Engine.on(today => Training.daily(today));
+window.addEventListener("DOMContentLoaded", () => Engine.on(today => Training.daily(today)));
