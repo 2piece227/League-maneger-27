@@ -30,7 +30,7 @@ const Live = {
   ico(n, cls = '') { return `<img class="ob-ic ${cls}" src="assets/obj/${n}.png" alt="">`; },
   // 인벤토리: 아이템 6칸(제어 와드 포함) + 장신구
   // 정글 펫 아이템: 자란 단계(●●○)와 강타 강화 표시
-  inventory(p) { const pet = it => p.role === 'JGL' && p.build.start && it.n === p.build.start.n && p.pet; return [...p.inv.map(it => pet(it) ? `<span class="it-pet s${p.pet}" title="정글 펫 · ${JunglePet.NAME[p.pet - 1]}${p.pet === 3 ? ' (강타 강화)' : ''}">${Stats.icon(it)}<b>${'●'.repeat(p.pet)}${'○'.repeat(3 - p.pet)}</b></span>` : Stats.icon(it)), p.wards ? `<span class="it-w">${Stats.icon(p.build.ward)}<b>${p.wards}</b></span>` : '', p.trinket ? `<span class="it-t">${Stats.icon(p.trinket)}</span>` : ''].join(''); },
+  inventory(p) { const pet = it => p.role === 'JGL' && p.build.start && it.n === p.build.start.n && p.pet; return [...p.inv.map(it => pet(it) ? `<span class="it-pet s${p.pet}" title="정글 펫 · ${JunglePet.NAME[p.pet - 1]}${p.pet === 3 ? ' (강타 강화)' : ''}">${Stats.icon(it)}<b>${'●'.repeat(p.pet)}${'○'.repeat(3 - p.pet)}</b></span>` : Stats.icon(it)), p.wards ? `<span class="it-w">${Stats.icon(p.build.ward)}<b>${p.wards}</b></span>` : '', p.trinket ? `<span class="it-t">${Stats.icon(p.trinket)}</span>` : '', p.smite2 && p.petItem ? `<span class="it-smite" title="강타 강화 (정글 펫 완전 성장)">${Stats.icon(p.petItem)}</span>` : ''].join(''); },
   // 시리즈 스코어 (이 세트 전까지 + 끝났으면 이 세트 포함)
   score(S) { const sc = Season.seriesScore(S.series); return { B: sc[S.teams.B] || 0, R: sc[S.teams.R] || 0, need: Math.ceil((S.series.bo || 1) / 2) }; },
   pips(n, need, cls) { return `<span class="lv-pips ${cls}">${Array.from({ length: need }, (_, i) => `<i class="${i < n ? 'on' : ''}"></i>`).join('')}</span>`; },

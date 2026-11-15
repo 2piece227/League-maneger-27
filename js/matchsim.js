@@ -333,7 +333,7 @@ const Sim = {
     const b = p.build, m = this.min(g);
     if (!p.trinket) p.trinket = Stats.it('Stealth Ward');
     if (p.role === 'SUP' && m >= 4 && b.trinket) p.trinket = b.trinket;
-    if (!p.inv.length && b.start && this.free(p) >= b.start.gold) this.buy(p, b.start, b.start.gold);
+    if (!p.inv.length && b.start && !p.smite2 && this.free(p) >= b.start.gold) this.buy(p, b.start, b.start.gold);
     // 시작 아이템 정리: 라이너는 핵심 아이템 3개쯤에서 도란 · 인장류를 판다 (칸이 차기 전에도)
     if (p.role !== 'JGL' && p.role !== 'SUP' && b.start && this.has(p, b.start.n) && p.inv.filter(x => x.gold >= 2000 && !x.boots).length >= 3) { const st = p.inv.find(x => x.n === b.start.n); p.inv.splice(p.inv.indexOf(st), 1); p.spent -= Math.round(st.gold * .4); }
     if (p.role === 'SUP' && b.sup && m >= 7 && b.start && this.has(p, b.start.n)) { const i = p.inv.findIndex(x => x.n === b.start.n); p.inv[i] = b.sup; }

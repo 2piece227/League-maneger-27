@@ -181,7 +181,7 @@ const Skills = {
     });
   },
 };
-// 정글 펫: 몬스터를 잡을수록 자란다 (새끼 → 성장 → 완전 성장). 완전히 자라면 강타가 강화된다. 정글러는 끝까지 펫 아이템을 들고 간다
+// 정글 펫: 몬스터를 잡을수록 자란다 (새끼 → 성장 → 완전 성장). 완전히 자라면 강타가 강화되고 펫 아이템은 칸에서 사라진다 (프로 최종 빌드에 펫 아이템은 없다)
 const JunglePet = {
   STAGE_CS: [0, 42, 80],                     // 정글 CS 기준 (실제 프로 정글: 첫 진화 약 5~6분, 완전 성장 약 13~15분)
   NAME: ['새끼', '성장', '완전 성장'],
@@ -191,7 +191,8 @@ const JunglePet = {
       if (p.role !== 'JGL' || p.dead) return;
       const st = this.stage(p); if (st <= (p.pet || 1)) { p.pet ||= 1; return; }
       p.pet = st;
-      if (st === 3) { p.smite2 = g.t; Sim.say(g, 'anal', Sim.pick(g, [`${p.name}의 정글 펫이 다 자랐습니다. 강타가 강화돼서 오브젝트 싸움에서 한결 든든해요.`, `${Sim.cn(p)} 정글 펫 완전 성장! ${p.name}, 이제 강화된 강타를 씁니다.`])); }
+      // 완전 성장: 펫이 강타에 흡수돼 아이템 칸에서 사라진다 (그 칸에 여섯 번째 아이템이 들어간다)
+      if (st === 3) { p.smite2 = g.t; p.petItem = p.build.start; const i = p.inv.findIndex(x => p.build.start && x.n === p.build.start.n); if (i >= 0) p.inv.splice(i, 1); Sim.say(g, 'anal', Sim.pick(g, [`${p.name}의 정글 펫이 다 자랐습니다. 강타가 강화되고 펫 자리는 비었습니다. 이제 아이템 하나를 더 올릴 수 있어요.`, `${Sim.cn(p)} 정글 펫 완전 성장! ${p.name}, 이제 강화된 강타를 씁니다.`])); }
     });
   },
 };
