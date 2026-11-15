@@ -126,7 +126,8 @@ const Skills = {
     if (this.cache[c]) return this.cache[c];
     const ch = (typeof Champions !== 'undefined' && Champions.byId[c]) || {}, sp = ch.spells || [], t = this.T[c] && this.T[c].split(' ');
     return (this.cache[c] = this.KEYS.map((key, i) => {
-      const s = sp.find(x => x.key === key) || {}, [kind, shape = '', cc = ''] = t ? t[i].split('.') : [];
+      const s = sp.find(x => x.key === key) || {}; let [kind, shape = '', cc = ''] = t ? t[i].split('.') : [];
+      if (cc === 'global') { shape = 'global'; cc = ''; }   // 'atk.line.global' = 맵 전체를 가로지르는 직선 궁
       const names = (s.name || key).split(' / ');
       return { key, name: names[0], mega: names[1] || null, icon: s.icon || ch.icon, ...(t ? { kind, shape: shape === 'self' ? '' : shape, cc } : this.auto(s, key)) };
     }));
