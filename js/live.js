@@ -114,6 +114,8 @@ const Live = {
       Rift.TOWER[k][l].forEach((n, i) => { const [x, y] = Rift.pos(n); out.push(`<circle class="tw ${k.toLowerCase()}" data-tw="${k}-${l}-${i}" cx="${x}" cy="${y}" r="1.25"/>`); });
       const [x, y] = Rift.INHIB[k][l]; out.push(`<circle class="ih ${k.toLowerCase()}" data-ih="${k}-${l}" cx="${x}" cy="${y}" r="1.4"/>`);
     }));
+    // 쌍둥이 포탑
+    ['B', 'R'].forEach(k => { const nx = Rift.pos(k === 'B' ? 'bN' : 'rN'); [0, 1].forEach(ti => out.push(`<circle class="tw ${k.toLowerCase()}" data-nt="${k}-${ti}" cx="${nx[0] + (k === 'B' ? 3 : -3) * (ti ? -1 : 1)}" cy="${nx[1] + (k === 'B' ? -3 : 3)}" r="1.1"/>`)); });
     return out.join('');
   },
   // 한 틱(경기 1초) = 실제 0.1초 / 배속 (1배속 = 경기 10초가 실제 1초). 화면 프레임마다 시간을 쌓고, 한 틱이 차면 그 프레임에서 바로 다음 틱을 계산한다
@@ -189,6 +191,7 @@ const Live = {
     if (im.complete && im.naturalWidth) { c.save(); c.beginPath(); c.arc(x, y, r - 1, 0, Math.PI * 2); c.clip(); c.drawImage(im, x - r, y - r, r * 2, r * 2); c.restore(); }
     c.lineWidth = 2.5; c.strokeStyle = stroke; c.beginPath(); c.arc(x, y, r - 1, 0, Math.PI * 2); c.stroke(); c.restore();
   },
+  MOFF: [[0, 0], [.9, .5], [-.8, .6], [.3, -.9], [-.9, -.5], [1.2, -.6], [-.2, 1.2], [.2, -1.7]],   // 미니언 점 자리 (맵 %)
   paint(g, f) {
     const c = this.ctx; if (!c) return;
     const W = this.mw, H = this.mh, X = v => v * W / 100, Y = v => v * H / 100, now = g.t + (g.over ? 0 : f), R = W * .024 / (1 + ((this.zm ? this.zm.s : 1) - 1) * .45), TAU = Math.PI * 2;
@@ -228,6 +231,12 @@ const Live = {
         c.fillStyle = gr; c.beginPath(); c.arc(x, y, rr, 0, TAU); c.fill();
       }
     }
+    // 미니언 웨이브: 무리마다 남은 수만큼 작은 점 (슈퍼 미니언이 낀 무리는 큰 점 하나 더). 틱 사이는 걸어온 만큼 이어 그린다
+    if (g.wv) for (const l of Sim.LANES3) for (const k of ['B', 'R']) for (const w of g.wv[l][k]) {
+      const a = w.pp || w.p, px = a[0] + (w.p[0] - a[0]) * (g.over ? 1 : f), py = a[1] + (w.p[1] - a[1]) * (g.over ? 1 : f), n = Math.min(8, Math.ceil(w.n)), r = Math.max(1.6, R * .17);
+      c.fillStyle = k === 'B' ? '#7db8ff' : '#ff8d9b'; c.strokeStyle = 'rgba(5,8,14,.9)'; c.lineWidth = 1;
+      for (let i = 0; i < n; i++) { const o = this.MOFF[i]; c.beginPath(); c.arc(X(px + o[0]), Y(py + o[1]), i === 0 && w.sup ? r * 1.9 : r, 0, TAU); c.fill(); c.stroke(); }
+    }
     // 시야 보기: 한 팀을 고르면 그 팀 시야 밖은 어둡게, 안 보이는 상대는 숨긴다. 양 팀은 각 팀 시야를 옅은 색으로
     const vm = this.vmode, srcOf = k => typeof Vision !== 'undefined' ? Vision.sources(g, k) : [];
     if (vm === 'B' || vm === 'R') {
@@ -253,6 +262,20 @@ const Live = {
     for (const { p, pos } of P) {
       const t = p.hitAt === g.t && p.hitTo && where.get(p.hitTo); if (!t) continue;
       c.strokeStyle = `rgba(${col(p.side)},${(.75 - f * .5).toFixed(2)})`; c.lineWidth = p.rng > 5 ? 1.6 : 2.6; c.beginPath(); c.moveTo(X(pos[0]), Y(pos[1])); c.lineTo(X(t[0]), Y(t[1])); c.stroke();
+    }
+    // 포탑: 깎인 체력 막대(외곽 포탑은 14분까지 방패 5칸) · 이번 1초에 쏜 포탑은 대상까지 노란 선
+    if (g.tw) for (const k of ['B', 'R']) for (const tw of Sim.twList(g, k)) {
+      const x = X(tw.pos[0]), y = Y(tw.pos[1]), st = g.tw[tw.key];
+      if (tw.hp < 1) {
+        const bw = R * 2, bh = Math.max(3, R * .2), bx = x - bw / 2, by = y - R * .95;
+        c.fillStyle = 'rgba(5,8,14,.85)'; c.fillRect(bx - 1, by - 1, bw + 2, bh + 2); c.fillStyle = k === 'B' ? '#3b8cff' : '#ef4b5f'; c.fillRect(bx, by, bw * Math.max(0, tw.hp), bh);
+        if (tw.i === 0 && g.t < 840) { c.fillStyle = 'rgba(5,8,14,.9)'; for (let i = 1; i < 5; i++) c.fillRect(bx + bw * i / 5 - .5, by, 1, bh); }
+      }
+      if (st && st.at === g.t && st.to) {
+        const t = st.to.role ? where.get(st.to) : st.to.p; if (!t) continue;
+        c.strokeStyle = `rgba(255,214,90,${(.95 - f * .6).toFixed(2)})`; c.lineWidth = st.to.role ? 2.6 : 1.4; c.beginPath(); c.moveTo(x, y); c.lineTo(X(t[0]), Y(t[1])); c.stroke();
+        if (st.to.role) { c.strokeStyle = `rgba(255,120,60,${(.8 - f * .5).toFixed(2)})`; c.lineWidth = 2; c.beginPath(); c.arc(X(t[0]), Y(t[1]), R * 1.25, 0, TAU); c.stroke(); }
+      }
     }
     // 챔피언: 아래쪽에 있는 선수가 위에 그려진다
     P.sort((a, b) => a.pos[1] - b.pos[1]);
@@ -307,6 +330,7 @@ const Live = {
       Rift.TOWER[k][l].forEach((n, i) => { const c = el.querySelector(`[data-tw="${k}-${l}-${i}"]`); if (c) c.classList.toggle('down', g.side[k].thp[l][i] <= 0); });
       const ih = el.querySelector(`[data-ih="${k}-${l}"]`); if (ih) ih.classList.toggle('down', !g.side[k].inhib[l]);
     }));
+    ['B', 'R'].forEach(k => g.side[k].ntp.forEach((h, ti) => { const c = el.querySelector(`[data-nt="${k}-${ti}"]`); if (c) c.classList.toggle('down', h <= 0); }));
     // 킬·오브젝트 로그(맵 오른쪽 위, 최근 5개) + 가운데 알림은 새 사건마다 한 번씩
     set('.lv-klog', g.feed.slice(-5).reverse().map(f => f.obj
       ? `<div class="lv-kl ${f.side === 'B' ? 'b' : 'r'}"><span>${Sim.clock(f.t)}</span>${G.team(g.side[f.side].t, 'xs')}<i>›</i>${this.ico(f.icon)}</div>`
