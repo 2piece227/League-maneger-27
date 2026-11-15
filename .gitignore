@@ -5,3 +5,6 @@ tools/scrape/.cache/
 tools/scrape/.env
 tools/scrape/out/
 screenshots/
+chprof/
+chprof2/
+chprof3/
