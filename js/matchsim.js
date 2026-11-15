@@ -534,6 +534,7 @@ const Sim = {
       // 서로 붙어 있도록 중심을 참가자 쪽으로
       const live = mem.filter(p => !p.dead && !p.fled);
       if (live.length) f.at = [live.reduce((a, p) => a + p.pos[0], 0) / live.length, live.reduce((a, p) => a + p.pos[1], 0) / live.length];
+      if (typeof Skills !== 'undefined') Skills.cast(g, f, mem);   // 스킬 연출 (결과에는 영향 없음)
       this.form(g, f, live);
     });
     g.fights.filter(f => f.done).forEach(f => this.fightEnd(g, f));
@@ -622,7 +623,6 @@ const Sim = {
     const star = f.kb && [...f.kb.entries()].filter(([p]) => p.side === wk).sort((a, b) => b[1] - a[1])[0];
     if (star && star[1] >= 2 && g.r() < .8) {
       const [p] = star, R = this.rName(p);
-      g.fx.push({ type: 'ult', side: p.side, at: [...f.at], t: g.t, dur: 2.6, c: p.c, name: R });   // 한타를 가른 궁: 맵에 챔피언 · 궁 이름
       this.say(g, 'cast', res.big ? `${p.name}! ${this.cn(p)}의 ${this.josa(R, '으로', '로')} 한타를 승리합니다!` : `${p.name}의 ${R}! 진영을 휩쓸며 ${f.where ? f.where + ' ' : ''}교전을 가져옵니다!`);
       if (res.big && g.r() < .6) this.say(g, 'hype', this.pick(g, [`와 이건 ${this.josa(p.name, '이', '가')} 다 했어요! ${R} 각을 너무 잘 봤습니다!`, `${p.name} 미쳤습니다! 저 ${R} 하나로 한타가 끝났어요!`]));
     }
