@@ -81,6 +81,7 @@ const Live = {
           <div class="seg lv-mode" title="하이라이트: 평소에는 빠르게 넘기고, 교전 · 오브젝트 · 순간이동 때는 느리게 보여 주며 한타는 확대합니다">${[['hl', '하이라이트'], ['full', '전체 보기']].map(([m, n]) => `<button class="${this.mode === m ? 'on' : ''}" data-m="${m}">${n}</button>`).join('')}</div>
           <div class="lv-visrow"><div class="seg lv-vis" title="시야 보기: 와드와 시야가 닿는 곳. 한 팀을 고르면 그 팀이 못 보는 곳은 어둡게, 안 보이는 상대는 숨깁니다">${[['off', '시야 끄기'], ['all', '양 팀'], ['B', B.short], ['R', R.short]].map(([m, n]) => `<button class="${this.vmode === m ? 'on' : ''}" data-v="${m}">${UI.esc(n)}</button>`).join('')}</div><span class="lv-vispct"></span></div>
           <div class="lv-info">${S.series.bo > 1 ? `Bo${S.series.bo} · ${S.game}세트` : '단판'} · ${S.official ? '공식 경기' : '연습 경기'}</div>
+          <div class="lv-graph" title="골드 차이 흐름 (위 = 블루 우세, 아래 = 레드 우세) · 점: 드래곤 · 바론 · 큰 한타"></div>
           <div class="lv-evs"></div>
           <div class="lv-comm"></div>
         </div>
@@ -328,6 +329,17 @@ const Live = {
       const em = q('em'); em.className = a.gold >= b.gold ? 'b' : 'r'; em.textContent = `${a.gold >= b.gold ? '◀' : '▶'} ${(Math.abs(a.gold - b.gold) / 1000).toFixed(1)}K`;
       [['.its:not(.r)', a], ['.its.r', b]].forEach(([s2, p]) => { const n = q(s2), h = this.inventory(p); if (n._h !== h) { n._h = h; n.innerHTML = h; } });
     });
+    // 골드 차이 그래프: 20초마다 기록, 사건 점(드래곤 · 바론 · 4킬 이상 한타)
+    const lh = (g._lh ||= []); if (!lh.length || g.t - lh[lh.length - 1][0] >= 20 || g.over) { if (!lh.length || lh[lh.length - 1][0] !== g.t) lh.push([g.t, Sim.lead(g, 'B')]); }
+    if (g.t % 20 === 0 || g.over) {
+      const T = Math.max(1500, g.t), M = Math.max(3000, ...lh.map(x => Math.abs(x[1]))), px = t => (t / T * 100).toFixed(1), py = v => (20 - v / M * 18).toFixed(1);
+      const pts = lh.map(([t, v]) => `${px(t)},${py(v)}`).join(' '), area = `0,20 ${pts} ${px(lh[lh.length - 1][0])},20`;
+      const dots = g.ev.filter(e => /drag|baron|elder/.test(e.kind) || /드래곤|바론/.test(e.txt)).map(e => `<circle cx="${px(e.t)}" cy="${e.side === 'B' ? 3 : 37}" r="1.6" class="${e.side === 'B' ? 'b' : 'r'}"><title>${Sim.clock(e.t)} ${UI.esc(e.txt)}</title></circle>`).join('');
+      const kills = []; g.kills.forEach(k => { const last = kills[kills.length - 1]; if (last && k.t - last.t < 15) { last.n++; last[k.k.side]++; } else kills.push({ t: k.t, n: 1, B: k.k.side === 'B' ? 1 : 0, R: k.k.side === 'R' ? 1 : 0 }); });
+      const fights = kills.filter(x => x.n >= 4).map(x => `<rect x="${(+px(x.t) - .6).toFixed(1)}" y="17" width="1.2" height="6" class="${x.B >= x.R ? 'b' : 'r'}"><title>${Sim.clock(x.t)} 한타 ${x.B}:${x.R}</title></rect>`).join('');
+      const lead = Sim.lead(g, 'B');
+      set('.lv-graph', `<div class="lv-graph-h"><span>골드 차이</span><b class="${lead >= 0 ? 'b' : 'r'}">${lead >= 0 ? UI.esc(g.side.B.t.short) : UI.esc(g.side.R.t.short)} +${(Math.abs(lead) / 1000).toFixed(1)}K</b></div><svg viewBox="0 0 100 40" preserveAspectRatio="none"><line x1="0" y1="20" x2="100" y2="20" class="mid"/><clipPath id="lvgB"><rect x="0" y="0" width="100" height="20"/></clipPath><clipPath id="lvgR"><rect x="0" y="20" width="100" height="20"/></clipPath><polygon points="${area}" class="ab" clip-path="url(#lvgB)"/><polygon points="${area}" class="ar" clip-path="url(#lvgR)"/><polyline points="${pts}" class="ln"/>${fights}${dots}</svg>`);
+    }
     set('.lv-evs', g.ev.slice(-7).reverse().map(e => `<div class="lv-ev ${e.side === 'B' ? 'b' : 'r'}"><span>${Sim.clock(e.t)}</span>${this.ico(e.icon)}<b>${UI.esc(g.side[e.side].t.short)}</b> ${UI.esc(e.txt)}</div>`).join('') || '<p class="cr-dim">오브젝트·포탑 기록</p>');
     const comm = $('.lv-comm', el);
     if (comm.dataset.n != g.comm.length) {
