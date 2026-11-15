@@ -301,7 +301,7 @@ const Proc = {
 // 조건(cond)·대상(pick)은 이름으로 데이터에서 고르고, 실제 판정은 아래 함수가 한다.
 const Events = {
   defs: null,
-  MEDIA: ['인벤', '포모스', '디스이즈게임', '스포츠경향', '데일리e스포츠'],
+  MEDIA: ['협곡일보', 'e스포츠 투데이', '게임인사이트', '롤포커스', '스포츠 아레나'],   // 가상 매체 (실제 언론사 이름으로 기사를 지어내지 않는다)
 
   async load() {
     if (this.defs) return this.defs;
