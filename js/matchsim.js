@@ -744,7 +744,8 @@ const Sim = {
       const k = p.side, deadK = g.pl.filter(q => q.side === k && q.dead).length, deadO = g.pl.filter(q => q.side !== k && q.dead).length;
       if (o !== 'baron' && (deadK - deadO >= 2 + (pri > 0 ? 1 : 0) || (1 / (1 + Math.exp(-(this.tpow(g, k) - this.tpow(g, this.other(k))) / 13)) < (pri > 0 ? .2 : pri < 0 ? .5 : .33)))) continue;   // 우선 오브젝트는 끝까지, 나머지는 쉽게 내준다
       const pit = Rift.pos(this.PIT[o]), spot = [pit[0] + p.off[0], pit[1] + p.off[1]];
-      return g.t >= go ? spot : this.toward(spot, p.side, 6);             // 준비가 끝나기 전에는 강 입구에서 대기
+      const door = Rift.MOUTH[this.PIT[o]] || pit;
+      return g.t >= go ? spot : this.toward(spot, p.side, 6);             // 준비가 끝나기 전에는 둥지 입구 앞 강가에서 대기 (둥지 뒤 정글 벽 너머가 아니라)
     }
     return null;
   },
@@ -754,6 +755,7 @@ const Sim = {
       const ob = g.obj[o], pit = Rift.pos(this.PIT[o]), ready = k => g.t >= ((ob.go && ob.go[k]) || ob.at);
       const door = Rift.MOUTH[this.PIT[o]] || pit, inPit = k => this.near(g, k, pit, 16).filter(p => this.reach(p.pos, door, 7));   // 둥지 안이나 입구 앞까지 온 선수만 (벽 건너편은 아직 안 온 것)
       const nb = ready('B') ? inPit('B') : [], nr = ready('R') ? inPit('R') : [];
+      const hitters = ps => ps.filter(p => Rift.los(p.pos, pit) ? this.dist(p.pos, pit) <= 12 : Rift.wdist(p.pos, pit) <= 12);   // 실제로 몬스터를 치는 선수: 둥지 안 · 벽에 가리지 않은 곳
       let wk = null;
       if (g.fights.some(f => this.dist(f.at, pit) < 22)) continue;          // 둥지 앞에서 싸우는 중에는 못 친다
       if (nb.length && nr.length && !ob.fought) {
@@ -763,15 +765,15 @@ const Sim = {
       } else if (nb.length && nr.length) {
         const db = this.tpow(g, 'B', nb) + nb.length * 6 - this.tpow(g, 'R', nr) - nr.length * 6, k = db > 0 || (db === 0 && g.r() < .5) ? 'B' : 'R';
         this.near(g, this.other(k), pit, 20).forEach(p => this.retreat(g, p, 16));
-        ob.prog[k] = (ob.prog[k] || 0) + 10 * this.near(g, k, pit, 20).length; if (ob.prog[k] >= this.OBJ_NEED[o]) wk = k;
+        ob.prog[k] = (ob.prog[k] || 0) + 10 * hitters(k === 'B' ? nb : nr).length; if (ob.prog[k] >= this.OBJ_NEED[o]) wk = k;
       } else for (const [k, ps] of [['B', nb], ['R', nr]]) {
-        if (!ps.length) continue;
-        ob.prog[k] = (ob.prog[k] || 0) + 10 * ps.length;
+        const hs = hitters(ps); if (!hs.length) continue;
+        ob.prog[k] = (ob.prog[k] || 0) + 10 * hs.length;
         if (ob.prog[k] >= this.OBJ_NEED[o]) { wk = k; if (g.r() < .5) this.say(g, 'anal', `${this.josa(g.side[this.other(k)].t.short, '이', '가')} 대응을 못 합니다. ${this.josa(g.side[k].t.short, '이', '가')} ${this.josa(this.OBJ[o], '을', '를')} 챙겨요.`); }
       }
       if (!wk) continue;
       // 오브젝트 도둑: 상대가 치는 걸 가로챈다
-      const thief = this.near(g, this.other(wk), pit, 16).find(p => (p.fx || {}).steal && g.r() < p.fx.steal);
+      const thief = this.near(g, this.other(wk), pit, 12).find(p => Rift.los(p.pos, pit) && (p.fx || {}).steal && g.r() < p.fx.steal);
       if (thief) { this.say(g, 'cast', `${thief.name}의 스틸! ${this.josa(this.OBJ[o], '을', '를')} 빼앗아 갑니다!`); wk = thief.side; }
       const s = g.side[wk];
       ob.prog = {}; if (o !== 'grubs' || (ob.left ?? 3) <= 1) ob.fought = false;
@@ -991,6 +993,15 @@ const Sim = {
       if (p.hold && p.hold.until <= g.t) p.hold = null;
       let to = p.hold ? p.hold.to : p.goal; if (!to) return;
       if (this.dist(p.pos, to) < 2.5) to = this.clampP([to[0] + Math.sin((g.t + i * 13) / 6) * 1.1, to[1] + Math.cos((g.t + i * 7) / 8) * 1.1]);
+      // 싸우지 않는 상대와는 몸이 겹치지 않게: 2.6 안에 들어오면 비켜 간다 (그대로 뚫고 지나가지 않는다)
+      if (this.AVOID !== false && !g.fights.some(f => f.mem.has(p))) {
+        const e = g.pl.filter(q => q.side !== p.side && !q.dead && !q.recall && !g.fights.some(f => f.mem.has(q)) && this.dist(q.pos, p.pos) < 4).sort((a, b) => this.dist(a.pos, p.pos) - this.dist(b.pos, p.pos))[0];
+        const d = e && (this.dist(e.pos, p.pos) || .1), face = e && this.laneMate(p, e);
+        // 라인에서 마주 선 상대: 사거리만큼 떨어져 선다 (같은 자리에 겹쳐 서지 않는다)
+        if (e && face) { if (d < 3.6) to = this.toward(e.pos, p.side, 4); }
+        else if (e && d < 3.2) { const ax = (p.pos[0] - e.pos[0]) / d, ay = (p.pos[1] - e.pos[1]) / d, tx = to[0] - p.pos[0], ty = to[1] - p.pos[1], sd = (i % 2 ? 1 : -1);
+          if (tx * -ax + ty * -ay > 0 || d < 2.7) to = this.clampP([p.pos[0] + ax * 2 - ay * 3 * sd, p.pos[1] + ay * 2 + ax * 3 * sd]); }
+      }
       const dv = p.dash >= g.t && p.hold ? v * this.KIND[p.kind].dash : v; p.budget = dv;
       this.walk(p, to, dv);
     });
@@ -1075,12 +1086,12 @@ const Sim = {
       if (!ok(b)) return;
       const d = this.dist(a.pos, b.pos); if (d > 5.5 || (best && d >= best.d)) return;
       if (a.role === b.role && a.role !== 'JGL' && (m < 14 || ['TOP', 'BOT'].includes(a.role)) && this.distLane(a.pos, this.LANE_OF[a.role]) < 6) return;      // 라인 맞상대는 laning에서
-      if (m < 14 && ['BOT', 'SUP'].includes(a.role) && ['BOT', 'SUP'].includes(b.role)) return;
+      if (m < 14 && ['BOT', 'SUP'].includes(a.role) && ['BOT', 'SUP'].includes(b.role)) return;   // 바텀 2:2는 라인에서만 laning으로
       if (!Rift.los(a.pos, b.pos)) return;
       // 방금 판단을 내린 사이(대치 중)면 붙지 않고 거리를 벌린다
       const face = this.laneFace(a, b);   // 같은 라인에서 마주 선 건 정상적인 대치: 거리를 벌리지 않고, 싸움도 가끔만
       if ((a.metAt || 0) > g.t && (b.metAt || 0) > g.t) { if (d < 4.5 && !face) [a, b].forEach(x => { if (!x.hold) this.retreat(g, x, 6); }); return; }
-      best = { a, b, d, face };
+      best = { a, b, d, face, touch: d < 3 && !face };
     }); });
     if (!best) return;
     const at = [(best.a.pos[0] + best.b.pos[0]) / 2, (best.a.pos[1] + best.b.pos[1]) / 2];
@@ -1100,7 +1111,10 @@ const Sim = {
     const lane = ['top', 'mid', 'bot'].sort((x, y) => this.distLane(at, x) - this.distLane(at, y))[0];
     this.fightAt(g, at, 14, { where: home ? '본진' : this.distLane(at, lane) < 6 ? this.laneKo(lane) : '정글' });
   },
+  // 라인 위 대치 (후반 미드 대치 포함): 싸움은 가끔만
   laneFace(a, b) { return ['top', 'mid', 'bot'].some(l => this.distLane(a.pos, l) < 5 && this.distLane(b.pos, l) < 5); },
+  // 라인 맞상대끼리 라인 위에서 마주 선 것: 사거리만큼 떨어져 선다
+  laneMate(a, b) { const ln = p => this.LANE_OF[p.role]; return ['top', 'mid', 'bot'].some(l => ln(a) === l && ln(b) === l && this.distLane(a.pos, l) < 5 && this.distLane(b.pos, l) < 5); },
   // 본진 위협: k팀의 쌍둥이 포탑 · 넥서스 앞에 상대가 둘 이상 와 있나 (억제기까지 넣으면 본진 앞 대치가 길어져 경기가 늘어진다 — DEF 2)
   threat(g, k) {
     const c = (g.thr ||= {}); if (c.t === g.t && c[k] !== undefined) return c[k]; if (c.t !== g.t) { g.thr = { t: g.t }; }
