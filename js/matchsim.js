@@ -390,7 +390,8 @@ const Sim = {
     // 전장 어디든 합류하는 궁극기 (쉔 · 트페 · 갈리오 · 판테온 · 녹턴 · 탈리야)
     if (A.length + Bp.length >= 4) g.pl.filter(p => this.ULT_JOIN.includes(p.c) && this.ultReady(g, p) && !A.includes(p) && !Bp.includes(p) && this.dist(p.pos, at) > 30 && g.r() < .5).forEach(p => {
       const to = this.toward(at, p.side, 4); this.useUlt(g, p);
-      g.fx.push({ type: 'tp', side: p.side, at: to, from: [...p.pos], t: g.t, dur: 3 }); p.tpCh = { to, at: g.t + 3 }; p.hold = null;
+      g.fx.push({ type: 'tp', side: p.side, at: to, from: [...p.pos], t: g.t, dur: 3, c: p.c, name: this.rName(p) }); p.tpCh = { to, at: g.t + 3 }; p.hold = null;
+      if (p.c === 'Nocturne') g.fx.push({ type: 'dark', side: p.side, at: to, t: g.t, dur: 4 });   // 녹턴 궁: 상대 시야가 어두워진다
       this.say(g, 'cast', `${p.name}, ${this.josa(this.rName(p), '으로', '로')} 날아듭니다! ${this.cn(p)} 합류!`);
     });
     let bonus = opt.bonus ? (opt.bonus.side === 'B' ? opt.bonus.v : -opt.bonus.v) : 0;
@@ -524,6 +525,7 @@ const Sim = {
       g.pl.filter(v => v.fled === f.id && !v.dead && v.hp < .22).forEach(v => {
         const s = g.pl.find(p => p.side !== v.side && this.ULT_SNIPE.includes(p.c) && this.ultReady(g, p));
         if (!s || g.r() > .3) return;
+        g.fx.push({ type: 'beam', side: s.side, from: [...s.pos], at: [...v.pos], t: g.t, dur: 1.6, c: s.c, name: this.rName(s) });   // 맵을 가로지르는 궁
         this.useUlt(g, s); this.kill(g, s, v, [], true); f.kills[s.side]++;
         this.say(g, 'cast', `${s.name}, ${this.rName(s)}! 도망가던 ${this.josa(v.name, '을', '를')} 끝까지 잡아냅니다!`);
       });
@@ -618,6 +620,7 @@ const Sim = {
     const star = f.kb && [...f.kb.entries()].filter(([p]) => p.side === wk).sort((a, b) => b[1] - a[1])[0];
     if (star && star[1] >= 2 && g.r() < .8) {
       const [p] = star, R = this.rName(p);
+      g.fx.push({ type: 'ult', side: p.side, at: [...f.at], t: g.t, dur: 2.6, c: p.c, name: R });   // 한타를 가른 궁: 맵에 챔피언 · 궁 이름
       this.say(g, 'cast', res.big ? `${p.name}! ${this.cn(p)}의 ${this.josa(R, '으로', '로')} 한타를 승리합니다!` : `${p.name}의 ${R}! 진영을 휩쓸며 ${f.where ? f.where + ' ' : ''}교전을 가져옵니다!`);
       if (res.big && g.r() < .6) this.say(g, 'hype', this.pick(g, [`와 이건 ${this.josa(p.name, '이', '가')} 다 했어요! ${R} 각을 너무 잘 봤습니다!`, `${p.name} 미쳤습니다! 저 ${R} 하나로 한타가 끝났어요!`]));
     }

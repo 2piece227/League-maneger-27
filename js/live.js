@@ -3,6 +3,7 @@
 const Live = {
   g: null, speed: 1, timer: null, raf: null, tickAt: 0, feedSeen: 0, banners: [], bannerOn: false,
   SPEEDS: [1, 2, 4, 8],
+  vmode: (() => { try { return localStorage.getItem('lm27.lvvis') || 'off'; } catch (e) { return 'off'; } })(),   // 시야 보기: off · all(양 팀) · B · R
   mode: (() => { try { return localStorage.getItem('lm27.lvmode') || 'hl'; } catch (e) { return 'hl'; } })(),   // hl 하이라이트 · full 전체 보기
   // 하이라이트 보기의 진행 속도 배율: 조용할 때 2배, 장면이 클수록 느리게 (5인 이상 한타는 0.15배 = 거의 실시간)
   pace(g) {
@@ -78,6 +79,7 @@ const Live = {
             <button class="btn-ghost lv-skip">결과로</button>
           </div>
           <div class="seg lv-mode" title="하이라이트: 평소에는 빠르게 넘기고, 교전 · 오브젝트 · 순간이동 때는 느리게 보여 주며 한타는 확대합니다">${[['hl', '하이라이트'], ['full', '전체 보기']].map(([m, n]) => `<button class="${this.mode === m ? 'on' : ''}" data-m="${m}">${n}</button>`).join('')}</div>
+          <div class="lv-visrow"><div class="seg lv-vis" title="시야 보기: 와드와 시야가 닿는 곳. 한 팀을 고르면 그 팀이 못 보는 곳은 어둡게, 안 보이는 상대는 숨깁니다">${[['off', '시야 끄기'], ['all', '양 팀'], ['B', B.short], ['R', R.short]].map(([m, n]) => `<button class="${this.vmode === m ? 'on' : ''}" data-v="${m}">${UI.esc(n)}</button>`).join('')}</div><span class="lv-vispct"></span></div>
           <div class="lv-info">${S.series.bo > 1 ? `Bo${S.series.bo} · ${S.game}세트` : '단판'} · ${S.official ? '공식 경기' : '연습 경기'}</div>
           <div class="lv-evs"></div>
           <div class="lv-comm"></div>
@@ -85,6 +87,7 @@ const Live = {
       </div></div>`;
     $('.lv-speed', el).onclick = e => { const b = e.target.closest('button'); if (!b) return; this.acc = this.acc * this.speed / +b.dataset.s; this.speed = +b.dataset.s; $$('.lv-speed button', el).forEach(x => x.classList.toggle('on', x === b)); };
     $('.lv-mode', el).onclick = e => { const b = e.target.closest('button'); if (!b) return; this.mode = b.dataset.m; try { localStorage.setItem('lm27.lvmode', this.mode); } catch (x) {} $$('.lv-mode button', el).forEach(x => x.classList.toggle('on', x === b)); };
+    $('.lv-vis', el).onclick = e => { const b = e.target.closest('button'); if (!b) return; this.vmode = b.dataset.v; try { localStorage.setItem('lm27.lvvis', this.vmode); } catch (x) {} $$('.lv-vis button', el).forEach(x => x.classList.toggle('on', x === b)); };
     $('.lv-pause', el).onclick = e => { if (g.over) return; this.playing = !this.playing; e.target.textContent = this.playing ? '일시정지' : '계속'; };
     $('.lv-skip', el).onclick = () => { this.playing = false; while (!g.over) Sim.step(g); this.feedSeen = g.feed.length; this.banners = []; this.capQ = []; this.capSeen = g.comm.length; this.acc = 1e9; this.draw(); this.finish(); };
     const ex = $('.lv-exit', el); if (ex) ex.onclick = () => { this.playing = false; Router.go('match-draft'); };
@@ -178,6 +181,13 @@ const Live = {
   },
   // 맵 위 챔피언 · 효과를 캔버스 한 장에 그린다 (프레임마다). f = 이번 틱의 진행도 0~1
   icon(p) { const m = (this.imgs ||= new Map()); let im = m.get(p.c); if (!im) { im = new Image(); im.src = Champions.byId[p.c].icon; m.set(p.c, im); } return im; },
+  // 효과용 챔피언 얼굴 (동그라미 + 테두리)
+  face(c, champ, x, y, r, stroke, a = 1) {
+    const im = this.icon({ c: champ }); c.save(); c.globalAlpha = Math.max(0, Math.min(1, a));
+    c.fillStyle = '#0b111d'; c.beginPath(); c.arc(x, y, r, 0, Math.PI * 2); c.fill();
+    if (im.complete && im.naturalWidth) { c.save(); c.beginPath(); c.arc(x, y, r - 1, 0, Math.PI * 2); c.clip(); c.drawImage(im, x - r, y - r, r * 2, r * 2); c.restore(); }
+    c.lineWidth = 2.5; c.strokeStyle = stroke; c.beginPath(); c.arc(x, y, r - 1, 0, Math.PI * 2); c.stroke(); c.restore();
+  },
   paint(g, f) {
     const c = this.ctx; if (!c) return;
     const W = this.mw, H = this.mh, X = v => v * W / 100, Y = v => v * H / 100, now = g.t + (g.over ? 0 : f), R = W * .024 / (1 + ((this.zm ? this.zm.s : 1) - 1) * .45), TAU = Math.PI * 2;
@@ -193,13 +203,49 @@ const Live = {
         const pc = e.side === 'B' ? '197,140,255' : '255,154,208';
         c.lineWidth = 2; c.strokeStyle = `rgba(${pc},${.5 + q * .5})`; c.fillStyle = `rgba(${pc},${.12 + q * .2})`; c.beginPath(); c.arc(x, y, R * (2 - q * .7), 0, TAU); c.fill(); c.stroke();
         c.strokeStyle = `rgba(${pc},${.8 * (1 - q)})`; c.beginPath(); c.arc(X(e.from[0]), Y(e.from[1]), R * (1 + q * .6), 0, TAU); c.stroke();
+        if (e.c) { this.face(c, e.c, x, y, R * (1.3 - q * .3), `rgb(${pc})`, .5 + q * .5); c.font = `700 ${Math.round(R * .85)}px sans-serif`; c.textAlign = 'center'; c.fillStyle = `rgba(${pc},1)`; c.fillText(e.name || '', x, y - R * 2.2); }
+      } else if (e.type === 'beam') {
+        // 맵을 가로지르는 궁: 쏜 곳에서 맞은 곳까지 빛줄기, 끝에 챔피언 얼굴
+        const fx0 = X(e.from[0]), fy0 = Y(e.from[1]), hx = fx0 + (x - fx0) * Math.min(1, q * 1.6), hy = fy0 + (y - fy0) * Math.min(1, q * 1.6), a = 1 - Math.max(0, q - .6) / .4;
+        c.lineCap = 'round'; c.strokeStyle = `rgba(255,236,160,${.35 * a})`; c.lineWidth = R * 1.1; c.beginPath(); c.moveTo(fx0, fy0); c.lineTo(hx, hy); c.stroke();
+        c.strokeStyle = `rgba(255,255,255,${.9 * a})`; c.lineWidth = 2.5; c.beginPath(); c.moveTo(fx0, fy0); c.lineTo(hx, hy); c.stroke();
+        this.face(c, e.c, hx, hy, R * 1.05, `rgb(${col(e.side)})`, a);
+      } else if (e.type === 'ult') {
+        // 한타를 가른 궁: 큰 고리 + 챔피언 얼굴 + 궁 이름
+        const a = 1 - Math.max(0, q - .7) / .3, rr = R * (2.2 + q * 1.6);
+        c.strokeStyle = `rgba(${col(e.side)},${.8 * a})`; c.lineWidth = 3; c.beginPath(); c.arc(x, y, rr, 0, TAU); c.stroke();
+        c.fillStyle = `rgba(255,220,140,${.12 * a})`; c.beginPath(); c.arc(x, y, rr, 0, TAU); c.fill();
+        this.face(c, e.c, x, y - rr - R * .2, R * 1.25, `rgb(${col(e.side)})`, a);
+        c.font = `700 ${Math.round(R * .95)}px sans-serif`; c.textAlign = 'center'; c.fillStyle = `rgba(255,236,170,${a})`; c.strokeStyle = `rgba(0,0,0,${.8 * a})`; c.lineWidth = 3;
+        c.strokeText(e.name || '', x, y - rr - R * 1.7); c.fillText(e.name || '', x, y - rr - R * 1.7);
+      } else if (e.type === 'dark') {
+        // 녹턴 궁: 맵 전체가 잠깐 어두워진다
+        c.fillStyle = `rgba(0,0,8,${.45 * (1 - q)})`; c.fillRect(0, 0, W, H);
       } else {
         const big = e.type === 'fight' ? 2 : 1.4, rr = R * big * (.6 + q), gr = c.createRadialGradient(x, y, 0, x, y, rr), a = 1 - q;
         gr.addColorStop(0, e.type === 'fight' ? `rgba(255,210,120,${.5 * a})` : `rgba(255,255,255,${.8 * a})`); gr.addColorStop(.6, `rgba(255,130,60,${.2 * a})`); gr.addColorStop(1, 'rgba(255,120,60,0)');
         c.fillStyle = gr; c.beginPath(); c.arc(x, y, rr, 0, TAU); c.fill();
       }
     }
-    const P = g.pl.map(p => ({ p, pos: this.at(p.trail, f) || p.pos })).filter(o => !o.p.dead);
+    // 시야 보기: 한 팀을 고르면 그 팀 시야 밖은 어둡게, 안 보이는 상대는 숨긴다. 양 팀은 각 팀 시야를 옅은 색으로
+    const vm = this.vmode, srcOf = k => typeof Vision !== 'undefined' ? Vision.sources(g, k) : [];
+    if (vm === 'B' || vm === 'R') {
+      const fog = this.fog ||= document.createElement('canvas'); fog.width = c.canvas.width; fog.height = c.canvas.height; const fc = fog.getContext('2d');
+      fc.setTransform(this.dpr, 0, 0, this.dpr, 0, 0); fc.fillStyle = 'rgba(2,4,10,.62)'; fc.fillRect(0, 0, W, H); fc.globalCompositeOperation = 'destination-out';
+      for (const [sx, sy, r] of srcOf(vm)) { const gx = X(sx), gy = Y(sy), rr = X(r), gd = fc.createRadialGradient(gx, gy, rr * .7, gx, gy, rr); gd.addColorStop(0, 'rgba(0,0,0,1)'); gd.addColorStop(1, 'rgba(0,0,0,0)'); fc.fillStyle = gd; fc.beginPath(); fc.arc(gx, gy, rr, 0, TAU); fc.fill(); }
+      fc.globalCompositeOperation = 'source-over'; c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.drawImage(fog, 0, 0); c.restore();
+    } else if (vm === 'all') {
+      for (const k of ['B', 'R']) { c.fillStyle = `rgba(${col(k)},.07)`; for (const [sx, sy, r] of srcOf(k)) { c.beginPath(); c.arc(X(sx), Y(sy), X(r), 0, TAU); c.fill(); } }
+    }
+    // 와드: 노란 마름모(투명 와드, 남은 시간만큼 테두리) · 분홍 마름모(제어 와드). 한 팀 보기에서는 그 팀 와드 + 그 팀 시야 안의 상대 제어 와드만
+    for (const w of g.wards || []) {
+      if ((vm === 'B' || vm === 'R') && w.side !== vm && !(w.type === 'control' && typeof Vision !== 'undefined' && Vision.seen(g, vm, w.at))) continue;
+      const x = X(w.at[0]), y = Y(w.at[1]), s = R * .55;
+      c.save(); c.translate(x, y); c.rotate(Math.PI / 4); c.fillStyle = w.type === 'control' ? '#ff4fa3' : '#ffd84a'; c.strokeStyle = `rgb(${col(w.side)})`; c.lineWidth = 1.6; c.fillRect(-s / 2, -s / 2, s, s); c.strokeRect(-s / 2, -s / 2, s, s); c.restore();
+      if (w.type === 'stealth') { const left = Math.max(0, Math.min(1, (w.until - now) / (w.until - w.t))); c.strokeStyle = 'rgba(255,216,74,.55)'; c.lineWidth = 1.2; c.beginPath(); c.arc(x, y, s * 1.15, -Math.PI / 2, -Math.PI / 2 + TAU * left); c.stroke(); }
+    }
+    const hide = (vm === 'B' || vm === 'R') && typeof Vision !== 'undefined' ? p => p.side !== vm && !Vision.seen(g, vm, p.pos) : () => false;
+    const P = g.pl.map(p => ({ p, pos: this.at(p.trail, f) || p.pos })).filter(o => !o.p.dead && !hide(o.p));
     const where = new Map(P.map(o => [o.p, o.pos]));
     // 공격선: 이번 1초에 누가 누구를 쳤나 (원거리는 가늘고 길게, 근접은 굵고 짧게 보인다)
     c.lineCap = 'round';
@@ -231,6 +277,7 @@ const Live = {
     const objs = k => { const s = g.side[k]; return [...s.drag.map(d => `<i title="${d[0]} 드래곤">${this.ico(d[1])}</i>`), s.grubs ? `<i title="공허 유충">${this.ico('grub')}<b>${s.grubs}</b></i>` : '', s.herald ? `<i title="전령">${this.ico('riftherald')}</i>` : '', s.baron ? `<i title="바론" class="${s.baronUntil > g.t ? 'bn' : 'off'}">${this.ico('baron')}</i>` : '']; };
     set('.lv-dr.b', objs('B').join('')); set('.lv-dr.r', objs('R').reverse().join(''));
     $('.lv-clock', el).textContent = Sim.clock(g.t);
+    const vis = g.vis || {}; set('.lv-vispct', `시야 장악 <b class="b">${UI.esc(g.side.B.t.short)} ${vis.B || 0}%</b> · <b class="r">${UI.esc(g.side.R.t.short)} ${vis.R || 0}%</b> · 와드 ${(g.wards || []).filter(w => w.side === 'B').length}:${(g.wards || []).filter(w => w.side === 'R').length}`);
     // 맵 위 오브젝트: 나와 있는 동안 둥지에 아이콘 (드래곤은 다음에 나올 속성)
     set('.lv-objs', ['drag', 'grubs', 'herald', 'baron'].filter(o => Sim.objUp(g, o)).map(o => {
       const [x, y] = Rift.pos(Sim.PIT[o]), n = g.side.B.drag.length + g.side.R.drag.length;

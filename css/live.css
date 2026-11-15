@@ -198,3 +198,9 @@
 @keyframes lvObjIn { from { transform: translate(-50%, -50%) scale(.3); opacity: 0; } to { transform: translate(-50%, -50%) scale(1); opacity: 1; } }
 
 .lv-line.hype b { color: #ff9d6b; }
+
+/* 시야 보기 */
+.lv-visrow { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin: 4px 0; }
+.lv-vis button { font-size: 11.5px; padding: 4px 8px; }
+.lv-vispct { font-size: 11.5px; color: var(--muted); }
+.lv-vispct b.b { color: #7fb0ff; } .lv-vispct b.r { color: #ff8796; }
