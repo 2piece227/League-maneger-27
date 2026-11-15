@@ -43,7 +43,7 @@ const Live = {
       this.build(el);
     } catch (e) {
       console.error('[live]', e);
-      el.innerHTML = `<div class="cr-page"><div class="card fx-empty"><b>경기 화면을 여는 중 문제가 생겼습니다</b><span>${UI.esc(String(e && e.message || e))}</span><a class="btn-ghost" href="#match-draft">밴픽 준비로</a></div></div>`;
+      el.innerHTML = `<div class="cr-page"><div class="card fx-empty"><b>경기 화면을 여는 중 문제가 생겼습니다</b><span>${UI.esc(String(e && e.message || e))}</span><a class="btn-ghost" href="#portal-overview">포털로</a></div></div>`;
     }
   },
   build(el) {
@@ -241,7 +241,7 @@ const Live = {
     // 시야 보기: 한 팀을 고르면 그 팀 시야 밖은 어둡게, 안 보이는 상대는 숨긴다. 양 팀은 각 팀 시야를 옅은 색으로
     const vm = this.vmode, srcOf = k => typeof Vision !== 'undefined' ? Vision.sources(g, k) : [];
     if (vm === 'B' || vm === 'R') {
-      const fog = this.fog ||= document.createElement('canvas'); fog.width = c.canvas.width; fog.height = c.canvas.height; const fc = fog.getContext('2d');
+      const fog = this.fog ||= document.createElement('canvas'); if (fog.width !== c.canvas.width || fog.height !== c.canvas.height) { fog.width = c.canvas.width; fog.height = c.canvas.height; } const fc = fog.getContext('2d'); fc.setTransform(1, 0, 0, 1, 0, 0); fc.globalCompositeOperation = 'source-over'; fc.clearRect(0, 0, fog.width, fog.height);
       fc.setTransform(this.dpr, 0, 0, this.dpr, 0, 0); fc.fillStyle = 'rgba(2,4,10,.74)'; fc.fillRect(0, 0, W, H); fc.globalCompositeOperation = 'destination-out';
       for (const [sx, sy, r] of srcOf(vm)) { const gx = X(sx), gy = Y(sy), rr = X(r), gd = fc.createRadialGradient(gx, gy, rr * .7, gx, gy, rr); gd.addColorStop(0, 'rgba(0,0,0,1)'); gd.addColorStop(1, 'rgba(0,0,0,0)'); fc.fillStyle = gd; fc.beginPath(); fc.arc(gx, gy, rr, 0, TAU); fc.fill(); }
       fc.globalCompositeOperation = 'source-over'; c.save(); c.setTransform(1, 0, 0, 1, 0, 0); c.drawImage(fog, 0, 0); c.restore();
@@ -507,8 +507,8 @@ const Live = {
   empty(el) {
     const S = App.state.draft, ready = S && S.phase === 'ready' && !(S.series.games.find(x => x.game === S.game) || {}).result;
     el.innerHTML = `<div class="cr-page">${Career.head('경기 관전', '밴픽과 전술을 확정하면 경기를 옵저버 화면으로 볼 수 있습니다.')}
-      <div class="card fx-empty"><b>${ready ? `${UI.esc(Draft.side(S, 'B').short)} vs ${UI.esc(Draft.side(S, 'R').short)} ${S.game}세트 준비 완료` : '관전할 경기가 없습니다'}</b><span>${ready ? '밴픽과 전술이 확정돼 있습니다.' : '밴픽 준비에서 밴픽을 마치거나, 코치에게 맡겨 바로 시작할 수 있습니다.'}</span>
-      <div style="display:flex;gap:10px;justify-content:center;margin-top:12px;flex-wrap:wrap">${ready ? '<button class="btn-primary lv-go">경기 시작</button>' : ''}<a class="btn-ghost" href="#match-draft">밴픽 준비</a><button class="${ready ? 'btn-ghost' : 'btn-primary'} lv-quick">빠른 연습 경기 (양 팀 코치 밴픽)</button></div></div></div>`;
+      <div class="card fx-empty"><b>${ready ? `${UI.esc(Draft.side(S, 'B').short)} vs ${UI.esc(Draft.side(S, 'R').short)} ${S.game}세트 준비 완료` : '관전할 경기가 없습니다'}</b><span>${ready ? '밴픽과 전술이 확정돼 있습니다.' : '경기날에는 계속 버튼이 경기로 바뀝니다. 연습으로 한 판 보려면 아래 버튼을 누르세요.'}</span>
+      <div style="display:flex;gap:10px;justify-content:center;margin-top:12px;flex-wrap:wrap">${ready ? '<button class="btn-primary lv-go">경기 시작</button>' : ''}<button class="${ready ? 'btn-ghost' : 'btn-primary'} lv-quick">빠른 연습 경기 (양 팀 코치 밴픽)</button></div></div></div>`;
     const go = $('.lv-go', el); if (go) go.onclick = () => { this.g = Sim.create(S, S.game); this.speed = 1; this.feedSeen = 0; this.render(el); };
     $('.lv-quick', el).onclick = () => {
       const my = Roster.team(), nm = Schedule.next(my.id, Clock.today()), opp = (nm && Schedule.opponent(nm, my.id)) || App.db.teams.find(t => t.league === my.league && t.id !== my.id);

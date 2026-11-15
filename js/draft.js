@@ -398,7 +398,7 @@ const Draft = {
     const S = this.st();
     // 오늘 경기가 있으면 준비 화면 대신 그 경기 밴픽으로 (경기로 버튼과 같은 흐름)
     if (!S && Season.today() && !this.missing().length) return this.matchDay();
-    if (!S) return this.setup(el);
+    if (!S) return Router.go('portal-overview');   // 진행 중인 밴픽이 없으면 (예전 '밴픽 준비' 화면은 없앴다)
     // 세트가 끝나고 라커룸 회의가 남아 있으면 그쪽으로
     if (App.state.locker && App.state.locker.key === S.series.key) return Router.go('match-locker');
     if (S.phase === 'draft') return this.board(el, S);

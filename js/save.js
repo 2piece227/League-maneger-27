@@ -58,7 +58,8 @@ const SaveSystem = {
 
   // 커리어를 바꿀 때(불러오기 · 새 커리어)는 페이지를 새로 읽어 메모리의 선수 데이터까지 원본으로 되돌린 뒤 그 상태로 들어간다
   PENDING: 'lm27.pending',
-  restart(p) { try { sessionStorage.setItem(this.PENDING, JSON.stringify(p)); } catch (e) { console.warn(e); } location.reload(); },
+  // 주소의 화면(#match-draft 등)을 지우고 새로 읽는다: 이전 커리어의 화면 주소가 새 커리어에 남지 않게
+  restart(p) { try { sessionStorage.setItem(this.PENDING, JSON.stringify(p)); } catch (e) { console.warn(e); } try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {} location.reload(); },
   // 새로 읽은 페이지에서: 미뤄 둔 커리어로 바로 들어간다
   resume() {
     let p = null; try { p = JSON.parse(sessionStorage.getItem(this.PENDING)); sessionStorage.removeItem(this.PENDING); } catch {}

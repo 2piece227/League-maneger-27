@@ -100,6 +100,10 @@ const Nav = {
       if (Router.pos > 0) UI.toast('경기가 끝날 때까지 다른 화면으로 이동할 수 없습니다');
       history.replaceState(null, '', '#' + MatchLock.home()); Router.onChange(); return;
     }
+    // 밴픽 · 경기 · 라커룸은 진행 중인 경기(공식전 · 스크림)가 있을 때만. 새로고침으로 주소만 남은 경우 등에는 포털로 (예전 '밴픽 준비' 화면이 다시 뜨던 문제)
+    if (!lock && MatchLock.ROUTES.includes(route) && !(typeof Live !== 'undefined' && Live.g && !Live.g.over && route === 'match-live') && !(route === 'match-draft' && (() => { try { return Season.today(); } catch (e) { return null; } })())) {
+      history.replaceState(null, '', '#' + this.DEFAULT); Router.onChange(); return;
+    }
     $('#screen-game').classList.toggle('locked', lock);
     $('#screen-game').classList.remove('menu-open');
     const { menu, tab } = hit;
