@@ -6,8 +6,8 @@
 //  - 갱 회피(Sim.wardOn)는 실제로 그 라인 강가 근처에 와드가 있을 때만
 const Vision = {
   // 와드 자리 (맵 %): 강가 · 둥지 입구 · 정글 입구. own: 블루 기준 자기 정글 쪽, foe: 상대 정글 쪽 (레드는 뒤집는다)
-  RIVER: [[19, 22], [81, 78], [43, 40], [57, 58], [36, 37], [63, 63], [46, 52], [54, 47], [13, 17], [87, 83], [29, 30], [71, 70]],
-  OWN: [[24, 58], [38, 70], [28, 44], [47, 80], [17, 40]],
+  RIVER: [[19, 22], [81, 78], [43, 40], [57, 58], [36, 37], [63, 63], [46, 52], [54, 47], [13, 17], [87, 83], [29, 30], [71, 70], [24, 27], [76, 73], [40, 33], [60, 67], [50, 50], [33, 44], [67, 56]],
+  OWN: [[24, 58], [38, 70], [28, 44], [47, 80], [17, 40], [33, 60], [58, 86], [12, 55], [44, 64]],
   LANE_PTS: { top: [[19, 22], [13, 17], [29, 30]], mid: [[43, 40], [57, 58], [46, 52], [54, 47]], bot: [[81, 78], [87, 83], [71, 70]] },
   mir: p => [100 - p[0], 100 - p[1]],
   spots(g, k) {
@@ -38,10 +38,13 @@ const Vision = {
       const mine = g.wards.filter(w => w.side === p.side), sp = this.spots(g, p.side);
       // 다음 오브젝트 앞이면 둥지 입구가 먼저
       const pref = objK ? [Sim.toward(Rift.pos(Sim.PIT[objK]), p.side, 7), ...sp] : sp;
-      const free = pref.find(s => Sim.dist(s, p.pos) < 9 && !this.near(mine, s, 7));
+      // 서폿 아이템 퀘스트 완료(7분쯤): 우물에 안 가도 자동으로 바뀐다
+      if (p.role === 'SUP' && m >= 7 && p.build.sup && p.build.start && p.inv.some(i => i.n === p.build.start.n)) { const i = p.inv.findIndex(x => x.n === p.build.start.n); p.inv[i] = p.build.sup; }
+      // 서폿은 와드 자리를 찾아 넓게(14), 다른 포지션은 지나가는 길에(10)
+      const free = pref.find(s => Sim.dist(s, p.pos) < (p.role === 'SUP' ? 18 : 10) && !this.near(mine, s, 7));
       if (!free) return;
-      if (p.role === 'SUP' && m >= 3 && g.t >= (p.supCd || 0)) { this.place(g, p, 'stealth', free, 150); p.supCd = g.t + 35 + g.r() * 15; return; }
-      if (p.wards > 0 && (obj || !g.wards.some(w => w.by === p && w.type === 'control')) && (obj || g.r() < .35)) { this.place(g, p, 'control', free); p.wards--; return; }
+      if (p.role === 'SUP' && m >= 2 && g.t >= (p.supCd || 0)) { this.place(g, p, 'stealth', free, 150); p.supCd = g.t + 18 + g.r() * 10; return; }
+      if (p.wards > 0 && (obj || !g.wards.some(w => w.by === p && w.type === 'control')) && (obj || g.r() < .55)) { this.place(g, p, 'control', free); p.wards--; return; }
       if (!this.lens(p) && g.t >= (p.trkCd || 0)) { this.place(g, p, 'stealth', free, 90); p.trkCd = g.t + (m < 10 ? 120 : 90) + g.r() * 20; }
     });
     // 제거
