@@ -10,6 +10,8 @@ const Live = {
     const big = g.fights.reduce((a, f) => Math.max(a, f.size), 0);
     if (big) return big >= 5 ? .15 : big >= 3 ? .28 : .5;
     if (g.t < 12) return 1;
+    // 곧 붙을 것 같으면 미리 늦춘다: 양 팀 셋 이상이 10 안쪽으로 가까워졌을 때
+    const A = g.pl.filter(p => !p.dead && !p.recall), close = A.filter(p => A.some(q => q.side !== p.side && Sim.dist(p.pos, q.pos) < 10)); if (close.length >= 3 && g.t > 840) return .7;
     if (g.pl.some(p => p.tpCh)) return .6;
     const lk = g.kills[g.kills.length - 1]; if (lk && g.t - lk.t <= 3) return .5;
     if (Object.values(g.obj).some(ob => ob.prog && (ob.prog.B || ob.prog.R))) return .8;
@@ -113,8 +115,12 @@ const Live = {
   // 한 틱(경기 1초) = 실제 0.1초 / 배속 (1배속 = 경기 10초가 실제 1초). 화면 프레임마다 시간을 쌓고, 한 틱이 차면 그 프레임에서 바로 다음 틱을 계산한다
   TICK: 100,
   advance(dt) {
-    const g = this.g, want = this.pace(g); this.pk += (want - this.pk) * (want < this.pk ? .5 : .06);   // 느려질 때는 바로, 빨라질 때는 천천히
+    // 느려질 때는 바로. 빨라지는 건 장면이 끝나고 2.5초 지난 뒤부터 천천히 (잠깐 빨라졌다 다시 느려지는 출렁임을 막는다)
+    const g = this.g, want = this.pace(g), nowT = performance.now(), old = this.period;
+    if (want < this.pk - .01) { this.pk += (want - this.pk) * .35; this.slowAt = nowT; }
+    else if (want > this.pk && nowT - (this.slowAt || 0) > 2500) this.pk += Math.min(want - this.pk, dt / 1000 * .3);
     const period = this.period = this.TICK / (this.speed * this.pk);
+    if (old && old !== period) this.acc *= period / old;   // 속도가 바뀌어도 쌓인 시간이 한꺼번에 여러 틱으로 터지지 않게
     if (!this.playing || g.over) return;
     this.acc += Math.min(dt, 250);                                   // 탭이 잠깐 멈췄다 돌아와도 한꺼번에 몰아 돌지 않게
     let n = 0;
