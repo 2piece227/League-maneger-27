@@ -29,7 +29,8 @@ const Live = {
   start(S) { Draft.useTac(S); this.g = Sim.create(S, S.game); this.speed = 1; this.feedSeen = 0; this.banners = []; Router.go('match-live'); },
   ico(n, cls = '') { return `<img class="ob-ic ${cls}" src="assets/obj/${n}.png" alt="">`; },
   // 인벤토리: 아이템 6칸(제어 와드 포함) + 장신구
-  inventory(p) { return [...p.inv.map(it => Stats.icon(it)), p.wards ? `<span class="it-w">${Stats.icon(p.build.ward)}<b>${p.wards}</b></span>` : '', p.trinket ? `<span class="it-t">${Stats.icon(p.trinket)}</span>` : ''].join(''); },
+  // 정글 펫 아이템: 자란 단계(●●○)와 강타 강화 표시
+  inventory(p) { const pet = it => p.role === 'JGL' && p.build.start && it.n === p.build.start.n && p.pet; return [...p.inv.map(it => pet(it) ? `<span class="it-pet s${p.pet}" title="정글 펫 · ${JunglePet.NAME[p.pet - 1]}${p.pet === 3 ? ' (강타 강화)' : ''}">${Stats.icon(it)}<b>${'●'.repeat(p.pet)}${'○'.repeat(3 - p.pet)}</b></span>` : Stats.icon(it)), p.wards ? `<span class="it-w">${Stats.icon(p.build.ward)}<b>${p.wards}</b></span>` : '', p.trinket ? `<span class="it-t">${Stats.icon(p.trinket)}</span>` : '', p.smite2 && p.petItem ? `<span class="it-smite" title="강타 강화 (정글 펫 완전 성장)">${Stats.icon(p.petItem)}</span>` : ''].join(''); },
   // 시리즈 스코어 (이 세트 전까지 + 끝났으면 이 세트 포함)
   score(S) { const sc = Season.seriesScore(S.series); return { B: sc[S.teams.B] || 0, R: sc[S.teams.R] || 0, need: Math.ceil((S.series.bo || 1) / 2) }; },
   pips(n, need, cls) { return `<span class="lv-pips ${cls}">${Array.from({ length: need }, (_, i) => `<i class="${i < n ? 'on' : ''}"></i>`).join('')}</span>`; },
@@ -256,6 +257,19 @@ const Live = {
     }
     const hide = (vm === 'B' || vm === 'R') && typeof Vision !== 'undefined' ? p => p.side !== vm && !Vision.seen(g, vm, p.pos) : () => false;
     const P = g.pl.map(p => ({ p, pos: this.at(p.trail, f) || p.pos })).filter(o => !o.p.dead && !hide(o.p));
+    // 스킬 연출(하이라이트): 밀침 · 끌어당김은 맞은 선수를 잠깐 밀어 그리고, 띄움은 위로 띄운다
+    const SK = this.mode === 'hl' ? (g.sk || []).filter(e => now - e.t >= 0 && now - e.t < (e.key === 'R' ? 2.4 : 1.6)) : [];
+    for (const e of SK) {
+      if (!['back', 'pull', 'up'].includes(e.cc)) continue;
+      const a = now - e.t, env = Math.sin(Math.min(1, a / 1.1) * Math.PI);
+      for (const o of P) {
+        if (!e.hit.includes(g.pl.indexOf(o.p))) continue;
+        if (e.cc === 'up') { o.lift = Math.max(o.lift || 0, env * R * 1.1); continue; }
+        const src = e.kind === 'dash' || e.kind === 'init' ? e.to : e.from, d = Sim.dist(o.pos, src) || 1, k = (e.cc === 'back' ? 2.6 : -Math.min(2.2, d * .6)) * env;
+        o.pos = [o.pos[0] + (o.pos[0] - src[0]) / d * k, o.pos[1] + (o.pos[1] - src[1]) / d * k];
+      }
+    }
+    this.skillFx(c, g, SK, P, now, X, Y, R, col);
     const where = new Map(P.map(o => [o.p, o.pos]));
     // 공격선: 이번 1초에 누가 누구를 쳤나 (원거리는 가늘고 길게, 근접은 굵고 짧게 보인다)
     c.lineCap = 'round';
@@ -279,8 +293,10 @@ const Live = {
     }
     // 챔피언: 아래쪽에 있는 선수가 위에 그려진다
     P.sort((a, b) => a.pos[1] - b.pos[1]);
-    for (const { p, pos } of P) {
-      const x = X(pos[0]), y = Y(pos[1]), im = this.icon(p);
+    for (const { p, pos, lift } of P) {
+      const x = X(pos[0]), y = Y(pos[1]) - (lift || 0), im = this.icon(p);
+      if (lift) { c.fillStyle = 'rgba(0,0,0,.35)'; c.beginPath(); c.ellipse(x, y + lift + R * .7, R * .8, R * .3, 0, 0, TAU); c.fill(); }
+      if ((p.mega || 0) > now && this.mode === 'hl') { c.fillStyle = 'rgba(255,120,40,.25)'; c.beginPath(); c.arc(x, y, R * 1.45, 0, TAU); c.fill(); }
       c.save(); c.shadowColor = p.recall ? 'rgba(90,170,255,.9)' : 'rgba(0,0,0,.8)'; c.shadowBlur = p.recall ? 12 : 5; c.fillStyle = '#0b111d'; c.beginPath(); c.arc(x, y, R, 0, TAU); c.fill(); c.restore();
       if (im.complete && im.naturalWidth) { c.save(); c.beginPath(); c.arc(x, y, R - 1, 0, TAU); c.clip(); c.drawImage(im, x - R, y - R, R * 2, R * 2); c.restore(); }
       c.lineWidth = 2; c.strokeStyle = `rgb(${col(p.side)})`; c.beginPath(); c.arc(x, y, R - 1, 0, TAU); c.stroke();
@@ -288,6 +304,78 @@ const Live = {
       const bw = R * 1.9, bh = Math.max(3, R * .22), bx = x - bw / 2, by = y + R + 2;
       c.fillStyle = 'rgba(5,8,14,.85)'; c.fillRect(bx - 1, by - 1, bw + 2, bh + 2);
       c.fillStyle = p.hp > .5 ? '#4cd964' : p.hp > .25 ? '#f0b400' : '#ef4b5f'; c.fillRect(bx, by, bw * Math.max(0, Math.min(1, p.hp)), bh);
+    }
+    this.skillPops(c, g, SK, P, now, X, Y, R, col);
+  },
+  // 스킬 효과: 돌진 꼬리 · 도주 · 직선 · 원형 · 부채꼴 · 대상 · 전역 · 팀원 버프 · 본인 버프 · 묶음
+  simg(src) { const m = (this.sims ||= new Map()); let im = m.get(src); if (!im) { im = new Image(); im.src = src; m.set(src, im); } return im; },
+  skillFx(c, g, SK, P, now, X, Y, R, col) {
+    if (!SK.length) return;
+    const TAU = Math.PI * 2, posOf = i => { const o = P.find(o => o.p === g.pl[i]); return o && o.pos; };
+    const KC = { atk: null, dash: null, init: '255,196,70', esc: '235,240,255', ally: '90,230,140', self: '255,226,110' };
+    c.save(); c.lineCap = 'round';
+    for (const e of SK) {
+      const a = now - e.t, dur = e.key === 'R' ? 2.4 : 1.6, q = a / dur, al = Math.max(0, 1 - q), me = posOf(e.i) || e.from, pl = g.pl[e.i];
+      const rgb = KC[e.kind] || col(pl.side), big = e.key === 'R' ? 1.5 : 1;
+      const fx = X(e.from[0]), fy = Y(e.from[1]), tx = X(e.to[0]), ty = Y(e.to[1]);
+      if (e.kind === 'dash' || e.kind === 'esc' || (e.kind === 'init' && !e.shape)) {
+        c.setLineDash(e.kind === 'esc' ? [4, 5] : []); c.strokeStyle = `rgba(${rgb},${.55 * al})`; c.lineWidth = R * .7 * big;
+        c.beginPath(); c.moveTo(fx, fy); c.lineTo(X(me[0]), Y(me[1])); c.stroke(); c.setLineDash([]);
+      }
+      if (e.kind === 'self') { c.strokeStyle = `rgba(${rgb},${.8 * al})`; c.lineWidth = 2.5; c.beginPath(); c.arc(X(me[0]), Y(me[1]), R * (1.3 + q * .5) * big, 0, TAU); c.stroke(); }
+      else if (e.kind === 'ally') {
+        e.ally.forEach(i => { const p = posOf(i); if (!p) return; c.strokeStyle = `rgba(${rgb},${.85 * al})`; c.lineWidth = 2.5; c.beginPath(); c.arc(X(p[0]), Y(p[1]), R * (1.25 + Math.sin(a * 8) * .08) * big, 0, TAU); c.stroke();
+          c.fillStyle = `rgba(${rgb},${.15 * al})`; c.fill(); if (i !== e.i) { c.lineWidth = 1.2; c.beginPath(); c.moveTo(X(me[0]), Y(me[1])); c.lineTo(X(p[0]), Y(p[1])); c.stroke(); } });
+      } else if (e.shape === 'global') {
+        c.strokeStyle = `rgba(${rgb},${.7 * al})`; c.lineWidth = 6; c.strokeRect(3, 3, X(100) - 6, Y(100) - 6);
+        if (e.kind !== 'dash') { c.strokeStyle = `rgba(255,240,180,${.8 * al})`; c.lineWidth = R * .5; c.beginPath(); c.moveTo(fx, fy); c.lineTo(fx + (tx - fx) * Math.min(1, q * 3), fy + (ty - fy) * Math.min(1, q * 3)); c.stroke(); }
+      } else if (e.shape === 'line') {
+        const L = Math.hypot(tx - fx, ty - fy) || 1, ux = (tx - fx) / L, uy = (ty - fy) / L, len = Math.max(L + X(2), X(8)) * Math.min(1, q * 3.5);
+        c.strokeStyle = `rgba(${rgb},${.35 * al})`; c.lineWidth = X(2.4) * big; c.beginPath(); c.moveTo(fx, fy); c.lineTo(fx + ux * len, fy + uy * len); c.stroke();
+        c.strokeStyle = `rgba(255,255,255,${.7 * al})`; c.lineWidth = 1.5; c.beginPath(); c.moveTo(fx, fy); c.lineTo(fx + ux * len, fy + uy * len); c.stroke();
+      } else if (e.shape === 'circle') {
+        const rr = X(4) * big * Math.min(1, .45 + q * 2);
+        c.fillStyle = `rgba(${rgb},${.18 * al})`; c.beginPath(); c.arc(tx, ty, rr, 0, TAU); c.fill();
+        c.strokeStyle = `rgba(${rgb},${.85 * al})`; c.lineWidth = 2; c.stroke();
+      } else if (e.shape === 'cone') {
+        const mx = X(me[0]), my = Y(me[1]), ang = Math.atan2(ty - my, tx - mx), rr = X(6) * big * Math.min(1, .4 + q * 2.5);
+        c.fillStyle = `rgba(${rgb},${.22 * al})`; c.beginPath(); c.moveTo(mx, my); c.arc(mx, my, rr, ang - .55, ang + .55); c.closePath(); c.fill();
+        c.strokeStyle = `rgba(${rgb},${.7 * al})`; c.lineWidth = 1.5; c.stroke();
+      } else if (e.shape === 'target' && e.kind !== 'dash') {
+        c.strokeStyle = `rgba(${rgb},${.8 * al})`; c.lineWidth = 2; c.beginPath(); c.moveTo(X(me[0]), Y(me[1])); c.lineTo(tx, ty); c.stroke();
+        c.beginPath(); c.arc(tx, ty, R * (.6 + q * .9), 0, TAU); c.stroke();
+      }
+      // 묶음(기절 · 속박 등): 맞은 선수 머리 위에 도는 별
+      if (e.cc === 'stun') e.hit.forEach(i => { const p = posOf(i); if (!p) return; for (let k = 0; k < 3; k++) { const an = a * 5 + k * TAU / 3; c.fillStyle = `rgba(255,230,90,${al})`; c.beginPath(); c.arc(X(p[0]) + Math.cos(an) * R * .8, Y(p[1]) - R * 1.35 + Math.sin(an) * R * .25, R * .17, 0, TAU); c.fill(); } });
+    }
+    c.restore();
+  },
+  // 스킬 아이콘: 챔피언 옆에 쓴 순서대로 잠깐씩 (궁은 크게 + 이름)
+  skillPops(c, g, SK, P, now, X, Y, R, col) {
+    if (!SK.length) return;
+    const by = new Map(); SK.forEach(e => { if (!by.has(e.i)) by.set(e.i, []); by.get(e.i).push(e); });
+    for (const [i, list] of by) {
+      const o = P.find(o => o.p === g.pl[i]); if (!o) continue;
+      const x = X(o.pos[0]), y = Y(o.pos[1]) - (o.lift || 0), side = col(g.pl[i].side);
+      const arr = list.sort((a, b) => a.t - b.t).slice(-3);
+      arr.forEach((e, k) => {
+        const a = now - e.t, dur = e.key === 'R' ? 2.4 : 1.6, al = Math.min(1, a * 6, (dur - a) * 3), slide = Math.max(0, 1 - a * 5) * R;
+        const s = e.key === 'R' ? R * 1.25 : R * .9, px = x + R * 1.05 + slide, py = y - R * .9 + (k - (arr.length - 1) / 2) * (s + 3);
+        const im = this.simg(e.icon);
+        c.save(); c.globalAlpha = Math.max(0, al);
+        c.fillStyle = '#0b111d'; c.fillRect(px - 1, py - 1, s + 2, s + 2);
+        if (im.complete && im.naturalWidth) c.drawImage(im, px, py, s, s);
+        if (e.form === 'mega') { c.fillStyle = 'rgba(255,110,30,.35)'; c.fillRect(px, py, s, s); }
+        c.lineWidth = e.key === 'R' ? 2 : 1.2; c.strokeStyle = e.key === 'R' ? '#ffd36a' : `rgb(${side})`; c.strokeRect(px - .5, py - .5, s + 1, s + 1);
+        c.font = `800 ${Math.round(s * .42)}px sans-serif`; c.textAlign = 'center'; c.fillStyle = '#fff'; c.strokeStyle = 'rgba(0,0,0,.9)'; c.lineWidth = 2.5;
+        c.strokeText(e.key, px + s * .82, py + s * .98); c.fillText(e.key, px + s * .82, py + s * .98);
+        if (e.key === 'R' || e.form === 'mega') {
+          const t = (e.form === 'mega' && e.key !== 'R' ? '메가 ' : '') + e.name;
+          c.font = `700 ${Math.round(R * .78)}px sans-serif`; c.textAlign = 'left';
+          c.strokeText(t, px + s + 4, py + s * .68); c.fillStyle = e.key === 'R' ? '#ffe2a0' : '#ffb078'; c.fillText(t, px + s + 4, py + s * .68);
+        }
+        c.restore();
+      });
     }
   },
   draw() {
@@ -323,7 +411,7 @@ const Live = {
       row.classList.toggle('dead', !!p.dead); row.querySelector('.lv-pic i').textContent = p.lvl;
       row.querySelector('.lv-pic em').textContent = p.dead ? Math.max(0, p.dead - g.t) : '';
       row.querySelector('.lv-hp i').style.width = Math.round(p.hp * 100) + '%';
-      const its = row.querySelector('.lv-items'), key = p.inv.map(x => x.id).join(',') + '|' + p.wards + '|' + (p.trinket ? p.trinket.id : '');
+      const its = row.querySelector('.lv-items'), key = p.inv.map(x => x.id).join(',') + '|' + p.wards + '|' + (p.trinket ? p.trinket.id : '') + '|' + (p.pet || 0);
       if (its.dataset.k !== key) { its.dataset.k = key; its.innerHTML = this.inventory(p); }
     });
     ['B', 'R'].forEach(k => ['top', 'mid', 'bot'].forEach(l => {

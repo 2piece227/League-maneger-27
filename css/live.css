@@ -214,3 +214,12 @@
 .lv-graph .ab { fill: rgba(59,140,255,.35); } .lv-graph .ar { fill: rgba(239,75,95,.35); }
 .lv-graph .ln { fill: none; stroke: #e8eefb; stroke-width: .6; vector-effect: non-scaling-stroke; }
 .lv-graph circle.b, .lv-graph rect.b { fill: #7fb0ff; } .lv-graph circle.r, .lv-graph rect.r { fill: #ff8796; }
+
+/* 정글 펫: 자란 단계 · 완전 성장은 금테 (강타 강화) */
+.it-pet { position: relative; display: inline-flex; }
+.it-pet b { position: absolute; left: 0; right: 0; bottom: -3px; text-align: center; font: 700 6.5px/1 var(--f-ui); letter-spacing: -.5px; color: #ffd36a; text-shadow: 0 0 2px #000, 0 0 2px #000; }
+.it-pet.s3 .it-ic { box-shadow: 0 0 0 1.5px #ffd36a, 0 0 6px rgba(255,211,106,.7); }
+
+/* 강화된 강타 표시 (펫이 흡수된 뒤): 아이템 칸이 아닌 작은 금색 동그라미 */
+.it-smite { display: inline-flex; margin-left: 2px; }
+.it-smite .it-ic { border-radius: 50%; box-shadow: 0 0 0 1.5px #ffd36a, 0 0 5px rgba(255,211,106,.7); filter: saturate(1.3); }
