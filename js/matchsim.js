@@ -18,6 +18,12 @@ const Rift = {
   LANES: { top: ['bN', 'bT3', 'bT2', 'bT1', 'TOPC', 'rB1', 'rB2', 'rB3', 'rN'], mid: ['bN', 'bM3', 'bM2', 'bM1', 'MID', 'rM1', 'rM2', 'rM3', 'rN'], bot: ['bN', 'bB3', 'bB2', 'bB1', 'BOTC', 'rT1', 'rT2', 'rT3', 'rN'] },
   TOWER: { B: { top: ['bT1', 'bT2', 'bT3'], mid: ['bM1', 'bM2', 'bM3'], bot: ['bB1', 'bB2', 'bB3'] }, R: { top: ['rB1', 'rB2', 'rB3'], mid: ['rM1', 'rM2', 'rM3'], bot: ['rT1', 'rT2', 'rT3'] } },
   INHIB: { B: { top: [11, 73], mid: [24, 74], bot: [27, 89] }, R: { top: [73, 11], mid: [76, 26], bot: [89, 27] } },
+  // 사이드 라인 미니언 길 = 맵 그림의 흙길 한가운데 (포탑은 길 옆에 있다). 모서리는 ㄱ자 부쉬 안쪽으로 비스듬히 돈다.
+  //  지형 격자가 완전한 점대칭이 아니라서(포탑 받침) 탑 · 바텀을 따로 적는다. 모든 구간은 벽에 막히지 않는다 (Rift.los)
+  LPTS: {
+    top: () => [[14, 85], [13.75, 67], [13.25, 52], [13.5, 40], [15, 33], [15.3, 26], [15.5, 19.5], [19.5, 15.5], [26, 13.2], [32, 12], [50, 12], [60, 11.5], [66, 11.5], [70, 12], [86, 15]],
+    bot: () => [[14, 85], [30, 87], [34, 88.5], [40, 88], [50, 88], [62, 88], [68, 87.25], [74, 86.8], [80.5, 84.5], [84.5, 80.5], [86.3, 75], [87, 68], [87, 48], [87.5, 41], [89.5, 36], [89.5, 32], [86, 15]],
+  },
   CAMPS: ['JB', 'JG', 'JW', 'JR', 'JD', 'JK'],
   MOUTH: { BAR: [33, 35.5], DRA: [67, 63.5] },   // 둥지 입구 (강 쪽). 둥지는 이쪽으로만 드나든다
   init() {
@@ -32,7 +38,7 @@ const Rift = {
     this.EDGES.forEach(([a, b]) => { link(bn(a), bn(b)); link(rn(a), rn(b)); });
     this.NEDGES.forEach(([a, b]) => link(a, b));
     this.N = N; this.adj = adj; this.cache = {}; this.L = {}; this.nav();
-    Object.keys(this.LANES).forEach(l => { const pts = this.LANES[l].map(n => N[n]), cum = [0]; for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1])); this.L[l] = { pts, cum, len: cum[cum.length - 1] }; });
+    Object.keys(this.LANES).forEach(l => { const pts = this.LPTS[l] ? this.LPTS[l]() : this.LANES[l].map(n => N[n]), cum = [0]; for (let i = 1; i < pts.length; i++) cum.push(cum[i - 1] + Math.hypot(pts[i][0] - pts[i - 1][0], pts[i][1] - pts[i - 1][1])); this.L[l] = { pts, cum, len: cum[cum.length - 1] }; });
   },
   pos(n) { return this.N[n]; },
   // 라인 위의 점 (s=0 블루 넥서스 → 1 레드 넥서스)
