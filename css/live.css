@@ -195,6 +195,10 @@
 .lv-obj { position: absolute; width: 5.4%; aspect-ratio: 1; transform: translate(-50%, -50%); border-radius: 50%; background: rgba(8, 12, 20, .75); border: 2px solid #c8a24a; box-shadow: 0 0 10px rgba(200, 162, 74, .55); display: grid; place-items: center; animation: lvObjIn .4s ease-out; }
 .lv-obj.baron { width: 6.4%; border-color: #b46cff; box-shadow: 0 0 12px rgba(180, 108, 255, .6); }
 .lv-obj .ob-ic { width: 78%; height: 78%; object-fit: contain; }
+.lv-ohp { position: absolute; left: -10%; right: -10%; top: 104%; height: 5px; background: rgba(5, 8, 14, .85); border: 1px solid rgba(0, 0, 0, .9); border-radius: 2px; overflow: hidden; }
+.lv-ohp b { display: block; height: 100%; background: #e9c25a; transition: width .4s; }
+.lv-ohp.b b { background: linear-gradient(90deg, #e9c25a, #e9c25a 70%, #7db8ff); } .lv-ohp.r b { background: linear-gradient(90deg, #e9c25a, #e9c25a 70%, #ff8d9b); }
+.lv-ogn { position: absolute; right: -14%; top: -14%; min-width: 14px; height: 14px; border-radius: 7px; background: #6b3fb0; color: #fff; font: 700 10px/14px system-ui; font-style: normal; text-align: center; }
 @keyframes lvObjIn { from { transform: translate(-50%, -50%) scale(.3); opacity: 0; } to { transform: translate(-50%, -50%) scale(1); opacity: 1; } }
 
 .lv-line.hype b { color: #ff9d6b; }

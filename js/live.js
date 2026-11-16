@@ -295,6 +295,8 @@ const Live = {
     P.sort((a, b) => a.pos[1] - b.pos[1]);
     for (const { p, pos, lift } of P) {
       const x = X(pos[0]), y = Y(pos[1]) - (lift || 0), im = this.icon(p);
+      // 부쉬에 숨어 상대가 못 보는 선수는 반투명 (한 팀 시야 보기에서는 아예 숨는다)
+      c.globalAlpha = typeof Vision !== 'undefined' && vm !== 'B' && vm !== 'R' && Vision.bushAt(pos) >= 0 && !Vision.seen(g, p.side === 'B' ? 'R' : 'B', pos) ? .5 : 1;
       if (lift) { c.fillStyle = 'rgba(0,0,0,.35)'; c.beginPath(); c.ellipse(x, y + lift + R * .7, R * .8, R * .3, 0, 0, TAU); c.fill(); }
       if ((p.mega || 0) > now && this.mode === 'hl') { c.fillStyle = 'rgba(255,120,40,.25)'; c.beginPath(); c.arc(x, y, R * 1.45, 0, TAU); c.fill(); }
       c.save(); c.shadowColor = p.recall ? 'rgba(90,170,255,.9)' : 'rgba(0,0,0,.8)'; c.shadowBlur = p.recall ? 12 : 5; c.fillStyle = '#0b111d'; c.beginPath(); c.arc(x, y, R, 0, TAU); c.fill(); c.restore();
@@ -305,6 +307,7 @@ const Live = {
       c.fillStyle = 'rgba(5,8,14,.85)'; c.fillRect(bx - 1, by - 1, bw + 2, bh + 2);
       c.fillStyle = p.hp > .5 ? '#4cd964' : p.hp > .25 ? '#f0b400' : '#ef4b5f'; c.fillRect(bx, by, bw * Math.max(0, Math.min(1, p.hp)), bh);
     }
+    c.globalAlpha = 1;
     this.skillPops(c, g, SK, P, now, X, Y, R, col);
   },
   // 스킬 효과: 돌진 꼬리 · 도주 · 직선 · 원형 · 부채꼴 · 대상 · 전역 · 팀원 버프 · 본인 버프 · 묶음
@@ -394,7 +397,9 @@ const Live = {
     set('.lv-objs', ['drag', 'grubs', 'herald', 'baron'].filter(o => Sim.objUp(g, o)).map(o => {
       const [x, y] = Rift.pos(Sim.PIT[o]), n = g.side.B.drag.length + g.side.R.drag.length;
       const el2 = o === 'drag' && Sim.elder(g), ic = el2 ? 'dragon_elder' : o === 'drag' ? g.dragSeq[Math.min(n, 2)][1] : Sim.ICON[o], nm = el2 ? '장로 드래곤' : o === 'drag' ? `${g.dragSeq[Math.min(n, 2)][0]} 드래곤` : Sim.OBJ[o];
-      return `<div class="lv-obj ${o}" style="left:${x}%;top:${y}%" title="${nm}">${this.ico(ic)}</div>`;
+      // 체력: 양 팀 중 더 많이 친 쪽만큼 깎인다 (유충은 남은 마리 수도)
+      const ob = g.obj[o], pr = ob.prog || {}, hp = Math.max(0, 1 - Math.max(pr.B || 0, pr.R || 0) / Sim.OBJ_NEED[o]), who = (pr.B || 0) >= (pr.R || 0) ? 'b' : 'r';
+      return `<div class="lv-obj ${o}" style="left:${x}%;top:${y}%" title="${nm}">${this.ico(ic)}<i class="lv-ohp ${hp < 1 ? who : ''}"><b style="width:${(hp * 100).toFixed(0)}%"></b></i>${o === 'grubs' ? `<em class="lv-ogn">${ob.left ?? 3}</em>` : ''}</div>`;
     }).join(''));
     // 양옆 선수 · 맵 아이콘: 처음 한 번 만들고 값만 바꾼다
     if (!el.querySelector('.lv-pl')) {

@@ -146,7 +146,7 @@ const Skills = {
     live.forEach(p => {
       if (p.recall || p.tpCh) return;
       const cd = (p.skc ||= {}), C = typeof CStats !== 'undefined', mana = s => !C || !p.mpMax || CStats.cost(p, s.key) <= p.mpCur;   // 마나가 모자라면 못 쓴다
-      const ready = s => mana(s) && (s.key === 'R' ? g.t >= (p.rFx || 0) && m >= 6 && !Sim.ULT_JOIN.includes(p.c) && !(s.shape === 'global' && s.kind === 'dash') : g.t >= (cd[s.key] || 0));
+      const ready = s => mana(s) && (s.key === 'R' ? g.t >= (p.rFx || 0) && p.lvl >= 6 && !Sim.ULT_JOIN.includes(p.c) && !(s.shape === 'global' && s.kind === 'dash') : g.t >= (cd[s.key] || 0));
       const S = this.of(p.c).filter(ready); if (!S.length) return;
       const foes = live.filter(q => q.side !== p.side && !q.fled), us = live.filter(q => q.side === p.side);
       const early = g.t - f.t0 <= 1, front = p.kind === 'tank' || p.kind === 'bruiser' || p.kind === 'dive', low = p.hp < .3 || p.fled;

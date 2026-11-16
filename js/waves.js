@@ -187,6 +187,8 @@ Object.assign(Sim, {
   laneS(g, k, lane) {
     const L = Rift.L[lane].len, own = this.frontW(g, lane, k), e = this.frontW(g, lane, this.other(k)), sg = k === 'B' ? 1 : -1, mem = (g.wf ||= {});
     let f = mem[lane + k] ?? .5;
+    // 두 웨이브가 아직 안 만났으면 만날 자리(가운데)로 조금씩 옮겨 간다 — 예전 교전 자리에 멍하니 서 있지 않게 (1초에 한 번)
+    if (own && e && mem[lane + k + 't'] !== g.t && (e.s - own.s) * sg > 2 / L) { mem[lane + k + 't'] = g.t; f += ((own.s + e.s) / 2 - f) * .25; }
     if (e && (f - (e.s - sg * 1.6 / L)) * sg > 0) f = e.s - sg * 1.6 / L;
     if (own && (own.s - f) * sg > 0) f = own.s;
     const hi = Rift.proj(lane, this.structOf(g, 'R', lane).pos).s - .02, lo = Rift.proj(lane, this.structOf(g, 'B', lane).pos).s + .02;

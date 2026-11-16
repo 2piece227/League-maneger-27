@@ -74,6 +74,8 @@ const Vision = {
     g.pl.forEach(p => { if (p.side === k && !p.dead) out.push([p.pos[0], p.pos[1], 10]); });
     (g.wards || []).forEach(w => { if (w.side === k) out.push([w.at[0], w.at[1], w.type === 'control' ? 8 : 9]); });
     ['top', 'mid', 'bot'].forEach(l => Rift.TOWER[k][l].forEach((n, i) => { if (g.side[k].thp[l][i] > 0) { const q = Rift.pos(n); out.push([q[0], q[1], 11]); } }));
+    // 미니언 웨이브도 시야를 준다 (미니언 시야 약 1,100 → 맵 7%)
+    if (g.wv) ['top', 'mid', 'bot'].forEach(l => g.wv[l][k].forEach(w => { if (w.n > .05) out.push([w.p[0], w.p[1], 7]); }));
     const f = Sim.fountain(k); out.push([f[0], f[1], 14]);
     return out;
   },
@@ -82,7 +84,18 @@ const Vision = {
     for (let y = 2; y < 100; y += 4) for (let x = 2; x < 100; x += 4) { n++; if (src.some(([sx, sy, r]) => (sx - x) ** 2 + (sy - y) ** 2 < r * r)) c++; }
     return Math.round(c / n * 100);
   },
-  seen(g, k, pos) { return this.sources(g, k).some(([x, y, r]) => (x - pos[0]) ** 2 + (y - pos[1]) ** 2 < r * r); },
+  // 부쉬 (맵 그림 기준 [x, y, 반지름] %, 아래쪽 절반만 적고 위쪽은 점대칭으로)
+  BUSH0: [[56.5, 57, 1.3], [59.5, 54.5, 1.3], [66.9, 57.9, 1.4], [69.8, 70.6, 1.4], [57, 66.1, 1.3], [83.6, 84.3, 1.8], [87, 80.3, 1.3], [79.5, 88, 1.4],
+    [60.5, 82, 1.3], [45.3, 65.5, 1.3], [74.8, 71.4, 1.4], [67.5, 77.2, 1.2], [77.5, 65.9, 1.2]],
+  get BUSH() { return this._b ||= this.BUSH0.concat(this.BUSH0.map(([x, y, r]) => [100 - x, 100 - y, r])); },
+  // 그 자리가 들어 있는 부쉬 (없으면 -1). 몸이 걸치면 안으로 친다
+  bushAt(pos) { const B = this.BUSH; for (let i = 0; i < B.length; i++) { const [x, y, r] = B[i]; if ((x - pos[0]) ** 2 + (y - pos[1]) ** 2 < (r + .6) ** 2) return i; } return -1; },
+  // k팀이 그 자리를 보나: 시야 원 안 + 부쉬 안이면 같은 부쉬에 들어가 있거나(바로 옆 2.5 포함) 그 부쉬에 와드가 있어야 보인다
+  seen(g, k, pos) {
+    if (!this.sources(g, k).some(([x, y, r]) => (x - pos[0]) ** 2 + (y - pos[1]) ** 2 < r * r)) return false;
+    const b = this.bushAt(pos); if (b < 0) return true;
+    return g.pl.some(p => p.side === k && !p.dead && (this.bushAt(p.pos) === b || Sim.dist(p.pos, pos) < 2.5)) || (g.wards || []).some(w => w.side === k && this.bushAt(w.at) === b);
+  },
 };
 // 엔진에 붙이기: 와드 목록 · 10초마다 시야 처리 · 갱 회피는 실제 와드로
 (() => {

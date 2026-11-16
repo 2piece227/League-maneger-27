@@ -294,7 +294,7 @@ const Sim = {
   ULT_JOIN: ['Shen', 'TwistedFate', 'Galio', 'Pantheon', 'Nocturne', 'Taliyah'],
   ULT_SNIPE: ['Jinx', 'Ezreal', 'Ashe', 'Senna', 'Draven', 'Karthus'],
   rName(p) { const ch = Champions.byId[p.c]; return ((((ch && ch.spells || []).find(s => s.key === 'R') || {}).name) || '궁극기').split('/')[0].trim(); },
-  ultReady(g, p) { return !p.dead && !p.recall && !p.tpCh && g.t >= (p.ultAt || 0) && this.min(g) >= 6; },
+  ultReady(g, p) { return !p.dead && !p.recall && !p.tpCh && g.t >= (p.ultAt || 0) && p.lvl >= 6; },
   useUlt(g, p) { p.ultAt = g.t + (this.min(g) < 14 ? 130 : 90); },
   say(g, who, text) { const n = (g.said ||= {})[text] || 0; if (n >= 2) return; g.said[text] = n + 1; g.comm.push({ t: g.t, who, text }); },   // 같은 문장은 한 경기에 두 번까지
   clock: t => `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(Math.floor(t % 60)).padStart(2, '0')}`,
@@ -428,7 +428,7 @@ const Sim = {
   },
   // 교전 1초: 사거리(7) 안의 상대를 친다. 팀 힘(조합·골드·버프·코치·전술·컨디션: tpow)은 피해 배율로, 개인 실력은 개인 배율로.
   // 체력이 낮고 밀리면 빠진다(뒤쫓기면 맞으면서). 체력이 0이 되면 마지막에 때린 선수가 처치, 피해를 준 선수는 어시스트.
-  OFFWAVE: .5, MEET: .14, DEF: 1, BASE_DIVE: .22, FIGHT_K: .16, FIGHT_S: 26, RANGE: 7, SNOW: .25, SNOW_MAX: 4,   // SNOW: 골드 1천 차이당 전투력
+  OFFWAVE: .5, MEET: .11, DEF: 1, BASE_DIVE: .22, FIGHT_K: .16, FIGHT_S: 26, RANGE: 7, SNOW: .25, SNOW_MAX: 4,   // SNOW: 골드 1천 차이당 전투력
   TANK: { TOP: .8, JGL: .85, MID: 1.08, BOT: 1.18, SUP: .9 },
   // 챔피언 유형별 한타 행동: 사거리(맵 %) · 주는 피해 · 받는 피해 · 붙는 속도(돌진기)
   //   tank 앞라인·이니시(먼저 들어가 가까운 적과 부딪힌다) / bruiser 브루저(앞라인 뒤를 따라 붙는다) / dive 암살·돌진(옆으로 돌아 딜러를 문다)
@@ -722,6 +722,15 @@ const Sim = {
   // 이 팀 쪽 라인에 시야가 있나 (깊은 시야는 늘, 시야 서폿은 와드 동선 뒤 잠시)
   wardOn(g, k, lane) { const s = g.side[k]; return s.ins.vision === 'deep' || (s.ward && s.ward.until > g.t && s.ward.lanes.includes(lane)) || (lane !== 'top' && g.pl.some(p => p.side === k && !p.dead && (p.fx || {}).vision)); },   // 천리안: 바텀·미드는 늘
   elder(g) { return g.side.B.drag.length >= 4 || g.side.R.drag.length >= 4; },
+  // 오브젝트가 나오기 전 대기 자리: 둥지 입구에서 강 쪽으로. 둥지가 있는 쪽 팀은 입구 바로 앞, 건너편 팀은 강 건너 자기 정글 입구 (벽 뒤 X, 붙어 서면 생성 전부터 싸움이 난다)
+  objWait(o, k, off) {
+    const pit = Rift.pos(this.PIT[o]), door = Rift.MOUTH[this.PIT[o]] || pit, dx = door[0] - pit[0], dy = door[1] - pit[1], L = Math.hypot(dx, dy) || 1, ox = dx / L, oy = dy / L, f = this.fountain(k);
+    const mine = (f[0] - door[0]) * ox + (f[1] - door[1]) * oy <= 0, o2 = off || [0, 0];
+    const at = d => Rift.snap(this.clampP([door[0] + ox * d + o2[0] * .7, door[1] + oy * d + o2[1] * .7]), 1);
+    if (mine) return at(1.5);
+    for (let d = 12; d > 5; d -= 1) { const q = at(d); if (Rift.los(q, door)) return q; }   // 건너편 팀: 입구가 보이는(벽에 안 가린) 가장 먼 강가
+    return at(5);
+  },
   objUp(g, o) { const ob = g.obj[o]; return ob.at && g.t >= ob.at && (!ob.until || g.t < ob.until); },
   baronCall(g, k) {
     if (!this.objUp(g, 'baron')) return false;
@@ -744,7 +753,7 @@ const Sim = {
       if (o !== 'baron' && (deadK - deadO >= 2 + (pri > 0 ? 1 : 0) || (1 / (1 + Math.exp(-(this.tpow(g, k) - this.tpow(g, this.other(k))) / 13)) < (pri > 0 ? .2 : pri < 0 ? .5 : .33)))) continue;   // 우선 오브젝트는 끝까지, 나머지는 쉽게 내준다
       const pit = Rift.pos(this.PIT[o]), spot = [pit[0] + p.off[0], pit[1] + p.off[1]];
       const door = Rift.MOUTH[this.PIT[o]] || pit;
-      return g.t >= go ? spot : this.toward(spot, p.side, 6);             // 준비가 끝나기 전에는 둥지 입구 앞 강가에서 대기 (둥지 뒤 정글 벽 너머가 아니라)
+      return g.t >= go ? spot : this.objWait(o, p.side, p.off);             // 준비가 끝나기 전에는 둥지 입구 앞 강가에서 대기 (둥지 뒤 정글 벽 너머가 아니라)
     }
     return null;
   },
@@ -835,7 +844,7 @@ const Sim = {
         if (!p.jq.length && (p.tac === 'invade' || (p.fx || {}).invade) && m < 15 && g.r() < (g.side[this.other(p.side)].ins.vision === 'home' ? .2 : .4) * ((p.fx || {}).invade || 1) * (p.tac === 'invade' ? 1 : .5)) {   /* 상대가 자기 정글 시야를 잡고 있으면 카정이 어렵다 */ p.jq = [{ pos: foe(g.r() < .5 ? 'JW' : 'JR'), wait: 15, invade: true }]; p.invades = (p.invades || 0) + 1; }
         // 오브젝트 중심: 생성 75초 전부터 그쪽 강가에서 시야를 잡고 기다린다
         const nextObj = ['drag', 'grubs', 'herald'].find(o => { const ob = g.obj[o]; return ob.at && (!ob.until || g.t < ob.until) && ob.at - g.t > 0 && ob.at - g.t <= 75; });
-        if (!p.jq.length && p.tac === 'obj' && nextObj) p.jq = [{ pos: this.toward(Rift.pos(this.PIT[nextObj]), p.side, 8), wait: 20, kind: 'setup' }];
+        if (!p.jq.length && p.tac === 'obj' && nextObj) p.jq = [{ pos: this.objWait(nextObj, p.side), wait: 20, kind: 'setup' }];
         if (!p.jq.length) p.jq = Rift.CAMPS.slice().sort(() => g.r() - .5).slice(0, 2).map(n => ({ pos: own(n), wait: 15 }));
       }
     }
