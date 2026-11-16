@@ -145,7 +145,8 @@ const Skills = {
     const D = Sim.dist, live = mem.filter(p => !p.dead), m = Sim.min(g);
     live.forEach(p => {
       if (p.recall || p.tpCh) return;
-      const cd = (p.skc ||= {}), ready = s => s.key === 'R' ? g.t >= (p.rFx || 0) && m >= 6 && !Sim.ULT_JOIN.includes(p.c) && !(s.shape === 'global' && s.kind === 'dash') : g.t >= (cd[s.key] || 0);
+      const cd = (p.skc ||= {}), C = typeof CStats !== 'undefined', mana = s => !C || !p.mpMax || CStats.cost(p, s.key) <= p.mpCur;   // 마나가 모자라면 못 쓴다
+      const ready = s => mana(s) && (s.key === 'R' ? g.t >= (p.rFx || 0) && m >= 6 && !Sim.ULT_JOIN.includes(p.c) && !(s.shape === 'global' && s.kind === 'dash') : g.t >= (cd[s.key] || 0));
       const S = this.of(p.c).filter(ready); if (!S.length) return;
       const foes = live.filter(q => q.side !== p.side && !q.fled), us = live.filter(q => q.side === p.side);
       const early = g.t - f.t0 <= 1, front = p.kind === 'tank' || p.kind === 'bruiser' || p.kind === 'dive', low = p.hp < .3 || p.fled;
@@ -164,7 +165,9 @@ const Skills = {
       const tg = s.kind === 'ally' ? us.filter(q => q !== p).sort((a, b) => a.hp - b.hp)[0] || p
         : p.hitTo && !p.hitTo.dead && foes.includes(p.hitTo) ? p.hitTo : foes.sort((a, b) => D(a.pos, p.pos) - D(b.pos, p.pos))[0];
       if (!tg && s.kind !== 'self' && s.kind !== 'esc') return;
-      if (s.key === 'R') p.rFx = g.t + 90; else cd[s.key] = g.t + this.CD[s.key] + g.r() * 2;
+      // 재사용 대기: 챔피언별 실제 값(현재 랭크, 스킬 가속 약 20% 반영) · 마나 소모
+      const rc = C && CStats.cd(p, s.key); if (s.key === 'R') p.rFx = g.t + (rc ? rc * .85 : 90); else cd[s.key] = g.t + (rc ? Math.max(1.5, rc * .8) : this.CD[s.key] + g.r() * 2);
+      if (C && p.mpMax) p.mpCur = Math.max(0, p.mpCur - CStats.cost(p, s.key));
       const to = s.kind === 'self' ? [...p.pos] : s.kind === 'esc' ? Sim.toward(p.pos, p.side, 6) : [...tg.pos];
       // 맞은 적 (원형 4 · 부채꼴 5 · 직선 폭 2 · 전역은 체력 낮은 적 전부)
       const seg = (a, b, q) => { const vx = b[0] - a[0], vy = b[1] - a[1], L = vx * vx + vy * vy || 1, u = Math.max(0, Math.min(1, ((q[0] - a[0]) * vx + (q[1] - a[1]) * vy) / L)); return D(q, [a[0] + vx * u, a[1] + vy * u]); };

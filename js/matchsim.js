@@ -207,7 +207,8 @@ const Sim = {
     ['B', 'R'].forEach(k => { g.side[k].team = Cond.team(g.side[k].t, g.pl.filter(p => p.side === k && !String(p.p.id).startsWith('x')).map(p => p.p)); });   // 팀합 + 소통
     g.pl.forEach(p => { const o = g.pl.find(q => q.side !== p.side && q.role === p.role); p.mu = o ? Stats.matchup(p.role, p.c, o.c) : { wr: .5, gd: 0, g: 0 }; });
     this.traitsIn(g, S);
-    g.pl.forEach(p => { p.kind = this.kindOf(p); p.rng = this.KIND[p.kind].rng; });
+    // 사거리 · 이동 속도 · 마나: 챔피언별 실제 스탯 (js/champstats.js). 데이터가 없으면 유형 기본값
+    g.pl.forEach(p => { p.kind = this.kindOf(p); p.rng = (typeof CStats !== 'undefined' && CStats.range(p)) || this.KIND[p.kind].rng; this.refresh(p); p.mpCur = p.mpMax; });
     g.pl.forEach(p => this.shop(g, p));
     // 드래곤: 첫 두 마리는 서로 다른 속성, 세 번째부터는 같은 속성(협곡 속성)
     const ds = this.DRAGONS.slice().sort(() => r() - .5); g.dragSeq = [ds[0], ds[1], ds[2]];
@@ -263,6 +264,9 @@ const Sim = {
     return '양 팀 모두 균형 잡힌 조합이라 운영 싸움이 될 것 같습니다.';
   },
   // 선수 전투력: OVR + 숙련 + 메타 + 레벨 + 완성 아이템 + 시간대별 실제 승률
+  // 챔피언 스탯 갱신 (레벨 · 아이템이 바뀌면): 이동 속도 배율 · 최대 마나
+  refresh(p) { const s = typeof CStats !== 'undefined' && CStats.now(p); p.msF = s ? Math.max(.85, Math.min(1.25, s.ms / 345)) : 1; p.mpMax = s ? s.mpMax : 0; if (p.mpCur == null || p.mpCur > p.mpMax) p.mpCur = p.mpMax; p.mp5 = s ? s.mp5 : 0; },
+  STAT_K: 15,   // 스탯 피해(체력 비율/초) → 엔진 피해 배율. 예전 유형 배율(deal·take·초반 보정)의 평균과 맞춘 값
   ppow(p, m = 15) {
     const ph = m < 22 ? p.curve[0] : m < 30 ? p.curve[1] : p.curve[2], items = p.inv.filter(i => i.gold >= 2000).length;
     return p.ovr * .6 + p.m * .4 + (p.sig ? 2 : 0) + p.meta * 3 + (p.patch || 0) + p.lvl * .2 + items * .6 + (ph - .5) * 20 + Math.min(2.5, p.k * .15) - Math.min(2, p.d * .1) - (1 - p.hp) * 3;
@@ -470,12 +474,12 @@ const Sim = {
         } else if (p.kind === 'ench') {
           // 보호: 우리 딜러 바로 뒤
           const c = us.filter(q => q !== p && this.isCarry(q)).sort((a, b) => (a.kind === 'adc' ? 0 : 1) - (b.kind === 'adc' ? 0 : 1) || a.hp - b.hp)[0] || us.filter(q => q !== p).sort((a, b) => a.hp - b.hp)[0];
-          to = c ? [c.pos[0] - u[0] * 2 + u[1] * 2.4, c.pos[1] - u[1] * 2 - u[0] * 2.4] : stick(nf, K.rng - .8);
+          to = c ? [c.pos[0] - u[0] * 2 + u[1] * 2.4, c.pos[1] - u[1] * 2 - u[0] * 2.4] : stick(nf, p.rng - .8);
         } else {
           // 원거리 딜러: 사거리 끝을 유지한다. 근접이 붙으면 뒤로 빠지면서 친다
-          const th = foes.filter(q => this.KIND[q.kind].rng < 5 && D(q.pos, p.pos) < 5.5).sort((a, b) => D(a.pos, p.pos) - D(b.pos, p.pos))[0];
+          const th = foes.filter(q => q.rng < 5 && D(q.pos, p.pos) < 5.5).sort((a, b) => D(a.pos, p.pos) - D(b.pos, p.pos))[0];
           if (th) { const v = unit(th.pos, p.pos); to = [p.pos[0] + v[0] * 2.4 - u[0] * 1.2, p.pos[1] + v[1] * 2.4 - u[1] * 1.2]; }
-          else if (dn > K.rng - .5) to = stick(nf, K.rng - .8);
+          else if (dn > p.rng - .5) to = stick(nf, p.rng - .8);
           else to = [p.pos[0] + u[1] * Math.sin((g.t + i * 3) / 2) * .8, p.pos[1] - u[0] * Math.sin((g.t + i * 3) / 2) * .8];
         }
         // 같은 팀끼리 겹쳐 서지 않는다 (3 이상 벌린다)
@@ -530,7 +534,8 @@ const Sim = {
         const tfx = (af.dmg || 1) * (af.finish && v.hp < .35 ? af.finish : 1) * (af.firstBlood && !g.kills.length ? af.firstBlood : 1) * (vf.takeDmg || 1) * (kit ? .88 : 1) * (vf.lateGuard && m >= 25 ? vf.lateGuard : 1)
           * (mem.some(q => q.side === a.side && (q.fx || {}).teamDmg) ? 1.03 : 1);
         const guard = mem.some(q => q.side === v.side && q !== v && q.kind === 'ench' && !q.dead && this.dist(q.pos, v.pos) < 6) ? .9 : 1;   // 보호형 서폿 곁에서는 덜 아프다
-        const dmg = tfx * peel * guard * this.FIGHT_K * KA.deal * early * mult[a.side] * (1 + (this.ppow(a, m) - av[a.side]) / 40) * this.KIND[v.kind].take * (.75 + g.r() * .5) * (v.fled ? .55 : 1);
+        const sh = typeof CStats !== 'undefined' ? CStats.hit(a, v) : null, base = sh != null ? sh * this.STAT_K : KA.deal * early * this.KIND[v.kind].take;   // 챔피언 스탯 피해 (없으면 유형 배율)
+        const dmg = tfx * peel * guard * this.FIGHT_K * base * mult[a.side] * (1 + (this.ppow(a, m) - av[a.side]) / 40) * (.75 + g.r() * .5) * (v.fled ? .55 : 1);
         hits.push([a, v, dmg]); a.hitTo = v; a.hitAt = g.t;   // 중계 화면의 공격선
       });
       hits.forEach(([a, v, dmg]) => {
@@ -948,7 +953,8 @@ const Sim = {
       const busy = !rush && ((s.push && s.push.until > g.t) || this.objFor(g, p, m) || (p.jq[0] && p.jq[0].kind === 'gank') || this.threat(g, this.other(p.side)));
       const money = this.free(p) >= Math.max(m < 14 ? 1250 : 1100, this.nextCost(p)) && g.t - p.lastBack >= (m < 14 ? 180 : 210) && m >= 3.3;
       const reset = g.t - s.reset < 25 && g.t - p.lastBack > 60;
-      if (p.hp < .25 || rush || (!busy && (reset || (money && g.r() < .35)))) {
+      const oom = p.mpMax && p.mpCur < p.mpMax * .15 && m >= 3;   // 마나가 바닥나면 귀환
+      if (p.hp < .25 || rush || (oom && !busy) || (!busy && (reset || (money && g.r() < .35)))) {
         p.recall = g.t + this.RECALL_CH; p.jq = []; p.hold = null;
         g.fx.push({ type: 'recall', side: p.side, at: [...p.pos], t: g.t, dur: this.RECALL_CH });
       }
@@ -957,7 +963,7 @@ const Sim = {
   // 우물 도착: 상점 → 텔레포트가 있으면 자기 라인(아군 쪽 전선)으로만 순간이동
   atBase(g, p, m) {
     p.pos = [...this.fountain(p.side)]; p.trail = [p.pos]; p.warp = g.t; p.hp = 1; p.lastBack = g.t; p.hold = null; p.rt = null; p.fled = 0;
-    const big0 = p.inv.filter(i => i.gold >= 2500).length; this.shop(g, p);
+    const big0 = p.inv.filter(i => i.gold >= 2500).length; this.shop(g, p); this.refresh(p); p.mpCur = p.mpMax;
     const bigs = p.inv.filter(i => i.gold >= 2500); if (g.t > 0 && bigs.length > big0 && this.isCarry(p) && g.r() < .3) this.say(g, 'anal', `${p.name}, 귀환해서 ${this.josa(bigs[bigs.length - 1].ko, '을', '를')} 완성했습니다. ${bigs.length}코어예요.`);
     if (!p.tp || g.t < p.tpReady || m < 3 || (g.side[p.side].push && g.side[p.side].push.until > g.t)) return;
     const lane = this.LANE_OF[p.role], spot = this.laneSpot(g, p, m, lane);
@@ -972,7 +978,7 @@ const Sim = {
     const prev = this.audit ? g.pl.map(p => [...p.pos]) : null;
     g.t += 1;
     const m = this.min(g), dec = g.t % 10 === 0, v = this.SPEED / 10;
-    g.pl.forEach(p => { p.trail = null; p.budget = v; });
+    g.pl.forEach(p => { p.trail = null; p.budget = v * (p.msF || 1); if (p.mpMax && !p.dead) p.mpCur = Math.min(p.mpMax, p.mpCur + p.mp5 / 5); });   // 이동 속도 · 마나 회복 (5초당 → 1초)
     g.pl.forEach(p => {
       if (p.tpCh && g.t >= p.tpCh.at) { p.pos = p.tpCh.to; p.trail = [p.pos]; p.warp = g.t; p.tpCh = null; p.rt = null; }
       if (p.dead && g.t >= p.dead) { p.dead = 0; this.atBase(g, p, m); }
@@ -1000,7 +1006,7 @@ const Sim = {
           else if (tx * -ax + ty * -ay > 0 || d < 2.7) { const sd = (tx * -ay + ty * ax) >= 0 ? 1 : -1, out = d < 2.7 ? 1 : .25; to = this.clampP([p.pos[0] + (-ay * sd + ax * out) * 3, p.pos[1] + (ax * sd + ay * out) * 3]); }
         }
       }
-      const dv = p.dash >= g.t && p.hold ? v * this.KIND[p.kind].dash : v; p.budget = dv;
+      const dv = (p.dash >= g.t && p.hold ? v * this.KIND[p.kind].dash : v) * (p.msF || 1); p.budget = dv;
       const was = p.pos; this.walk(p, to, dv);
       if (!(p.dive > g.t) && !this.danger(g, p.side, was, 0) && this.danger(g, p.side, p.pos, 0)) { p.pos = was; p.trail = [was]; p.rt = null; }   // 지나가는 길이라도 포탑 사거리는 밟지 않는다
     });
@@ -1011,7 +1017,7 @@ const Sim = {
     g.fx = g.fx.filter(f => g.t - f.t <= (f.dur || 2));
     if (prev) g.pl.forEach((p, i) => {
       const d = this.dist(prev[i], p.pos);
-      if (d > v * (p.dash >= g.t - 1 ? this.KIND[p.kind].dash : 1) + .6 && p.warp !== g.t && !p.dead) this.audit.push(`${this.clock(g.t)} 순간 이동 ${p.name} ${prev[i].map(Math.round)} → ${p.pos.map(Math.round)} (${d.toFixed(1)})`);
+      if (d > v * (p.msF || 1) * (p.dash >= g.t - 1 ? this.KIND[p.kind].dash : 1) + .6 && p.warp !== g.t && !p.dead) this.audit.push(`${this.clock(g.t)} 순간 이동 ${p.name} ${prev[i].map(Math.round)} → ${p.pos.map(Math.round)} (${d.toFixed(1)})`);
       if (!p.dead && Rift.wall(p.pos)) this.audit.push(`${this.clock(g.t)} 벽 안 ${p.name} ${p.pos.map(v => v.toFixed(1))}`);
       if (p.pos[0] < 2 || p.pos[0] > 98 || p.pos[1] < 2 || p.pos[1] > 98) this.audit.push(`${this.clock(g.t)} 맵 밖 ${p.name} ${p.pos.map(Math.round)}`);
       if (!p.dead && m < 12 && dec && this.dist(p.pos, this.fountain(this.other(p.side))) < 22) this.audit.push(`${this.clock(g.t)} 초반 상대 본진 ${p.name} ${p.pos.map(Math.round)}`);
@@ -1031,6 +1037,10 @@ const Sim = {
       // 포지션별 경험치 속도(실제 30분 기준 탑·미드 16, 원딜·정글 15, 서폿 13 안팎) + 킬·어시 − 데스. 예전에는 30분이면 모두 18이 됐다
       p.lvl = Math.max(1, Math.min(18, Math.floor(1 + m * ({ TOP: .52, MID: .52, BOT: .48, JGL: .48, SUP: .41 })[p.role] + p.k * .15 + p.a * .05 - p.d * .08)));
       if (this.dist(p.pos, this.fountain(p.side)) < 14) p.hp = 1; else p.hp = Math.min(1, p.hp + .02);
+      this.refresh(p);
+      // 라인전 견제로 마나를 쓴다 (맞상대가 근처에 있으면 10초에 Q 소모의 0.4배, 1분 40초부터)
+      if (p.mpMax && m < 14 && g.t >= 100 && inLane && this.near(g, this.other(p.side), p.pos, 10).length && typeof CStats !== 'undefined') p.mpCur = Math.max(0, p.mpCur - CStats.cost(p, 'Q') * .4);
+      if (p.mpMax && this.dist(p.pos, this.fountain(p.side)) < 14) p.mpCur = p.mpMax;
     });
     // 사건: 공성(넥서스가 깨지면 이 틱의 다른 일은 없다) · 오브젝트 · 라인전 · 근접 교전 · 귀환
     this.preObj(g);

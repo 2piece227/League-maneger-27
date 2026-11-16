@@ -11,6 +11,7 @@ const Stats = {
       Champions.load().then(() => typeof Traits !== 'undefined' ? Traits.load() : null),
       fetch('data/draft-model.json').then(r => r.ok ? r.json() : null).catch(() => null),
       fetch('data/soloq-meta.json').then(r => r.ok ? r.json() : null).catch(() => null),
+      typeof CStats !== 'undefined' ? CStats.load() : null,
     ]).then(([s, it, , dm, sq]) => {
       this.soloq = sq;
       if (typeof Draft !== 'undefined') Draft._meta = null;

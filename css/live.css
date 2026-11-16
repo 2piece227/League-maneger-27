@@ -223,3 +223,7 @@
 /* 강화된 강타 표시 (펫이 흡수된 뒤): 아이템 칸이 아닌 작은 금색 동그라미 */
 .it-smite { display: inline-flex; margin-left: 2px; }
 .it-smite .it-ic { border-radius: 50%; box-shadow: 0 0 0 1.5px #ffd36a, 0 0 5px rgba(255,211,106,.7); filter: saturate(1.3); }
+
+/* 마나 막대 (마나를 쓰는 챔피언만) */
+.lv-mp { height: 3px; border-radius: 2px; background: #1c2436; overflow: hidden; margin-top: 1px; }
+.lv-mp i { display: block; height: 100%; background: #4a8cff; transition: width .4s; }

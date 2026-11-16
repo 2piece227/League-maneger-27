@@ -402,7 +402,7 @@ const Live = {
         $('.lv-side.' + k.toLowerCase(), el).innerHTML = g.pl.filter(p => p.side === k).map(p => `
           <div class="lv-pl" data-i="${g.pl.indexOf(p)}">
             <div class="lv-pic">${SoloQ.ic(p.c)}<i></i><em></em></div>
-            <div class="lv-pi"><small>${UI.esc(g.side[k].t.short)} ${UI.esc(p.name)}</small><div class="lv-hp"><i></i></div><div class="lv-items"></div></div>
+            <div class="lv-pi"><small>${UI.esc(g.side[k].t.short)} ${UI.esc(p.name)}</small><div class="lv-hp"><i></i></div><div class="lv-mp"><i></i></div><div class="lv-items"></div></div>
           </div>`).join('');
       });
     }
@@ -411,6 +411,7 @@ const Live = {
       row.classList.toggle('dead', !!p.dead); row.querySelector('.lv-pic i').textContent = p.lvl;
       row.querySelector('.lv-pic em').textContent = p.dead ? Math.max(0, p.dead - g.t) : '';
       row.querySelector('.lv-hp i').style.width = Math.round(p.hp * 100) + '%';
+      const mpb = row.querySelector('.lv-mp'); mpb.style.visibility = p.mpMax ? '' : 'hidden'; if (p.mpMax) mpb.firstChild.style.width = Math.round(p.mpCur / p.mpMax * 100) + '%';
       const its = row.querySelector('.lv-items'), key = p.inv.map(x => x.id).join(',') + '|' + p.wards + '|' + (p.trinket ? p.trinket.id : '') + '|' + (p.pet || 0);
       if (its.dataset.k !== key) { its.dataset.k = key; its.innerHTML = this.inventory(p); }
     });
