@@ -424,7 +424,7 @@ const Sim = {
   },
   // 교전 1초: 사거리(7) 안의 상대를 친다. 팀 힘(조합·골드·버프·코치·전술·컨디션: tpow)은 피해 배율로, 개인 실력은 개인 배율로.
   // 체력이 낮고 밀리면 빠진다(뒤쫓기면 맞으면서). 체력이 0이 되면 마지막에 때린 선수가 처치, 피해를 준 선수는 어시스트.
-  OFFWAVE: .5, MEET: .25, DEF: 1, BASE_DIVE: .22, FIGHT_K: .16, FIGHT_S: 26, RANGE: 7, SNOW: .25, SNOW_MAX: 4,   // SNOW: 골드 1천 차이당 전투력
+  OFFWAVE: .5, MEET: .14, DEF: 1, BASE_DIVE: .22, FIGHT_K: .16, FIGHT_S: 26, RANGE: 7, SNOW: .25, SNOW_MAX: 4,   // SNOW: 골드 1천 차이당 전투력
   TANK: { TOP: .8, JGL: .85, MID: 1.08, BOT: 1.18, SUP: .9 },
   // 챔피언 유형별 한타 행동: 사거리(맵 %) · 주는 피해 · 받는 피해 · 붙는 속도(돌진기)
   //   tank 앞라인·이니시(먼저 들어가 가까운 적과 부딪힌다) / bruiser 브루저(앞라인 뒤를 따라 붙는다) / dive 암살·돌진(옆으로 돌아 딜러를 문다)
@@ -497,10 +497,20 @@ const Sim = {
       f.mem = new Set(mem);
       const side = k => mem.filter(p => p.side === k && !p.fled);
       const B = side('B'), R = side('R');
-      if (!B.length || !R.length || g.t - f.t0 > 20) { f.quiet++; if (f.quiet >= 2 || g.t - f.t0 > 20) f.done = true; return; }
+      // 추격: 한쪽이 모두 빠졌는데 체력이 바닥난 채 도망가는 상대가 가까우면, 성한 쪽이 잠깐(4초) 쫓아가 마무리를 노린다
+      //  (예전에는 상대가 빠지는 순간 싸움이 끝나 이긴 쪽도 제자리로 돌아가서, 둘 다 뒤로 빠지는 것처럼 보였다)
+      let chase = null;
+      if ((!B.length || !R.length) && (B.length || R.length) && g.t - f.t0 <= 24 && this.CHASE !== false) {
+        const k = B.length ? 'B' : 'R', hunters = (k === 'B' ? B : R).filter(p => p.hp > .25);
+        const prey = g.pl.filter(q => q.side !== k && q.fled === f.id && !q.dead && !q.recall && q.hp < .25 && hunters.some(p => this.dist(p.pos, q.pos) < p.rng + 6 && Rift.los(p.pos, q.pos)));
+        if (hunters.length && prey.length && g.t - (f.chase ||= g.t) <= 4) chase = { k, hunters, prey };
+      }
+      if (!chase && (!B.length || !R.length || g.t - f.t0 > 20)) { f.quiet++; if (f.quiet >= 2 || g.t - f.t0 > 20) f.done = true; return; }
       f.quiet = 0;
-      const d = this.tpow(g, 'B', B) - this.tpow(g, 'R', R) + f.bonus, mult = { B: Math.exp(d / (2 * this.FIGHT_S)), R: Math.exp(-d / (2 * this.FIGHT_S)) };
-      const avg = (ps) => ps.reduce((a, p) => a + this.ppow(p, m), 0) / ps.length, av = { B: avg(B), R: avg(R) };
+      if (chase) chase.hunters.forEach(p => { const t = chase.prey.slice().sort((a, b) => (a.hp - b.hp) + (this.dist(a.pos, p.pos) - this.dist(b.pos, p.pos)) * .05)[0]; p.hold = { to: this.clampP(t.pos), until: g.t + 2 }; p.dash = g.t + 1; });
+      const Bp = B.length ? B : chase ? chase.prey : B, Rp = R.length ? R : chase ? chase.prey : R;
+      const d = this.tpow(g, 'B', Bp) - this.tpow(g, 'R', Rp) + f.bonus, mult = { B: Math.exp(d / (2 * this.FIGHT_S)), R: Math.exp(-d / (2 * this.FIGHT_S)) };
+      const avg = (ps) => ps.length ? ps.reduce((a, p) => a + this.ppow(p, m), 0) / ps.length : 0, av = { B: avg(Bp), R: avg(Rp) };
       const early = m < 10 ? .7 : m < 18 ? .9 : 1;                     // 초반은 피해가 낮다 (레벨·아이템)
       const hits = [];
       [...B, ...R].forEach(a => {
@@ -554,7 +564,7 @@ const Sim = {
       const live = mem.filter(p => !p.dead && !p.fled);
       if (live.length) f.at = [live.reduce((a, p) => a + p.pos[0], 0) / live.length, live.reduce((a, p) => a + p.pos[1], 0) / live.length];
       if (typeof Skills !== 'undefined') Skills.cast(g, f, mem);   // 스킬 연출 (결과에는 영향 없음)
-      this.form(g, f, live);
+      if (!chase) this.form(g, f, live);
     });
     g.fights.filter(f => f.done).forEach(f => this.fightEnd(g, f));
     g.fights = g.fights.filter(f => !f.done);
@@ -1093,12 +1103,14 @@ const Sim = {
     ['B', 'R'].forEach(k => { if (['top', 'mid', 'bot'].some(l => { const st = this.structOf(g, k, l); return st.kind !== 'nexus' && this.dist(st.pos, at) < 12; })) d += k === 'B' ? 6 : -6; });
     const pB = 1 / (1 + Math.exp(-d / 11.5)), weak = pB < .5 ? 'B' : 'R', pw = Math.min(pB, 1 - pB), home = ['top', 'mid', 'bot'].some(l => /nexus|inhib/.test(this.structOf(g, weak, l).kind) && this.dist(this.structOf(g, weak, l).pos, at) < 20);
     // 많이 불리하면 물러난다 (본진 안에서는 물러날 곳이 없으니 싸운다)
-    if (pw < .3 && !home && !best.face && g.r() < .8) {
+    // 잡을 수 있는 상황: 한쪽에 체력이 바닥난(20% 미만) 선수가 있고 반대쪽은 모두 성하면(50% 이상) 서로 빠지지 않고 들어간다
+    const lowB = A.some(p => p.hp < .2), lowR = Bp.some(p => p.hp < .2), kill = ((lowR && !lowB && A.length && A.every(p => p.hp > .5)) || (lowB && !lowR && Bp.length && Bp.every(p => p.hp > .5))) && g.r() < (this.KILLP ?? .6);
+    if (pw < .3 && !home && !best.face && !kill && g.r() < .8) {
       (weak === 'B' ? A : Bp).forEach(p => this.retreat(g, p, 14));
       if (A.length + Bp.length >= 4 && g.r() < .35) this.say(g, 'anal', `${this.josa(g.side[weak].t.short, '이', '가')} 마주쳤지만 싸우지 않고 물러납니다. 지금은 불리하다고 본 거죠.`);
       return;
     }
-    if (g.r() > this.MEET * (best.face ? .3 : 1 + tries) * this.agr(g)) { if (!best.face) this.standoff(g, A, Bp); return; }   // 서로 견제만 한다
+    if (!kill && g.r() > this.MEET * (best.face ? .3 : 1 + tries) * this.agr(g)) { if (!best.face) this.standoff(g, A, Bp); return; }   // 서로 견제만 한다
     const lane = ['top', 'mid', 'bot'].sort((x, y) => this.distLane(at, x) - this.distLane(at, y))[0];
     this.fightAt(g, at, 14, { where: home ? '본진' : this.distLane(at, lane) < 6 ? this.laneKo(lane) : '정글' });
   },
