@@ -12,27 +12,30 @@ const Kits = {
     // ---------- 럼블: 열기 0~100 (스킬마다 +20), 50 이상 위험 상태(스킬 50% 강화), 100이면 과열(스킬 봉인 · 평타 강화, 1:1 최강) ----------
     Rumble: {
       res: 'heat',
-      Q: { shape: 'cone', pierce: true, col: '255,154,60', colHot: '217,86,15', range: 600, use: ['clear', 'poke', 'heat', 'trade', 'tf'] },
+      Q: { shape: 'cone', pierce: true, col: '255,154,60', colHot: '217,86,15', range: 600, clr: .7, use: ['clear', 'poke', 'heat', 'trade', 'tf'] },
       W: { shape: 'self', col: '255,154,60', colHot: '217,86,15', use: ['chase', 'flee', 'heat'] },
-      E: { shape: 'line', pierce: false, col: '201,209,219', range: 850, charges: 2, use: ['farm', 'poke', 'heat', 'chase', 'trade'] },
+      E: { shape: 'line', pierce: false, col: '201,209,219', range: 850, charges: 2, clr: .3, use: ['farm', 'poke', 'heat', 'chase', 'trade'] },
       R: { shape: 'wall', col: '255,138,128', range: 1700, use: ['tf', 'finish'], skill: true },
     },
     // ---------- 암베사: Q 1타를 맞혀야 2타, E는 맞히면 한 번 더. Q · W · E 관통. R 대상에게 기절 + 뒤로 이동 + 능력치 상승 ----------
     Ambessa: {
-      Q: { shape: 'cone', pierce: true, col: '255,150,50', range: 475, use: ['trade', 'tf', 'chase', 'flee', 'clear'], next: { key: 'Q', name: '파멸의 일격', shape: 'line', needHit: true } },
+      Q: { shape: 'cone', pierce: true, col: '255,150,50', range: 475, clr: .5, use: ['trade', 'tf', 'chase', 'flee', 'clear'], next: { key: 'Q', name: '파멸의 일격', shape: 'line', needHit: true } },
       W: { shape: 'self', pierce: true, col: '255,150,50', use: ['trade', 'tf', 'flee', 'chase'] },
-      E: { shape: 'circle', pierce: true, col: '201,209,219', range: 350, use: ['trade', 'tf', 'chase', 'flee', 'clear'], next: { key: 'E', shape: 'dash', needHit: true } },
+      E: { shape: 'circle', pierce: true, col: '201,209,219', range: 350, clr: .4, use: ['trade', 'tf', 'chase', 'flee', 'clear'], next: { key: 'E', shape: 'dash', needHit: true } },
       R: { shape: 'line', col: '235,60,60', range: 1250, use: ['chase', 'pick', 'tf'], ult: 'ambessa' },
     },
     // ---------- 크산테: 기본 ↔ 총공세(R 뒤). Q 3타는 끌어당기며 에어본, W 차징, E 보호막 돌진, R 대상 납치(벽 근처면 벽 끝까지 끌고 가 제압) ----------
     KSante: {
       res: 'allout',
-      Q: { shape: 'line', pierce: true, col: '214,184,120', range: 465, use: ['trade', 'clear', 'poke', 'tf', 'chase'] },
+      Q: { shape: 'line', pierce: true, col: '214,184,120', range: 465, clr: .22, use: ['trade', 'clear', 'poke', 'tf', 'chase'] },
       W: { shape: 'line', col: '214,184,120', range: 450, use: ['trade', 'flee', 'tf', 'chase'], charge: true },
       E: { shape: 'dash', col: '214,184,120', range: 250, use: ['trade', 'chase', 'flee', 'tf'] },
       R: { shape: 'target', col: '214,184,120', range: 350, use: ['tf', 'pick', 'trade'], ult: 'ksante' },
     },
   },
+  // 챔피언별 라인 클리어 속도 (평타 · 스킬로 웨이브를 정리하는 빠르기, 1 = 보통). 스킬 하나의 클리어량은 각 스킬의 clr
+  CLEAR: { Rumble: 1.2, Ambessa: 1, KSante: .7 },
+  clearOf(c) { return this.CLEAR[c] ?? 1; },
   has(c) { return !!this.K[c]; },
   D: () => Sim.dist,
   on(p) { return p.kit ||= { cd: {}, heat: 0, lastCast: -99, stack: 0, charges: 2, chT: 0, q: [] }; },
@@ -151,6 +154,10 @@ const Kits = {
       hit = s.pierce || shape === 'cone' || shape === 'circle' || shape === 'wall' ? cand : cand.sort((a, b) => D(a.pos, p.pos) - D(b.pos, p.pos)).slice(0, 1);
       if (o.lane && !o.tg) hit = [];                                       // 미니언에게 쓴 스킬
     }
+    // 회피: 논타겟은 빗나갈 수 있다 (크산테 R 같은 대상 지정은 항상)
+    const sk0 = Skills.of(p.c).find(x => x.key === key) || {}, fxD = { ...(sk0.fx || {}), s: shape === 'wall' ? 'wall' : shape === 'self' ? 'self' : shape };
+    let miss = [];
+    if (hit.length && shape !== 'target' && shape !== 'self') { const dg = Skills.dodge(g, p, fxD, hit); hit = dg.hit; miss = dg.miss; }
     // ----- 챔피언별 효과 -----
     const mul = this.hot(p) && key !== 'R' ? 1.5 : 1;                     // 럼블 위험 상태: 스킬 50% 강화
     if (p.c === 'Rumble') {
@@ -190,20 +197,34 @@ const Kits = {
         this.say(g, p, wall ? `${p.name}, ${Sim.josa(tg.name, '을', '를')} 벽 너머로 끌고 갑니다! 총공세!` : `${p.name}의 납치! ${Sim.josa(tg.name, '을', '를')} 진영 밖으로 걷어찹니다!`);
       }
     }
+    // 암베사 패시브(용사냥개의 발걸음): 스킬을 쓸 때마다 짧게 도약 (칼리스타처럼) + 다음 평타 강화.
+    //  도주 중이면 뒤로, 대상이 멀면 대상 쪽으로, 붙어 있으면 옆으로 비켜 선다
+    if (p.c === 'Ambessa' && key !== 'R') this.hop(g, p, o.ctx, tg || (o.foes || []).find(q => q.side !== p.side));
     // 보호막 (데이터: 럼블 W · 크산테 E 등)
     if (typeof CStats !== 'undefined' && !o.follow) { const sh = CStats.shield(p, key, p); if (sh) p.sh = { v: Math.max(p.sh && p.sh.until > g.t ? p.sh.v : 0, sh.v * mul), until: g.t + Math.max(1, Math.round(sh.dur / 2)) }; }
     // 견제 · 클리어 (한타 밖): 견제는 체력을 조금, 클리어는 웨이브를 깎고 CS
     if (o.lane) {
       if (o.tg && hit.includes(o.tg) && typeof CStats !== 'undefined') { const h = CStats.hit(p, o.tg); if (h != null) o.tg.hp = Math.max(.15, o.tg.hp - h * 1.4 * mul); }
-      if (o.wave && (o.ctx === 'clear' || o.ctx === 'farm' || o.ctx === 'heat')) { const dn = Math.min(o.wave.n, (shape === 'cone' || s.pierce ? .9 : .5) * mul); o.wave.n -= dn; Sim.csGive(g, p.side, o.wave.p, dn, Sim.min(g), o.ctx === 'farm'); }
+      if (o.wave && (o.ctx === 'clear' || o.ctx === 'farm' || o.ctx === 'heat')) { const dn = Math.min(o.wave.n, (s.clr ?? .3) * mul); o.wave.n -= dn; Sim.csGive(g, p.side, o.wave.p, dn, Sim.min(g), o.ctx === 'farm'); }
     }
     // 연출
     const sk = Skills.of(p.c).find(x => x.key === key) || {};
     (g.sk ||= []).push({ t: g.t, i: g.pl.indexOf(p), key, kind: shape === 'self' ? 'self' : shape === 'dash' ? 'dash' : key === 'R' ? 'init' : 'atk', shape: shape === 'self' || shape === 'dash' ? '' : shape === 'wall' ? 'line' : shape,
-      wall: shape === 'wall', cc, name: name || sk.name || key, icon: sk.icon, from: [...p.pos], to: [...at], hit: hit.map(q => g.pl.indexOf(q)), ally: [], big: !!o.big || key === 'R', col, pierce: !!s.pierce, rng: this.R(s.range || 500), kit: true, lane: !!o.lane, hot: this.hot(p) });
+      wall: shape === 'wall', cc, name: name || sk.name || key, icon: sk.icon, from: [...p.pos], to: [...at], hit: hit.map(q => g.pl.indexOf(q)), miss: miss.map(q => g.pl.indexOf(q)), ally: [], big: !!o.big || key === 'R', col, fx: sk0.fx || null, pierce: !!s.pierce, rng: this.R(s.range || 500), kit: true, lane: !!o.lane, hot: this.hot(p) });
   },
   nm(p, key) { return (Skills.of(p.c).find(x => x.key === key) || {}).name || key; },
   say(g, p, text) { if (g.r() < .5) Sim.say(g, 'cast', text); },
+  hop(g, p, ctx, tg) {
+    const D = Sim.dist, d = 2;                                              // 약 300 유닛
+    let dir;
+    if (ctx === 'flee' || p.hp < .3) { const f = Sim.fountain(p.side), L = D(f, p.pos) || 1; dir = [(f[0] - p.pos[0]) / L, (f[1] - p.pos[1]) / L]; }
+    else if (tg) { const dx = tg.pos[0] - p.pos[0], dy = tg.pos[1] - p.pos[1], L = Math.hypot(dx, dy) || 1; dir = L > 2.2 ? [dx / L, dy / L] : (g.r() < .5 ? [-dy / L, dx / L] : [dy / L, -dx / L]); }
+    else return;
+    const to = Rift.snap(Sim.clampP([p.pos[0] + dir[0] * d, p.pos[1] + dir[1] * d]), 1);
+    if (!Rift.los(p.pos, to)) return;
+    const from = [...p.pos]; p.pos = to; p.warp = g.t; p.km = { v: Math.max(p.km && p.km.until > g.t ? p.km.v : 1, 1.1), until: g.t + 1 };
+    (g.sk ||= []).push({ t: g.t, i: g.pl.indexOf(p), key: 'P', kind: 'dash', shape: '', cc: '', name: '도약', icon: null, from, to: [...to], hit: [], miss: [], ally: [], big: false, col: '255,190,110', kit: true, hop: true });
+  },
   // 암베사 R: 대상 뒤로 (벽이면 가까운 길 위로)
   blink(g, p, tg, d) {
     const dx = tg.pos[0] - p.pos[0], dy = tg.pos[1] - p.pos[1], L = Math.hypot(dx, dy) || 1;

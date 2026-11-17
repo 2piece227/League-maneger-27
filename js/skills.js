@@ -129,8 +129,52 @@ const Skills = {
       const s = sp.find(x => x.key === key) || {}; let [kind, shape = '', cc = ''] = t ? t[i].split('.') : [];
       if (cc === 'global') { shape = 'global'; cc = ''; }   // 'atk.line.global' = 맵 전체를 가로지르는 직선 궁
       const names = (s.name || key).split(' / ');
-      return { key, name: names[0], mega: names[1] || null, icon: s.icon || ch.icon, ...(t ? { kind, shape: shape === 'self' ? '' : shape, cc } : this.auto(s, key)) };
+      // 수치 연출(data/skill-fx.json): 모양 · 사거리 · 폭 · 반경 · 각도 · 속도 · 발사 수 · 채널링. 변신 챔피언은 두 번째 형태(fx2)
+      const F = typeof CStats !== 'undefined' && CStats.fx[c] && CStats.fx[c][key] || [], fx = F[0] || null, fx2 = F[1] || null;
+      const base = t ? { kind, shape: shape === 'self' ? '' : shape, cc } : this.auto(s, key);
+      if (fx) { const SH = { line: 'line', cone: 'cone', circle: 'circle', target: 'target', global: 'global', aura: 'circle', wall: 'line' }; if (SH[fx.s]) base.shape = SH[fx.s]; if (fx.cc && !base.cc) base.cc = fx.cc; if ((fx.s === 'dash' || fx.s === 'blink') && base.kind === 'atk') base.kind = 'dash'; }
+      return { key, name: names[0], mega: names[1] || null, icon: s.icon || ch.icon, fx, fx2, ...base };
     }));
+  },
+  // 맞는 대상 (수치 연출 기준). fx가 없으면 예전 고정 크기
+  U: 150,
+  hits(p, s, fx, to, tg, foes, seg) {
+    const D = Sim.dist, U = this.U;
+    if (s.kind === 'ally' || s.kind === 'self' || s.kind === 'esc') return [];
+    if (!fx) return s.shape === 'global' ? foes : s.shape === 'circle' ? foes.filter(q => D(q.pos, to) < 4) : s.shape === 'cone' ? foes.filter(q => D(q.pos, p.pos) < 6 && D(q.pos, to) < 5) : s.shape === 'line' ? foes.filter(q => seg(p.pos, to, q.pos) < 2) : tg ? [tg] : [];
+    const r = Math.min(40, (fx.r || 600) / U + 1), dx = to[0] - p.pos[0], dy = to[1] - p.pos[1], L = Math.hypot(dx, dy) || 1, end = [p.pos[0] + dx / L * r, p.pos[1] + dy / L * r];
+    let h;
+    switch (fx.s) {
+      case 'global': return foes;
+      case 'line': h = foes.filter(q => seg(p.pos, end, q.pos) < (fx.w || 90) / U / 2 + .8); break;
+      case 'cone': { const a0 = Math.atan2(dy, dx), half = (fx.ang || 60) * Math.PI / 360; h = foes.filter(q => { const d = D(q.pos, p.pos); if (d > r) return false; let da = Math.abs(Math.atan2(q.pos[1] - p.pos[1], q.pos[0] - p.pos[0]) - a0); if (da > Math.PI) da = 2 * Math.PI - da; return da <= half + .15 || d < 1.2; }); break; }
+      case 'circle': { const c = L > r ? end : to; h = foes.filter(q => D(q.pos, c) < (fx.rad || 200) / U + .8); break; }
+      case 'aura': h = foes.filter(q => D(q.pos, p.pos) < (fx.rad || 300) / U + .8); break;
+      case 'wall': { const px = -dy / L, py = dx / L; h = foes.filter(q => seg([to[0] - px * 3, to[1] - py * 3], [to[0] + px * 3, to[1] + py * 3], q.pos) < 1.2); break; }
+      case 'dash': case 'blink': h = fx.rad ? foes.filter(q => D(q.pos, L > r ? end : to) < fx.rad / U + .8) : tg && L <= r + 1 ? [tg] : []; break;
+      default: h = tg ? [tg] : [];
+    }
+    if (fx.stop && h.length > 1) h = h.sort((a, b) => D(a.pos, p.pos) - D(b.pos, p.pos)).slice(0, 1);
+    return h;
+  },
+  // 회피: 논타겟(직선 · 원 · 부채꼴 · 벽 · 전역 · 착지 범위)은 빗나갈 수 있다. 대상 지정은 항상 맞는다.
+  //  맞을 확률 = 모양 기본값 − 날아가는 시간(거리 ÷ 투사체 속도, 원은 착지 지연) + 폭 + 시전자 실력 − 대상 실력(선수 OVR · 챔피언 숙련)
+  //  묶여 있으면(기절 · 에어본 · 제압) 무조건, 둔화 중이면 더 잘 맞는다
+  HIT0: { line: .68, cone: .88, circle: .62, aura: .9, wall: .8, global: .55, dash: .82, blink: .85, target: 1, self: 1, passive: 1 },
+  dodge(g, p, fx, list) {
+    const miss = [];
+    if (!fx || !list.length || (this.HIT0[fx.s] ?? 1) >= 1) return { hit: list, miss };
+    const hit = list.filter(q => {
+      if ((q.cc || 0) > g.t) return true;
+      const du = Sim.dist(p.pos, q.pos) * this.U, t = fx.spd ? du / fx.spd : fx.s === 'circle' ? .5 : .25;
+      let h = this.HIT0[fx.s] - Math.min(.3, t * .28) + Math.min(.15, Math.max(0, ((fx.w || fx.rad || 90) - 90) / 600))
+        + ((p.ovr || 70) - (q.ovr || 70)) / 200 + Math.min(1, (p.m || 0) / 30) * .08 - Math.min(1, (q.m || 0) / 30) * .05
+        + ((q.slow || 0) > g.t ? .15 : 0) - (q.kind === 'dive' || q.kind === 'adc' ? .05 : q.kind === 'tank' ? -.05 : 0);
+      h = Math.max(.15, Math.min(.97, h));
+      if (g.r() < h) return true;
+      miss.push(q); return false;
+    });
+    return { hit, miss };
   },
   // 변신 챔피언: 나르는 분노가 차면 메가 나르(궁은 메가일 때만)
   FORM: { Gnar: 'mega' },
@@ -148,7 +192,10 @@ const Skills = {
       if (typeof Kits !== 'undefined' && Kits.has(p.c)) return Kits.cast(g, f, p, live);   // 사용자가 정한 키트 (js/kits.js)
       const cd = (p.skc ||= {}), C = typeof CStats !== 'undefined', mana = s => !C || !p.mpMax || CStats.cost(p, s.key) <= p.mpCur;   // 마나가 모자라면 못 쓴다
       const ready = s => mana(s) && (s.key === 'R' ? g.t >= (p.rFx || 0) && p.lvl >= 6 && !Sim.ULT_JOIN.includes(p.c) && !(s.shape === 'global' && s.kind === 'dash') : g.t >= (cd[s.key] || 0));
-      const S = this.of(p.c).filter(ready); if (!S.length) return;
+      const S0 = this.of(p.c).filter(ready); if (!S0.length) return;
+      // 사거리 밖 스킬은 고르지 않는다 (본인 · 팀원 · 전역 · 도주기는 상관없음)
+      const nearF = live.filter(q => q.side !== p.side && !q.fled).reduce((a, q) => Math.min(a, D(q.pos, p.pos)), 99);
+      const S = S0.filter(s => !s.fx || !s.fx.r || ['self', 'aura', 'global', 'passive'].includes(s.fx.s) || ['ally', 'self', 'esc'].includes(s.kind) || nearF <= s.fx.r / this.U + 2); if (!S.length) return;
       const foes = live.filter(q => q.side !== p.side && !q.fled), us = live.filter(q => q.side === p.side);
       const early = g.t - f.t0 <= 1, front = p.kind === 'tank' || p.kind === 'bruiser' || p.kind === 'dive', low = p.hp < .3 || p.fled;
       const pick = (...ks) => S.filter(s => ks.includes(s.kind));
@@ -169,19 +216,20 @@ const Skills = {
       // 재사용 대기: 챔피언별 실제 값(현재 랭크, 스킬 가속 약 20% 반영) · 마나 소모
       const rc = C && CStats.cd(p, s.key); if (s.key === 'R') p.rFx = g.t + (rc ? rc * .85 : 90); else cd[s.key] = g.t + (rc ? Math.max(1.5, rc * .8) : this.CD[s.key] + g.r() * 2);
       if (C && p.mpMax) p.mpCur = Math.max(0, p.mpCur - CStats.cost(p, s.key));
+      const form = this.FORM[p.c] === 'mega' ? (s.key === 'R' || (p.mega || 0) > g.t || (m >= 8 && g.r() < .45) ? 'mega' : '') : '';
+      if (form === 'mega') p.mega = Math.max(p.mega || 0, g.t + 6);
       const to = s.kind === 'self' ? [...p.pos] : s.kind === 'esc' ? Sim.toward(p.pos, p.side, 6) : [...tg.pos];
-      // 맞은 적 (원형 4 · 부채꼴 5 · 직선 폭 2 · 전역은 체력 낮은 적 전부)
+      // 맞은 적: 실제 수치로 (게임 단위 150 = 맵 1). 직선은 폭, 부채꼴은 각도 · 사거리, 원은 반경, 관통 못 하면 첫 대상만
       const seg = (a, b, q) => { const vx = b[0] - a[0], vy = b[1] - a[1], L = vx * vx + vy * vy || 1, u = Math.max(0, Math.min(1, ((q[0] - a[0]) * vx + (q[1] - a[1]) * vy) / L)); return D(q, [a[0] + vx * u, a[1] + vy * u]); };
-      const hit = s.kind === 'ally' || s.kind === 'self' || s.kind === 'esc' ? [] : s.shape === 'global' ? foes
-        : s.shape === 'circle' ? foes.filter(q => D(q.pos, to) < 4) : s.shape === 'cone' ? foes.filter(q => D(q.pos, p.pos) < 6 && D(q.pos, to) < 5)
-        : s.shape === 'line' ? foes.filter(q => seg(p.pos, to, q.pos) < 2) : tg ? [tg] : [];
+      const fx = (form === 'mega' && s.fx2) || s.fx;
+      const dg = this.dodge(g, p, fx, this.hits(p, s, fx, to, tg, foes, seg)), hit = dg.hit;
       const ally = s.kind === 'ally' ? (s.shape === 'circle' || s.shape === 'global' ? us : [tg]) : [];
       // 보호막: 스킬 데이터에 보호막이 있으면 실제로 씌운다 (팀원 스킬은 팀원, 아니면 본인). 엔진 1초 ≈ 실제 2초라 지속은 절반
       if (C) { const to = ally.length ? ally.filter(Boolean) : [p]; to.forEach(q => { const sh = CStats.shield(p, s.key, q); if (sh) q.sh = { v: Math.max(q.sh && q.sh.until > g.t ? q.sh.v : 0, sh.v), until: g.t + Math.max(1, Math.round(sh.dur / 2)) }; }); }
-      const form = this.FORM[p.c] === 'mega' ? (s.key === 'R' || (p.mega || 0) > g.t || (m >= 8 && g.r() < .45) ? 'mega' : '') : '';
-      if (form === 'mega') p.mega = Math.max(p.mega || 0, g.t + 6);
-      g.sk.push({ t: g.t, i: g.pl.indexOf(p), key: s.key, kind: s.kind, shape: s.shape, cc: s.cc, name: form === 'mega' && s.mega ? s.mega : s.name, icon: s.icon, form,
-        from: [...p.pos], to, hit: hit.map(q => g.pl.indexOf(q)), ally: ally.filter(Boolean).map(q => g.pl.indexOf(q)), big: f.size >= 4 });
+      // 채널링(진 궁 · 미스 포츈 궁 등): 그동안 제자리에 선다 (엔진 1초 ≈ 실제 2초)
+      if (fx && fx.ch) p.hold = { to: [...p.pos], until: g.t + Math.ceil(fx.ch / 2) };
+      g.sk.push({ t: g.t, i: g.pl.indexOf(p), key: s.key, kind: s.kind, shape: s.shape, cc: s.cc, name: form === 'mega' && s.mega ? s.mega : s.name, icon: s.icon, form, fx,
+        from: [...p.pos], to, hit: hit.map(q => g.pl.indexOf(q)), miss: dg.miss.map(q => g.pl.indexOf(q)), ally: ally.filter(Boolean).map(q => g.pl.indexOf(q)), big: f.size >= 4 });
       // 해설: 여러 명을 묶은 이니시 궁
       if (s.key === 'R' && hit.length >= 3 && ['up', 'stun', 'pull', 'back'].includes(s.cc) && g.r() < .6)
         Sim.say(g, 'cast', Sim.pick(g, [`${p.name}의 ${s.name}! ${hit.length}명이 한꺼번에 걸립니다!`, `${s.name}! ${Sim.josa(p.name, '이', '가')} ${hit.length}명을 묶어 버려요!`, `들어갑니다! ${Sim.cn(p)}의 ${s.name}, ${hit.length}명 적중!`]));

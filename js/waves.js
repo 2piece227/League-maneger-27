@@ -133,7 +133,7 @@ Object.assign(Sim, {
   // 챔피언이 1초에 정리하는 미니언 수
   pushRate(g, p, m) {
     const kf = ({ mage: 1.2, arti: 1.2, adc: m < 10 ? .85 : 1.1, tank: .85, bruiser: 1, dive: .9, ench: .6 })[p.kind];
-    return Math.min(.7, .08 + .017 * m) * kf * this.PUSH * (p.role === 'SUP' ? .3 : p.role === 'JGL' ? .6 : 1) * (m < 14 && this.inLane(p) ? 1 + this.prio(g, p, m) : 1);
+    return Math.min(.7, .08 + .017 * m) * kf * (typeof Kits !== 'undefined' ? Kits.clearOf(p.c) : 1) * this.PUSH * (p.role === 'SUP' ? .3 : p.role === 'JGL' ? .6 : 1) * (m < 14 && this.inLane(p) ? 1 + this.prio(g, p, m) : 1);
   },
   // 미니언이 죽으면 근처(10) 챔피언이 막타를 친다. 서폿은 다른 아군이 없을 때만. 자기 포탑 밑에서는 놓치는 게 늘고, 주도권을 내주면 견제 때문에 놓친다
   csGive(g, k, at, dn, m, tower) {

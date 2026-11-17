@@ -8,7 +8,8 @@ const CStats = {
       fetch('data/champ-base.json').then(r => r.ok ? r.json() : null).catch(() => null),
       fetch('data/item-stats.json').then(r => r.ok ? r.json() : null).catch(() => null),
       fetch('data/champ-shields.json').then(r => r.ok ? r.json() : null).catch(() => null),
-    ]).then(([b, i, sh]) => { if (b) this.base = b.champs; if (i) this.items = i.items; if (sh) this.shields = sh.champs; });
+      fetch('data/skill-fx.json').then(r => r.ok ? r.json() : null).catch(() => null),
+    ]).then(([b, i, sh, fx]) => { if (b) this.base = b.champs; if (i) this.items = i.items; if (sh) this.shields = sh.champs; if (fx) { this.fx = fx.champs; if (typeof Skills !== 'undefined') Skills.cache = {}; } });
     return this._p;
   },
   // 데이터에 아직 없는 새 챔피언: 같은 공격 방식의 평균으로
@@ -63,7 +64,7 @@ const CStats = {
     return 3.6 + Math.max(0, R - 125) / 150;
   },
   // 보호막: 그 스킬이 주는 보호막 (받는 사람 최대 체력 대비 비율) · 지속(초). 없으면 null
-  shields: {},
+  shields: {}, fx: {},
   shield(p, key, to = p) {
     const d = (this.shields[p.c] || {})[key], A = this.now(p), T = this.now(to), b = this.of(p.c); if (!d || !A || !T) return null;
     const rank = key === 'R' ? Math.min(3, Math.max(1, Math.floor((p.lvl - 1) / 5))) : Math.min(5, Math.max(1, Math.ceil(p.lvl / 3.6))), at = v => Array.isArray(v) ? v[Math.min(v.length, rank) - 1] : v;

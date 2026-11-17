@@ -258,7 +258,7 @@ const Live = {
     const hide = (vm === 'B' || vm === 'R') && typeof Vision !== 'undefined' ? p => p.side !== vm && !Vision.seen(g, vm, p.pos) : () => false;
     const P = g.pl.map(p => ({ p, pos: this.at(p.trail, f) || p.pos })).filter(o => !o.p.dead && !hide(o.p));
     // 스킬 연출(하이라이트): 밀침 · 끌어당김은 맞은 선수를 잠깐 밀어 그리고, 띄움은 위로 띄운다
-    const SK = (g.sk || []).filter(e => (this.mode === 'hl' || e.kit) && now - e.t >= 0 && now - e.t < (e.key === 'R' ? 2.4 : 1.6));   // 키트 챔피언 스킬은 전체 보기에서도
+    const SK = (g.sk || []).filter(e => (this.mode === 'hl' || e.kit) && now - e.t >= 0 && now - e.t < this.fxDur(e));   // 키트 챔피언 스킬은 전체 보기에서도
     for (const e of SK) {
       if (!['back', 'pull', 'up'].includes(e.cc)) continue;
       const a = now - e.t, env = Math.sin(Math.min(1, a / 1.1) * Math.PI);
@@ -316,49 +316,108 @@ const Live = {
   },
   // 스킬 효과: 돌진 꼬리 · 도주 · 직선 · 원형 · 부채꼴 · 대상 · 전역 · 팀원 버프 · 본인 버프 · 묶음
   simg(src) { const m = (this.sims ||= new Map()); let im = m.get(src); if (!im) { im = new Image(); im.src = src; m.set(src, im); } return im; },
+  // 스킬 연출 시간 (게임 초): 채널링 · 장판은 그만큼 길게
+  fxDur(e) {
+    if (e.hop) return .8;
+    const b = e.key === 'R' ? 2.4 : 1.6, f = e.fx; if (!f) return b;
+    return Math.max(b, f.ch ? f.ch / 2 + 1 : 0, f.z ? f.z / 2 + .8 : 0);
+  },
+  // 스킬 효과 (수치 연출, data/skill-fx.json): 실제 사거리 · 폭 · 반경 · 각도 · 투사체 속도 · 발사 수 · 채널링 · 장판 · 돌진 · 순간이동 · 회피
+  //  게임 단위 150 = 맵 1. 엔진 1초 ≈ 실제 2초라 투사체 비행 · 채널링 시간은 절반으로
   skillFx(c, g, SK, P, now, X, Y, R, col) {
     if (!SK.length) return;
-    const TAU = Math.PI * 2, posOf = i => { const o = P.find(o => o.p === g.pl[i]); return o && o.pos; };
+    const TAU = Math.PI * 2, U = 150, posOf = i => { const o = P.find(o => o.p === g.pl[i]); return o && o.pos; };
     const KC = { atk: null, dash: null, init: '255,196,70', esc: '235,240,255', ally: '90,230,140', self: '255,226,110' };
+    const LEG = { line: 'line', circle: 'circle', cone: 'cone', target: 'target', global: 'global' };
     c.save(); c.lineCap = 'round';
     for (const e of SK) {
-      const a = now - e.t, dur = e.key === 'R' ? 2.4 : 1.6, q = a / dur, al = Math.max(0, 1 - q) * (e.kit ? 1.7 : 1), me = posOf(e.i) || e.from, pl = g.pl[e.i];   // 키트 스킬은 더 진하게
-      const rgb = e.col || KC[e.kind] || col(pl.side), big = e.key === 'R' ? 1.5 : e.lane ? .8 : 1;
-      const fx = X(e.from[0]), fy = Y(e.from[1]), tx = X(e.to[0]), ty = Y(e.to[1]);
-      if (e.kind === 'dash' || e.kind === 'esc' || (e.kind === 'init' && !e.shape)) {
-        c.setLineDash(e.kind === 'esc' ? [4, 5] : []); c.strokeStyle = `rgba(${rgb},${.55 * al})`; c.lineWidth = R * .7 * big;
-        c.beginPath(); c.moveTo(fx, fy); c.lineTo(X(me[0]), Y(me[1])); c.stroke(); c.setLineDash([]);
-      }
-      if (e.kind === 'self') { c.strokeStyle = `rgba(${rgb},${.8 * al})`; c.lineWidth = 2.5; c.beginPath(); c.arc(X(me[0]), Y(me[1]), R * (1.3 + q * .5) * big, 0, TAU); c.stroke(); }
-      else if (e.kind === 'ally') {
+      const a = now - e.t, dur = this.fxDur(e), q = a / dur, al = Math.min(1, Math.max(0, 1 - q) * (e.kit ? 1.5 : 1)), me = posOf(e.i) || e.from, pl = g.pl[e.i];
+      const rgb = e.col || KC[e.kind] || col(pl.side), big = e.key === 'R' ? 1.3 : 1, f = e.fx;
+      const S = e.wall ? 'wall' : f ? f.s : (e.kind === 'dash' || e.kind === 'esc' || (e.kind === 'init' && !e.shape)) ? 'dash' : e.kind === 'self' ? 'self' : LEG[e.shape] || 'target';
+      const fr = e.from, fx = X(fr[0]), fy = Y(fr[1]), dxm = e.to[0] - fr[0], dym = e.to[1] - fr[1], Lm = Math.hypot(dxm, dym) || 1, ux = dxm / Lm, uy = dym / Lm;
+      const rngM = f && f.r ? Math.min(40, f.r / U) : 8, Rr = X(rngM);
+      const tt = f && f.spd ? Math.max(.06, Math.min(.9, Lm * U / f.spd / 2)) : .12;   // 비행 시간
+      const chE = f && f.ch ? f.ch / 2 : 0, n = f && f.n ? f.n : chE ? Math.max(2, Math.round(f.ch * 1.5)) : 1;
+      const hitPos = (e.hit || []).map(posOf).filter(Boolean);
+      // 채널링: 시전자 주변이 맥박치듯 (그동안 제자리)
+      if (chE && a < chE) { c.strokeStyle = `rgba(${rgb},${.7})`; c.lineWidth = 2; c.beginPath(); c.arc(X(me[0]), Y(me[1]), R * (1.35 + Math.sin(a * 12) * .12), 0, TAU); c.stroke(); }
+      if (e.kind === 'ally' && e.ally && e.ally.length) {
         e.ally.forEach(i => { const p = posOf(i); if (!p) return; c.strokeStyle = `rgba(${rgb},${.85 * al})`; c.lineWidth = 2.5; c.beginPath(); c.arc(X(p[0]), Y(p[1]), R * (1.25 + Math.sin(a * 8) * .08) * big, 0, TAU); c.stroke();
           c.fillStyle = `rgba(${rgb},${.15 * al})`; c.fill(); if (i !== e.i) { c.lineWidth = 1.2; c.beginPath(); c.moveTo(X(me[0]), Y(me[1])); c.lineTo(X(p[0]), Y(p[1])); c.stroke(); } });
-      } else if (e.shape === 'global') {
-        c.strokeStyle = `rgba(${rgb},${.7 * al})`; c.lineWidth = 6; c.strokeRect(3, 3, X(100) - 6, Y(100) - 6);
-        if (e.kind !== 'dash') { c.strokeStyle = `rgba(255,240,180,${.8 * al})`; c.lineWidth = R * .5; c.beginPath(); c.moveTo(fx, fy); c.lineTo(fx + (tx - fx) * Math.min(1, q * 3), fy + (ty - fy) * Math.min(1, q * 3)); c.stroke(); }
-      } else if (e.wall) {
-        // 불길 장판(럼블 궁): 대상 자리에 진행 방향과 수직으로 길게 깔린다
-        const L = Math.hypot(tx - fx, ty - fy) || 1, px = -(ty - fy) / L, py = (tx - fx) / L, h = X(5) * Math.min(1, q * 4);
-        c.strokeStyle = `rgba(${rgb},${.45 * al})`; c.lineWidth = X(2.6); c.beginPath(); c.moveTo(tx - px * h, ty - py * h); c.lineTo(tx + px * h, ty + py * h); c.stroke();
-        c.strokeStyle = `rgba(255,220,180,${.6 * al})`; c.lineWidth = 1.5; c.stroke();
-      } else if (e.shape === 'line') {
-        // 관통 못 하는 투사체는 처음 맞은 대상에서 멈춘다
-        const h0 = !e.pierce && e.kit && e.hit.length ? posOf(e.hit[0]) : null;
-        const L = Math.hypot(tx - fx, ty - fy) || 1, ux = (tx - fx) / L, uy = (ty - fy) / L, len = (h0 ? Math.hypot(X(h0[0]) - fx, Y(h0[1]) - fy) : e.rng ? X(e.rng) : Math.max(L + X(2), X(8))) * Math.min(1, q * 3.5);
-        c.strokeStyle = `rgba(${rgb},${.35 * al})`; c.lineWidth = X(2.4) * big; c.beginPath(); c.moveTo(fx, fy); c.lineTo(fx + ux * len, fy + uy * len); c.stroke();
-        c.strokeStyle = `rgba(255,255,255,${.7 * al})`; c.lineWidth = 1.5; c.beginPath(); c.moveTo(fx, fy); c.lineTo(fx + ux * len, fy + uy * len); c.stroke();
-      } else if (e.shape === 'circle') {
-        const rr = (e.kit && e.rng ? X(Math.min(4, e.rng * .6)) : X(4) * big) * Math.min(1, .45 + q * 2);
-        c.fillStyle = `rgba(${rgb},${.18 * al})`; c.beginPath(); c.arc(tx, ty, rr, 0, TAU); c.fill();
-        c.strokeStyle = `rgba(${rgb},${.85 * al})`; c.lineWidth = 2; c.stroke();
-      } else if (e.shape === 'cone') {
-        const mx = X(me[0]), my = Y(me[1]), ang = Math.atan2(ty - my, tx - mx), rr = (e.rng ? X(e.rng) : X(6) * big) * Math.min(1, .4 + q * 2.5);
-        c.fillStyle = `rgba(${rgb},${.22 * al})`; c.beginPath(); c.moveTo(mx, my); c.arc(mx, my, rr, ang - .55, ang + .55); c.closePath(); c.fill();
-        c.strokeStyle = `rgba(${rgb},${.7 * al})`; c.lineWidth = 1.5; c.stroke();
-      } else if (e.shape === 'target' && e.kind !== 'dash') {
-        c.strokeStyle = `rgba(${rgb},${.8 * al})`; c.lineWidth = 2; c.beginPath(); c.moveTo(X(me[0]), Y(me[1])); c.lineTo(tx, ty); c.stroke();
-        c.beginPath(); c.arc(tx, ty, R * (.6 + q * .9), 0, TAU); c.stroke();
+      } else switch (S) {
+        case 'line': {
+          // 여러 발이면 채널링 동안 나눠 쏜다 (진 궁 4발). 관통 못 하면 처음 맞은 대상에서 멈춘다
+          const wpx = Math.max(2, X((f && f.w || 90) / U));
+          for (let k = 0; k < n; k++) {
+            const ak = a - (n > 1 ? k * chE / n : 0); if (ak < 0 || ak > tt + .55) continue;
+            const stop = (e.kit ? !e.pierce : f && f.stop) && hitPos.length ? Math.hypot(X(hitPos[0][0]) - fx, Y(hitPos[0][1]) - fy) : Rr;
+            const pr = Math.min(1, ak / tt), fade = 1 - Math.max(0, (ak - tt) / .55), L = stop * pr, ex = fx + ux * L, ey = fy + uy * L;
+            c.strokeStyle = `rgba(${rgb},${.28 * fade})`; c.lineWidth = wpx; c.beginPath(); c.moveTo(fx, fy); c.lineTo(ex, ey); c.stroke();
+            c.strokeStyle = `rgba(255,255,255,${.55 * fade})`; c.lineWidth = 1.2; c.stroke();
+            if (pr < 1 || ak < tt + .1) { c.fillStyle = `rgba(${rgb},${.95 * fade})`; c.beginPath(); c.arc(ex, ey, Math.max(2.5, wpx * .55), 0, TAU); c.fill(); c.strokeStyle = 'rgba(255,255,255,.8)'; c.lineWidth = 1; c.stroke(); }
+          }
+          break;
+        }
+        case 'cone': {
+          const mx = X(fr[0]), my = Y(fr[1]), ang = Math.atan2(dym, dxm), half = (f && f.ang || 60) * Math.PI / 360, rr = (e.rng ? X(e.rng) : Rr) * Math.min(1, .3 + a * 4);
+          const reps = chE ? n : 1;
+          for (let k = 0; k < reps; k++) { const ak = a - (reps > 1 ? k * chE / reps : 0); if (ak < 0 || ak > .7 + (reps > 1 ? 0 : dur)) continue; const fd = reps > 1 ? 1 - ak / .7 : al;
+            c.fillStyle = `rgba(${rgb},${.22 * fd})`; c.beginPath(); c.moveTo(mx, my); c.arc(mx, my, rr, ang - half, ang + half); c.closePath(); c.fill(); c.strokeStyle = `rgba(${rgb},${.75 * fd})`; c.lineWidth = 1.5; c.stroke(); }
+          break;
+        }
+        case 'circle': {
+          const cm = Lm > rngM ? [fr[0] + ux * rngM, fr[1] + uy * rngM] : e.to, cx = X(cm[0]), cy = Y(cm[1]), rr = X((f && f.rad || 260) / U) * (e.kit && !f ? big : 1);
+          if (f && f.spd && a < tt) { const pr = a / tt; c.fillStyle = `rgba(${rgb},.9)`; c.beginPath(); c.arc(fx + (cx - fx) * pr, fy + (cy - fy) * pr, Math.max(2.5, R * .3), 0, TAU); c.fill(); break; }
+          const land = Math.max(0, a - (f && f.spd ? tt : 0)), zone = f && f.z ? f.z / 2 : 0, fd = zone ? (land < zone ? 1 : Math.max(0, 1 - (land - zone) / .6)) : al;
+          c.fillStyle = `rgba(${rgb},${(zone ? .14 : .2) * fd})`; c.beginPath(); c.arc(cx, cy, rr * Math.min(1, .5 + land * 3), 0, TAU); c.fill();
+          c.strokeStyle = `rgba(${rgb},${.85 * fd})`; c.lineWidth = 2; c.stroke();
+          break;
+        }
+        case 'aura': {
+          const rr = X((f && f.rad || 300) / U) * Math.min(1, .4 + a * 3);
+          c.fillStyle = `rgba(${rgb},${.18 * al})`; c.beginPath(); c.arc(X(me[0]), Y(me[1]), rr, 0, TAU); c.fill(); c.strokeStyle = `rgba(${rgb},${.85 * al})`; c.lineWidth = 2; c.stroke();
+          break;
+        }
+        case 'target': {
+          const tp = hitPos[0] || e.to, tx = X(tp[0]), ty = Y(tp[1]), mx = X(me[0]), my = Y(me[1]);
+          if (f && f.spd && a < tt) { const pr = a / tt; c.strokeStyle = `rgba(${rgb},.35)`; c.lineWidth = 1.2; c.beginPath(); c.moveTo(mx, my); c.lineTo(tx, ty); c.stroke(); c.fillStyle = `rgba(${rgb},.95)`; c.beginPath(); c.arc(mx + (tx - mx) * pr, my + (ty - my) * pr, Math.max(2.5, R * .28), 0, TAU); c.fill(); }
+          else { c.strokeStyle = `rgba(${rgb},${.8 * al})`; c.lineWidth = 2; c.beginPath(); c.moveTo(mx, my); c.lineTo(tx, ty); c.stroke(); c.beginPath(); c.arc(tx, ty, R * (.6 + q * .9), 0, TAU); c.stroke(); }
+          break;
+        }
+        case 'dash': case 'blink': {
+          // 돌진: 굵은 꼬리 · 순간이동: 점선 + 양 끝 번쩍임. 범위가 있으면 도착 지점에 원
+          const endM = e.hop ? e.to : Lm > rngM ? [fr[0] + ux * rngM, fr[1] + uy * rngM] : e.to, moved = Sim.dist(me, fr) > .8, end = moved ? me : endM, ex = X(end[0]), ey = Y(end[1]);
+          const pr = Math.min(1, a / (S === 'blink' ? .05 : .3));
+          if (S === 'blink') { c.setLineDash([3, 5]); c.strokeStyle = `rgba(${rgb},${.7 * al})`; c.lineWidth = 2; c.beginPath(); c.moveTo(fx, fy); c.lineTo(ex, ey); c.stroke(); c.setLineDash([]);
+            [[fx, fy], [ex, ey]].forEach(([x, y]) => { c.fillStyle = `rgba(255,255,255,${.5 * al})`; c.beginPath(); c.arc(x, y, R * (.5 + q), 0, TAU); c.fill(); }); }
+          else if (e.hop) {
+            // 암베사 도약: 출발 자리에 잔상 고리 + 짧은 꼬리
+            const ga = Math.max(0, 1 - a / .8); c.strokeStyle = `rgba(${rgb},${.8 * ga})`; c.lineWidth = 2; c.setLineDash([3, 3]); c.beginPath(); c.arc(fx, fy, R * .95, 0, TAU); c.stroke(); c.setLineDash([]);
+            c.strokeStyle = `rgba(${rgb},${.7 * ga})`; c.lineWidth = R * .35; c.beginPath(); c.moveTo(fx, fy); c.lineTo(ex, ey); c.stroke();
+          }
+          else { c.setLineDash(e.kind === 'esc' ? [4, 5] : []); c.strokeStyle = `rgba(${rgb},${.55 * al})`; c.lineWidth = R * (e.hop ? .45 : .7) * big; c.beginPath(); c.moveTo(fx, fy); c.lineTo(fx + (ex - fx) * pr, fy + (ey - fy) * pr); c.stroke(); c.setLineDash([]); }
+          if (f && f.rad && a >= .25) { const rr = X(f.rad / U) * Math.min(1, .5 + (a - .25) * 3); c.fillStyle = `rgba(${rgb},${.2 * al})`; c.beginPath(); c.arc(ex, ey, rr, 0, TAU); c.fill(); c.strokeStyle = `rgba(${rgb},${.85 * al})`; c.lineWidth = 2; c.stroke(); }
+          break;
+        }
+        case 'global': {
+          c.strokeStyle = `rgba(${rgb},${.7 * al})`; c.lineWidth = 6; c.strokeRect(3, 3, X(100) - 6, Y(100) - 6);
+          if (e.kind !== 'dash' && (!f || f.w)) { const tx = X(e.to[0]), ty = Y(e.to[1]), pr = Math.min(1, a / Math.max(.2, tt)); c.strokeStyle = `rgba(255,240,180,${.8 * al})`; c.lineWidth = Math.max(R * .4, X(((f && f.w) || 160) / U)); c.beginPath(); c.moveTo(fx, fy); c.lineTo(fx + (tx - fx) * pr, fy + (ty - fy) * pr); c.stroke(); }
+          break;
+        }
+        case 'wall': {
+          const tx = X(e.to[0]), ty = Y(e.to[1]), px = -uy, py = ux, h = X(4) * Math.min(1, a * 4);
+          c.strokeStyle = `rgba(${rgb},${.5 * al})`; c.lineWidth = X(2.2); c.beginPath(); c.moveTo(tx - px * h, ty - py * h); c.lineTo(tx + px * h, ty + py * h); c.stroke();
+          c.strokeStyle = `rgba(255,230,200,${.7 * al})`; c.lineWidth = 1.5; c.stroke();
+          break;
+        }
+        case 'self': default: {
+          c.strokeStyle = `rgba(${rgb},${.8 * al})`; c.lineWidth = 2.5; c.beginPath(); c.arc(X(me[0]), Y(me[1]), R * (1.3 + q * .5) * big, 0, TAU); c.stroke();
+        }
       }
+      // 회피: 빗나간 논타겟 스킬은 대상 위에 '회피'
+      if (e.miss && e.miss.length && a > tt * .8 && a < tt + 1.1) e.miss.forEach(i => { const p = posOf(i); if (!p) return; const k = Math.min(1, (tt + 1.1 - a) * 2);
+        c.font = `800 ${Math.round(R * .62)}px sans-serif`; c.textAlign = 'center'; c.lineWidth = 3; c.strokeStyle = `rgba(0,0,0,${.85 * k})`; c.fillStyle = `rgba(210,235,255,${k})`;
+        const y = Y(p[1]) - R * 1.5 - (a - tt) * R * .6; c.strokeText('회피', X(p[0]), y); c.fillText('회피', X(p[0]), y); });
       // 묶음(기절 · 속박 등): 맞은 선수 머리 위에 도는 별
       if (e.cc === 'stun') e.hit.forEach(i => { const p = posOf(i); if (!p) return; for (let k = 0; k < 3; k++) { const an = a * 5 + k * TAU / 3; c.fillStyle = `rgba(255,230,90,${al})`; c.beginPath(); c.arc(X(p[0]) + Math.cos(an) * R * .8, Y(p[1]) - R * 1.35 + Math.sin(an) * R * .25, R * .17, 0, TAU); c.fill(); } });
     }
@@ -367,13 +426,13 @@ const Live = {
   // 스킬 아이콘: 챔피언 옆에 쓴 순서대로 잠깐씩 (궁은 크게 + 이름)
   skillPops(c, g, SK, P, now, X, Y, R, col) {
     if (!SK.length) return;
-    const by = new Map(); SK.forEach(e => { if (!by.has(e.i)) by.set(e.i, []); by.get(e.i).push(e); });
+    const by = new Map(); SK.forEach(e => { if (e.hop || !e.icon) return; if (!by.has(e.i)) by.set(e.i, []); by.get(e.i).push(e); });
     for (const [i, list] of by) {
       const o = P.find(o => o.p === g.pl[i]); if (!o) continue;
       const x = X(o.pos[0]), y = Y(o.pos[1]) - (o.lift || 0), side = col(g.pl[i].side);
       const arr = list.sort((a, b) => a.t - b.t).slice(-3);
       arr.forEach((e, k) => {
-        const a = now - e.t, dur = e.key === 'R' ? 2.4 : 1.6, al = Math.min(1, a * 6, (dur - a) * 3), slide = Math.max(0, 1 - a * 5) * R;
+        const a = now - e.t, dur = Math.min(2.4, this.fxDur(e)), al = Math.min(1, a * 6, (dur - a) * 3), slide = Math.max(0, 1 - a * 5) * R;
         const s = e.key === 'R' ? R * 1.25 : R * .9, px = x + R * 1.05 + slide, py = y - R * .9 + (k - (arr.length - 1) / 2) * (s + 3);
         const im = this.simg(e.icon);
         c.save(); c.globalAlpha = Math.max(0, al);
