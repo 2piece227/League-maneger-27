@@ -145,6 +145,7 @@ const Skills = {
     const D = Sim.dist, live = mem.filter(p => !p.dead), m = Sim.min(g);
     live.forEach(p => {
       if (p.recall || p.tpCh) return;
+      if (typeof Kits !== 'undefined' && Kits.has(p.c)) return Kits.cast(g, f, p, live);   // 사용자가 정한 키트 (js/kits.js)
       const cd = (p.skc ||= {}), C = typeof CStats !== 'undefined', mana = s => !C || !p.mpMax || CStats.cost(p, s.key) <= p.mpCur;   // 마나가 모자라면 못 쓴다
       const ready = s => mana(s) && (s.key === 'R' ? g.t >= (p.rFx || 0) && p.lvl >= 6 && !Sim.ULT_JOIN.includes(p.c) && !(s.shape === 'global' && s.kind === 'dash') : g.t >= (cd[s.key] || 0));
       const S = this.of(p.c).filter(ready); if (!S.length) return;

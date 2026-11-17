@@ -524,6 +524,7 @@ const Sim = {
       const early = m < 10 ? .7 : m < 18 ? .9 : 1;                     // 초반은 피해가 낮다 (레벨·아이템)
       const hits = [];
       [...B, ...R].forEach(a => {
+        if ((a.cc || 0) > g.t) return;                                   // 기절 · 에어본 · 제압 중에는 못 친다
         const KA = this.KIND[a.kind], near = q => Math.max(0, (a.rng - this.dist(q.pos, a.pos)) / a.rng);
         const foes = g.pl.filter(q => q.side !== a.side && !q.dead && !q.recall && !q.tpCh && this.dist(q.pos, a.pos) <= a.rng && (f.mem.has(q) || q.fled === f.id) && Rift.los(a.pos, q.pos));   // 벽 너머로는 못 친다
         if (!foes.length) return;
@@ -541,7 +542,7 @@ const Sim = {
           * (mem.some(q => q.side === a.side && (q.fx || {}).teamDmg) ? 1.03 : 1);
         const guard = mem.some(q => q.side === v.side && q !== v && q.kind === 'ench' && !q.dead && this.dist(q.pos, v.pos) < 6) ? .9 : 1;   // 보호형 서폿 곁에서는 덜 아프다
         const sh = typeof CStats !== 'undefined' ? CStats.hit(a, v) : null, base = sh != null ? sh * this.STAT_K : KA.deal * early * this.KIND[v.kind].take;   // 챔피언 스탯 피해 (없으면 유형 배율)
-        const dmg = tfx * peel * guard * this.FIGHT_K * base * mult[a.side] * (1 + (this.ppow(a, m) - av[a.side]) / 40) * (.75 + g.r() * .5) * (v.fled ? .55 : 1);
+        const dmg = tfx * peel * guard * this.FIGHT_K * base * mult[a.side] * (1 + (this.ppow(a, m) - av[a.side]) / 40) * (.75 + g.r() * .5) * (v.fled ? .55 : 1) * (typeof Kits !== 'undefined' ? Kits.mul(g, a, v) : 1);
         hits.push([a, v, dmg]); a.hitTo = v; a.hitAt = g.t;   // 중계 화면의 공격선
       });
       hits.forEach(([a, v, dmg]) => {

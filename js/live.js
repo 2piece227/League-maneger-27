@@ -258,7 +258,7 @@ const Live = {
     const hide = (vm === 'B' || vm === 'R') && typeof Vision !== 'undefined' ? p => p.side !== vm && !Vision.seen(g, vm, p.pos) : () => false;
     const P = g.pl.map(p => ({ p, pos: this.at(p.trail, f) || p.pos })).filter(o => !o.p.dead && !hide(o.p));
     // 스킬 연출(하이라이트): 밀침 · 끌어당김은 맞은 선수를 잠깐 밀어 그리고, 띄움은 위로 띄운다
-    const SK = this.mode === 'hl' ? (g.sk || []).filter(e => now - e.t >= 0 && now - e.t < (e.key === 'R' ? 2.4 : 1.6)) : [];
+    const SK = (g.sk || []).filter(e => (this.mode === 'hl' || e.kit) && now - e.t >= 0 && now - e.t < (e.key === 'R' ? 2.4 : 1.6));   // 키트 챔피언 스킬은 전체 보기에서도
     for (const e of SK) {
       if (!['back', 'pull', 'up'].includes(e.cc)) continue;
       const a = now - e.t, env = Math.sin(Math.min(1, a / 1.1) * Math.PI);
@@ -298,6 +298,8 @@ const Live = {
       // 부쉬에 숨어 상대가 못 보는 선수는 반투명 (한 팀 시야 보기에서는 아예 숨는다)
       c.globalAlpha = typeof Vision !== 'undefined' && vm !== 'B' && vm !== 'R' && Vision.bushAt(pos) >= 0 && !Vision.seen(g, p.side === 'B' ? 'R' : 'B', pos) ? .5 : 1;
       if (lift) { c.fillStyle = 'rgba(0,0,0,.35)'; c.beginPath(); c.ellipse(x, y + lift + R * .7, R * .8, R * .3, 0, 0, TAU); c.fill(); }
+      // 키트 상태: 럼블 과열(붉은 주황) · 위험 상태(옅게) · 크산테 총공세(모래색)
+      if (p.kit) { const ring = (p.kit.over || 0) > now ? '230,80,20,.45' : p.kit.allout > now ? '214,184,120,.4' : p.kit.heat >= 50 ? '255,154,60,.18' : null; if (ring) { c.fillStyle = `rgba(${ring})`; c.beginPath(); c.arc(x, y, R * 1.45, 0, TAU); c.fill(); } }
       if ((p.mega || 0) > now && this.mode === 'hl') { c.fillStyle = 'rgba(255,120,40,.25)'; c.beginPath(); c.arc(x, y, R * 1.45, 0, TAU); c.fill(); }
       c.save(); c.shadowColor = p.recall ? 'rgba(90,170,255,.9)' : 'rgba(0,0,0,.8)'; c.shadowBlur = p.recall ? 12 : 5; c.fillStyle = '#0b111d'; c.beginPath(); c.arc(x, y, R, 0, TAU); c.fill(); c.restore();
       if (im.complete && im.naturalWidth) { c.save(); c.beginPath(); c.arc(x, y, R - 1, 0, TAU); c.clip(); c.drawImage(im, x - R, y - R, R * 2, R * 2); c.restore(); }
@@ -320,8 +322,8 @@ const Live = {
     const KC = { atk: null, dash: null, init: '255,196,70', esc: '235,240,255', ally: '90,230,140', self: '255,226,110' };
     c.save(); c.lineCap = 'round';
     for (const e of SK) {
-      const a = now - e.t, dur = e.key === 'R' ? 2.4 : 1.6, q = a / dur, al = Math.max(0, 1 - q), me = posOf(e.i) || e.from, pl = g.pl[e.i];
-      const rgb = KC[e.kind] || col(pl.side), big = e.key === 'R' ? 1.5 : 1;
+      const a = now - e.t, dur = e.key === 'R' ? 2.4 : 1.6, q = a / dur, al = Math.max(0, 1 - q) * (e.kit ? 1.7 : 1), me = posOf(e.i) || e.from, pl = g.pl[e.i];   // 키트 스킬은 더 진하게
+      const rgb = e.col || KC[e.kind] || col(pl.side), big = e.key === 'R' ? 1.5 : e.lane ? .8 : 1;
       const fx = X(e.from[0]), fy = Y(e.from[1]), tx = X(e.to[0]), ty = Y(e.to[1]);
       if (e.kind === 'dash' || e.kind === 'esc' || (e.kind === 'init' && !e.shape)) {
         c.setLineDash(e.kind === 'esc' ? [4, 5] : []); c.strokeStyle = `rgba(${rgb},${.55 * al})`; c.lineWidth = R * .7 * big;
@@ -334,16 +336,23 @@ const Live = {
       } else if (e.shape === 'global') {
         c.strokeStyle = `rgba(${rgb},${.7 * al})`; c.lineWidth = 6; c.strokeRect(3, 3, X(100) - 6, Y(100) - 6);
         if (e.kind !== 'dash') { c.strokeStyle = `rgba(255,240,180,${.8 * al})`; c.lineWidth = R * .5; c.beginPath(); c.moveTo(fx, fy); c.lineTo(fx + (tx - fx) * Math.min(1, q * 3), fy + (ty - fy) * Math.min(1, q * 3)); c.stroke(); }
+      } else if (e.wall) {
+        // 불길 장판(럼블 궁): 대상 자리에 진행 방향과 수직으로 길게 깔린다
+        const L = Math.hypot(tx - fx, ty - fy) || 1, px = -(ty - fy) / L, py = (tx - fx) / L, h = X(5) * Math.min(1, q * 4);
+        c.strokeStyle = `rgba(${rgb},${.45 * al})`; c.lineWidth = X(2.6); c.beginPath(); c.moveTo(tx - px * h, ty - py * h); c.lineTo(tx + px * h, ty + py * h); c.stroke();
+        c.strokeStyle = `rgba(255,220,180,${.6 * al})`; c.lineWidth = 1.5; c.stroke();
       } else if (e.shape === 'line') {
-        const L = Math.hypot(tx - fx, ty - fy) || 1, ux = (tx - fx) / L, uy = (ty - fy) / L, len = Math.max(L + X(2), X(8)) * Math.min(1, q * 3.5);
+        // 관통 못 하는 투사체는 처음 맞은 대상에서 멈춘다
+        const h0 = !e.pierce && e.kit && e.hit.length ? posOf(e.hit[0]) : null;
+        const L = Math.hypot(tx - fx, ty - fy) || 1, ux = (tx - fx) / L, uy = (ty - fy) / L, len = (h0 ? Math.hypot(X(h0[0]) - fx, Y(h0[1]) - fy) : e.rng ? X(e.rng) : Math.max(L + X(2), X(8))) * Math.min(1, q * 3.5);
         c.strokeStyle = `rgba(${rgb},${.35 * al})`; c.lineWidth = X(2.4) * big; c.beginPath(); c.moveTo(fx, fy); c.lineTo(fx + ux * len, fy + uy * len); c.stroke();
         c.strokeStyle = `rgba(255,255,255,${.7 * al})`; c.lineWidth = 1.5; c.beginPath(); c.moveTo(fx, fy); c.lineTo(fx + ux * len, fy + uy * len); c.stroke();
       } else if (e.shape === 'circle') {
-        const rr = X(4) * big * Math.min(1, .45 + q * 2);
+        const rr = (e.kit && e.rng ? X(Math.min(4, e.rng * .6)) : X(4) * big) * Math.min(1, .45 + q * 2);
         c.fillStyle = `rgba(${rgb},${.18 * al})`; c.beginPath(); c.arc(tx, ty, rr, 0, TAU); c.fill();
         c.strokeStyle = `rgba(${rgb},${.85 * al})`; c.lineWidth = 2; c.stroke();
       } else if (e.shape === 'cone') {
-        const mx = X(me[0]), my = Y(me[1]), ang = Math.atan2(ty - my, tx - mx), rr = X(6) * big * Math.min(1, .4 + q * 2.5);
+        const mx = X(me[0]), my = Y(me[1]), ang = Math.atan2(ty - my, tx - mx), rr = (e.rng ? X(e.rng) : X(6) * big) * Math.min(1, .4 + q * 2.5);
         c.fillStyle = `rgba(${rgb},${.22 * al})`; c.beginPath(); c.moveTo(mx, my); c.arc(mx, my, rr, ang - .55, ang + .55); c.closePath(); c.fill();
         c.strokeStyle = `rgba(${rgb},${.7 * al})`; c.lineWidth = 1.5; c.stroke();
       } else if (e.shape === 'target' && e.kind !== 'dash') {
