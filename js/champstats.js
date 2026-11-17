@@ -9,7 +9,8 @@ const CStats = {
       fetch('data/item-stats.json').then(r => r.ok ? r.json() : null).catch(() => null),
       fetch('data/champ-shields.json').then(r => r.ok ? r.json() : null).catch(() => null),
       fetch('data/skill-fx.json').then(r => r.ok ? r.json() : null).catch(() => null),
-    ]).then(([b, i, sh, fx]) => { if (b) this.base = b.champs; if (i) this.items = i.items; if (sh) this.shields = sh.champs; if (fx) { this.fx = fx.champs; if (typeof Skills !== 'undefined') Skills.cache = {}; } });
+      fetch('data/skill-dmg.json').then(r => r.ok ? r.json() : null).catch(() => null),
+    ]).then(([b, i, sh, fx, dm]) => { if (dm) this.dmg = dm.champs; if (b) this.base = b.champs; if (i) this.items = i.items; if (sh) this.shields = sh.champs; if (fx) { this.fx = fx.champs; if (typeof Skills !== 'undefined') Skills.cache = {}; } });
     return this._p;
   },
   // 데이터에 아직 없는 새 챔피언: 같은 공격 방식의 평균으로
@@ -23,8 +24,9 @@ const CStats = {
   of(c) { const ch = Champions.byId[c] || {}; return this.base[c] || this.avg(ch.attackType === 'RANGED' ? 'RANGED' : 'MELEE'); },
   grow: L => (L - 1) * (.7025 + .0175 * (L - 1)),     // 라이엇 레벨 성장 공식
   // 스킬 피해 비중 (유형별): 메이지 · 포킹은 스킬이 대부분, 원딜은 평타가 대부분
+  SPELL_K: .25,
   SPELL: { tank: .5, bruiser: .55, dive: .98, adc: .45, mage: 1.0, arti: .8, ench: .5 },
-  AUTO: { tank: .68, bruiser: .82, dive: .9, adc: 1.42, mage: .6, arti: .45, ench: .5 },
+  AUTO: { tank: .68, bruiser: .82, dive: .9, adc: 1.42, mage: .3, arti: .25, ench: .4 },   // 메이지 · 포킹은 스킬(실제 피해)이 주력이라 평타 몫은 작게
   // 지금 스탯 (레벨 · 아이템이 바뀔 때만 다시 계산)
   now(p) {
     const AO = typeof Kits !== 'undefined' && Kits.allout(p), key = p.lvl + '|' + p.inv.map(i => i.n).join(',') + (AO ? '|AO' : '');
@@ -57,7 +59,7 @@ const CStats = {
     const A = this.now(a), V = this.now(v); if (!A || !V) return null;
     const auto = A.ad * A.as * (1 + A.crit * .75) * this.AUTO[a.kind];
     const oom = A.mpMax && (a.mpCur ?? A.mpMax) < A.mpMax * .1;
-    const spell = this.SPELL[a.kind] * (9 * a.lvl + .6 * A.ap + .35 * A.bonusAD + 20) * (oom ? .35 : 1);
+    const spell = this.SPELL_K * this.SPELL[a.kind] * (9 * a.lvl + .6 * A.ap + .35 * A.bonusAD + 20) * (oom ? .35 : 1);   // 스킬 피해는 이제 스킬을 쓸 때 실제로 (Kits.deal) — 여기는 패시브 · 자잘한 효과 몫만
     const ao = A.aoB ? A.aoB * V.maxHP * (A.as * this.AUTO[a.kind] + .35) : 0;   // 총공세: 평타마다 + 스킬 몇 번
     const phys = auto + ao + spell * (1 - A.magic), mag = spell * A.magic;
     const ea = Math.max(0, V.arm * (1 - A.armPen) - A.leth), em = Math.max(0, V.mr * (1 - A.mpenP) - A.mpen);
@@ -72,7 +74,22 @@ const CStats = {
     return 3.6 + Math.max(0, R - 125) / 150;
   },
   // 보호막: 그 스킬이 주는 보호막 (받는 사람 최대 체력 대비 비율) · 지속(초). 없으면 null
-  shields: {}, fx: {},
+  shields: {}, fx: {}, dmg: {},
+  // 스킬 한 방의 피해 (data/skill-dmg.json, 현재 랭크 · 스탯 · 대상 체력으로): { p 물리, m 마법, t 고정 } (실제 수치)
+  skillDmg(p, key, v) {
+    const d = (this.dmg[p.c] || {})[key], A = this.now(p), V = this.now(v), b = this.of(p.c); if (!d || !A || !V || !b) return null;
+    const rank = key === 'R' ? Math.min(3, Math.max(1, Math.floor((p.lvl - 1) / 5))) : Math.min(5, Math.max(1, Math.ceil(p.lvl / 3.6))), at = x => Array.isArray(x) ? x[Math.min(x.length, rank) - 1] : x;
+    const G = this.grow(p.lvl), AO = typeof Kits !== 'undefined' && Kits.allout(p), keep = AO ? 1 / .15 : 1;   // 총공세 중에도 계수용 추가 방어 · 마저는 그대로
+    const st = { ap: A.ap, ad: A.ad, bad: A.bonusAD, hp: A.maxHP, bhp: A.maxHP - (b.hp + b.hpL * G), arm: A.arm, barm: Math.max(0, A.arm - (b.arm + b.armL * G)) * keep, bmr: Math.max(0, A.mr - (b.mr + b.mrL * G)) * keep, mp: A.mpMax };
+    const tHP = V.maxHP, tCur = Math.max(0, v.hp) * tHP;
+    let amt = at(d.b) || 0;
+    for (const [val, k, ex] of d.r) {
+      let pc = at(val); if (ex) for (const [ek, ev] of Object.entries(ex)) pc += ev / 100 * (st[ek] || 0);
+      amt += pc / 100 * (k === 'tmax' ? tHP : k === 'tmiss' ? tHP - tCur : k === 'tcur' ? tCur : (st[k] || 0));
+    }
+    amt *= d.n || 1;
+    return d.t === 'p' ? { p: amt } : d.t === 't' ? { t: amt } : d.t === 'x' ? { p: amt / 2, m: amt / 2 } : { m: amt };
+  },
   shield(p, key, to = p) {
     const d = (this.shields[p.c] || {})[key], A = this.now(p), T = this.now(to), b = this.of(p.c); if (!d || !A || !T) return null;
     const rank = key === 'R' ? Math.min(3, Math.max(1, Math.floor((p.lvl - 1) / 5))) : Math.min(5, Math.max(1, Math.ceil(p.lvl / 3.6))), at = v => Array.isArray(v) ? v[Math.min(v.length, rank) - 1] : v;

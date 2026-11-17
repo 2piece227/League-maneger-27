@@ -40,7 +40,7 @@ const Kits = {
   D: () => Sim.dist,
   on(p) { return p.kit ||= { cd: {}, heat: 0, lastCast: -99, stack: 0, charges: 2, chT: 0, q: [] }; },
   // 재사용 대기: 실제 값(현재 랭크) × 0.8 (스킬 가속), 총공세 크산테 Q는 더 빠르다
-  cdOf(p, key) { const rc = typeof CStats !== 'undefined' && CStats.cd(p, key); return Math.max(1, (rc || ({ Q: 6, W: 10, E: 10, R: 90 })[key]) * (key === 'R' ? .85 : .8) * (p.c === 'KSante' && key === 'Q' && this.allout(p) ? .6 : 1)); },
+  cdOf(p, key) { const rc = typeof CStats !== 'undefined' && CStats.cd(p, key); return Math.max(1, (rc || ({ Q: 6, W: 10, E: 10, R: 90 })[key]) * (key === 'R' ? .85 : .8) / 2 * (p.c === 'KSante' && key === 'Q' && this.allout(p) ? .6 : 1)); },
   allout(p) { return !!(p.kit && p.kit.allout > (Sim.T ?? 0)); },
   hpCap(p, g) { return p.kit && p.kit.allout > g.t ? .65 : 1; },
   vamp(g, a, v, dmg) {
@@ -109,7 +109,7 @@ const Kits = {
       const n = k.q.shift(), tg = n.tg && !n.tg.dead ? n.tg : tg0;
       if (tg && D(tg.pos, p.pos) < 9) { this.fire(g, p, n.key, { ctx: 'combo', tg, at: tg.pos, big: f.size >= 4, follow: n, f }); return; }
     }
-    if (g.r() > .6) return;                                                // 1초에 매번 쓰지는 않는다
+    if (g.r() > .8) return;                                                // 1초에 매번 쓰지는 않는다
     const low = p.hp < .3 || p.fled, size = f.size || f.mem.size;
     const fleeing = tg0 && (tg0.fled || (tg0.hp < .25 && D(tg0.pos, p.pos) > p.rng));
     const ctxs = low ? ['flee'] : fleeing ? ['chase', 'finish', 'pick'] : size >= 4 ? ['tf', 'pick', 'trade'] : ['trade', 'pick'];
@@ -142,7 +142,7 @@ const Kits = {
   // ---------- 스킬 하나 쓰기: 재사용 · 자원 · 효과 · 연출 ----------
   fire(g, p, key, o) {
     const k = this.on(p), s = this.K[p.c][key], D = Sim.dist, foesAll = o.foes || g.pl.filter(q => q.side !== p.side && !q.dead && !q.recall);
-    let shape = s.shape, name = null, col = s.col, cc = '';
+    let shape = s.shape, name = null, col = s.col, cc = '', kfx = null;
     // 재사용 · 충전 · 마나
     if (o.follow) { shape = o.follow.shape || shape; name = o.follow.name || null; }
     else if (s.charges) { k.charges--; if (k.chT <= g.t) k.chT = g.t + this.cdOf(p, key); k.cd[key] = g.t + .5; }
@@ -195,18 +195,17 @@ const Kits = {
       }
       // W 돌진 피해 (데이터): 물리 45~165 + 대상 최대 체력 8% (+ 추가 방어 · 마저 100당 2%). 총공세면 고정 피해가 더 붙는다 (충전에 따라 최대 36~132 + 6.4% (+ 100당 1.6%), 약 3/4 충전으로)
       if (key === 'W') { const r = this.rank(p, 'W'), bb = this.bonusRes(p), cq = .75;
-        hit.forEach(v => { const V = CStats.now(v); if (!V) return; const mh = V.maxHP;
-          this.deal(g, p, v, [45, 75, 105, 135, 165][r - 1] + mh * (.08 + .0002 * (bb.arm + bb.mr)), AO ? cq * ([36, 60, 84, 108, 132][r - 1] + mh * (.064 + .00016 * (bb.arm + bb.mr))) : 0, o.f); }); }
+        if (AO && !o.lane) hit.forEach(v => { const V = CStats.now(v); if (!V) return; this.deal(g, p, v, { t: cq * ([36, 60, 84, 108, 132][r - 1] + V.maxHP * (.064 + .00016 * (bb.arm + bb.mr))) }, o.f); }); }
       if (key === 'W') { if (AO) { p.dash = g.t + 1; } else { cc = 'back'; hit.forEach(v => { v.cc = g.t + 1; }); if (hit.length) k.q.push({ key: 'Q', at: g.t + 1, tg: hit[0] }); } }   // W 평 Q
       if (key === 'E') p.dash = g.t + 1;
       if (key === 'R' && tg) {
         // 납치: 상대를 뒤로 차 낸다. 뒤에 벽이 가까우면 벽 끝까지 같이 넘어가 제압
-        const wall = this.wallBehind(p, tg);
+        const rd = this.rDir(g, p, tg), wall = rd.wall;
         tg.cc = g.t + (wall ? 2 : 1); cc = wall ? 'stun' : 'back';
-        this.kick(g, p, tg, wall);
+        const t0 = [...tg.pos]; this.kick(g, p, tg, wall, rd.u); kfx = { from: t0, to: [...tg.pos] };   // 연출: 대상이 실제로 날아간 길
         // 총공세(실제 15초 ≈ 엔진 7초): 체력 상한 65% (넘는 체력은 깎이고 끝나도 안 돌아온다), 방어 · 마저 ↓ · 공속 · 방관 ↑ (CStats.now), 흡혈 20%, 스킬 소모 없음
         { const r = this.rank(p, 'R'), A = CStats.now(p), bhp = A ? A.maxHP - (CStats.of(p.c).hp + CStats.of(p.c).hpL * CStats.grow(p.lvl)) : 0;   // R 피해 (데이터): 80~150, 벽을 넘기면 두 번 (160~300 + 추가 체력 5%)
-          this.deal(g, p, tg, wall ? [160, 230, 300][r - 1] + bhp * .05 : [80, 115, 150][r - 1], 0, o.f); }
+          this.deal(g, p, tg, { p: wall ? [160, 230, 300][r - 1] + bhp * .05 : [80, 115, 150][r - 1] }, o.f); }
         k.allout = g.t + 7; p.hp = Math.min(p.hp, .65); k.cd.W = g.t;     // 총공세에 들어가면 W 재사용 대기 초기화
         this.say(g, p, wall ? `${p.name}, ${Sim.josa(tg.name, '을', '를')} 벽 너머로 끌고 갑니다! 총공세!` : `${p.name}의 납치! ${Sim.josa(tg.name, '을', '를')} 진영 밖으로 걷어찹니다!`);
       }
@@ -216,26 +215,33 @@ const Kits = {
     if (p.c === 'Ambessa' && key !== 'R') this.hop(g, p, o.ctx, tg || (o.foes || []).find(q => q.side !== p.side));
     // 보호막 (데이터: 럼블 W · 크산테 E 등)
     if (typeof CStats !== 'undefined' && !o.follow) { const sh = CStats.shield(p, key, p); if (sh) p.sh = { v: Math.max(p.sh && p.sh.until > g.t ? p.sh.v : 0, sh.v * mul), until: g.t + Math.max(1, Math.round(sh.dur / 2)) }; }
-    // 견제 · 클리어 (한타 밖): 견제는 체력을 조금, 클리어는 웨이브를 깎고 CS
+    // 스킬 피해 (data/skill-dmg.json 수치 그대로). 크산테 R은 위에서 따로 (벽 넘김 여부), 럼블 R은 장판이라 머무는 만큼 (절반)
+    if (typeof CStats !== 'undefined' && !(p.c === 'KSante' && key === 'R')) {
+      const zone = p.c === 'Rumble' && key === 'R' ? .5 : 1;
+      hit.forEach(v => this.deal(g, p, v, CStats.skillDmg(p, key, v), o.f, mul * zone, o.lane ? .15 : 0));   // 라인 견제로는 죽이지 않는다
+    }
+    // 클리어 (한타 밖): 웨이브를 깎고 CS
     if (o.lane) {
-      if (o.tg && hit.includes(o.tg) && typeof CStats !== 'undefined') { const h = CStats.hit(p, o.tg); if (h != null) o.tg.hp = Math.max(.15, o.tg.hp - h * 1.4 * mul); }
       if (o.wave && (o.ctx === 'clear' || o.ctx === 'farm' || o.ctx === 'heat')) { const dn = Math.min(o.wave.n, (s.clr ?? .3) * mul); o.wave.n -= dn; Sim.csGive(g, p.side, o.wave.p, dn, Sim.min(g), o.ctx === 'farm'); }
     }
     // 연출
     const sk = Skills.of(p.c).find(x => x.key === key) || {};
     (g.sk ||= []).push({ t: g.t, i: g.pl.indexOf(p), key, kind: shape === 'self' ? 'self' : shape === 'dash' ? 'dash' : key === 'R' ? 'init' : 'atk', shape: shape === 'self' || shape === 'dash' ? '' : shape === 'wall' ? 'line' : shape,
-      wall: shape === 'wall', cc, name: name || sk.name || key, icon: sk.icon, from: [...p.pos], to: [...at], hit: hit.map(q => g.pl.indexOf(q)), miss: miss.map(q => g.pl.indexOf(q)), ally: [], big: !!o.big || key === 'R', col, fx: sk0.fx || null, pierce: !!s.pierce, rng: this.R(s.range || 500), kit: true, lane: !!o.lane, hot: this.hot(p) });
+      wall: shape === 'wall', cc, name: name || sk.name || key, icon: sk.icon, from: kfx ? kfx.from : [...p.pos], to: kfx ? kfx.to : [...at], hit: hit.map(q => g.pl.indexOf(q)), miss: miss.map(q => g.pl.indexOf(q)), ally: [], big: !!o.big || key === 'R', col, fx: sk0.fx || null, pierce: !!s.pierce, rng: this.R(s.range || 500), kit: true, lane: !!o.lane, hot: this.hot(p) });
   },
   rank(p, key) { return key === 'R' ? Math.min(3, Math.max(1, Math.floor((p.lvl - 1) / 5))) : Math.min(5, Math.max(1, Math.ceil(p.lvl / 3.6))); },
   bonusRes(p) { const A = CStats.now(p), b = CStats.of(p.c), G = CStats.grow(p.lvl); if (!A || !b) return { arm: 0, mr: 0 };
     const AO = this.allout(p), ba = A.arm - (b.arm + b.armL * G), bm = A.mr - (b.mr + b.mrL * G);
     return AO ? { arm: Math.max(0, ba / .15), mr: Math.max(0, bm / .15) } : { arm: Math.max(0, ba), mr: Math.max(0, bm) }; },   // 총공세 중에도 추가 방어 · 마저 계수는 그대로 (줄어든 건 기본 수치)
   // 스킬 한 방의 실제 피해 (물리는 방어력으로 줄고, 고정은 그대로). 엔진 1초 ≈ 실제 2초라 교전 피해와 같은 눈금(× FIGHT_K · STAT_K / 2)으로
-  deal(g, a, v, phys, tru, f) {
-    if (!v || v.dead || typeof CStats === 'undefined') return 0;
+  //  d = { p 물리, m 마법, t 고정 } (실제 수치). k: 추가 배율 (럼블 위험 상태 등). floor: 이 아래로는 안 깎는다 (라인 견제)
+  SKILL_K: 1,
+  deal(g, a, v, d, f, k = 1, floor = 0) {
+    if (!d || !v || v.dead || typeof CStats === 'undefined') return 0;
     const A = CStats.now(a), V = CStats.now(v); if (!A || !V) return 0;
-    const ea = Math.max(0, V.arm * (1 - A.armPen) - A.leth);
-    let dmg = (phys * 100 / (100 + ea) + tru) / V.maxHP * Sim.FIGHT_K * Sim.STAT_K / 2 * ((v.fx || {}).takeDmg || 1);
+    const ea = Math.max(0, V.arm * (1 - A.armPen) - A.leth), em = Math.max(0, V.mr * (1 - A.mpenP) - A.mpen);
+    let dmg = ((d.p || 0) * 100 / (100 + ea) + (d.m || 0) * 100 / (100 + em) + (d.t || 0)) / V.maxHP * Sim.FIGHT_K * Sim.STAT_K / 2 * this.SKILL_K * k * ((v.fx || {}).takeDmg || 1);
+    if (floor) dmg = Math.min(dmg, Math.max(0, v.hp - floor));
     if (v.sh && v.sh.until > g.t && v.sh.v > 0) { const ab = Math.min(v.sh.v, dmg); v.sh.v -= ab; dmg -= ab; }
     if (dmg <= 0) return 0;
     v.hp -= dmg; this.vamp(g, a, v, dmg);
@@ -244,7 +250,7 @@ const Kits = {
     v.lastHit = a; v.lastHitT = g.t;
     if (v.hp <= 0) {
       const helpers = f ? [...(f.dmg.get(v) || new Map()).keys()].filter(x => x !== a && !x.dead) : [];
-      Sim.kill(g, a, v, helpers); if (f) { f.kills[a.side]++; (f.kb ||= new Map()).set(a, (f.kb.get(a) || 0) + 1); }
+      Sim.kill(g, a, v, helpers, Sim.dist(a.pos, v.pos) > 10); if (f) { f.kills[a.side]++; (f.kb ||= new Map()).set(a, (f.kb.get(a) || 0) + 1); }
     }
     return dmg;
   },
@@ -268,16 +274,34 @@ const Kits = {
     p.pos = to; p.warp = g.t; p.dash = g.t + 1;
   },
   // 크산테 R: 대상 뒤 방향에 벽이 있나 (6 이내)
-  wallBehind(p, tg) {
-    const dx = tg.pos[0] - p.pos[0], dy = tg.pos[1] - p.pos[1], L = Math.hypot(dx, dy) || 1;
-    for (let s = 1; s <= 6; s += .5) if (Rift.wall([tg.pos[0] + dx / L * s, tg.pos[1] + dy / L * s])) return true;
+  wallBehind(p, tg, u) {
+    if (!u) { const dx = tg.pos[0] - p.pos[0], dy = tg.pos[1] - p.pos[1], L = Math.hypot(dx, dy) || 1; u = [dx / L, dy / L]; }
+    for (let s = .5; s <= 2.4; s += .25) if (Rift.wall([tg.pos[0] + u[0] * s, tg.pos[1] + u[1] * s])) return true;   // 데이터: 대상에서 350 유닛 안에 지형
     return false;
   },
-  kick(g, p, tg, wall) {
-    const dx = tg.pos[0] - p.pos[0], dy = tg.pos[1] - p.pos[1], L = Math.hypot(dx, dy) || 1, ux = dx / L, uy = dy / L;
-    let d = wall ? 0 : 4;
-    if (wall) { let s = 1, inW = false; for (; s <= 14; s += .5) { const w = Rift.wall([tg.pos[0] + ux * s, tg.pos[1] + uy * s]); if (w) inW = true; else if (inW) break; } d = Math.min(14, s + .8); }   // 벽 끝까지
-    const to = Rift.snap(Sim.clampP([tg.pos[0] + ux * d, tg.pos[1] + uy * d]), 1), me = Rift.snap(Sim.clampP([to[0] - ux * 1.5, to[1] - uy * 1.5]), 1);
+  // 크산테 R 시전 방향: 대상 근처(350 유닛)에 벽이 있으면 그쪽으로 (상대 팀에서 멀어지는 방향을 우선), 없으면 우리 팀 쪽으로 끌어온다
+  rDir(g, p, tg) {
+    const cen = k => { const ps = g.pl.filter(q => q.side === k && !q.dead && q !== tg && Sim.dist(q.pos, tg.pos) < 15); return ps.length ? [ps.reduce((a, q) => a + q.pos[0], 0) / ps.length, ps.reduce((a, q) => a + q.pos[1], 0) / ps.length] : null; };
+    const ec = cen(tg.side), mc = cen(p.side) || p.pos;
+    let best = null;
+    for (let i = 0; i < 16; i++) {
+      const a = i * Math.PI / 8, u = [Math.cos(a), Math.sin(a)]; if (!this.wallBehind(p, tg, u)) continue;
+      const away = ec ? -((ec[0] - tg.pos[0]) * u[0] + (ec[1] - tg.pos[1]) * u[1]) : 0, sc = away + g.r() * .5;
+      if (!best || sc > best.sc) best = { u, sc };
+    }
+    if (best) return { u: best.u, wall: true };
+    const dx = mc[0] - tg.pos[0], dy = mc[1] - tg.pos[1], L = Math.hypot(dx, dy);
+    if (L > .5) return { u: [dx / L, dy / L], wall: false };
+    const ex = tg.pos[0] - p.pos[0], ey = tg.pos[1] - p.pos[1], L2 = Math.hypot(ex, ey) || 1; return { u: [ex / L2, ey / L2], wall: false };
+  },
+  kick(g, p, tg, wall, u) {
+    if (!u) { const dx = tg.pos[0] - p.pos[0], dy = tg.pos[1] - p.pos[1], L = Math.hypot(dx, dy) || 1; u = [dx / L, dy / L]; }
+    const ux = u[0], uy = u[1];
+    // 데이터: 벽이 없으면 300 유닛(2) 밀고 크산테는 그 175 유닛(1.2) 뒤로. 벽이 있으면 벽 반대편 끝에서 450 유닛(3) 더 간 곳으로, 크산테는 100 유닛(.7) 뒤
+    let d = 2, back = 1.2;
+    if (wall) { let s = .5, inW = false; for (; s <= 16; s += .25) { const w = Rift.wall([tg.pos[0] + ux * s, tg.pos[1] + uy * s]); if (w) inW = true; else if (inW) break; } d = Math.min(19, s + 3); back = .7; }
+    let to = Rift.snap(Sim.clampP([tg.pos[0] + ux * d, tg.pos[1] + uy * d]), 1);
+    let me = Rift.snap(Sim.clampP([to[0] - ux * back, to[1] - uy * back]), 1); if (!Rift.los(me, to)) me = Rift.snap([to[0] + uy * .8, to[1] - ux * .8], 1);   // 크산테도 같은 쪽에
     tg.pos = to; tg.warp = g.t; tg.hold = { to: [...to], until: g.t + 2 };
     p.pos = me; p.warp = g.t; p.hold = { to: [...me], until: g.t + 1 };
   },

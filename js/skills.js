@@ -189,7 +189,9 @@ const Skills = {
     const D = Sim.dist, live = mem.filter(p => !p.dead), m = Sim.min(g);
     live.forEach(p => {
       if (p.recall || p.tpCh) return;
-      if (typeof Kits !== 'undefined' && Kits.has(p.c)) return Kits.cast(g, f, p, live);   // 사용자가 정한 키트 (js/kits.js)
+      if (typeof Kits !== 'undefined' && Kits.has(p.c)) { Kits.cast(g, f, p, live); if (g.r() < .5) Kits.cast(g, f, p, live); return; }   // 사용자가 정한 키트 (js/kits.js)
+      // 엔진 1초 ≈ 실제 2초: 한 번 쓰고, 절반 확률로 다른 스킬을 이어 쓴다 (콤보)
+      const one = () => {
       const cd = (p.skc ||= {}), C = typeof CStats !== 'undefined', mana = s => !C || !p.mpMax || CStats.cost(p, s.key) <= p.mpCur;   // 마나가 모자라면 못 쓴다
       const ready = s => mana(s) && (s.key === 'R' ? g.t >= (p.rFx || 0) && p.lvl >= 6 && !Sim.ULT_JOIN.includes(p.c) && !(s.shape === 'global' && s.kind === 'dash') : g.t >= (cd[s.key] || 0));
       const S0 = this.of(p.c).filter(ready); if (!S0.length) return;
@@ -204,7 +206,7 @@ const Skills = {
       else if (early && front) opts = pick('init', 'dash');
       else if (p.kind === 'ench') opts = pick('ally', 'atk');
       else opts = pick('atk', 'init', 'self', 'dash');
-      if (!opts.length || g.r() > (early && front ? .9 : .5)) return;
+      if (!opts.length || g.r() > (early && front ? .9 : .8)) return;
       // 궁극기: 한타(4인 이상)에서만, 이니시 궁은 초반에 · 나머지는 싸움이 무르익은 뒤
       let s = opts.find(x => x.key !== 'R') || opts[0];
       const R = opts.find(x => x.key === 'R');
@@ -214,7 +216,7 @@ const Skills = {
         : p.hitTo && !p.hitTo.dead && foes.includes(p.hitTo) ? p.hitTo : foes.sort((a, b) => D(a.pos, p.pos) - D(b.pos, p.pos))[0];
       if (!tg && s.kind !== 'self' && s.kind !== 'esc') return;
       // 재사용 대기: 챔피언별 실제 값(현재 랭크, 스킬 가속 약 20% 반영) · 마나 소모
-      const rc = C && CStats.cd(p, s.key); if (s.key === 'R') p.rFx = g.t + (rc ? rc * .85 : 90); else cd[s.key] = g.t + (rc ? Math.max(1.5, rc * .8) : this.CD[s.key] + g.r() * 2);
+      const rc = C && CStats.cd(p, s.key); if (s.key === 'R') p.rFx = g.t + (rc ? rc * .85 / 2 : 45); else cd[s.key] = g.t + (rc ? Math.max(1, rc * .8 / 2) : this.CD[s.key] / 2 + g.r());   // 엔진 1초 ≈ 실제 2초
       if (C && p.mpMax) p.mpCur = Math.max(0, p.mpCur - CStats.cost(p, s.key));
       const form = this.FORM[p.c] === 'mega' ? (s.key === 'R' || (p.mega || 0) > g.t || (m >= 8 && g.r() < .45) ? 'mega' : '') : '';
       if (form === 'mega') p.mega = Math.max(p.mega || 0, g.t + 6);
@@ -223,6 +225,8 @@ const Skills = {
       const seg = (a, b, q) => { const vx = b[0] - a[0], vy = b[1] - a[1], L = vx * vx + vy * vy || 1, u = Math.max(0, Math.min(1, ((q[0] - a[0]) * vx + (q[1] - a[1]) * vy) / L)); return D(q, [a[0] + vx * u, a[1] + vy * u]); };
       const fx = (form === 'mega' && s.fx2) || s.fx;
       const dg = this.dodge(g, p, fx, this.hits(p, s, fx, to, tg, foes, seg)), hit = dg.hit;
+      // 스킬 피해: 맞은 적마다 data/skill-dmg.json 수치 그대로 (방어력 · 마저 · 보호막 · 킬 기록까지)
+      if (C && typeof Kits !== 'undefined') hit.forEach(q => Kits.deal(g, p, q, CStats.skillDmg(p, s.key, q), f));
       const ally = s.kind === 'ally' ? (s.shape === 'circle' || s.shape === 'global' ? us : [tg]) : [];
       // 보호막: 스킬 데이터에 보호막이 있으면 실제로 씌운다 (팀원 스킬은 팀원, 아니면 본인). 엔진 1초 ≈ 실제 2초라 지속은 절반
       if (C) { const to = ally.length ? ally.filter(Boolean) : [p]; to.forEach(q => { const sh = CStats.shield(p, s.key, q); if (sh) q.sh = { v: Math.max(q.sh && q.sh.until > g.t ? q.sh.v : 0, sh.v), until: g.t + Math.max(1, Math.round(sh.dur / 2)) }; }); }
@@ -233,6 +237,8 @@ const Skills = {
       // 해설: 여러 명을 묶은 이니시 궁
       if (s.key === 'R' && hit.length >= 3 && ['up', 'stun', 'pull', 'back'].includes(s.cc) && g.r() < .6)
         Sim.say(g, 'cast', Sim.pick(g, [`${p.name}의 ${s.name}! ${hit.length}명이 한꺼번에 걸립니다!`, `${s.name}! ${Sim.josa(p.name, '이', '가')} ${hit.length}명을 묶어 버려요!`, `들어갑니다! ${Sim.cn(p)}의 ${s.name}, ${hit.length}명 적중!`]));
+      };
+      one(); if (g.r() < .5) one();
     });
   },
 };
