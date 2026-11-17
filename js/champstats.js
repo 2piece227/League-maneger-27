@@ -7,7 +7,8 @@ const CStats = {
     if (!this._p) this._p = Promise.all([
       fetch('data/champ-base.json').then(r => r.ok ? r.json() : null).catch(() => null),
       fetch('data/item-stats.json').then(r => r.ok ? r.json() : null).catch(() => null),
-    ]).then(([b, i]) => { if (b) this.base = b.champs; if (i) this.items = i.items; });
+      fetch('data/champ-shields.json').then(r => r.ok ? r.json() : null).catch(() => null),
+    ]).then(([b, i, sh]) => { if (b) this.base = b.champs; if (i) this.items = i.items; if (sh) this.shields = sh.champs; });
     return this._p;
   },
   // 데이터에 아직 없는 새 챔피언: 같은 공격 방식의 평균으로
@@ -60,6 +61,16 @@ const CStats = {
     let R = b.range;
     if (p.kind === 'mage' || p.kind === 'arti') { const rs = Object.values(b.sk || {}).map(x => x.range).filter(x => x && x > 300 && x < 3000).sort((x, y) => x - y); if (rs.length) R = Math.max(R, Math.min(1000, rs[Math.floor(rs.length / 2)] * .8)); }
     return 3.6 + Math.max(0, R - 125) / 150;
+  },
+  // 보호막: 그 스킬이 주는 보호막 (받는 사람 최대 체력 대비 비율) · 지속(초). 없으면 null
+  shields: {},
+  shield(p, key, to = p) {
+    const d = (this.shields[p.c] || {})[key], A = this.now(p), T = this.now(to), b = this.of(p.c); if (!d || !A || !T) return null;
+    const rank = key === 'R' ? Math.min(3, Math.max(1, Math.floor((p.lvl - 1) / 5))) : Math.min(5, Math.max(1, Math.ceil(p.lvl / 3.6))), at = v => Array.isArray(v) ? v[Math.min(v.length, rank) - 1] : v;
+    const G = this.grow(p.lvl), baseHP = b.hp + b.hpL * G, baseArm = b.arm + b.armL * G, baseMR = b.mr + b.mrL * G;
+    const st = { ap: A.ap, ad: A.ad, bad: A.bonusAD, hp: A.maxHP, bhp: A.maxHP - baseHP, arm: A.arm - baseArm, mr: A.mr - baseMR, mp: A.mpMax };
+    const amt = at(d.b) + d.r.reduce((a, [v, t]) => a + at(v) / 100 * (st[t] || 0), 0);
+    return amt > 0 ? { v: amt / T.maxHP, dur: d.dur } : null;
   },
   // 이동 속도 배율 (345 = 1)
   speed(p) { const s = this.now(p); return s ? s.ms / 345 : 1; },

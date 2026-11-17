@@ -50,7 +50,9 @@
 .lv-pi { min-width: 0; flex: 1; }
 .lv-pi small { display: block; font-size: 11px; color: #d7deeb; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .lv-hp { height: 4px; border-radius: 2px; background: #1c2436; overflow: hidden; margin-top: 2px; }
+.lv-hp { display: flex; }
 .lv-hp i { display: block; height: 100%; background: #3fbf7f; transition: width .4s; }
+.lv-hp b { display: block; height: 100%; width: 0; background: #f4f6fb; transition: width .4s; }
 .lv-items { display: flex; flex-wrap: wrap; gap: 1px; margin-top: 3px; min-height: 15px; }
 .lv-side.r .lv-items { justify-content: flex-end; }
 .lv-items .it-ic { width: 15px; height: 15px; border-radius: 2px; border: 1px solid #2c3a56; }

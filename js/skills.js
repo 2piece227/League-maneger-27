@@ -175,6 +175,8 @@ const Skills = {
         : s.shape === 'circle' ? foes.filter(q => D(q.pos, to) < 4) : s.shape === 'cone' ? foes.filter(q => D(q.pos, p.pos) < 6 && D(q.pos, to) < 5)
         : s.shape === 'line' ? foes.filter(q => seg(p.pos, to, q.pos) < 2) : tg ? [tg] : [];
       const ally = s.kind === 'ally' ? (s.shape === 'circle' || s.shape === 'global' ? us : [tg]) : [];
+      // 보호막: 스킬 데이터에 보호막이 있으면 실제로 씌운다 (팀원 스킬은 팀원, 아니면 본인). 엔진 1초 ≈ 실제 2초라 지속은 절반
+      if (C) { const to = ally.length ? ally.filter(Boolean) : [p]; to.forEach(q => { const sh = CStats.shield(p, s.key, q); if (sh) q.sh = { v: Math.max(q.sh && q.sh.until > g.t ? q.sh.v : 0, sh.v), until: g.t + Math.max(1, Math.round(sh.dur / 2)) }; }); }
       const form = this.FORM[p.c] === 'mega' ? (s.key === 'R' || (p.mega || 0) > g.t || (m >= 8 && g.r() < .45) ? 'mega' : '') : '';
       if (form === 'mega') p.mega = Math.max(p.mega || 0, g.t + 6);
       g.sk.push({ t: g.t, i: g.pl.indexOf(p), key: s.key, kind: s.kind, shape: s.shape, cc: s.cc, name: form === 'mega' && s.mega ? s.mega : s.name, icon: s.icon, form,

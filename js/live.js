@@ -305,7 +305,9 @@ const Live = {
       // 체력 막대
       const bw = R * 1.9, bh = Math.max(3, R * .22), bx = x - bw / 2, by = y + R + 2;
       c.fillStyle = 'rgba(5,8,14,.85)'; c.fillRect(bx - 1, by - 1, bw + 2, bh + 2);
-      c.fillStyle = p.hp > .5 ? '#4cd964' : p.hp > .25 ? '#f0b400' : '#ef4b5f'; c.fillRect(bx, by, bw * Math.max(0, Math.min(1, p.hp)), bh);
+      const shv = p.sh && p.sh.until > g.t ? p.sh.v : 0, hs = Math.max(1, p.hp + shv), hw = bw * Math.max(0, Math.min(1, p.hp)) / hs;
+      c.fillStyle = p.hp > .5 ? '#4cd964' : p.hp > .25 ? '#f0b400' : '#ef4b5f'; c.fillRect(bx, by, hw, bh);
+      if (shv > 0) { c.fillStyle = '#f4f6fb'; c.fillRect(bx + hw, by, bw * shv / hs, bh); }   // 보호막
     }
     c.globalAlpha = 1;
     this.skillPops(c, g, SK, P, now, X, Y, R, col);
@@ -407,7 +409,7 @@ const Live = {
         $('.lv-side.' + k.toLowerCase(), el).innerHTML = g.pl.filter(p => p.side === k).map(p => `
           <div class="lv-pl" data-i="${g.pl.indexOf(p)}">
             <div class="lv-pic">${SoloQ.ic(p.c)}<i></i><em></em></div>
-            <div class="lv-pi"><small>${UI.esc(g.side[k].t.short)} ${UI.esc(p.name)}</small><div class="lv-hp"><i></i></div><div class="lv-mp"><i></i></div><div class="lv-items"></div></div>
+            <div class="lv-pi"><small>${UI.esc(g.side[k].t.short)} ${UI.esc(p.name)}</small><div class="lv-hp"><i></i><b></b></div><div class="lv-mp"><i></i></div><div class="lv-items"></div></div>
           </div>`).join('');
       });
     }
@@ -415,7 +417,9 @@ const Live = {
       const p = g.pl[row.dataset.i];
       row.classList.toggle('dead', !!p.dead); row.querySelector('.lv-pic i').textContent = p.lvl;
       row.querySelector('.lv-pic em').textContent = p.dead ? Math.max(0, p.dead - g.t) : '';
-      row.querySelector('.lv-hp i').style.width = Math.round(p.hp * 100) + '%';
+      // 보호막은 체력 뒤에 흰색으로 (체력 + 보호막이 넘치면 막대를 그만큼 줄여 그린다)
+      const shv = p.sh && p.sh.until > g.t ? p.sh.v : 0, hs = Math.max(1, p.hp + shv);
+      row.querySelector('.lv-hp i').style.width = (Math.max(0, p.hp) / hs * 100).toFixed(1) + '%'; row.querySelector('.lv-hp b').style.width = (shv / hs * 100).toFixed(1) + '%';
       const mpb = row.querySelector('.lv-mp'); mpb.style.visibility = p.mpMax ? '' : 'hidden'; if (p.mpMax) mpb.firstChild.style.width = Math.round(p.mpCur / p.mpMax * 100) + '%';
       const its = row.querySelector('.lv-items'), key = p.inv.map(x => x.id).join(',') + '|' + p.wards + '|' + (p.trinket ? p.trinket.id : '') + '|' + (p.pet || 0);
       if (its.dataset.k !== key) { its.dataset.k = key; its.innerHTML = this.inventory(p); }
