@@ -27,7 +27,7 @@ const CStats = {
   AUTO: { tank: .68, bruiser: .82, dive: .9, adc: 1.42, mage: .6, arti: .45, ench: .5 },
   // 지금 스탯 (레벨 · 아이템이 바뀔 때만 다시 계산)
   now(p) {
-    const key = p.lvl + '|' + p.inv.map(i => i.n).join(',');
+    const AO = typeof Kits !== 'undefined' && Kits.allout(p), key = p.lvl + '|' + p.inv.map(i => i.n).join(',') + (AO ? '|AO' : '');
     if (p._cs && p._csk === key) return p._cs;
     const b = this.of(p.c); if (!b) return null;
     const G = this.grow(p.lvl), it = { hp: 0, ad: 0, ap: 0, arm: 0, mr: 0, as: 0, crit: 0, ms: 0, msP: 0, mp: 0, leth: 0, armPen: 0, mpen: 0, mpenP: 0, mp5: 0 };
@@ -40,6 +40,12 @@ const CStats = {
       leth: it.leth, armPen: it.armPen / 100, mpen: it.mpen, mpenP: it.mpenP / 100,
       ms: (b.ms + boots + it.ms) * (1 + it.msP / 100), mpMax: b.res === 'MANA' ? b.mp + b.mpL * G + it.mp : 0, mp5: (b.mp5 + b.mp5L * G) * (1 + it.mp5 / 100),
     };
+    // 크산테 총공세: 방어력 · 마저가 추가 방어 · 마저의 85%만큼 줄고, 공격 속도 40/60/80% · 추가 방어구 관통 50% (대략 방어 관통 35%)
+    if (AO) {
+      const bArm = s.arm - (b.arm + b.armL * G), bMr = s.mr - (b.mr + b.mrL * G), rk = Math.min(3, Math.max(1, Math.floor((p.lvl - 1) / 5)));
+      s.arm = Math.max(0, s.arm - bArm * .85); s.mr = Math.max(0, s.mr - bMr * .85);
+      s.as = Math.min(2.5, s.as + b.as * [.4, .6, .8][rk - 1]); s.armPen = Math.min(.6, s.armPen + .35);
+    }
     // 스킬 피해 종류 비중 (스킬 데이터의 피해 종류로)
     const dm = Object.values(b.sk || {}).map(x => x.dmg).filter(Boolean), mag = dm.length ? dm.filter(x => /MAGIC/.test(x)).length / dm.length : .5;
     s.magic = mag;

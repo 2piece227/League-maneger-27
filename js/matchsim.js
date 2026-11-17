@@ -550,6 +550,7 @@ const Sim = {
         // 보호막이 먼저 받는다
         if (v.sh && v.sh.until > g.t && v.sh.v > 0) { const ab = Math.min(v.sh.v, dmg); v.sh.v -= ab; dmg -= ab; if (dmg <= 0) return; }
         v.hp -= dmg;
+        if (typeof Kits !== 'undefined') Kits.vamp(g, a, v, dmg);        // 총공세 크산테 모든 피해 흡혈 20%
         const ctb = f.dmg.get(v) || new Map(); ctb.set(a, (ctb.get(a) || 0) + dmg); f.dmg.set(v, ctb); v.lastHit = a; v.lastHitT = g.t;
         if (v.hp <= 0) {
           const helpers = [...ctb.keys()].filter(x => x !== a && !x.dead);
@@ -980,7 +981,7 @@ const Sim = {
   },
   // 우물 도착: 상점 → 텔레포트가 있으면 자기 라인(아군 쪽 전선)으로만 순간이동
   atBase(g, p, m) {
-    p.pos = [...this.fountain(p.side)]; p.trail = [p.pos]; p.warp = g.t; p.hp = 1; p.lastBack = g.t; p.hold = null; p.rt = null; p.fled = 0;
+    p.pos = [...this.fountain(p.side)]; p.trail = [p.pos]; p.warp = g.t; p.hp = typeof Kits !== 'undefined' ? Kits.hpCap(p, g) : 1; p.lastBack = g.t; p.hold = null; p.rt = null; p.fled = 0;
     const big0 = p.inv.filter(i => i.gold >= 2500).length; this.shop(g, p); this.refresh(p); p.mpCur = p.mpMax;
     const bigs = p.inv.filter(i => i.gold >= 2500); if (g.t > 0 && bigs.length > big0 && this.isCarry(p) && g.r() < .3) this.say(g, 'anal', `${p.name}, 귀환해서 ${this.josa(bigs[bigs.length - 1].ko, '을', '를')} 완성했습니다. ${bigs.length}코어예요.`);
     if (!p.tp || g.t < p.tpReady || m < 3 || (g.side[p.side].push && g.side[p.side].push.until > g.t)) return;
@@ -1054,7 +1055,7 @@ const Sim = {
       if (m < 14 && inLane) p.gold += Math.max(0, p.mu.gd) / 6;             // 라인전 매치업 이득 (실제 분당 골드 차이)
       // 포지션별 경험치 속도(실제 30분 기준 탑·미드 16, 원딜·정글 15, 서폿 13 안팎) + 킬·어시 − 데스. 예전에는 30분이면 모두 18이 됐다
       p.lvl = Math.max(1, Math.min(18, Math.floor(1 + m * ({ TOP: .52, MID: .52, BOT: .48, JGL: .48, SUP: .41 })[p.role] + p.k * .15 + p.a * .05 - p.d * .08)));
-      if (this.dist(p.pos, this.fountain(p.side)) < 14) p.hp = 1; else p.hp = Math.min(1, p.hp + .02);
+      { const cap = typeof Kits !== 'undefined' ? Kits.hpCap(p, g) : 1; if (this.dist(p.pos, this.fountain(p.side)) < 14) p.hp = cap; else p.hp = Math.min(cap, p.hp + .02); }   // 크산테 총공세: 체력 상한 65%
       this.refresh(p);
       // 라인전 견제로 마나를 쓴다 (맞상대가 근처에 있으면 10초에 Q 소모의 0.4배, 1분 40초부터)
       if (p.mpMax && m < 14 && g.t >= 100 && inLane && this.near(g, this.other(p.side), p.pos, 10).length && typeof CStats !== 'undefined') p.mpCur = Math.max(0, p.mpCur - CStats.cost(p, 'Q') * .4);

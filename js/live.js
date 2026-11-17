@@ -310,6 +310,7 @@ const Live = {
       const shv = p.sh && p.sh.until > g.t ? p.sh.v : 0, hs = Math.max(1, p.hp + shv), hw = bw * Math.max(0, Math.min(1, p.hp)) / hs;
       c.fillStyle = p.hp > .5 ? '#4cd964' : p.hp > .25 ? '#f0b400' : '#ef4b5f'; c.fillRect(bx, by, hw, bh);
       if (shv > 0) { c.fillStyle = '#f4f6fb'; c.fillRect(bx + hw, by, bw * shv / hs, bh); }   // 보호막
+      if (p.kit && p.kit.allout > now) { c.fillStyle = 'rgba(120,110,95,.75)'; c.fillRect(bx + bw * .65, by, bw * .35, bh); c.fillStyle = '#d6b878'; c.fillRect(bx + bw * .65 - 1, by - 1, 2, bh + 2); }   // 총공세 체력 상한 65%
     }
     c.globalAlpha = 1;
     this.skillPops(c, g, SK, P, now, X, Y, R, col);

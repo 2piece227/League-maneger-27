@@ -41,7 +41,13 @@ const Kits = {
   on(p) { return p.kit ||= { cd: {}, heat: 0, lastCast: -99, stack: 0, charges: 2, chT: 0, q: [] }; },
   // 재사용 대기: 실제 값(현재 랭크) × 0.8 (스킬 가속), 총공세 크산테 Q는 더 빠르다
   cdOf(p, key) { const rc = typeof CStats !== 'undefined' && CStats.cd(p, key); return Math.max(1, (rc || ({ Q: 6, W: 10, E: 10, R: 90 })[key]) * (key === 'R' ? .85 : .8) * (p.c === 'KSante' && key === 'Q' && this.allout(p) ? .6 : 1)); },
-  allout(p) { return p.kit && p.kit.allout > Sim.T; },
+  allout(p) { return !!(p.kit && p.kit.allout > (Sim.T ?? 0)); },
+  hpCap(p, g) { return p.kit && p.kit.allout > g.t ? .65 : 1; },
+  vamp(g, a, v, dmg) {
+    if (!this.allout(a) || a.dead || typeof CStats === 'undefined') return;
+    const A = CStats.now(a), V = CStats.now(v); if (!A || !V) return;
+    a.hp = Math.min(.65, a.hp + dmg * V.maxHP / A.maxHP * .2);
+  },
   hot(p) { return p.c === 'Rumble' && p.kit && p.kit.heat >= 50; },
   over(p, g) { return p.c === 'Rumble' && p.kit && (p.kit.over || 0) > g.t; },
   ready(g, p, key) {
@@ -50,7 +56,7 @@ const Kits = {
     if (key === 'R' && (p.lvl < 6 || (p.kit.rAt || 0) > g.t)) return false;
     if (d.charges) return k.charges > 0 && g.t >= (k.cd[key] || 0);
     if (key !== 'R' && g.t < (k.cd[key] || 0)) return false;
-    if (typeof CStats !== 'undefined' && p.mpMax && CStats.cost(p, key) > p.mpCur) return false;
+    if (typeof CStats !== 'undefined' && p.mpMax && !this.allout(p) && CStats.cost(p, key) > p.mpCur) return false;   // 총공세 스킬은 소모 없음
     return true;
   },
   // 1초마다 (Sim.step 뒤): 자원 · 충전 · 콤보 대기열 · 한타 밖 스킬
@@ -59,7 +65,7 @@ const Kits = {
     for (const p of g.pl) {
       if (!this.has(p.c)) continue;
       const k = this.on(p), d = this.K[p.c];
-      if (p.dead || p.recall) { k.q = []; if (p.dead) { k.heat = 0; k.stack = 0; } continue; }
+      if (p.dead || p.recall) { k.q = []; if (p.dead) { k.heat = 0; k.stack = 0; k.allout = 0; } continue; }
       // 럼블 열기: 3초 동안 스킬을 안 쓰면 초당 10씩 식는다. 과열이 끝나면 0
       if (d.res === 'heat') { if ((k.over || 0) > 0 && k.over <= g.t) { k.over = 0; k.heat = 0; } else if (!k.over && g.t - k.lastCast > 3) k.heat = Math.max(0, k.heat - 10); }
       if (d.E && d.E.charges && k.charges < d.E.charges && g.t >= k.chT) { k.charges++; k.chT = g.t + this.cdOf(p, 'E'); }
@@ -141,7 +147,7 @@ const Kits = {
     else if (s.charges) { k.charges--; if (k.chT <= g.t) k.chT = g.t + this.cdOf(p, key); k.cd[key] = g.t + .5; }
     else if (key === 'R') k.rAt = g.t + this.cdOf(p, 'R');
     else k.cd[key] = g.t + this.cdOf(p, key);
-    if (typeof CStats !== 'undefined' && p.mpMax && !o.follow) p.mpCur = Math.max(0, p.mpCur - CStats.cost(p, key));
+    if (typeof CStats !== 'undefined' && p.mpMax && !o.follow && !this.allout(p)) p.mpCur = Math.max(0, p.mpCur - CStats.cost(p, key));
     k.lastCast = g.t;
     const tg = o.tg, at = o.at || p.pos;
     // 맞는 대상: 관통이면 경로 위 전부, 아니면 첫 대상 하나
@@ -193,7 +199,8 @@ const Kits = {
         const wall = this.wallBehind(p, tg);
         tg.cc = g.t + (wall ? 2 : 1); cc = wall ? 'stun' : 'back';
         this.kick(g, p, tg, wall);
-        k.allout = g.t + 7; p.km = { v: 1.35, until: g.t + 7 }; p.vuln = { v: 1.15, until: g.t + 7 };   // 총공세: 딜 ↑, 방어 ↓
+        // 총공세(실제 15초 ≈ 엔진 7초): 체력 상한 65% (넘는 체력은 깎이고 끝나도 안 돌아온다), 방어 · 마저 ↓ · 공속 · 방관 ↑ (CStats.now), 흡혈 20%, 스킬 소모 없음
+        k.allout = g.t + 7; p.hp = Math.min(p.hp, .65);
         this.say(g, p, wall ? `${p.name}, ${Sim.josa(tg.name, '을', '를')} 벽 너머로 끌고 갑니다! 총공세!` : `${p.name}의 납치! ${Sim.josa(tg.name, '을', '를')} 진영 밖으로 걷어찹니다!`);
       }
     }
