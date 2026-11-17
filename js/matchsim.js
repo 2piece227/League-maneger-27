@@ -466,7 +466,8 @@ const Sim = {
         let nf = foes.slice().sort((a, b) => D(a.pos, p.pos) - D(b.pos, p.pos))[0]; if (p.ft && p.ft !== nf && foes.includes(p.ft) && D(p.ft.pos, p.pos) < D(nf.pos, p.pos) + 2) nf = p.ft; p.ft = nf;
         const dn = D(nf.pos, p.pos), K = this.KIND[p.kind];
         // 대상에게 gap만큼 붙는다. 이미 그쯤 붙어 있으면 그 자리를 지킨다 (대상이 한 발 움직일 때마다 앞뒤로 떨지 않게)
-        const stick = (t, gap) => { const d0 = D(t.pos, p.pos); if (d0 > gap - 1.4 && d0 < gap + .6) return p.pos; const v = unit(t.pos, p.pos); return [t.pos[0] + v[0] * gap, t.pos[1] + v[1] * gap]; };
+        // 근접은 평타 사거리 안쪽에 붙는다
+        const stick = (t, gap) => { if (p.rng < 5) gap = Math.min(gap, p.rng - .8); const d0 = D(t.pos, p.pos); if (d0 > gap - 1.4 && d0 < (p.rng < 5 ? p.rng - .3 : gap + .6)) return p.pos; const v = unit(t.pos, p.pos); return [t.pos[0] + v[0] * gap, t.pos[1] + v[1] * gap]; };
         let to;
         if (!Rift.los(p.pos, nf.pos)) to = nf.pos;   // 벽에 가려 있으면 돌아서 들어간다 (둥지는 입구로)
         else if (p.kind === 'tank' || p.kind === 'bruiser') {
@@ -526,7 +527,8 @@ const Sim = {
       [...B, ...R].forEach(a => {
         if ((a.cc || 0) > g.t) return;                                   // 기절 · 에어본 · 제압 중에는 못 친다
         const KA = this.KIND[a.kind], near = q => Math.max(0, (a.rng - this.dist(q.pos, a.pos)) / a.rng);
-        const foes = g.pl.filter(q => q.side !== a.side && !q.dead && !q.recall && !q.tpCh && this.dist(q.pos, a.pos) <= a.rng && (f.mem.has(q) || q.fled === f.id) && Rift.los(a.pos, q.pos));   // 벽 너머로는 못 친다
+        const reach = a.rng < 5 ? a.rng + 1.6 : a.rng;   // 근접: 1초(실제 약 2초) 동안 따라붙어 치는 거리까지
+        const foes = g.pl.filter(q => q.side !== a.side && !q.dead && !q.recall && !q.tpCh && this.dist(q.pos, a.pos) <= reach && (f.mem.has(q) || q.fled === f.id) && Rift.los(a.pos, q.pos));   // 벽 너머로는 못 친다
         if (!foes.length) return;
         // 대상: 체력이 낮고 몸이 약한 쪽을 노린다 (가끔 앞라인)
         // 대상: 한타 목표 지시 — 딜러 노리기(원딜·미드) / 앞라인부터(가까운 적) / 보호(평소대로)
@@ -1011,7 +1013,7 @@ const Sim = {
       if (p.gl && !p.hold && !dec) { const ng = this.laneSpot(g, p, m, p.gl); if (this.dist(ng, p.goal) > 1.2) p.goal = ng; }   // 라이너는 웨이브를 따라 움직인다
       let to = p.hold ? p.hold.to : p.goal; if (!to) return;
       to = this.safeTo(g, p, to);   // 포탑 사거리 안으로는 웨이브가 있을 때 · 다이브 때만
-      if (this.dist(p.pos, to) < 2.5) to = this.clampP([to[0] + Math.sin((g.t + i * 13) / 6) * 1.1, to[1] + Math.cos((g.t + i * 7) / 8) * 1.1]);
+      if (this.dist(p.pos, to) < 2.5 && !(p.hold && p.fmt && g.fights.some(f => f.id === p.fmt))) to = this.clampP([to[0] + Math.sin((g.t + i * 13) / 6) * 1.1, to[1] + Math.cos((g.t + i * 7) / 8) * 1.1]);
       // 싸우지 않는 상대와는 몸이 겹치지 않게: 2.6 안에 들어오면 비켜 간다 (그대로 뚫고 지나가지 않는다)
       if (this.AVOID !== false && !g.fights.some(f => f.mem.has(p))) {
         const e = g.pl.filter(q => q.side !== p.side && !q.dead && !q.recall && !g.fights.some(f => f.mem.has(q)) && this.dist(q.pos, p.pos) < 4).sort((a, b) => this.dist(a.pos, p.pos) - this.dist(b.pos, p.pos))[0];

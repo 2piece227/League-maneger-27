@@ -43,6 +43,7 @@ const CStats = {
     // 크산테 총공세: 방어력 · 마저가 추가 방어 · 마저의 85%만큼 줄고, 공격 속도 40/60/80% · 추가 방어구 관통 50% (대략 방어 관통 35%)
     if (AO) {
       const bArm = s.arm - (b.arm + b.armL * G), bMr = s.mr - (b.mr + b.mrL * G), rk = Math.min(3, Math.max(1, Math.floor((p.lvl - 1) / 5)));
+      s.aoB = .01 + bArm / 100 * .01 + bMr / 100 * .01;   // 총공세 추가 피해: 평타 · 스킬마다 대상 최대 체력의 1% (+ 추가 방어 · 마저 100당 1%)
       s.arm = Math.max(0, s.arm - bArm * .85); s.mr = Math.max(0, s.mr - bMr * .85);
       s.as = Math.min(2.5, s.as + b.as * [.4, .6, .8][rk - 1]); s.armPen = Math.min(.6, s.armPen + .35);
     }
@@ -57,7 +58,8 @@ const CStats = {
     const auto = A.ad * A.as * (1 + A.crit * .75) * this.AUTO[a.kind];
     const oom = A.mpMax && (a.mpCur ?? A.mpMax) < A.mpMax * .1;
     const spell = this.SPELL[a.kind] * (9 * a.lvl + .6 * A.ap + .35 * A.bonusAD + 20) * (oom ? .35 : 1);
-    const phys = auto + spell * (1 - A.magic), mag = spell * A.magic;
+    const ao = A.aoB ? A.aoB * V.maxHP * (A.as * this.AUTO[a.kind] + .35) : 0;   // 총공세: 평타마다 + 스킬 몇 번
+    const phys = auto + ao + spell * (1 - A.magic), mag = spell * A.magic;
     const ea = Math.max(0, V.arm * (1 - A.armPen) - A.leth), em = Math.max(0, V.mr * (1 - A.mpenP) - A.mpen);
     return (phys * 100 / (100 + ea) + mag * 100 / (100 + em)) / V.maxHP;
   },
