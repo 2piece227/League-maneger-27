@@ -469,7 +469,7 @@ const Live = {
       const [x, y] = Rift.pos(Sim.PIT[o]), n = g.side.B.drag.length + g.side.R.drag.length;
       const el2 = o === 'drag' && Sim.elder(g), ic = el2 ? 'dragon_elder' : o === 'drag' ? g.dragSeq[Math.min(n, 2)][1] : Sim.ICON[o], nm = el2 ? '장로 드래곤' : o === 'drag' ? `${g.dragSeq[Math.min(n, 2)][0]} 드래곤` : Sim.OBJ[o];
       // 체력: 양 팀 중 더 많이 친 쪽만큼 깎인다 (유충은 남은 마리 수도)
-      const ob = g.obj[o], pr = ob.prog || {}, hp = Math.max(0, 1 - Math.max(pr.B || 0, pr.R || 0) / Sim.OBJ_NEED[o]), who = (pr.B || 0) >= (pr.R || 0) ? 'b' : 'r';
+      const ob = g.obj[o], pr = ob.prog || {}, hp = Math.max(0, 1 - Math.max(pr.B || 0, pr.R || 0) / Sim.objNeed(g, o)), who = (pr.B || 0) >= (pr.R || 0) ? 'b' : 'r';
       return `<div class="lv-obj ${o}" style="left:${x}%;top:${y}%" title="${nm}">${this.ico(ic)}<i class="lv-ohp ${hp < 1 ? who : ''}"><b style="width:${(hp * 100).toFixed(0)}%"></b></i>${o === 'grubs' ? `<em class="lv-ogn">${ob.left ?? 3}</em>` : ''}</div>`;
     }).join(''));
     // 양옆 선수 · 맵 아이콘: 처음 한 번 만들고 값만 바꾼다

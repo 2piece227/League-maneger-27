@@ -226,7 +226,9 @@ const Skills = {
       const fx = (form === 'mega' && s.fx2) || s.fx;
       const dg = this.dodge(g, p, fx, this.hits(p, s, fx, to, tg, foes, seg)), hit = dg.hit;
       // 스킬 피해: 맞은 적마다 data/skill-dmg.json 수치 그대로 (방어력 · 마저 · 보호막 · 킬 기록까지)
-      if (C && typeof Kits !== 'undefined') hit.forEach(q => Kits.deal(g, p, q, CStats.skillDmg(p, s.key, q), f));
+      const oh = C && (CStats.OH[p.c] || {})[s.key];
+      if (oh) (p.oh ||= {})[s.key] = g.t + (oh.d || 3);                       // 평타 강화 · 병사: 지속 동안 평타마다 피해 (CStats.hit)
+      else if (C && typeof Kits !== 'undefined') hit.forEach(q => Kits.deal(g, p, q, CStats.skillDmg(p, s.key, q), f));
       const ally = s.kind === 'ally' ? (s.shape === 'circle' || s.shape === 'global' ? us : [tg]) : [];
       // 보호막: 스킬 데이터에 보호막이 있으면 실제로 씌운다 (팀원 스킬은 팀원, 아니면 본인). 엔진 1초 ≈ 실제 2초라 지속은 절반
       if (C) { const to = ally.length ? ally.filter(Boolean) : [p]; to.forEach(q => { const sh = CStats.shield(p, s.key, q); if (sh) q.sh = { v: Math.max(q.sh && q.sh.until > g.t ? q.sh.v : 0, sh.v), until: g.t + Math.max(1, Math.round(sh.dur / 2)) }; }); }

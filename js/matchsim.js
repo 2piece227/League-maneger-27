@@ -154,7 +154,21 @@ const Sim = {
   OBJ: { drag: '드래곤', grubs: '공허 유충', herald: '전령', baron: '바론' },
   // 오브젝트마다 모이는 포지션 (드래곤은 바텀 쪽 4인, 유충·전령은 탑 쪽, 바론은 5인)
   OBJ_ROLES: { drag: ['JGL', 'MID', 'BOT', 'SUP'], grubs: ['JGL', 'TOP', 'MID'], herald: ['JGL', 'TOP', 'MID', 'SUP'], baron: ['TOP', 'JGL', 'MID', 'BOT', 'SUP'] },
-  OBJ_NEED: { drag: 30, grubs: 12, herald: 30, baron: 40 },   // 유충은 한 마리씩 (3마리)
+  OBJ_NEED: { drag: 30, grubs: 12, herald: 30, baron: 40 },   // (예전 고정값, 스탯이 없을 때만)
+  // 오브젝트 실제 체력 (분에 따라 오른다) · 방어 배율. 치는 선수의 평타 + 스킬 DPS로 깎는다 (예전에는 1초에 1인당 10 고정이라 바론이 1~2초 만에 녹았다)
+  objNeed(g, o) {
+    if (typeof CStats === 'undefined' || !Object.keys(CStats.base).length) return this.OBJ_NEED[o];
+    const m = this.min(g);
+    return o === 'baron' ? 9000 + 180 * Math.max(0, m - 20) : o === 'herald' ? 6000 + 150 * Math.max(0, m - 14) : o === 'grubs' ? 1400 + 40 * Math.max(0, m - 5)
+      : (this.elder(g) ? 7000 + 150 * Math.max(0, m - 30) : Math.min(6500, 3500 + 110 * m));
+  },
+  OBJ_ARM: { drag: .8, grubs: .85, herald: .75, baron: .6 },
+  objHit(g, o, ps) {
+    if (typeof CStats === 'undefined' || !Object.keys(CStats.base).length) return 10 * ps.length;
+    return ps.reduce((a, p) => { const A = CStats.now(p); if (!A) return a + 300;
+      const dps = A.ad * A.as * (1 + A.crit * .75) + .5 * (9 * p.lvl + .6 * A.ap + .35 * A.bonusAD + 20);
+      return a + dps * 2 * this.OBJ_ARM[o] * (p.role === 'JGL' ? 1.3 : 1); }, 0);
+  },
   LANE_OF: { TOP: 'top', MID: 'mid', BOT: 'bot', SUP: 'bot' },
   DRAGONS: [['화염', 'dragon_infernal'], ['바다', 'dragon_ocean'], ['바람', 'dragon_cloud'], ['대지', 'dragon_mountain'], ['마법공학', 'dragon_hextech'], ['화학공학', 'dragon_chemtech']],
   ICON: { baron: 'baron', herald: 'riftherald', grubs: 'grub', tower: 'tower', inhib: 'inhibitor', nexusT: 'tower', nexus: 'nexus' },
@@ -785,11 +799,11 @@ const Sim = {
       } else if (nb.length && nr.length) {
         const db = this.tpow(g, 'B', nb) + nb.length * 6 - this.tpow(g, 'R', nr) - nr.length * 6, k = db > 0 || (db === 0 && g.r() < .5) ? 'B' : 'R';
         this.near(g, this.other(k), pit, 20).forEach(p => this.retreat(g, p, 16));
-        ob.prog[k] = (ob.prog[k] || 0) + 10 * hitters(k === 'B' ? nb : nr).length; if (ob.prog[k] >= this.OBJ_NEED[o]) wk = k;
+        ob.prog[k] = (ob.prog[k] || 0) + this.objHit(g, o, hitters(k === 'B' ? nb : nr)); if (ob.prog[k] >= this.objNeed(g, o)) wk = k;
       } else for (const [k, ps] of [['B', nb], ['R', nr]]) {
         const hs = hitters(ps); if (!hs.length) continue;
-        ob.prog[k] = (ob.prog[k] || 0) + 10 * hs.length;
-        if (ob.prog[k] >= this.OBJ_NEED[o]) { wk = k; if (g.r() < .5) this.say(g, 'anal', `${this.josa(g.side[this.other(k)].t.short, '이', '가')} 대응을 못 합니다. ${this.josa(g.side[k].t.short, '이', '가')} ${this.josa(this.OBJ[o], '을', '를')} 챙겨요.`); }
+        ob.prog[k] = (ob.prog[k] || 0) + this.objHit(g, o, hs);
+        if (ob.prog[k] >= this.objNeed(g, o)) { wk = k; if (g.r() < .5) this.say(g, 'anal', `${this.josa(g.side[this.other(k)].t.short, '이', '가')} 대응을 못 합니다. ${this.josa(g.side[k].t.short, '이', '가')} ${this.josa(this.OBJ[o], '을', '를')} 챙겨요.`); }
       }
       if (!wk) continue;
       // 오브젝트 도둑: 상대가 치는 걸 가로챈다
@@ -1033,6 +1047,7 @@ const Sim = {
     });
     this.fightTick(g);
     this.waves(g, m); this.towers(g, m); this.siegeTick(g, m); if (g.over) return;
+    if (!g.over) this.objectives(g, m);   // 오브젝트는 매초 깎인다 (예전에는 10초마다 한 번에 깎여 체력이 갑자기 0이 됐다)
     if (g.t % 2 === 0 && !g.over) this.encounter(g, m);
     if (dec && !g.over) this.decide(g, m);
     g.fx = g.fx.filter(f => g.t - f.t <= (f.dur || 2));
@@ -1065,7 +1080,6 @@ const Sim = {
     });
     // 사건: 공성(넥서스가 깨지면 이 틱의 다른 일은 없다) · 오브젝트 · 라인전 · 근접 교전 · 귀환
     this.preObj(g);
-    this.objectives(g, m); if (g.over) return;
     if (m < 14) this.laning(g, m);
     this.skirmish(g, m); if (g.over) return;
     this.decideRecalls(g, m);

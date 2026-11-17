@@ -54,16 +54,31 @@ const CStats = {
     s.magic = mag;
     p._cs = s; p._csk = key; return s;
   },
+  // 평타에 붙는 스킬 (스킬 데이터 설명의 'basic attacks ... on-hit / bonus damage for N seconds'): 쓰면 지속 동안 평타마다 그 스킬 피해가 붙는다
+  //  d 지속(엔진 초, 실제의 절반) · e 평타 몇 번에 한 번(1 = 매번) · always 패시브처럼 늘 · rep 평타를 대신한다 (아지르 병사 · 제리 Q)
+  OH: { Azir: { W: { d: 5, e: 1, rep: 1 } }, Zeri: { Q: { always: 1, e: 1, rep: 1 } }, KogMaw: { W: { d: 4, e: 1 } }, MasterYi: { E: { d: 2.5, e: 1 } },
+    Varus: { W: { always: 1, e: .33 } }, Vayne: { W: { always: 1, e: 1 / 3 } }, Vi: { W: { always: 1, e: 1 / 3 } }, Teemo: { E: { always: 1, e: 1 } },
+    Gwen: { E: { d: 2, e: 1 } }, Shen: { Q: { d: 4, e: .5 } }, Sett: { Q: { d: 2.5, e: .6 } }, Udyr: { Q: { d: 2, e: .6 } }, Yunara: { Q: { d: 3, e: 1 } },
+    Shyvana: { W: { d: 1.5, e: 1 } }, Ivern: { W: { d: 1.5, e: .5 } } },
+  ohOn(a, key) { const c = (this.OH[a.c] || {})[key]; return !!c && (c.always || (a.oh && a.oh[key] > (typeof Sim !== 'undefined' ? Sim.T ?? 0 : 0))); },
   // 1초 동안 a가 v에게 주는 피해 (v 최대 체력 대비 비율). 마나가 바닥나면 스킬 피해가 크게 준다
   hit(a, v) {
     const A = this.now(a), V = this.now(v); if (!A || !V) return null;
-    const auto = A.ad * A.as * (1 + A.crit * .75) * this.AUTO[a.kind];
+    let auto = A.ad * A.as * (1 + A.crit * .75) * this.AUTO[a.kind], ohP = 0, ohM = 0, ohT = 0;
+    const OH = this.OH[a.c];
+    if (OH) for (const [key, c] of Object.entries(OH)) {
+      if (!this.ohOn(a, key)) continue;
+      const d = this.skillDmg(a, key, v); if (!d) continue;
+      const n = A.as * c.e * Math.max(1, this.AUTO[a.kind]);                  // 평타 횟수 (원딜 보정 배율은 그대로)
+      ohP += (d.p || 0) * n; ohM += (d.m || 0) * n; ohT += (d.t || 0) * n;
+      if (c.rep) auto = 0;                                                    // 병사 · Q가 평타를 대신한다
+    }
     const oom = A.mpMax && (a.mpCur ?? A.mpMax) < A.mpMax * .1;
     const spell = this.SPELL_K * this.SPELL[a.kind] * (9 * a.lvl + .6 * A.ap + .35 * A.bonusAD + 20) * (oom ? .35 : 1);   // 스킬 피해는 이제 스킬을 쓸 때 실제로 (Kits.deal) — 여기는 패시브 · 자잘한 효과 몫만
     const ao = A.aoB ? A.aoB * V.maxHP * (A.as * this.AUTO[a.kind] + .35) : 0;   // 총공세: 평타마다 + 스킬 몇 번
-    const phys = auto + ao + spell * (1 - A.magic), mag = spell * A.magic;
+    const phys = auto + ao + ohP + spell * (1 - A.magic), mag = spell * A.magic + ohM;
     const ea = Math.max(0, V.arm * (1 - A.armPen) - A.leth), em = Math.max(0, V.mr * (1 - A.mpenP) - A.mpen);
-    return (phys * 100 / (100 + ea) + mag * 100 / (100 + em)) / V.maxHP;
+    return (phys * 100 / (100 + ea) + mag * 100 / (100 + em) + ohT) / V.maxHP;
   },
   // 평타 사거리 → 맵 % (맵 가로 약 14,900 = 100%). 아이콘 몸집(서로 닿는 거리 약 3.6)을 더한 실제 거리
   //  근접 125 → 3.6 · 175 → 3.9 · 원딜 550 → 6.4 · 650 → 7.1. 메이지 · 포킹은 스킬 사거리(중간값의 80%, 최대 1000)
