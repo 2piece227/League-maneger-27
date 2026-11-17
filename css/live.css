@@ -233,3 +233,10 @@
 /* 마나 막대 (마나를 쓰는 챔피언만) */
 .lv-mp { height: 3px; border-radius: 2px; background: #1c2436; overflow: hidden; margin-top: 1px; }
 .lv-mp i { display: block; height: 100%; background: #4a8cff; transition: width .4s; }
+
+/* 소환사 주문 (선수 사진 옆 두 칸) */
+.lv-ss { display: flex; flex-direction: column; gap: 2px; flex: none; }
+.lv-ss span { position: relative; width: 15px; height: 15px; display: block; }
+.lv-ss img { width: 100%; height: 100%; border-radius: 3px; display: block; }
+.lv-ss span.cd img { filter: grayscale(1) brightness(.45); }
+.lv-ss b { position: absolute; inset: 0; display: grid; place-items: center; font-size: 8px; font-weight: 800; color: #fff; text-shadow: 0 0 2px #000; }

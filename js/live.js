@@ -477,7 +477,7 @@ const Live = {
       ['B', 'R'].forEach(k => {
         $('.lv-side.' + k.toLowerCase(), el).innerHTML = g.pl.filter(p => p.side === k).map(p => `
           <div class="lv-pl" data-i="${g.pl.indexOf(p)}">
-            <div class="lv-pic">${SoloQ.ic(p.c)}<i></i><em></em></div>
+            <div class="lv-pic">${SoloQ.ic(p.c)}<i></i><em></em></div><div class="lv-ss"></div>
             <div class="lv-pi"><small>${UI.esc(g.side[k].t.short)} ${UI.esc(p.name)}</small><div class="lv-hp"><i></i><b></b></div><div class="lv-mp"><i></i></div><div class="lv-items"></div></div>
           </div>`).join('');
       });
@@ -490,6 +490,8 @@ const Live = {
       const shv = p.sh && p.sh.until > g.t ? p.sh.v : 0, hs = Math.max(1, p.hp + shv);
       row.querySelector('.lv-hp i').style.width = (Math.max(0, p.hp) / hs * 100).toFixed(1) + '%'; row.querySelector('.lv-hp b').style.width = (shv / hs * 100).toFixed(1) + '%';
       const mpb = row.querySelector('.lv-mp'); mpb.style.visibility = p.mpMax ? '' : 'hidden'; if (p.mpMax) mpb.firstChild.style.width = Math.round(p.mpCur / p.mpMax * 100) + '%';
+      // 소환사 주문: 재사용 대기 중이면 어둡게 + 남은 초
+      const ssb = row.querySelector('.lv-ss'); if (ssb && p.ss && typeof Spells !== 'undefined') { const sk = p.ss.map(s => s + ':' + Math.max(0, Math.ceil(((p.ssCd || {})[s] || 0) - g.t))).join(','); if (ssb.dataset.k !== sk) { ssb.dataset.k = sk; ssb.innerHTML = p.ss.map(s => { const r = Math.max(0, Math.ceil(((p.ssCd || {})[s] || 0) - g.t)); return `<span class="${r ? 'cd' : ''}" title="${Spells.KO[s]}"><img src="${Spells.icon(s)}" alt="">${r ? `<b>${r}</b>` : ''}</span>`; }).join(''); } }
       const its = row.querySelector('.lv-items'), key = p.inv.map(x => x.id).join(',') + '|' + p.wards + '|' + (p.trinket ? p.trinket.id : '') + '|' + (p.pet || 0);
       if (its.dataset.k !== key) { its.dataset.k = key; its.innerHTML = this.inventory(p); }
     });

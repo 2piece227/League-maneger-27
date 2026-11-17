@@ -163,7 +163,7 @@ const Skills = {
   HIT0: { line: .68, cone: .88, circle: .62, aura: .9, wall: .8, global: .55, dash: .82, blink: .85, target: 1, self: 1, passive: 1 },
   dodge(g, p, fx, list) {
     const miss = [];
-    if (!fx || !list.length || (this.HIT0[fx.s] ?? 1) >= 1) return { hit: list, miss };
+    if (!fx || !list.length || (this.HIT0[fx.s] ?? 1) >= 1 || p.flashEng === g.t) return { hit: list, miss };   // 점멸 이니시는 반응할 틈이 없다
     const hit = list.filter(q => {
       if ((q.cc || 0) > g.t) return true;
       const du = Sim.dist(p.pos, q.pos) * this.U, t = fx.spd ? du / fx.spd : fx.s === 'circle' ? .5 : .25;
@@ -206,12 +206,15 @@ const Skills = {
       else if (early && front) opts = pick('init', 'dash');
       else if (p.kind === 'ench') opts = pick('ally', 'atk');
       else opts = pick('atk', 'init', 'self', 'dash');
-      if (!opts.length || g.r() > (early && front ? .9 : .8)) return;
+      const FR = p.forceR === g.t && S.find(x => x.key === 'R');               // 점멸 이니시 직후: 궁을 바로
+      if (FR) opts = [FR];
+      else if (!opts.length || g.r() > (early && front ? .9 : .8)) return;
       // 궁극기: 한타(4인 이상)에서만, 이니시 궁은 초반에 · 나머지는 싸움이 무르익은 뒤
       let s = opts.find(x => x.key !== 'R') || opts[0];
       const R = opts.find(x => x.key === 'R');
       if (R && f.size >= 4 && (R.kind === 'init' ? early || g.r() < .35 : g.t - f.t0 >= 2 && g.r() < .45)) s = R;
-      if (s.key === 'R' && f.size < 4) { s = opts.find(x => x.key !== 'R'); if (!s) return; }
+      if (FR) { s = FR; p.forceR = 0; }
+      else if (s.key === 'R' && f.size < 4) { s = opts.find(x => x.key !== 'R'); if (!s) return; }
       const tg = s.kind === 'ally' ? us.filter(q => q !== p).sort((a, b) => a.hp - b.hp)[0] || p
         : p.hitTo && !p.hitTo.dead && foes.includes(p.hitTo) ? p.hitTo : foes.sort((a, b) => D(a.pos, p.pos) - D(b.pos, p.pos))[0];
       if (!tg && s.kind !== 'self' && s.kind !== 'esc') return;

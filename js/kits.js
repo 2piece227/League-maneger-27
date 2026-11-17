@@ -109,6 +109,7 @@ const Kits = {
       const n = k.q.shift(), tg = n.tg && !n.tg.dead ? n.tg : tg0;
       if (tg && D(tg.pos, p.pos) < 9) { this.fire(g, p, n.key, { ctx: 'combo', tg, at: tg.pos, big: f.size >= 4, follow: n, f }); return; }
     }
+    if (p.forceR === g.t && this.ready(g, p, 'R') && tg0) { p.forceR = 0; this.fire(g, p, 'R', { ctx: 'pick', tg: tg0, at: tg0.pos, big: true, foes, f }); return; }   // 점멸 이니시 직후 궁
     if (g.r() > .8) return;                                                // 1초에 매번 쓰지는 않는다
     const low = p.hp < .3 || p.fled, size = f.size || f.mem.size;
     const fleeing = tg0 && (tg0.fled || (tg0.hp < .25 && D(tg0.pos, p.pos) > p.rng));
@@ -240,7 +241,7 @@ const Kits = {
     if (!d || !v || v.dead || typeof CStats === 'undefined') return 0;
     const A = CStats.now(a), V = CStats.now(v); if (!A || !V) return 0;
     const ea = Math.max(0, V.arm * (1 - A.armPen) - A.leth), em = Math.max(0, V.mr * (1 - A.mpenP) - A.mpen);
-    let dmg = ((d.p || 0) * 100 / (100 + ea) + (d.m || 0) * 100 / (100 + em) + (d.t || 0)) / V.maxHP * Sim.FIGHT_K * Sim.STAT_K / 2 * this.SKILL_K * k * ((v.fx || {}).takeDmg || 1);
+    let dmg = ((d.p || 0) * 100 / (100 + ea) + (d.m || 0) * 100 / (100 + em) + (d.t || 0)) / V.maxHP * Sim.FIGHT_K * Sim.STAT_K / 2 * this.SKILL_K * k * ((v.fx || {}).takeDmg || 1) * ((a.exh || 0) > g.t ? .6 : 1);
     if (floor) dmg = Math.min(dmg, Math.max(0, v.hp - floor));
     if (v.sh && v.sh.until > g.t && v.sh.v > 0) { const ab = Math.min(v.sh.v, dmg); v.sh.v -= ab; dmg -= ab; }
     if (dmg <= 0) return 0;
@@ -306,7 +307,7 @@ const Kits = {
     p.pos = me; p.warp = g.t; p.hold = { to: [...me], until: g.t + 1 };
   },
   // 한타 피해 배율 (엔진 fightTick에서): 주는 쪽 km · 받는 쪽 vuln · 과열 평타
-  mul(g, a, v) { return (a.km && a.km.until > g.t ? a.km.v : 1) * (v.vuln && v.vuln.until > g.t ? v.vuln.v : 1); },
+  mul(g, a, v) { return (a.km && a.km.until > g.t ? a.km.v : 1) * (v.vuln && v.vuln.until > g.t ? v.vuln.v : 1) * ((a.exh || 0) > g.t ? .6 : 1); },   // 탈진: 주는 피해 40% 감소
 };
 // 엔진에 붙이기: 매초 키트 처리
 (() => {
