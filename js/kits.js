@@ -107,20 +107,21 @@ const Kits = {
     // 콤보 대기열 (Q 2타 · E 재사용 · W→Q 등): 조건이 맞으면 바로 이어 쓴다
     if (k.q.length && k.q[0].at <= g.t) {
       const n = k.q.shift(), tg = n.tg && !n.tg.dead ? n.tg : tg0;
-      if (tg && D(tg.pos, p.pos) < 9) { this.fire(g, p, n.key, { ctx: 'combo', tg, at: tg.pos, big: f.size >= 4, follow: n }); return; }
+      if (tg && D(tg.pos, p.pos) < 9) { this.fire(g, p, n.key, { ctx: 'combo', tg, at: tg.pos, big: f.size >= 4, follow: n, f }); return; }
     }
     if (g.r() > .6) return;                                                // 1초에 매번 쓰지는 않는다
     const low = p.hp < .3 || p.fled, size = f.size || f.mem.size;
     const fleeing = tg0 && (tg0.fled || (tg0.hp < .25 && D(tg0.pos, p.pos) > p.rng));
     const ctxs = low ? ['flee'] : fleeing ? ['chase', 'finish', 'pick'] : size >= 4 ? ['tf', 'pick', 'trade'] : ['trade', 'pick'];
     if (p.c === 'Rumble' && !low && k.heat < 100) ctxs.push('heat');
-    for (const ctx of ctxs) for (const key of ['R', 'E', 'Q', 'W']) {
+    const order = p.c === 'KSante' ? ['R', 'W', 'Q', 'E'] : ['R', 'E', 'Q', 'W'];   // 크산테: W(돌진 · 총공세 고정 피해)로 열고 Q
+    for (const ctx of ctxs) for (const key of order) {
       const s = this.K[p.c][key];
       if (!s || !s.use.includes(ctx) || !this.ready(g, p, key)) continue;
       const tg = this.target(g, p, key, ctx, foes, tg0); if (!tg && !['W'].includes(key) && s.shape !== 'self') continue;
       if (tg && s.range && D(tg.pos, p.pos) > this.R(s.range) + 1) continue;
       if (key === 'R' && !this.ultOk(g, p, ctx, tg, foes, size)) continue;
-      this.fire(g, p, key, { ctx, tg, at: tg ? tg.pos : p.pos, big: size >= 4, foes });
+      this.fire(g, p, key, { ctx, tg, at: tg ? tg.pos : p.pos, big: size >= 4, foes, f });
       return;
     }
   },
@@ -192,7 +193,11 @@ const Kits = {
         else { cc = AO ? '' : 'slow'; hit.forEach(v => { v.slow = g.t + 2; }); }
         p.km = { v: AO ? 1.4 : 1.1, until: g.t + 2 };                     // Q 다음 패시브 평타가 주력 딜
       }
-      if (key === 'W') { if (AO) { p.dash = g.t + 1; hit.forEach(v => { v.vuln = { v: 1.15, until: g.t + 2 }; }); } else { cc = 'back'; hit.forEach(v => { v.cc = g.t + 1; }); if (hit.length) k.q.push({ key: 'Q', at: g.t + 1, tg: hit[0] }); } }   // W 평 Q
+      // W 돌진 피해 (데이터): 물리 45~165 + 대상 최대 체력 8% (+ 추가 방어 · 마저 100당 2%). 총공세면 고정 피해가 더 붙는다 (충전에 따라 최대 36~132 + 6.4% (+ 100당 1.6%), 약 3/4 충전으로)
+      if (key === 'W') { const r = this.rank(p, 'W'), bb = this.bonusRes(p), cq = .75;
+        hit.forEach(v => { const V = CStats.now(v); if (!V) return; const mh = V.maxHP;
+          this.deal(g, p, v, [45, 75, 105, 135, 165][r - 1] + mh * (.08 + .0002 * (bb.arm + bb.mr)), AO ? cq * ([36, 60, 84, 108, 132][r - 1] + mh * (.064 + .00016 * (bb.arm + bb.mr))) : 0, o.f); }); }
+      if (key === 'W') { if (AO) { p.dash = g.t + 1; } else { cc = 'back'; hit.forEach(v => { v.cc = g.t + 1; }); if (hit.length) k.q.push({ key: 'Q', at: g.t + 1, tg: hit[0] }); } }   // W 평 Q
       if (key === 'E') p.dash = g.t + 1;
       if (key === 'R' && tg) {
         // 납치: 상대를 뒤로 차 낸다. 뒤에 벽이 가까우면 벽 끝까지 같이 넘어가 제압
@@ -200,7 +205,9 @@ const Kits = {
         tg.cc = g.t + (wall ? 2 : 1); cc = wall ? 'stun' : 'back';
         this.kick(g, p, tg, wall);
         // 총공세(실제 15초 ≈ 엔진 7초): 체력 상한 65% (넘는 체력은 깎이고 끝나도 안 돌아온다), 방어 · 마저 ↓ · 공속 · 방관 ↑ (CStats.now), 흡혈 20%, 스킬 소모 없음
-        k.allout = g.t + 7; p.hp = Math.min(p.hp, .65);
+        { const r = this.rank(p, 'R'), A = CStats.now(p), bhp = A ? A.maxHP - (CStats.of(p.c).hp + CStats.of(p.c).hpL * CStats.grow(p.lvl)) : 0;   // R 피해 (데이터): 80~150, 벽을 넘기면 두 번 (160~300 + 추가 체력 5%)
+          this.deal(g, p, tg, wall ? [160, 230, 300][r - 1] + bhp * .05 : [80, 115, 150][r - 1], 0, o.f); }
+        k.allout = g.t + 7; p.hp = Math.min(p.hp, .65); k.cd.W = g.t;     // 총공세에 들어가면 W 재사용 대기 초기화
         this.say(g, p, wall ? `${p.name}, ${Sim.josa(tg.name, '을', '를')} 벽 너머로 끌고 갑니다! 총공세!` : `${p.name}의 납치! ${Sim.josa(tg.name, '을', '를')} 진영 밖으로 걷어찹니다!`);
       }
     }
@@ -218,6 +225,28 @@ const Kits = {
     const sk = Skills.of(p.c).find(x => x.key === key) || {};
     (g.sk ||= []).push({ t: g.t, i: g.pl.indexOf(p), key, kind: shape === 'self' ? 'self' : shape === 'dash' ? 'dash' : key === 'R' ? 'init' : 'atk', shape: shape === 'self' || shape === 'dash' ? '' : shape === 'wall' ? 'line' : shape,
       wall: shape === 'wall', cc, name: name || sk.name || key, icon: sk.icon, from: [...p.pos], to: [...at], hit: hit.map(q => g.pl.indexOf(q)), miss: miss.map(q => g.pl.indexOf(q)), ally: [], big: !!o.big || key === 'R', col, fx: sk0.fx || null, pierce: !!s.pierce, rng: this.R(s.range || 500), kit: true, lane: !!o.lane, hot: this.hot(p) });
+  },
+  rank(p, key) { return key === 'R' ? Math.min(3, Math.max(1, Math.floor((p.lvl - 1) / 5))) : Math.min(5, Math.max(1, Math.ceil(p.lvl / 3.6))); },
+  bonusRes(p) { const A = CStats.now(p), b = CStats.of(p.c), G = CStats.grow(p.lvl); if (!A || !b) return { arm: 0, mr: 0 };
+    const AO = this.allout(p), ba = A.arm - (b.arm + b.armL * G), bm = A.mr - (b.mr + b.mrL * G);
+    return AO ? { arm: Math.max(0, ba / .15), mr: Math.max(0, bm / .15) } : { arm: Math.max(0, ba), mr: Math.max(0, bm) }; },   // 총공세 중에도 추가 방어 · 마저 계수는 그대로 (줄어든 건 기본 수치)
+  // 스킬 한 방의 실제 피해 (물리는 방어력으로 줄고, 고정은 그대로). 엔진 1초 ≈ 실제 2초라 교전 피해와 같은 눈금(× FIGHT_K · STAT_K / 2)으로
+  deal(g, a, v, phys, tru, f) {
+    if (!v || v.dead || typeof CStats === 'undefined') return 0;
+    const A = CStats.now(a), V = CStats.now(v); if (!A || !V) return 0;
+    const ea = Math.max(0, V.arm * (1 - A.armPen) - A.leth);
+    let dmg = (phys * 100 / (100 + ea) + tru) / V.maxHP * Sim.FIGHT_K * Sim.STAT_K / 2 * ((v.fx || {}).takeDmg || 1);
+    if (v.sh && v.sh.until > g.t && v.sh.v > 0) { const ab = Math.min(v.sh.v, dmg); v.sh.v -= ab; dmg -= ab; }
+    if (dmg <= 0) return 0;
+    v.hp -= dmg; this.vamp(g, a, v, dmg);
+    f ||= g.fights.find(x => x.mem.has(v));
+    if (f) { const ctb = f.dmg.get(v) || new Map(); ctb.set(a, (ctb.get(a) || 0) + dmg); f.dmg.set(v, ctb); }
+    v.lastHit = a; v.lastHitT = g.t;
+    if (v.hp <= 0) {
+      const helpers = f ? [...(f.dmg.get(v) || new Map()).keys()].filter(x => x !== a && !x.dead) : [];
+      Sim.kill(g, a, v, helpers); if (f) { f.kills[a.side]++; (f.kb ||= new Map()).set(a, (f.kb.get(a) || 0) + 1); }
+    }
+    return dmg;
   },
   nm(p, key) { return (Skills.of(p.c).find(x => x.key === key) || {}).name || key; },
   say(g, p, text) { if (g.r() < .5) Sim.say(g, 'cast', text); },
