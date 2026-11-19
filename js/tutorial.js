@@ -22,8 +22,11 @@ const Tutorial = {
   },
   ROLE: { head: '수석 코치 · 밴픽 담당', ops: '코치 · 선수단 관리', ana: '코치 · 분석 · 영입', cap: '주장', gm: '사무국장' },
   // 주장: 주전 중 리더십 특성이 있는 선수, 없으면 팀에 오래 있었고 나이 · 실력이 높은 선수
+  // 팀별로 직접 정한 주장 (선수 id). 여기 없는 팀은 아래 자동 계산
+  CAPTAIN: { t1: 'faker' },
   captain(t) {
     const L = Draft.lineup(t).filter(Boolean); if (!L.length) return null;
+    const fix = this.CAPTAIN[t.id] && t.players.find(p => p.id === this.CAPTAIN[t.id]); if (fix) return fix;   // 직접 정한 주장 (그 팀에 있는 동안)
     const st = this.st(), kept = st.cap && L.find(p => p.id === st.cap); if (kept) return kept;   // 한 번 정한 주장은 주전으로 있는 동안 그대로
     const yrs = p => { const j = typeof Fame !== 'undefined' && Fame.joined(p); return j ? Fmt.daysBetween(j, Clock.today()) / 365 : 0; };
     const sc = p => (typeof Traits !== 'undefined' && Traits.has(p.id, 'leader') ? 100 : 0) + yrs(p) * 3 + (p.age || 20) * 1.2 + (p.ovr || 60) * .3;

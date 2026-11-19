@@ -73,7 +73,9 @@ const Draft = {
     const l = (t.staff || []).map(s => ({ name: s.name, r: this.coachRating(s, t), p: s })).sort((a, b) => b.r - a.r);
     return l[0] || { name: '코치 없음', r: 6, p: null };
   },
-  coachRating(s, t) { return Math.max(1, Math.min(20, Math.round(7 + Fame.team(t) / 100 * 8 + (G.rand(s.id, 'draft') - .5) * 8))); },
+  // 직접 정한 밴픽 역량 (나머지 코치는 아래 자동 계산): 양대인(Daeny) 20 · 류(Ryu) 18 · 톰(Tom) 17
+  COACH_FIX: { daeny: 20, ryu: 18, 'tom-im-jae-hyeon': 17 },
+  coachRating(s, t) { if (s && this.COACH_FIX[s.id] != null) return this.COACH_FIX[s.id]; return Math.max(1, Math.min(20, Math.round(7 + Fame.team(t) / 100 * 8 + (G.rand(s.id, 'draft') - .5) * 8))); },
   grade(r) { return r >= 17 ? '최상급' : r >= 13 ? '우수' : r >= 9 ? '보통' : r >= 5 ? '미흡' : '부족'; },
 
   // ---------- 평가 ----------
