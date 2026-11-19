@@ -144,6 +144,7 @@ Screens.game = {
   init() {
     Router.init();
     Nav.init();
+    if (typeof Tutorial !== 'undefined') Tutorial.init();   // 코치 안내 (js/tutorial.js)
   },
 
   enter() {

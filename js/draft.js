@@ -557,6 +557,7 @@ const Draft = {
     if (!this.timerOn) return;
     this._tick = setInterval(() => {
       if (this.st() !== S || !document.body.contains(el)) { clearInterval(this._tick); return; }
+      if (typeof Tutorial !== 'undefined' && Tutorial.box) return;   // 코치 안내를 읽는 동안은 시간이 안 간다
       this.left--; const tm = $('.dr-timer', el); if (tm) tm.textContent = this.left;
       if (this.left <= 0) { clearInterval(this._tick); const top = this.suggest(S, S.us, 1)[0]; this.act(S, this.sel || top.c, this.sel ? this.selRole : top.role); UI.toast('시간 초과: 선택된 챔피언(없으면 코치 1순위)으로 확정했습니다'); this.next(el, S); }
     }, 1000);

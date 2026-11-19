@@ -398,6 +398,7 @@ const Career = {
               <div class="set-row"><div>기본 시뮬레이션 속도</div>
                 <select id="st-speed"><option value="slow">느리게</option><option value="normal">보통</option><option value="fast">빠르게</option></select></div>
               <div class="set-row"><div>효과음 볼륨</div><input type="range" id="st-vol" min="0" max="100" value="${s.volume}"></div>
+              <div class="set-row"><div>튜토리얼<small>코치진이 화면마다 처음 들어갈 때 안내합니다</small></div><button class="btn-ghost sm" id="st-tut">처음부터 다시 보기</button></div>
               <div class="sv-foot"><button class="btn-ghost" id="st-title">메인 화면으로</button></div>
             </div>
           </div>
@@ -409,6 +410,7 @@ const Career = {
       $('#st-speed', el).onchange = e => { s.simSpeed = e.target.value; persist(); };
       $('#st-vol', el).onchange = e => { s.volume = +e.target.value; persist(); };
       $('#st-title', el).onclick = () => App.show('title');
+      $('#st-tut', el).onclick = () => Tutorial.reset();
       $$('.sv-slot', el).forEach(row => {
         const id = row.dataset.slot;
         const data = id === 'auto' ? SaveSystem.auto() : SaveSystem.list()[SaveSystem.SLOTS.indexOf(id)];
