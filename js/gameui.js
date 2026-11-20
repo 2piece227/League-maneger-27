@@ -1,5 +1,12 @@
 // 게임 화면 공용 그래픽: 팀 로고 배지, 포지션 아이콘, 국기, 결정적 목업 값
 const G = {
+  // 경기 단계 이름 (일정 데이터는 영어): Week 3 → 3주 차, Playoffs Round 1 → 플레이오프 1라운드
+  tab(t) {
+    if (!t) return '';
+    const R = [[/^Week (\d+)$/, '$1주 차'], [/^Group Stage Day (\d+)$/, '그룹 $1일 차'], [/^Groups Day (\d+)$/, '그룹 $1일 차'], [/^Group Stage$/, '그룹 스테이지'], [/^Playoffs Round (\d+)$/, '플레이오프 $1라운드'], [/^Bracket Round (\d+)$/, '토너먼트 $1라운드'], [/^Swiss Round (\d+)$/, '스위스 스테이지 $1라운드'], [/^Play-In Round (\d+)$/, '플레이-인 $1라운드'], [/^Play-In Day (\d+)$/, '플레이-인 $1일 차'], [/^Play-In$/, '플레이-인'], [/^Round (\d+)$/, '$1라운드'], [/^Quarterfinals$/, '8강'], [/^Semifinals$/, '4강'], [/^Finals$/, '결승'], [/^Third-Place Match$/, '3·4위전'], [/^Tiebreakers$/, '순위 결정전'], [/^Last Chance$/, '최종 선발전'], [/^Knight's Road$/, '나이츠 로드']];
+    for (const [re, to] of R) if (re.test(t)) return t.replace(re, to);
+    return t;
+  },
   ROLES: ['TOP', 'JGL', 'MID', 'BOT', 'SUP'],
   ROLE_KO: { TOP: '탑', JGL: '정글', MID: '미드', BOT: '원딜', SUP: '서포터' },
 

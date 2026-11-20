@@ -70,7 +70,7 @@ const Portal = {
     if (nm) {
       const ev = Schedule.eventOf(nm);
       const ord = Schedule.orderLabel(nm);
-      Object.assign(d.nextMatch, { datetime: nm.t, competition: `${ev.label}${nm.tab ? ' · ' + nm.tab : ''}${ord ? ' · ' + ord : ''} · Bo${nm.bo}`, home: nm.t1 === team.id, matchId: nm.id });
+      Object.assign(d.nextMatch, { datetime: nm.t, competition: `${ev.label}${nm.tab ? ' · ' + G.tab(nm.tab) : ''}${ord ? ' · ' + ord : ''} · Bo${nm.bo}`, home: nm.t1 === team.id, matchId: nm.id });
     } else if (Schedule.events.length) {
       // 아직 공개된 경기가 없음: 첫 대회와 일정 발표 예정일
       d.nextMatch.pending = { event: Schedule.firstEvent(team.league), release: Schedule.nextRelease(team.league, d.date) };

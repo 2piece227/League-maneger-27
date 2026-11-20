@@ -194,13 +194,13 @@
 .cap-bar { position: relative; height: 16px; border-radius: 8px; background: #1c2640; margin: 8px 0 26px; }
 .cap-bar i { display: block; height: 100%; border-radius: 8px; background: linear-gradient(90deg, #3fbf7f, var(--gold)); }
 .cap-bar i.over { background: #e2575c; }
-.cap-bar span { position: absolute; top: 20px; transform: translateX(-100%); font-size: 11px; color: var(--muted); }
+.cap-bar span { position: absolute; top: 20px; transform: translateX(-100%); font-size: 11px; color: var(--muted); white-space: nowrap; }
 .cap-tiers { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; }
 .cap-tiers > div { background: var(--panel-2); border-radius: 8px; padding: 8px 10px; opacity: .55; }
 .cap-tiers > div.on { opacity: 1; border: 1px solid #e2575c; }
 .cap-tiers b { display: block; font-size: 12px; }
 .cap-tiers span { font-size: 11px; color: var(--muted); }
-.cap-row { display: grid; grid-template-columns: 32px 110px 24px minmax(0, 1fr) 56px; gap: 10px; align-items: center; font-size: 13px; padding: 5px 0; cursor: pointer; }
+.cap-row { display: grid; grid-template-columns: 32px auto minmax(0, 140px) 24px minmax(0, 1fr) 64px; gap: 10px; align-items: center; font-size: 13px; padding: 5px 0; cursor: pointer; }
 .cap-row .pl-ph { width: 32px; height: 32px; }
 .cap-row.top b { color: var(--gold-2); }
 .cap-row span { text-align: right; }
@@ -523,3 +523,9 @@ button.nw-card { width: 100%; text-align: left; font: inherit; cursor: pointer; 
 .rv-badge b s { text-decoration: none; background: linear-gradient(90deg, #f0c552 50%, #4a5368 50%); -webkit-background-clip: text; background-clip: text; color: transparent; }
 
 .tr-fx { margin: 0 0 8px; font-size: 11.5px; color: var(--muted); }
+/* 팀 검색: 태블릿 가로에서 한 화면에 들어오게 (순번 · 사진 · 시그니처 · 명성 칸을 숨긴다) */
+@media (max-width: 1150px) { .tf-table th:first-child, .tf-table td:first-child, .tf-table th:nth-child(n+12), .tf-table td:nth-child(n+12) { display: none; } .tf-pl .pl-ph { display: none; } }
+
+/* 구단 역사: 대회별 전적 줄 (이름이 길어도 한 줄로) */
+.mh-row.hs-ev { grid-template-columns: minmax(0, 1fr) auto; }
+.mh-row.hs-ev > span:first-child { color: var(--text); }

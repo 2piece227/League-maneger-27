@@ -93,7 +93,7 @@ const Fixtures = {
           <span class="fx-time num">${this.time(m)}${this.ord(m)}</span>
           ${this.evBadge(ev)}
           <div class="fx-vs">${this.side(m.t1, 'l', m)}${(App.state.season || {})[m.id] ? `<b class="fx-score">${App.state.season[m.id].s1} : ${App.state.season[m.id].s2}</b>` : '<i>vs</i>'}${this.side(m.t2, 'r', m)}</div>
-          <span class="fx-tab">${UI.esc(m.tab || '')}</span>
+          <span class="fx-tab">${UI.esc(G.tab(m.tab))}</span>
           <span class="fx-bo">Bo${m.bo}</span>
           ${next && next.id === m.id ? '<span class="fx-next">다음 경기</span>' : ''}
         </div>`;

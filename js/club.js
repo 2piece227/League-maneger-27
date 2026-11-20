@@ -214,11 +214,11 @@ const Club = {
           <div class="cr-id-rep"><span>월즈 우승</span><b>${titles.length}회</b></div></div>
         <div class="cr-grid">
           <div class="card"><div class="card-head"><h3>월드 챔피언십 우승</h3></div>
-            ${titles.length ? `<div class="hs-titles">${titles.map(w => `<div class="hs-title">${w.photo ? `<img src="${w.photo}" alt="" referrerpolicy="no-referrer" loading="lazy">` : ''}<b>${w.year}</b><span>${UI.esc(w.team)}</span></div>`).join('')}</div>` : '<p class="ms-none">아직 월즈 우승이 없습니다. 첫 우승의 주인공이 되어 보세요.</p>'}
+            ${titles.length ? `<div class="hs-titles">${titles.map(w => `<div class="hs-title">${w.photo ? `<img src="${w.photo}" alt="" referrerpolicy="no-referrer" loading="lazy" onerror="this.remove()">` : ''}<b>${w.year}</b><span>${UI.esc(w.team)}</span></div>`).join('')}</div>` : '<p class="ms-none">아직 월즈 우승이 없습니다. 첫 우승의 주인공이 되어 보세요.</p>'}
           </div>
           <div class="card"><div class="card-head"><h3>${Y} 시즌</h3><a href="#match-history">경기 기록</a></div>
             <p class="pp-line">전체 <b>${rec.w}승 ${rec.l}패</b></p>
-            ${Object.entries(evs).map(([id, v]) => `<div class="mh-row ${v.w >= v.l ? 'w' : 'l'}"><span>${UI.esc(Results.ev(id).name)}</span><b>${v.w}승 ${v.l}패</b></div>`).join('') || '<p class="ms-none">기록 없음</p>'}
+            ${Object.entries(evs).map(([id, v]) => `<div class="mh-row hs-ev ${v.w >= v.l ? 'w' : 'l'}"><span>${UI.esc(Results.ev(id).name)}</span><b>${v.w}승 ${v.l}패</b></div>`).join('') || '<p class="ms-none">기록 없음</p>'}
           </div>
         </div>
         ${Rivalry.forTeam(t.id).length ? `<div class="card"><div class="card-head"><h3>라이벌</h3></div><div class="rv-list">${Rivalry.forTeam(t.id).map(r => { const o = Schedule.team(Rivalry.other(r, t.id)), rec = t.id === App.state.teamId ? Rivalry.record(r) : null; return `<div class="rv-row">${G.team(o, 'sm')}<div>${Rivalry.badge(r)} <b>vs ${UI.esc(o.name)}</b><p>${UI.esc(r.desc)}</p></div>${rec ? `<span class="num">${rec.w}승 ${rec.l}패</span>` : ''}</div>`; }).join('')}</div></div>` : ''}

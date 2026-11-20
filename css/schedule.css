@@ -119,3 +119,5 @@
 .fx-bar.evt.unrel { border-color: #5f6b84; }
 .cal-pub { font-size: 10px; color: var(--gold-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 @media (max-width: 767px) { .cal-pub { font-size: 0; } .cal-pub::first-letter { font-size: 12px; } }
+/* 태블릿 가로(1150px 이하): 우리 경기 칸은 로고 + 상대 약칭만 (시간은 오른쪽 날짜 패널에) */
+@media (max-width: 1150px) { .cal-my small { display: none; } .cal-my span { overflow: visible; } }

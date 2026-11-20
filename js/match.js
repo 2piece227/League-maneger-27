@@ -26,7 +26,7 @@ const Results = {
   },
   regularEvents(league) { return Object.entries(this.meta.events || {}).filter(([, e]) => e.league === league && e.kind === 'regular').map(([id]) => id); },
   // 정규 시즌 종합: 컵 대회(LCK컵 · LCS 락인)는 빼고 합산
-  mainEvents(league) { const l = this.regularEvents(league), m = l.filter(id => !/컵|Cup|Lock-?In/i.test(this.ev(id).name || '')); return m.length ? m : l; },
+  mainEvents(league) { const l = this.regularEvents(league), m = l.filter(id => !/컵|Cup|Lock-?In|락인/i.test(this.ev(id).name || '')); return m.length ? m : l; },
   // 지금 순위표: 경기가 열린 가장 최근 정규 단계
   current(league) {
     const evs = this.regularEvents(league), last = [...this.list].reverse().find(m => m.league === league && evs.includes(m.e));
@@ -43,7 +43,8 @@ const Match = {
   oppOf(m, id) { return Schedule.team(m.t1 === id ? m.t2 : m.t1) || { name: m.t1 === id ? m.n2 : m.n1, short: (m.t1 === id ? m.n2 : m.n1) || '?' }; },
   form(id, n = 5) { return Results.forTeam(id).slice(-n).map(m => Results.won(m, id) ? 'W' : 'L'); },
   formDots(f) { return `<span class="form">${f.map(r => `<i class="${r === 'W' ? 'w' : 'l'}"></i>`).join('')}</span>`; },
-  record(id) { const l = Results.forTeam(id); const w = l.filter(m => Results.won(m, id)).length; return { w, l: l.length - w }; },
+  // 이번 시즌 전적 (예전에는 지난 시즌까지 다 더해 '6승 43패'처럼 나왔다)
+  record(id) { const y = String(Schedule.season()), l = Results.forTeam(id).filter(m => String(m.e).slice(0, 4) === y); const w = l.filter(m => Results.won(m, id)).length; return { w, l: l.length - w }; },
 
   // 팀 전체 챔피언 경향: 선수 풀 합산
   teamChamps(t, n = 8) {
@@ -94,7 +95,7 @@ const Match = {
       <div class="cr-page">
         <div class="card nx-head">
           <div class="nx-side">${G.team(t, 'lg')}<b>${UI.esc(t.name)}</b>${this.formDots(this.form(t.id))}</div>
-          <div class="nx-mid"><span>${UI.esc(ev.label)}${nm.tab ? ' · ' + UI.esc(nm.tab) : ''}</span>${Rivalry.badge(Rivalry.ofMatch(nm))}<b>VS</b><small>${Fmt.dateTime(nm.t)} · Bo${nm.bo}${Schedule.orderLabel(nm) ? ' · ' + Schedule.orderLabel(nm) : ''}</small><em>D-${Fmt.daysBetween(this.today(), nm.t)}</em></div>
+          <div class="nx-mid"><span>${UI.esc(ev.label)}${nm.tab ? ' · ' + UI.esc(G.tab(nm.tab)) : ''}</span>${Rivalry.badge(Rivalry.ofMatch(nm))}<b>VS</b><small>${Fmt.dateTime(nm.t)} · Bo${nm.bo}${Schedule.orderLabel(nm) ? ' · ' + Schedule.orderLabel(nm) : ''}</small><em>D-${Fmt.daysBetween(this.today(), nm.t)}</em></div>
           <div class="nx-side">${opp ? G.team(opp, 'lg') : ''}<b>${opp ? UI.esc(opp.name) : '미정'}</b>${opp ? this.formDots(this.form(opp.id)) : ''}</div>
         </div>
         ${opp && nm.t.slice(0, 10) === this.today() ? `<div class="nx-draft"><span>오늘 경기입니다. 위의 <b>경기로</b> 버튼을 누르면 밴픽이 시작됩니다.</span></div>` : ""}
@@ -165,14 +166,14 @@ const Match = {
     el.innerHTML = `
       <div class="cr-page">
         <div class="card rs-head">
-          <div class="rs-title"><h2>경기 기록 <small>${UI.esc(t.name)}</small></h2><span>${which} 시즌${list.length ? '' : ' · 경기를 치르면 여기에 쌓입니다'}</span>
+          <div class="rs-title"><h2>경기 기록 <small>${UI.esc(t.name)}</small></h2><span>${years.length > 1 ? (list.length ? '' : '경기를 치르면 여기에 쌓입니다') : `${which} 시즌${list.length ? '' : ' · 경기를 치르면 여기에 쌓입니다'}`}</span>
             ${years.length > 1 ? `<div class="seg mh-season" style="margin-top:8px">${years.map(y => `<button class="${which === y ? 'on' : ''}" data-s="${y}">${y} 시즌</button>`).join('')}</div>` : ''}</div>
           <div class="rs-stats"><div><span class="k">경기</span><b>${rec.w}승 ${rec.l}패</b></div><div><span class="k">세트</span><b>${sets.w}-${sets.l}</b></div><div><span class="k">승률</span><b>${list.length ? Math.round(rec.w / list.length * 100) + '%' : '-'}</b></div></div>
         </div>
         ${Object.entries(byEv).map(([id, ms]) => {
           const w = ms.filter(m => Results.won(m, t.id)).length;
           return `<div class="card mh-card"><div class="card-head"><h3>${UI.esc(Results.ev(id).name)} <small>${w}승 ${ms.length - w}패</small></h3></div>
-            ${ms.map(m => { const o = this.oppOf(m, t.id), win = Results.won(m, t.id); return `<div class="mh-row ${win ? 'w' : 'l'}"><span class="num">${m.kst.slice(5, 10).replace('-', '.')}</span><span class="fx-team">${o.logo ? G.team(o, 'xs') : ''}<b>${UI.esc(o.short || o.name || '?')}</b></span><span class="mh-tab">${UI.esc(m.tab)}</span><b class="mh-score">${this.score(m, t.id)}</b><i>${win ? '승' : '패'}</i></div>`; }).join('')}</div>`;
+            ${ms.map(m => { const o = this.oppOf(m, t.id), win = Results.won(m, t.id); return `<div class="mh-row ${win ? 'w' : 'l'}"><span class="num">${m.kst.slice(5, 10).replace('-', '.')}</span><span class="fx-team">${o.logo ? G.team(o, 'xs') : ''}<b>${UI.esc(o.short || o.name || '?')}</b></span><span class="mh-tab">${UI.esc(G.tab(m.tab))}</span><b class="mh-score">${this.score(m, t.id)}</b><i>${win ? '승' : '패'}</i></div>`; }).join('')}</div>`;
         }).join('') || '<div class="card fx-empty"><b>기록이 없습니다</b></div>'}
       </div>`;
     const hs = el.querySelector('.mh-season'); if (hs) hs.onclick = e => { const b = e.target.closest('button'); if (!b) return; this.hSeason = b.dataset.s; this.history(el); };
@@ -195,7 +196,7 @@ const Match = {
     el.innerHTML = `
       <div class="cr-page">
         <div class="card rs-head">
-          <div class="rs-title"><h2>메타</h2><span>${sq ? `2026 프로 밴픽률 70% + 상위권 솔랭(한국 챌린저·그랜드마스터 ${sq.games}게임, 패치 ${UI.esc(sq.patch || '')}) 밴픽률 30%` : '2026 프로 밴픽률 기준 · 상위권 솔랭 자료를 받으면 7:3으로 합산합니다'}</span></div>
+          <div class="rs-title"><h2>메타</h2><span>${sq ? `프로 경기 밴픽률(70%)과 한국 챌린저 · 그랜드마스터 솔로 랭크 ${sq.games}게임의 밴픽률(30%)을 합친 메타입니다` : '프로 경기 밴픽률로 정한 메타입니다'}</span></div>
         </div>
         <div class="card"><div class="card-head"><h3>패치 노트</h3></div><div class="pt-notes">${typeof Patch !== 'undefined' ? Patch.notes() : ''}</div></div>
         <div class="mt-roles">${G.ROLES.map(r => `

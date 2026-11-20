@@ -100,9 +100,11 @@ const Schedule = {
   meta(e, Y, shift) {
     const start = this.shiftDate(e.start, shift), end = this.shiftDate(e.end, shift);
     const pub = e.published ? this.shiftDate(e.published, shift) : this.addDays(start, -14);
-    const short = e.league === 'INTL' || e.name.startsWith(e.league) || e.kind === 'event' ? e.name : e.league + ' ' + e.name;
+    // 해외 리그 대회 이름은 한글로 (Spring → 스프링 등)
+    const nm = e.name.replace('Spring', '스프링').replace('Summer', '서머').replace('Versus', '버서스').replace('Lock-In', '락인');
+    const short = e.league === 'INTL' || nm.startsWith(e.league) || e.kind === 'event' ? nm : e.league + ' ' + nm;
     return {
-      id: `${Y}:${e.id}`, base: e.id, year: Y, league: e.league, name: e.name, kind: e.kind, start, end, pub,
+      id: `${Y}:${e.id}`, base: e.id, year: Y, league: e.league, name: nm, kind: e.kind, start, end, pub,
       lead: Fmt.daysBetween(pub, start), dependsOn: e.dependsOn ? `${Y}:${e.dependsOn}` : null, short, label: `${Y} ${short}`,
     };
   },
