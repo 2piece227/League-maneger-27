@@ -135,7 +135,7 @@ const Community = {
     const heat = (rv ? 3 : 0) + (k === 'title' ? 3 : 0) + (F.p && (F.p.ovr || 0) >= 88 ? 2 : 0) + (Rivalry.mine().some(id => F.teams.some(y => y.id === id)) ? 1 : 0);
     const n = 6 + Math.min(6, heat) + Math.floor(this.r(seed, 'n') * 3);
     if (Array.isArray(P)) add(P, 'n', n);
-    else { add(P.neutral, 'n', Math.ceil(n * .4)); add(P.fanW, 'w', Math.ceil(n * .25)); add(P.fanL, 'l', Math.ceil(n * .2)); }
+    else { add(P.neutral, 'n', Math.ceil(n * .4)); add(P.fanW, 'w', Math.ceil(n * .25)); if (k !== 'title' || l) add(P.fanL, 'l', Math.ceil(n * .2)); }   // 우승 기사에 준우승 팀이 안 나오면 '준우승' 팬 글은 뺀다
     if (k === 'win') { if (sc && n2 === 0) add(P.sweep, 'sw', 1); if (sc && n2 > 0 && n1 - n2 === 1) add(P.close, 'cl', 2); if (R.pog) add(P.pog, 'pg', 2); if (R.upset) add(P.upset, 'up', 2); }
     if (k === 'soloq' && !F.p) add(this.POOLS.soloqAm, 'am', 2);
     if (rv && k === 'win') { add(this.POOLS.rivalWin, 'rw', 3); add(this.POOLS.rivalLose, 'rl', 2); }
