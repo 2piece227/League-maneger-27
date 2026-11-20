@@ -100,7 +100,7 @@ const Trade = {
     if (!give || !Engine.once('trade:' + t.id + ':' + want.id + ':' + today.slice(0, 7))) return;
     const x = give[0];
     Inbox.push({ from: { name: `${t.short} 단장`, role: 'board' }, subject: `${t.short} 트레이드 제안: ${x.name} ↔ ${want.name}`, priority: 'todo', ctx: { a: want.id, b: x.id },
-      body: `${t.name}입니다. 우리 ${G.ROLE_KO[x.role]} ${x.name}(OVR ${x.ovr || '-'})와 귀 구단 ${G.ROLE_KO[want.role]} ${want.name}(OVR ${want.ovr || '-'})의 맞교환을 제안합니다.`,
+      body: `${t.name}입니다. 우리 ${G.ROLE_KO[x.role]} ${x.name}(OVR ${x.ovr || '-'})${Sim.josa(x.name, '과', '와').slice(x.name.length)} 귀 구단 ${G.ROLE_KO[want.role]} ${want.name}(OVR ${want.ovr || '-'})의 맞교환을 제안합니다.`,
       choices: [{ label: '받아들인다', act: 'tradeYes', reply: '트레이드가 성사됐습니다.' }, { label: '거절한다', act: 'tradeNo', reply: '제안을 거절했습니다.' }] });
     if (G.rand(today + want.id, 'leak') < .4) this.rumor(want, t);
   },
