@@ -608,7 +608,7 @@ const Sim = {
     const ini = all.filter(p => p.kind === 'tank' || p.kind === 'dive').sort((a, b) => this.dist(a.pos, E(a.side)) - this.dist(b.pos, E(b.side)))[0];
     const nm = f.size >= 7 ? '한타가' : '교전이';
     this.say(g, 'cast', ini ? `${where}${nm} 열립니다! ${ini.name}의 ${this.josa(this.cn(ini), '이', '가')} 먼저 들어가요!` : `${where}양 팀이 붙습니다! 사거리 싸움이에요!`);
-    if (A.length === Bp.length) return;
+    if (A.length === Bp.length || Math.max(A.length, Bp.length) < 4) return;   // 3대2 같은 작은 싸움은 인원 설명을 하지 않는다
     const big = A.length > Bp.length ? 'B' : 'R', small = this.other(big), ins = small === 'B' ? A : Bp;
     const miss = g.pl.filter(p => p.side === small && !ins.includes(p)).sort((a, b) => (a.dead ? 0 : 1) - (b.dead ? 0 : 1))[0];
     let why = '';
