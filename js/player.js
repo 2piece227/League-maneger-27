@@ -116,7 +116,7 @@ const Player = {
     await Promise.all([Portal.ready, Mastery.load(), Traits.load()]);
     const mine = this.team().players;
     if (!this.cmp[0]) this.cmp = [mine[0]?.id, mine[1]?.id];
-    const opts = sel => App.db.teams.map(t => `<optgroup label="${UI.esc(t.name)}">${t.players.map(p => `<option value="${p.id}" ${p.id === sel ? 'selected' : ''}>${UI.esc(p.name)} (${p.role})</option>`).join('')}</optgroup>`).join('');
+    const opts = sel => App.db.teams.map(t => `<optgroup label="${UI.esc(t.name)}">${t.players.map(p => `<option value="${p.id}" ${p.id === sel ? 'selected' : ''}>${UI.esc(p.name)} (${G.ROLE_KO[p.role] || p.role})</option>`).join('')}</optgroup>`).join('');
     const card = (id, i) => {
       const hit = this.find(id);
       if (!hit) return '<div class="card"></div>';
