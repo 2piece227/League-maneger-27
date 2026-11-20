@@ -322,8 +322,8 @@ const Portal = {
           </div>
         </div>
         <div class="nm-foot">
-          <div><span class="k">최근 5경기</span><span class="form">${n.form.map(r => `<i class="${r === 'W' ? 'w' : 'l'}" title="${r === 'W' ? '승' : '패'}"></i>`).join('')}</span></div>
-          <div><span class="k">리그 순위</span><b class="num">${n.opponent.rank ? n.opponent.rank + '위' : '-'}</b></div>
+          <div><span class="k">상대 최근 5경기</span><span class="form">${n.form.map(r => `<i class="${r === 'W' ? 'w' : 'l'}" title="${r === 'W' ? '승' : '패'}"></i>`).join('')}</span></div>
+          <div><span class="k">상대 순위</span><b class="num">${n.opponent.rank ? n.opponent.rank + '위' : '-'}</b></div>
         </div>
       </div>`;
   },

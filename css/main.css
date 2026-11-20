@@ -17,6 +17,8 @@
 
 * { box-sizing: border-box; }
 html, body { margin: 0; height: 100%; }
+/* 한글은 낱말 단위로 줄바꿈 (플레이오 / 프 처럼 낱말 중간에서 끊기지 않게). 띄어쓰기 없는 긴 영문 · 숫자는 넘치지 않게 끊는다 */
+body { word-break: keep-all; overflow-wrap: break-word; }
 body {
   background: var(--bg);
   color: var(--text);
