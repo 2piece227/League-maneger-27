@@ -524,7 +524,7 @@ button.nw-card { width: 100%; text-align: left; font: inherit; cursor: pointer; 
 
 .tr-fx { margin: 0 0 8px; font-size: 11.5px; color: var(--muted); }
 /* 팀 검색: 태블릿 가로에서 한 화면에 들어오게 (순번 · 사진 · 시그니처 · 명성 칸을 숨긴다) */
-@media (max-width: 1150px) { .tf-table th:first-child, .tf-table td:first-child, .tf-table th:nth-child(n+12), .tf-table td:nth-child(n+12) { display: none; } .tf-pl .pl-ph { display: none; } }
+@media (max-width: 1300px) { .tf-table th:first-child, .tf-table td:first-child, .tf-table th:nth-child(n+12), .tf-table td:nth-child(n+12) { display: none; } .tf-pl .pl-ph { display: none; } }
 
 /* 구단 역사: 대회별 전적 줄 (이름이 길어도 한 줄로) */
 .mh-row.hs-ev { grid-template-columns: minmax(0, 1fr) auto; }

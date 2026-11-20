@@ -240,3 +240,7 @@
 .lv-ss img { width: 100%; height: 100%; border-radius: 3px; display: block; }
 .lv-ss span.cd img { filter: grayscale(1) brightness(.45); }
 .lv-ss b { position: absolute; inset: 0; display: grid; place-items: center; font-size: 8px; font-weight: 800; color: #fff; text-shadow: 0 0 2px #000; }
+
+/* 태블릿: 옆 칸 선수 이름 앞 팀 약칭은 뺀다 (팀 색으로 구분되니 이름이 잘리지 않게) */
+.lv-tsh { font-style: normal; }
+@media (max-width: 1150px) { .lv-tsh { display: none; } }

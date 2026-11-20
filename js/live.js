@@ -478,7 +478,7 @@ const Live = {
         $('.lv-side.' + k.toLowerCase(), el).innerHTML = g.pl.filter(p => p.side === k).map(p => `
           <div class="lv-pl" data-i="${g.pl.indexOf(p)}">
             <div class="lv-pic">${SoloQ.ic(p.c)}<i></i><em></em></div><div class="lv-ss"></div>
-            <div class="lv-pi"><small>${UI.esc(g.side[k].t.short)} ${UI.esc(p.name)}</small><div class="lv-hp"><i></i><b></b></div><div class="lv-mp"><i></i></div><div class="lv-items"></div></div>
+            <div class="lv-pi"><small><em class="lv-tsh">${UI.esc(g.side[k].t.short)} </em>${UI.esc(p.name)}</small><div class="lv-hp"><i></i><b></b></div><div class="lv-mp"><i></i></div><div class="lv-items"></div></div>
           </div>`).join('');
       });
     }
