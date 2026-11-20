@@ -65,7 +65,8 @@ const Spells = {
             const d = D(tg.pos, p.pos), to = this.blinkTo(p.pos, [tg.pos[0] - p.pos[0], tg.pos[1] - p.pos[1]], Math.min(this.FLASH, d - 1.4));
             if (to) {
               (f.fe ||= {})[p.side] = 1; p.flashEng = g.t; p.forceR = g.t; p.hitTo = tg;
-              this.flash(g, p, to, Sim.pick(g, [`점멸 이니시! ${p.name}의 ${Sim.cn(p)}, 반응할 틈이 없습니다!`, `${p.name}, 점멸 ${this.ultName(p)}! ${Sim.josa(tg.name, '이', '가')} 그대로 묶입니다!`, `플래시 궁! ${Sim.josa(p.name, '이', '가')} 한 번에 들어가요!`]));
+              const rc = ((typeof Skills !== 'undefined' ? Skills.of(p.c) : [])[3] || {}).cc, hit = { up: '그대로 띄워집니다', stun: '그대로 묶입니다', pull: '그대로 끌려옵니다', back: '그대로 밀려납니다' }[rc];   // 묶는 궁일 때만 '묶입니다'
+              this.flash(g, p, to, Sim.pick(g, [`점멸 이니시! ${p.name}의 ${Sim.cn(p)}, 반응할 틈이 없습니다!`, hit ? `${p.name}, 점멸 ${this.ultName(p)}! ${Sim.josa(tg.name, '이', '가')} ${hit}!` : `${p.name}, 점멸 ${this.ultName(p)}! 곧바로 ${Sim.josa(tg.name, '을', '를')} 덮칩니다!`, `플래시 궁! ${Sim.josa(p.name, '이', '가')} 한 번에 들어가요!`]));
               continue;
             }
           }
@@ -76,7 +77,7 @@ const Spells = {
           const noF = v && !this.ready(g, v, 'Flash');
           if (v && g.r() < (noF ? .7 : .4) * sk) {
             const d = D(v.pos, p.pos), to = this.blinkTo(p.pos, [v.pos[0] - p.pos[0], v.pos[1] - p.pos[1]], Math.min(this.FLASH, d - R + .6));
-            if (to) { p.hitTo = v; v.flashChased = g.t; this.flash(g, p, to, noF ? `${Sim.josa(v.name, '은', '는')} 점멸이 없어요! ${p.name}, 점멸로 따라붙어 마무리!` : `${p.name}, 점멸로 끝까지 따라갑니다!`); continue; }
+            if (to) { p.hitTo = v; v.flashChased = g.t; this.flash(g, p, to, noF ? `${Sim.josa(v.name, '은', '는')} 점멸이 없어요! ${p.name}, 점멸로 따라붙습니다!` : `${p.name}, 점멸로 끝까지 따라갑니다!`); continue; }
           }
         }
         // 점화: 마무리 각 (고정 피해, 4.5 안)

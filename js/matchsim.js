@@ -615,7 +615,9 @@ const Sim = {
     if (miss) {
       const lane = ['top', 'mid', 'bot'].sort((x, y) => this.distLane(miss.pos, x) - this.distLane(miss.pos, y))[0];
       why = miss.tpCh ? `${this.josa(miss.name, '이', '가')} 아직 순간이동으로 오는 중이라 ` : miss.dead ? `${this.josa(miss.name, '이', '가')} 죽어 있어서 ` : miss.recall ? `${this.josa(miss.name, '이', '가')} 귀환 중이라 ` : `${this.josa(miss.name, '이', '가')} ${this.laneKo(lane)} 쪽에 떨어져 있어서 `;
-      if (!miss.dead && !miss.recall && !miss.tpCh && miss.tp) why = why.replace(/있어서 $/, g.t >= miss.tpReady ? '있지만 텔레포트는 있어요. 지금은 ' : '있고 텔레포트도 없어서 ');
+      const ms = g.pl.filter(p => p.side === small && !ins.includes(p));
+      if (ms.length >= 2 && ins.length < 4) why = `${this.josa(ms.map(p => p.name).join(' · '), '이', '가')} 다 자리에 없어서 `;   // 여럿이 빠졌으면 한 명만 짚지 않는다
+      else if (!miss.dead && !miss.recall && !miss.tpCh && miss.tp) why = why.replace(/있어서 $/, g.t >= miss.tpReady ? '있지만 텔레포트는 있어요. 지금은 ' : '있고 텔레포트도 없어서 ');
     }
     this.say(g, 'anal', `${g.side[big].t.short} ${Math.max(A.length, Bp.length)}명 대 ${g.side[small].t.short} ${Math.min(A.length, Bp.length)}명. ${why}${this.josa(g.side[small].t.short, '이', '가')} 수에서 밀립니다.`);
   },
@@ -1208,7 +1210,10 @@ const Sim = {
     }
     if (g.t % 90 || g.over) return;
     const dg = this.lead(g, 'B'), s = g.side[dg > 0 ? 'B' : 'R'];
-    if (Math.abs(dg) > 3000) this.say(g, 'anal', `${this.josa(s.t.short, '이', '가')} 골드 ${(Math.abs(dg) / 1000).toFixed(1)}K 앞서 있습니다. ${m > 25 ? '이제 굳히기에 들어갈 시간이에요.' : '스노우볼을 굴릴 수 있는 차이죠.'}`);
+    // 골드 차이: 처음 3K를 넘을 때와 그 뒤로 2.5K 넘게 바뀌었을 때만 (90초마다 같은 말을 숫자만 바꿔 반복하지 않게)
+    const lastL = g.leadSaid, big = Math.abs(dg) > 3000 && (lastL == null || Math.sign(lastL) !== Math.sign(dg) || Math.abs(dg - lastL) >= 2500);
+    if (big) g.leadSaid = dg;
+    if (big) this.say(g, 'anal', `${this.josa(s.t.short, '이', '가')} 골드 ${(Math.abs(dg) / 1000).toFixed(1)}K 앞서 있습니다. ${m > 25 ? '이제 굳히기에 들어갈 시간이에요.' : '스노우볼을 굴릴 수 있는 차이죠.'}`);
     else if (m < 10) {
       const lp = g.pl.filter(p => p.side === 'B' && p.role !== 'JGL' && p.role !== 'SUP').sort((a, b) => Math.abs(b.mu.gd) - Math.abs(a.mu.gd))[0];
       const o = lp && g.pl.find(q => q.side === 'R' && q.role === lp.role);
