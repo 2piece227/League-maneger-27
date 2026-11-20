@@ -184,7 +184,7 @@ const Tutorial = {
   played() { return Object.keys(App.state.season || {}).length > 0 || (App.state.scrims || []).some(s => s.result); },
   auto(route, n = 0) {
     if (!App.state.teamId || App.state.unemployed || this.box || Router.current() !== route) return;   // 그사이 다른 화면으로 넘어갔으면 (경기 화면이 포털로 돌려보내진 경우 등) 띄우지 않는다
-    if (document.querySelector('#modal-root .modal-back')) { if (n < 40) this._t = setTimeout(() => this.auto(route, n + 1), 500); return; }   // 다른 창이 떠 있으면 닫힐 때까지 기다린다
+    if (document.querySelector('#modal-root') && document.querySelector('#modal-root').children.length) { if (n < 40) this._t = setTimeout(() => this.auto(route, n + 1), 500); return; }   // 다른 창이 떠 있으면 닫힐 때까지 기다린다
     if (typeof Traits !== 'undefined' && !Traits.cfg) { Traits.load().then(() => this.auto(route, n)); return; }   // 주장(리더십 특성)을 정하려면 특성이 먼저 읽혀야 한다
     const st = this.st(), sc = this.scenes();
     if (!st.mode) { if (route !== 'portal-overview' && !this.played()) return; return this.run(this.played() ? 'returning' : 'intro', route); }

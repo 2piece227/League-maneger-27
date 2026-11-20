@@ -80,7 +80,8 @@ const Portal = {
 
     const starters = team.players.filter(p => !p.sub);
     const byRole = r => starters.find(p => p.role === r) || starters[0] || { name: '선수' };
-    const sub = team.players.find(p => p.sub);
+    // 2군 유망주: 챌린저스에서 가장 잘하는 선수 (없으면 그 메시지는 빼고 시작한다)
+    const sub = (team.cl || []).slice().sort((a, b) => (b.ovr || 0) - (a.ovr || 0))[0];
     d.soloRank = d.soloRank.map(s => ({ ...s, p: byRole(s.role), player: byRole(s.role).name }));
     const staff = team.staff || [];
     // 스토브: 30일 안에 계약이 끝나는 선수
@@ -92,14 +93,14 @@ const Portal = {
       opp: opp.name, oppShort: opp.short, opp2: opp2.name, opp2Short: opp2.short,
       s1: (scrim[0] || opp).short, s2: (scrim[1] || opp2).short,
       pTOP: byRole('TOP').name, pMID: byRole('MID').name,
-      sub: sub ? sub.name : '유망주',
+      sub: sub ? sub.name : '',
       coach: (staff[0] || {}).name || '수석', coach2: (staff[1] || staff[0] || {}).name || '2군',
       season: Schedule.season(), prevSeason: Schedule.season() - 1,
       league: team.league, cl: { LCK: 'LCK CL', LPL: 'LDL', LEC: 'EMEA Masters', LCS: 'NACL' }[team.league] || '2군 리그',
     };
     const P = { '이(가)': ['이', '가'], '을(를)': ['을', '를'], '은(는)': ['은', '는'], '과(와)': ['과', '와'], '(으)로': ['으로', '로'] };
     const fill = o => JSON.parse(JSON.stringify(o).replace(/\{(\w+)\}(이\(가\)|을\(를\)|은\(는\)|과\(와\)|\(으\)로)?/g, (m, k, j) => k in tok ? JSON.stringify(j ? Sim.josa(String(tok[k]), ...P[j]) : String(tok[k])).slice(1, -1) : m));
-    d.messages = fill(d.messages);
+    d.messages = fill(d.messages.filter(m => sub || !JSON.stringify(m).includes('{sub}')));
     d.week = this.week(d.date, team);
     d.nextMatch.competition = fill(d.nextMatch.competition);
     d.standings.competition = fill(d.standings.competition || '');

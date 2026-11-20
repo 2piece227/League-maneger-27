@@ -151,7 +151,7 @@ const Career = {
     const log = [[m.createdAt || Clock.START, `${t.name} 감독 부임`, +2]];
     if (m.background.type === 'ex-pro') log.push(['경력', `선수 시절 ${Manager.PRO_PEAK[m.background.peak][0]}`, Manager.PRO_PEAK[m.background.peak][1]]);
     if (m.coachYears) log.push(['경력', `지도자 경력 ${m.coachYears}년`, Math.min(10, m.coachYears * 2)]);
-    log.push(['경력', `${Manager.BACKGROUNDS[m.background.type].label} 출신`, Manager.BACKGROUNDS[m.background.type].rep]);
+    log.push(['경력', Manager.BACKGROUNDS[m.background.type].label, Manager.BACKGROUNDS[m.background.type].rep]);
 
     el.innerHTML = `
       <div class="cr-page">
