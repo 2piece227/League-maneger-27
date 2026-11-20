@@ -14,7 +14,10 @@ const Training = {
   },
   plan() {
     const s = (App.state.training ||= {});
-    if (!s.grid) { s.preset = 'stove'; s.grid = this.PRESETS.stove.grid.map(r => r.split(',')); }
+    // 직접 고친 적이 없으면 시기에 맞는 기본 계획을 따른다 (시즌이 시작됐는데 '스토브' 계획이 그대로 남지 않게)
+    const want = typeof Market !== 'undefined' && Market.stove(Clock.today()) ? 'stove' : 'season';
+    const plain = s.grid && this.PRESETS[s.preset] && JSON.stringify(s.grid) === JSON.stringify(this.PRESETS[s.preset].grid.map(r => r.split(',')));   // 기본 계획 그대로인가 (고친 계획은 건드리지 않는다)
+    if (!s.grid || (!s.touched && plain && s.preset !== want && s.preset !== 'big')) { s.preset = want; s.grid = this.PRESETS[want].grid.map(r => r.split(',')); }
     return s;
   },
   today() { return Clock.today(); },
@@ -69,16 +72,16 @@ const Training = {
           </div>
           ${(() => { const F = this.st(), w = this.weekFx(s.grid), sg = v => (v > 0 ? '▲' : v < 0 ? '▼' : '–') + ' ' + Math.abs(v).toFixed(1);
             return `<div class="card"><div class="card-head"><h3>지금 상태 · 이 계획의 한 주</h3></div>
-            ${Career.meter('팀워크', Math.round(F.tw * 10))}<p class="tr-fx">한 주에 ${sg(w.tw)} · 스크림 · 리뷰로 오르고 하루 0.03씩 빠집니다. 60 위면 경기에서 다른 팀보다 손발이 잘 맞고, 아래면 덜 맞습니다.</p>
-            ${Career.meter('피로', Math.round(F.fat), 'inv')}<p class="tr-fx">한 주에 ${(w.fat > 0 ? '▲ ' : '▼ ') + Math.round(Math.abs(w.fat))} · 60을 넘으면 매일 선수 컨디션이 깎이고, 25 아래면 조금씩 오릅니다.</p>
-            <p class="tr-fx">휴식 칸 하나 = 컨디션 +0.25 · 미팅은 선수 사기 · 솔랭은 숙련(개인 훈련 연습 챔피언)</p></div>`; })()}
+            ${Career.meter('팀워크', Math.round(F.tw * 10))}<p class="tr-fx">${(() => { const d = Math.round(w.tw * 100) / 10; return d >= .1 ? `이 계획이면 한 주에 약 ${d} 오릅니다.` : d <= -.1 ? `이 계획이면 한 주에 약 ${-d} 떨어집니다.` : '이 계획이면 지금 수준을 유지합니다.'; })()} 스크림과 리뷰로 오르고, 안 하면 조금씩 떨어집니다. 60을 넘으면 경기에서 다른 팀보다 손발이 잘 맞습니다.</p>
+            ${Career.meter('피로', Math.round(F.fat), 'inv')}<p class="tr-fx">${w.fat <= -F.fat ? '쉬는 날이 넉넉해 한 주면 피로가 거의 풀립니다.' : w.fat < 0 ? `이 계획이면 한 주에 약 ${Math.round(-w.fat)} 줄어듭니다.` : `이 계획이면 한 주에 약 ${Math.round(w.fat)} 쌓입니다.`} 60을 넘으면 매일 선수 컨디션이 깎이고, 25 아래면 조금씩 오릅니다.</p>
+            <p class="tr-fx">휴식은 컨디션을 회복하고, 미팅은 선수 사기를 올리고, 솔랭은 개인 훈련에서 정한 연습 챔피언 숙련도를 올립니다.</p></div>`; })()}
         </div>
       </div>`;
-    $('.tr-preset', el).onchange = e => { s.preset = e.target.value; s.grid = this.PRESETS[s.preset].grid.map(r => r.split(',')); this.schedule(el); };
+    $('.tr-preset', el).onchange = e => { s.preset = e.target.value; s.touched = true; s.grid = this.PRESETS[s.preset].grid.map(r => r.split(',')); this.schedule(el); };
     $('.tr-grid', el).onclick = e => {
       const c = e.target.closest('.tr-cell'); if (!c) return;
       const row = s.grid[+c.dataset.d], i = +c.dataset.s;
-      row[i] = keys[(keys.indexOf(row[i]) + 1) % keys.length];
+      row[i] = keys[(keys.indexOf(row[i]) + 1) % keys.length]; s.touched = true;
       this.schedule(el);
     };
   },
