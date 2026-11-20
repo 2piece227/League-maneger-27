@@ -87,7 +87,7 @@ const News = {
       if (p.contractEnd) facts.push(['계약 만료', p.contractEnd.replace(/-/g, '.')]);
       const sig = (Mastery.signatures ? Mastery.signatures(p.id) : []).map(e => (Champions.byId[e.c] || {}).name).filter(Boolean);
       if (sig.length) facts.push(['시그니처', sig.join(', ')]);
-      if (k === 'sign' || k === 'trade') paras.push(`${p.name}의 합류로 ${(F.teams.find(y => y.id === (F.pt || {}).id) || t1 || { short: '새 팀' }).short}의 ${G.ROLE_KO[p.role] || ''} 자리는 한층 두터워졌습니다. 시즌이 시작되면 주전 경쟁 결과를 지켜볼 만합니다.`);
+      if ((k === 'sign' && Community.signKind(x) === 'join') || k === 'trade') paras.push(`${p.name}의 합류로 ${(F.teams.find(y => y.id === (F.pt || {}).id) || t1 || { short: '새 팀' }).short}의 ${G.ROLE_KO[p.role] || ''} 자리는 한층 두터워졌습니다. 시즌이 시작되면 주전 경쟁 결과를 지켜볼 만합니다.`);
       if (k === 'rumor') paras.push('구단은 아직 공식 입장을 내지 않았습니다. 이적 시장에서는 이런 이야기가 오피셜로 이어지는 경우도, 소문으로 끝나는 경우도 많습니다.');
     }
     if (k === 'patch') { const list = (x.body || '').split(/ \/ |적용됐습니다\. /).slice(1).filter(Boolean); if (list.length) { paras.length = 1; paras[0] = (x.body || '').split('적용됐습니다.')[0] + '적용됐습니다. 바뀐 챔피언은 아래와 같습니다.'; facts.push(...list.map(l => { const m = l.match(/^(.+?) ([▲▼]) (.+)$/); return m ? [m[1], `${m[2] === '▲' ? '<em class="up">▲ 버프</em>' : '<em class="dn">▼ 너프</em>'} ${UI.esc(m[3])}`] : ['', UI.esc(l)]; })); } }

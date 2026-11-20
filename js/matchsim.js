@@ -330,7 +330,7 @@ const Sim = {
     if (ch >= 0xAC00 && ch <= 0xD7A3) { jong = (ch - 0xAC00) % 28; rieul = jong === 8; }
     else if (/[0-9]/.test(last)) { jong = '013678'.includes(last) ? 1 : 0; rieul = '178'.includes(last); }
     else if (/[A-Z]/.test(last) && !/[a-z]/.test(w.slice(-2, -1))) { jong = 'LMN'.includes(last) ? 1 : 0; rieul = last === 'L'; }
-    else if (/[a-z]/i.test(last)) { jong = /(l|m|n|ng)$/i.test(w) ? 1 : 0; rieul = /l$/i.test(w); }
+    else if (/[a-z]/i.test(last)) { jong = /(l|m|n|ng|ck|[aeiou][kpt])$/i.test(w) ? 1 : 0; rieul = /l$/i.test(w); }   // 끝소리: Paduck(덕) · Peanut(넛) · Top(톱)도 받침
     return w + (jong && !(ro && rieul) ? a : b);
   },
   // 오브젝트 · 구조물 기록: 기록 목록(ev)과 화면 알림(feed)에 함께 남긴다
