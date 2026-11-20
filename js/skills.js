@@ -258,7 +258,7 @@ const JunglePet = {
       const st = this.stage(p); if (st <= (p.pet || 1)) { p.pet ||= 1; return; }
       p.pet = st;
       // 완전 성장: 펫이 강타에 흡수돼 아이템 칸에서 사라진다 (그 칸에 여섯 번째 아이템이 들어간다)
-      if (st === 3) { p.smite2 = g.t; p.petItem = p.build.start; const i = p.inv.findIndex(x => p.build.start && x.n === p.build.start.n); if (i >= 0) p.inv.splice(i, 1); Sim.say(g, 'anal', Sim.pick(g, [`${p.name}의 정글 펫이 다 자랐습니다. 강타가 강화되고 펫 자리는 비었습니다. 이제 아이템 하나를 더 올릴 수 있어요.`, `${Sim.cn(p)} 정글 펫 완전 성장! ${p.name}, 이제 강화된 강타를 씁니다.`])); }
+      if (st === 3) { p.smite2 = g.t; p.petItem = p.build.start; const i = p.inv.findIndex(x => p.build.start && x.n === p.build.start.n); if (i >= 0) p.inv.splice(i, 1); Sim.say(g, 'anal', Sim.pick(g, [`${p.name}, 정글 펫이 다 컸습니다. 이제 강화된 강타를 써요.`, `${Sim.cn(p)} 정글 펫 완전 성장! ${p.name}, 이제 강화된 강타를 씁니다.`])); }
     });
   },
 };

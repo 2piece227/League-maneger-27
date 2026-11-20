@@ -35,10 +35,10 @@ const Market = {
         const stay = this.rnd(p.id, 'st') < (cl ? .85 : .75 + ((t.rep || 2) - 3) * .06);
         if (keep && stay) {
           this.write(p, t, this.deal(p, t, 1 + this.rnd(p.id, 'r') * .15));
-          if (s >= 75) this.post(`[오피셜] ${t.short}, ${p.name}와 재계약`, `${t.name}이(가) ${G.ROLE_KO[p.role] || ''} ${p.name}과(와) 재계약했습니다. 계약은 ${Contract.label(Contract.st().contracts[p.id])}까지입니다.`, p.id);
+          if (s >= 75) this.post(`[오피셜] ${t.short}, ${Sim.josa(p.name, '과', '와')} 재계약`, `${Sim.josa(t.name, '이', '가')} ${G.ROLE_KO[p.role] || ''} ${Sim.josa(p.name, '과', '와')} 재계약했습니다. 계약은 ${Contract.label(Contract.st().contracts[p.id])}까지입니다.`, p.id);
         } else {
           this.free(p);
-          if (s >= 65 || (cl && (p.ca || 0) >= 11)) this.post(`[FA] ${p.name}, ${t.short}와 계약 만료 — FA 시장으로`, `${t.name}의 ${G.ROLE_KO[p.role] || ''} ${p.name}(${p.age || '-'}세)이(가) 재계약하지 않고 FA 시장에 나왔습니다.`, p.id);
+          if (s >= 65 || (cl && (p.ca || 0) >= 11)) this.post(`[FA] ${p.name}, ${Sim.josa(t.short, '과', '와')} 계약 만료 — FA 시장으로`, `${t.name}의 ${G.ROLE_KO[p.role] || ''} ${p.name}(${p.age || '-'}세)이(가) 재계약하지 않고 FA 시장에 나왔습니다.`, p.id);
         }
       });
     });
@@ -73,11 +73,11 @@ const Market = {
       }
       if (empty) {
         const up = (t.cl || []).filter(p => p.role === g.role).sort((a, b) => (b.ca || 0) - (a.ca || 0))[0];
-        if (up) { Contract.st().moves[up.id] = t.id; changed = true; this.post(`${t.short}, 2군 ${up.name} 1군 콜업`, `${t.name}이(가) 비어 있던 ${G.ROLE_KO[g.role]} 자리에 2군 ${up.name}을(를) 올렸습니다.`, up.id); }
+        if (up) { Contract.st().moves[up.id] = t.id; changed = true; this.post(`${t.short}, 2군 ${up.name} 1군 콜업`, `${Sim.josa(t.name, '이', '가')} 비어 있던 ${G.ROLE_KO[g.role]} 자리에 2군 ${Sim.josa(up.name, '을', '를')} 올렸습니다.`, up.id); }
         else if (late || !stove) {
           // 2군도 없으면 그 포지션 FA 중 가장 나은 선수와 바로 계약 (주전 없이 공식전에 나가지 않게)
           const fb = free.filter(p => p.role === g.role && !Neg.held(Contract.st().neg[p.id])).sort((a, b) => Contract.score(b, t) - Contract.score(a, t))[0];
-          if (fb) { this.write(fb, t, this.deal(fb, t)); changed = true; this.post(`[오피셜] ${fb.name}, ${t.short} 입단`, `${t.name}이(가) 비어 있던 ${G.ROLE_KO[g.role]} 자리에 FA ${fb.name}을(를) 영입했습니다.`, fb.id); }
+          if (fb) { this.write(fb, t, this.deal(fb, t)); changed = true; this.post(`[오피셜] ${fb.name}, ${t.short} 입단`, `${Sim.josa(t.name, '이', '가')} 비어 있던 ${G.ROLE_KO[g.role]} 자리에 FA ${Sim.josa(fb.name, '을', '를')} 영입했습니다.`, fb.id); }
         }
       }
     });
@@ -97,7 +97,7 @@ const Market = {
       if ((p.ovr || 0) >= 80 && (best.rep || 2) <= 2 && this.rnd(pid, today, 'rest') < .55) {
         const st = Schedule.events.find(e => e.kind === 'stove' && e.start > today), until = stove ? (st ? st.start : Store.addDays(today, 300)) : Store.addDays(today, 90);
         (Contract.st().rest ||= {})[pid] = until;
-        this.post(`[FA] ${p.name}, 휴식 선언`, `FA ${p.name}이(가) ${ok.length}개 팀의 제안을 받았지만 원하는 조건이 아니라며 당분간 휴식하기로 했습니다. ${Fmt.dayLabel(until)}까지 다른 구단의 제안을 받지 않을 전망입니다.`, pid);
+        this.post(`[FA] ${p.name}, 휴식 선언`, `FA ${Sim.josa(p.name, '이', '가')} ${ok.length}개 팀의 제안을 받았지만 원하는 조건이 아니라며 당분간 휴식하기로 했습니다. ${Fmt.dayLabel(until)}까지 다른 구단의 제안을 받지 않을 전망입니다.`, pid);
         return;
       }
       const t = App.db.teams.find(x => x.id === o.team);
@@ -105,14 +105,14 @@ const Market = {
       const s = Contract.score(p, t);
       const back = p._o && p._o.team === t.id;                                            // FA로 나왔다가 원 소속팀과 다시 계약
       this.post(back ? `[오피셜] ${p.name}, ${t.short} 잔류` : `[오피셜] ${p.name}, ${t.short} 입단`,
-        (back ? `FA ${p.name}이(가) 원 소속팀 ${t.name}과(와) 다시 계약했습니다.` : `FA ${p.name}이(가) ${t.name}과(와) 계약했습니다.`) + (offers.length > 1 ? ` ${offers.length}개 팀이 경쟁한 끝에 ${t.short}을(를) 택했습니다.` : ''), p.id);
+        (back ? `FA ${Sim.josa(p.name, '이', '가')} 원 소속팀 ${Sim.josa(t.name, '과', '와')} 다시 계약했습니다.` : `FA ${Sim.josa(p.name, '이', '가')} ${Sim.josa(t.name, '과', '와')} 계약했습니다.`) + (offers.length > 1 ? ` ${offers.length}개 팀이 경쟁한 끝에 ${Sim.josa(t.short, '을', '를')} 택했습니다.` : ''), p.id);
       const neg = Contract.st().neg[pid], talking = !!(neg && !neg.signed && neg.mode === 'fa' && Fmt.daysBetween(neg.date, today) <= 14);
       // 메시지함에는 우리와 관련 있는 계약만: 협상 중이던 선수 · 관심 목록 · 라이벌 구단 · 같은 리그 구단. 나머지는 뉴스로만
       const from = p._o && p._o.team ? App.db.teams.find(x => x.id === p._o.team) : null, myT = Roster.team();
       const shortl = Player.shortlist().includes(pid), rival = [t.id, from && from.id].some(id => id && Rivalry.isRival(id)), local = myT && [t, from].some(x => x && x.league === myT.league && x.id !== myT.id);
       if (!App.state.unemployed && (talking || shortl || rival || local))
         Inbox.push({ from: { name: '스카우트 팀', role: 'coach' }, subject: `${p.name}, ${Sim.josa(t.short, '과', '와')} 계약${rival ? ' (라이벌)' : ''}`, priority: talking ? 'todo' : 'normal', link: 'portal-news', ctx: { pid },
-          body: `${talking ? (neg.deal ? '합의했지만 사인하지 않았던 ' : '협상 중이던 ') : shortl ? '관심 목록에 있던 ' : rival ? '라이벌 구단 관련 소식입니다. ' : ''}${p.name}이(가) ${t.name}과(와) 계약했습니다.` });
+          body: `${talking ? (neg.deal ? '합의했지만 사인하지 않았던 ' : '협상 중이던 ') : shortl ? '관심 목록에 있던 ' : rival ? '라이벌 구단 관련 소식입니다. ' : ''}${Sim.josa(p.name, '이', '가')} ${Sim.josa(t.name, '과', '와')} 계약했습니다.` });
       if (neg) { neg.done = true; neg.lapsed = true; }
     });
     if (changed) Squad.apply();

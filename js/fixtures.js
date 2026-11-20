@@ -105,7 +105,7 @@ const Fixtures = {
     const first = Schedule.firstEvent(league);
     return `<div class="card fx-empty">
       <b>아직 발표된 경기 일정이 없습니다</b>
-      ${first ? `<span>${UI.esc(first.label)}은 ${Fmt.dayLabel(first.start)} 개막합니다.</span>` : ''}
+      ${first ? `<span>${Sim.josa(UI.esc(first.label), '은', '는')} ${Fmt.dayLabel(first.start)} 개막합니다.</span>` : ''}
       ${rel ? `<span>${UI.esc(rel.short)} 대진·일정은 <em>${Fmt.dayLabel(rel.pub)}경</em> 발표 예정입니다. (실제 ${Schedule.BASE}년에는 개막 ${rel.lead}일 전에 공개)</span>` : ''}
       <small>멀리 있는 대회는 기간만 정해져 있고, 대진은 발표일이 되어야 나옵니다.</small>
     </div>`;

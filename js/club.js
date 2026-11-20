@@ -176,11 +176,11 @@ const Club = {
       ['팬·미디어', '팬 지지 유지', 3, st ? st.fans : pre],
     ];
     const name = UI.esc(m.displayName || m.name), goal = UI.esc(t.boardGoal || '좋은 성적');
-    const msg = !st ? `${Schedule.season()} 시즌 ${goal}을 기대합니다. 예산은 확정됐으니 개막 전에 로스터를 완성해 주십시오.`
+    const msg = !st ? `${Schedule.season()} 시즌 ${Sim.josa(goal, '을', '를')} 기대합니다. 예산은 확정됐으니 개막 전에 로스터를 완성해 주십시오.`
       : st.won.length ? `${st.won.join(', ')} 우승, 축하드립니다. 이 기세로 ${goal}까지 이어가 주십시오.`
       : st.league[1] === 'vacant' ? `시즌 ${st.w}승 ${st.all - st.w}패, 지금 순위는 받아들이기 어렵습니다. 반등 계획을 보여 주십시오.`
-      : st.league[1] === 'unstable' ? `시즌 ${st.w}승 ${st.all - st.w}패입니다. ${goal}을 위해서는 순위를 끌어올려야 합니다.`
-      : `시즌 ${st.w}승 ${st.all - st.w}패, 순조롭습니다. ${goal}을 향해 지금처럼 부탁드립니다.`;
+      : st.league[1] === 'unstable' ? `시즌 ${st.w}승 ${st.all - st.w}패입니다. ${Sim.josa(goal, '을', '를')} 위해서는 순위를 끌어올려야 합니다.`
+      : `시즌 ${st.w}승 ${st.all - st.w}패, 순조롭습니다. ${Sim.josa(goal, '을', '를')} 향해 지금처럼 부탁드립니다.`;
     el.innerHTML = `
       <div class="cr-page">
         ${Career.head('이사회 기대치', `${Schedule.season()} 시즌 이사회 목표와 지금 달성 정도입니다.`)}

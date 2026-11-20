@@ -23,12 +23,12 @@ const Transfer = {
     let b = this.open$(pid);
     if (b && b.status === 'agreed') { Neg.open(pid, 'transfer'); return; }
     const last = this.bids().find(x => x.pid === pid && x.dir === 'in' && x.cool && x.cool > Clock.today());
-    if (last) { UI.toast(`${t.short}이(가) 당분간 이 선수 이야기는 하지 않겠다고 했습니다 (${last.cool.replace(/-/g, '.')}까지)`, 3200); return; }
+    if (last) { UI.toast(`${Sim.josa(t.short, '이', '가')} 당분간 이 선수 이야기는 하지 않겠다고 했습니다 (${last.cool.replace(/-/g, '.')}까지)`, 3200); return; }
     const pr = this.price(p, t), c = Contract.of(p, t), K = Neg.KIND[this.gm(t).kind];
     if (!b) {
       b = { id: 'b' + Date.now().toString(36), dir: 'in', pid, from: t.id, to: my.id, status: 'talk', date: Clock.today(), ask: pr.v, patience: K[1] - 1, log: [] };
       b.log.push({ who: 'gm', text: pr.locked
-        ? `${p.name}은(는) 저희 팀의 핵심입니다. 솔직히 팔 생각이 없습니다. 그래도 제안을 주신다면 듣기는 하겠습니다.`
+        ? `${Sim.josa(p.name, '은', '는')} 저희 팀의 핵심입니다. 솔직히 팔 생각이 없습니다. 그래도 제안을 주신다면 듣기는 하겠습니다.`
         : `${p.name} 건으로 연락 주셨군요. 계약이 ${Contract.label(c)}까지 남아 있습니다.${c.buyout ? ` 계약서에 바이아웃 ${Player.money(c.buyout)} 원 조항이 있습니다.` : ''} 제안을 보내 주시죠.` });
       this.bids().push(b);
     }
@@ -117,11 +117,11 @@ const Transfer = {
     this.bids().push(b);
     const forced = c.buyout && fee >= c.buyout;
     Inbox.push({ from: { name: `${t.short} 단장`, role: 'board' }, subject: `${t.short}, ${p.name} 이적 제안 (${Player.money(fee)})`, priority: 'todo', ctx: { pid: p.id, player: p.name, bid: b.id },
-      body: forced ? `${t.name}이(가) ${p.name}의 바이아웃 금액 ${Player.money(fee)} 원을 제시했습니다.\n\n계약서 조항에 따라 구단은 이적을 막을 수 없습니다. 선수가 동의하면 이적이 진행됩니다.`
-        : `${t.name}이(가) ${p.name}을(를) 이적료 ${Player.money(fee)} 원에 영입하고 싶다고 합니다.\n\n시장 가치는 ${Player.money(Contract.value(p, my))} 원으로 평가됩니다.`,
+      body: forced ? `${Sim.josa(t.name, '이', '가')} ${p.name}의 바이아웃 금액 ${Player.money(fee)} 원을 제시했습니다.\n\n계약서 조항에 따라 구단은 이적을 막을 수 없습니다. 선수가 동의하면 이적이 진행됩니다.`
+        : `${Sim.josa(t.name, '이', '가')} ${Sim.josa(p.name, '을', '를')} 이적료 ${Player.money(fee)} 원에 영입하고 싶다고 합니다.\n\n시장 가치는 ${Player.money(Contract.value(p, my))} 원으로 평가됩니다.`,
       choices: forced ? [{ label: '확인', act: 'bidAccept', reply: '바이아웃 조항에 따라 이적이 진행됩니다.' }] : [
         { label: '수락', act: 'bidAccept', reply: '제안을 받아들였습니다.' },
-        { label: '역제안 (+30%)', odds: .45, outcomes: [{ act: 'bidAccept', arg: 1.3, reply: `${t.short}이(가) 역제안을 받아들였습니다.` }, { act: 'bidReject', reply: `${t.short}이(가) 그 금액이면 어렵다며 물러났습니다.` }] },
+        { label: '역제안 (+30%)', odds: .45, outcomes: [{ act: 'bidAccept', arg: 1.3, reply: `${Sim.josa(t.short, '이', '가')} 역제안을 받아들였습니다.` }, { act: 'bidReject', reply: `${Sim.josa(t.short, '이', '가')} 그 금액이면 어렵다며 물러났습니다.` }] },
         { label: '거절', act: 'bidReject', fx: { morale: (t.rep || 2) > (my.rep || 2) ? -2 : 0 }, reply: '제안을 거절했습니다.' }] });
   },
   // 다른 구단으로 이적: 이적료 수입 + 새 팀 계약
@@ -132,9 +132,9 @@ const Transfer = {
     World.ledger().push({ date: Clock.today(), label: `${p.name} 이적료 수입`, amount: Math.round(b.fee * 1e8) });
     const s = Contract.score(p, t), yrs = 1 + Math.floor(G.rand(p.id + b.id, 'y') * 2);
     Contract.sign(p.id, t.id, { salary: Contract.r1(Contract.pay(p, s, t.league) * 1.1), end: Contract.addYears(Contract.seasonEnd(t), yrs), years: yrs, option: null, bonus: [] });
-    Inbox.push({ from: { name: '사무국장', role: 'board' }, subject: `${p.name}, ${t.short}로 이적 확정`, body: `${p.name}이(가) 이적료 ${Player.money(b.fee)} 원에 ${t.name}으로 떠납니다. 오피셜은 내일 발표됩니다.` });
+    Inbox.push({ from: { name: '사무국장', role: 'board' }, subject: `${p.name}, ${Sim.josa(t.short, '으로', '로')} 이적 확정`, body: `${Sim.josa(p.name, '이', '가')} 이적료 ${Player.money(b.fee)} 원에 ${Sim.josa(t.name, '으로', '로')} 떠납니다. 오피셜은 내일 발표됩니다.` });
     const my = Roster.team();
-    Market.post(`[오피셜] ${p.name}, ${my.short} 떠나 ${t.short}로`, `${my.name}의 ${G.ROLE_KO[p.role] || ''} ${p.name}이(가) 이적료 ${Player.money(b.fee)} 원에 ${t.name}으로 이적했습니다.`, p.id, 1);
+    Market.post(`[오피셜] ${p.name}, ${my.short} 떠나 ${Sim.josa(t.short, '으로', '로')}`, `${my.name}의 ${G.ROLE_KO[p.role] || ''} ${Sim.josa(p.name, '이', '가')} 이적료 ${Player.money(b.fee)} 원에 ${Sim.josa(t.name, '으로', '로')} 이적했습니다.`, p.id, 1);
   },
 };
 Engine.ACTS.bidAccept = (m, mult) => { const b = Transfer.bids().find(x => x.id === m.ctx.bid); if (b && b.status === 'pending') Transfer.sell(b, mult || 1); };

@@ -424,7 +424,7 @@ const Career = {
           actions: [{ label: '취소' }, { label: '불러오기', primary: true, onClick: () => { SaveSystem.load(id); UI.toast('불러왔습니다'); } }],
         });
         if (del) del.onclick = () => UI.modal({
-          title: '저장 삭제', body: `${id === 'auto' ? '자동 저장' : '슬롯 ' + id}을 삭제합니다. 되돌릴 수 없습니다.`,
+          title: '저장 삭제', body: `${Sim.josa(id === 'auto' ? '자동 저장' : '슬롯 ' + id, '을', '를')} 삭제합니다. 되돌릴 수 없습니다.`,
           actions: [{ label: '취소' }, { label: '삭제', primary: true, onClick: () => { SaveSystem.remove(id); draw(); } }],
         });
       });

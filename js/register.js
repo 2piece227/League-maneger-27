@@ -35,7 +35,7 @@ const Register = {
         body: `${this.name(e)} 진출이 확정됐습니다. ${Fmt.dayLabel(dl)}까지 출전 로스터를 등록해 주십시오.\n\n주전 5명과 후보를 등록합니다.${this.needSub(e) ? ' 월즈는 후보 1명 이상이 필수입니다.' : ''} 등록한 선수만 대회에 나갈 수 있습니다. 기한까지 등록하지 않으면 지금 주전으로 자동 등록합니다.` });
       if (!this.st()[k] && today >= dl) {
         const a = this.autoPick(); this.st()[k] = { ...a, auto: true };
-        Inbox.push({ from: { name: '사무국장', role: 'board' }, subject: `${this.name(e)} 로스터 자동 등록`, link: 'match-register', body: `기한까지 등록이 없어 지금 주전 5명${a.subs.length ? '과 후보 1명' : ''}으로 등록했습니다.${this.needSub(e) && !a.subs.length ? '\n\n후보가 없어 월즈 등록 요건(후보 1명)을 채우지 못했습니다. 2군에서 선수를 올리거나 영입하십시오.' : ''}` });
+        Inbox.push({ from: { name: '사무국장', role: 'board' }, subject: `${this.name(e)} 로스터 자동 등록`, link: 'match-register', body: `기한까지 등록이 없어 지금 주전 5명${Sim.josa(a.subs.length ? '과 후보 1명' : '', '으로', '로')} 등록했습니다.${this.needSub(e) && !a.subs.length ? '\n\n후보가 없어 월즈 등록 요건(후보 1명)을 채우지 못했습니다. 2군에서 선수를 올리거나 영입하십시오.' : ''}` });
       }
     });
   },

@@ -70,7 +70,7 @@ const Trade = {
   },
   rumor(p, other) {
     Rel.add(p.id, -15, `트레이드설 (${other.short})`); const mor = World.morale(); mor[p.id] = (mor[p.id] || 0) - 2;
-    Market.post(`[이적설] ${p.name}, ${Sim.josa(other.short, '과', '와')} 트레이드 카드로?`, `${Sim.josa(Roster.team().name, '이', '가')} ${p.name}을(를) 트레이드 카드로 쓰려 한다는 이야기가 돌고 있습니다. 선수 본인은 당황스럽다는 반응입니다.`, p.id);
+    Market.post(`[이적설] ${p.name}, ${Sim.josa(other.short, '과', '와')} 트레이드 카드로?`, `${Sim.josa(Roster.team().name, '이', '가')} ${Sim.josa(p.name, '을', '를')} 트레이드 카드로 쓰려 한다는 이야기가 돌고 있습니다. 선수 본인은 당황스럽다는 반응입니다.`, p.id);
     Inbox.push({ from: { name: p.name, role: 'player', photo: p.photo }, subject: `${p.name}, 트레이드설에 대해 묻습니다`, body: '감독님, 제가 트레이드 카드라는 기사가 사실인가요? 솔직히 충격입니다.' });
   },
   // 우리 → 다른 구단
@@ -83,8 +83,8 @@ const Trade = {
       actions: [{ label: '취소' }, { label: '제안한다', primary: true, onClick: back => {
         const out = Player.find(back.querySelector('.tr-out').value).p;
         const theirV = this.val(p, t), ourV = Contract.value(out, t) * (out.sub ? .8 : 1.1), locked = Transfer.price(p, t).locked;
-        if (!locked && ourV >= theirV * .95 && this.roleOk(t, p, out) && this.roleOk(my, out, p)) { this.swap(out, p); UI.toast(`${t.short}이(가) 트레이드를 받아들였습니다`, 3500); Router.go(Router.current()); }
-        else { UI.toast(`${t.short}이(가) 거절했습니다${locked ? ' (핵심 선수라 팔 생각이 없다고 합니다)' : ''}`, 3500); if (G.rand(out.id + Clock.today(), 'leak') < .35) this.rumor(out, t); }
+        if (!locked && ourV >= theirV * .95 && this.roleOk(t, p, out) && this.roleOk(my, out, p)) { this.swap(out, p); UI.toast(`${Sim.josa(t.short, '이', '가')} 트레이드를 받아들였습니다`, 3500); Router.go(Router.current()); }
+        else { UI.toast(`${Sim.josa(t.short, '이', '가')} 거절했습니다${locked ? ' (핵심 선수라 팔 생각이 없다고 합니다)' : ''}`, 3500); if (G.rand(out.id + Clock.today(), 'leak') < .35) this.rumor(out, t); }
       } }] });
   },
   // 다른 구단 → 우리

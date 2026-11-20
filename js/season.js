@@ -64,10 +64,11 @@ const Season = {
     if ((m.t1 === my || m.t2 === my) && !App.state.unemployed) {
       const won = (m.t1 === my) === (s1 > s2), ev = Schedule.eventOf(m);
       const rv = typeof Rivalry !== 'undefined' && Rivalry.ofMatch(m);
-      Market.post(`[결과] ${t1.short} ${s1}:${s2} ${t2.short}${rv ? ` · ${rv.name}` : ''}`, `${rv ? `라이벌전 '${rv.name}'. ` : ''}${ev ? ev.label + ' ' : ''}${Sim.josa(t1.name, '과', '와')} ${t2.name}의 경기가 ${Sim.josa(`${s1}:${s2}`, '으로', '로')} 끝났습니다.`, null);
+      const W = s1 > s2 ? t1 : t2, Lt = s1 > s2 ? t2 : t1, ws = Math.max(s1, s2), ls = Math.min(s1, s2);
+      Market.post(`[결과] ${t1.short} ${s1}:${s2} ${t2.short}${rv ? ` · ${rv.name}` : ''}`, `${ev ? ev.label + ' ' : ''}${rv ? `라이벌전 '${rv.name}'에서` : '경기에서'} ${Sim.josa(W.name, '이', '가')} ${Sim.josa(Lt.name, '을', '를')} ${ws}:${Sim.josa(ls, '으로', '로')} ${ls ? '꺾었습니다' : '완파했습니다'}.`, null);
       // 결과 메시지 시각: 오늘 경기면 경기 시작 + 세트당 약 50분, 지난 경기를 오늘 처리하면 아침
       const end = m.t.slice(0, 10) === Clock.today() ? Math.min(23 * 60 + 50, +m.t.slice(11, 13) * 60 + +m.t.slice(14, 16) + (s1 + s2) * 50) : 8 * 60, time = `${String(Math.floor(end / 60)).padStart(2, '0')}:${String(end % 60).padStart(2, '0')}`;
-      if (typeof Inbox !== 'undefined') Inbox.push({ time, from: { name: '코칭스태프', role: 'coach' }, subject: `${won ? '승리' : '패배'} — ${t1.short} ${s1}:${s2} ${t2.short}`, link: 'match-history', body: `${ev ? ev.label + ' ' : ''}경기를 ${s1}:${s2}로 ${won ? '이겼습니다' : '졌습니다'}.` });
+      if (typeof Inbox !== 'undefined') Inbox.push({ time, from: { name: '코칭스태프', role: 'coach' }, subject: `${won ? '승리' : '패배'} — ${t1.short} ${s1}:${s2} ${t2.short}`, link: 'match-history', body: (() => { const us = m.t1 === my ? s1 : s2, them = m.t1 === my ? s2 : s1, o = m.t1 === my ? t2 : t1; return `${ev ? ev.label + ' 경기에서 ' : ''}${won ? `${Sim.josa(o.name, '을', '를')} ${us}:${Sim.josa(them, '으로', '로')} 이겼습니다.` : `${o.name}에 ${us}:${Sim.josa(them, '으로', '로')} 졌습니다.`}\n\n경기 기록에서 세트별 내용을 볼 수 있습니다.`; })() });
     }
   },
   // 경기 평점 (1~10): 정식 엔진 경기는 KDA·승패·POG로, 경량 시뮬은 승패와 약간의 편차로. 선수마다 최근 5경기만 둔다

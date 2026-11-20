@@ -34,7 +34,7 @@ const Portal = {
         // 커리어 첫날: 막 끝난 2026 월드 챔피언십 결과
         const blg = App.db.teams.find(x => x.id === 'bilibili-gaming'), kn = Player.find('knight-zhuo-ding');
         Inbox.push({ from: { name: 'LoL e스포츠 소식', role: 'media' }, subject: '[2026 월드 챔피언십] Bilibili Gaming 우승 — 결승 MVP Knight', time: '09:30', link: 'portal-news',
-          body: `2026 월드 챔피언십 결승이 끝났습니다. ${blg ? blg.name : 'Bilibili Gaming'}이(가) 소환사의 컵을 들어 올렸습니다.\n\n결승 MVP는 ${kn ? kn.p.name : 'Knight'}입니다.\n\n오늘부터 스토브리그가 시작됩니다. 각 구단의 재계약과 FA 영입 경쟁이 본격적으로 펼쳐집니다.` });
+          body: `2026 월드 챔피언십 결승이 끝났습니다. ${Sim.josa(blg ? blg.name : 'Bilibili Gaming', '이', '가')} 소환사의 컵을 들어 올렸습니다.\n\n결승 MVP는 ${kn ? kn.p.name : 'Knight'}입니다.\n\n오늘부터 스토브리그가 시작됩니다. 각 구단의 재계약과 FA 영입 경쟁이 본격적으로 펼쳐집니다.` });
       }
       this.data.messages = App.state.inbox;
     }

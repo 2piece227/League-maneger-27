@@ -103,7 +103,7 @@ const Schedule = {
     const short = e.league === 'INTL' || e.name.startsWith(e.league) || e.kind === 'event' ? e.name : e.league + ' ' + e.name;
     return {
       id: `${Y}:${e.id}`, base: e.id, year: Y, league: e.league, name: e.name, kind: e.kind, start, end, pub,
-      lead: Fmt.daysBetween(pub, start), dependsOn: e.dependsOn ? `${Y}:${e.dependsOn}` : null, short, label: `${short} ${Y}`,
+      lead: Fmt.daysBetween(pub, start), dependsOn: e.dependsOn ? `${Y}:${e.dependsOn}` : null, short, label: `${Y} ${short}`,
     };
   },
 

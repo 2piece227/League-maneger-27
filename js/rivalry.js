@@ -3,10 +3,10 @@
 //          · 다음 경기 · 경기 중 표시 · 중계 첫 멘트 · 뉴스 제목과 커뮤니티 반응 · 구단 역사
 const Rivalry = {
   LIST: [
-    { a: 't1', b: 'gen-g', name: '롤 클라시코', alt: '강남 더비', score: 5, desc: 'LCK 최고 인기 구단과 최강 구단의 맞대결. 결승에서 몇 번이고 다시 만난 두 팀이다.' },
-    { a: 'karmine-corp', b: 'movistar-koi', name: '피레네 더비', alt: '프랑스 vs 스페인', score: 5, desc: '피레네 산맥을 사이에 둔 프랑스와 스페인. 팬덤의 열기로는 LEC에서 가장 뜨거운 라이벌이다.' },
-    { a: 'gen-g', b: 'dplus-kia', name: '북벌전', score: 4, desc: '정상을 지키려는 팀과 다시 올라서려는 팀. 만날 때마다 시즌 흐름이 바뀐다.' },
-    { a: 't1', b: 'kt-rolster', name: '통신사 대전', score: 3.5, desc: '국내 두 통신사 구단의 오랜 맞대결. LCK 역사와 함께해 온 라이벌이다.' },
+    { a: 't1', b: 'gen-g', name: '롤 클라시코', alt: '강남 더비', score: 5, desc: 'LCK 최고 인기 구단과 최강 구단의 맞대결입니다. 결승에서 몇 번이고 다시 만난 두 팀입니다.' },
+    { a: 'karmine-corp', b: 'movistar-koi', name: '피레네 더비', alt: '프랑스 vs 스페인', score: 5, desc: '피레네 산맥을 사이에 둔 프랑스와 스페인의 맞대결입니다. 팬덤의 열기로는 LEC에서 가장 뜨거운 라이벌입니다.' },
+    { a: 'gen-g', b: 'dplus-kia', name: '북벌전', score: 4, desc: '정상을 지키려는 팀과 다시 올라서려는 팀의 맞대결입니다. 만날 때마다 시즌 흐름이 바뀝니다.' },
+    { a: 't1', b: 'kt-rolster', name: '통신사 대전', score: 3.5, desc: '국내 두 통신사 구단의 오랜 맞대결입니다. LCK 역사와 함께해 온 라이벌입니다.' },
   ],
   of(a, b) { return this.LIST.find(r => (r.a === a && r.b === b) || (r.a === b && r.b === a)) || null; },
   forTeam(id) { return this.LIST.filter(r => r.a === id || r.b === id); },

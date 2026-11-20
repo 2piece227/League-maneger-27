@@ -24,7 +24,7 @@ const News = {
     App.db.teams.flatMap(x => x.players.map(p => ({ p, t: x }))).filter(({ p, t: x }) => x.id !== t.id && !p.free && p.contractEnd && p.contractEnd > today && rumorDay(p) <= today)
       .sort((a, b) => Player.value(b.p, b.t) - Player.value(a.p, a.t)).slice(0, 6).forEach(({ p, t: x }) => {
         const to = App.db.teams.filter(y => y.id !== x.id && (y.rep || 2) >= (x.rep || 2) - 1)[Math.floor(G.rand(p.id, 'rumor') * 6)] || App.db.teams[0];
-        out.push({ cat: 'transfer', date: rumorDay(p), title: `[이적설] ${p.name}, ${Sim.josa(x.short, '과', '와')} 계약 만료 앞두고 ${to.short} 관심설`, body: `${x.name}의 ${G.ROLE_KO[p.role]} ${p.name}(${p.age}세)의 계약이 ${p.contractEnd.replace(/-/g, '.')}에 끝납니다. 업계에서는 ${to.name}이 영입을 검토하고 있다는 이야기가 나옵니다.`, pid: p.id, link: '#recruit-fa' });
+        out.push({ cat: 'transfer', date: rumorDay(p), title: `[이적설] ${p.name}, ${Sim.josa(x.short, '과', '와')} 계약 만료 앞두고 ${to.short} 관심설`, body: `${x.name}의 ${G.ROLE_KO[p.role]} ${p.name}(${p.age}세)의 계약이 ${p.contractEnd.replace(/-/g, '.')}에 끝납니다. 업계에서는 ${Sim.josa(to.name, '이', '가')} 영입을 검토하고 있다는 이야기가 나옵니다.`, pid: p.id, link: '#recruit-fa' });
       });
     // 이적시장 오피셜 (다른 구단 AI 결과, 최근 30일)
     (App.state.market?.news || []).filter(n => n.date >= d(30) && n.date <= today).forEach(n => {
@@ -33,7 +33,7 @@ const News = {
     });
     // 일정 발표 예정
     const rel = Schedule.nextRelease(t.league);
-    if (rel && Store.addDays(rel.pub, -21) <= today) out.push({ cat: 'league', date: Store.addDays(rel.pub, -21), title: `${rel.label} 대진 ${Fmt.dayLabel(rel.pub)}경 발표 예정`, body: `${rel.label}는 ${Fmt.dayLabel(rel.start)} 개막합니다. 대진과 경기 일정은 개막 약 ${rel.lead}일 전에 공개될 예정입니다.`, link: '#portal-fixtures' });
+    if (rel && Store.addDays(rel.pub, -21) <= today) out.push({ cat: 'league', date: Store.addDays(rel.pub, -21), title: `${rel.label} 대진 ${Fmt.dayLabel(rel.pub)}경 발표 예정`, body: `${Sim.josa(rel.label, '은', '는')} ${Fmt.dayLabel(rel.start)} 개막합니다. 대진과 경기 일정은 개막 약 ${rel.lead}일 전에 공개될 예정입니다.`, link: '#portal-fixtures' });
     // 솔랭 1위
     const sq = (SoloQ.cache || SoloQ.build()).ladder[0];
     if (sq) out.push({ cat: 'soloq', date: today, title: `${SoloQ.SERVER[t.league]} 서버 솔랭 1위는 '${sq.name}'`, body: `${sq.type === 'pro' ? `${sq.team.name}의 ${sq.name}` : `${SoloQ.TYPES[sq.type][0]} '${sq.name}'`}${Sim.josa(sq.name, '이', '가').slice(sq.name.length)} ${sq.lpNow.toLocaleString()} LP로 1위를 지키고 있습니다. 승률 ${SoloQ.wr(sq)}%.${sq.prodigy ? ' 프로팀 스카우트들의 관심도 쏠리고 있습니다.' : ''}`, link: '#training-soloq', pid: sq.player && sq.player.id });
@@ -42,12 +42,12 @@ const News = {
     const pick = sigs[Math.floor(G.rand(today, 'sig') * sigs.length)];
     if (pick) { const hit = Player.find(pick.pid), c = Champions.byId[pick.e.c]; if (hit) out.push({ cat: 'league', date: today, title: `[분석] ${hit.p.name}의 ${c.name}, 최근 3시즌 ${pick.e.g}판 승률 ${Mastery.wr(pick.e)}%`, body: `${hit.t.name} ${hit.p.name}의 시그니처 챔피언 ${c.name}. 상대 팀들은 밴픽에서 이 챔피언을 먼저 의식할 수밖에 없습니다.`, pid: hit.p.id, link: '#match-meta' }); }
     // 패치
-    out.push({ cat: 'patch', date: seen('patch:' + Champions.meta.patch), title: `패치 ${Champions.meta.patch} 적용`, body: `새 시즌을 앞두고 패치 ${Champions.meta.patch}가 적용됐습니다. 프로 경기 픽 순위는 메타·패치 노트에서 확인할 수 있습니다.`, link: '#match-meta' });
+    out.push({ cat: 'patch', date: seen('patch:' + Champions.meta.patch), title: `패치 ${Champions.meta.patch} 적용`, body: `새 시즌을 앞두고 패치 ${Sim.josa(Champions.meta.patch, '이', '가')} 적용됐습니다. 프로 경기 픽 순위는 메타·패치 노트에서 확인할 수 있습니다.`, link: '#match-meta' });
     // 우리 팀
     const exp = t.players.filter(p => !p.free && p.contractEnd && p.contractEnd > today && Player.days(p) <= 30);
     if (exp.length) out.push({ cat: 'team', date: Store.addDays(exp.map(p => p.contractEnd).sort()[0], -30), title: `${t.short}, ${exp.map(p => p.name).join('·')} 재계약 여부 주목`, body: `${t.name}의 ${exp.length}명이 곧 계약 만료를 맞습니다. 팬들의 시선이 재계약 협상에 쏠리고 있습니다.`, link: '#roster-contracts' });
     // 감독 부임 기사 (커리어 시작일 · 팀을 옮긴 날)
-    const mg = App.state.manager; if (mg) { const since = ((App.state.jobs || []).at(-1) || {}).until || (mg.createdAt || Clock.START).slice(0, 10); out.push({ cat: 'team', date: since, hire: true, title: `[오피셜] ${t.name}, 신임 감독 ${mg.displayName || mg.name} 선임`, body: `${t.name}가 ${mg.displayName || mg.name} 감독과 계약했습니다. ${Manager.BACKGROUNDS[mg.background.type].label} 출신으로, 팬들의 관심이 쏠리고 있습니다.` }); }
+    const mg = App.state.manager; if (mg) { const since = ((App.state.jobs || []).at(-1) || {}).until || (mg.createdAt || Clock.START).slice(0, 10); out.push({ cat: 'team', date: since, hire: true, title: `[오피셜] ${t.name}, 신임 감독 ${mg.displayName || mg.name} 선임`, body: `${Sim.josa(t.name, '이', '가')} ${mg.displayName || mg.name} 감독과 계약했습니다. ${Manager.BACKGROUNDS[mg.background.type].label} 출신으로, 팬들의 관심이 쏠리고 있습니다.` }); }
     // 최근 30일 기사만 (날짜가 고정된 기사는 시간이 지나면 자연히 내려간다)
     return out.filter(x => x.date <= today && x.date >= d(30)).sort((a, b) => b.date.localeCompare(a.date));
   },
@@ -77,10 +77,10 @@ const News = {
     if (k === 'win' && t1 && t2) {
       const a = rank(t1), b = rank(t2);
       if (a && b) paras.push(`현재 ${a.name} 순위는 ${t1.short} ${a.n}위(${a.r.w}승 ${a.r.l}패), ${t2.short} ${b.n}위(${b.r.w}승 ${b.r.l}패)입니다.`);
-      const h = Results.h2h(t1.id, t2.id); if (h.length) { const w = h.filter(m => Results.won(m, t1.id)).length; paras.push(`이번 커리어에서 두 팀의 상대 전적은 ${t1.short} 기준 ${w}승 ${h.length - w}패입니다.`); }
+      const h = Results.h2h(t1.id, t2.id); if (h.length) { const w = h.filter(m => Results.won(m, t1.id)).length; paras.push(`${String(Clock.START).slice(0, 4)}년 이후 두 팀의 상대 전적은 ${t1.short} 기준 ${w}승 ${h.length - w}패입니다.`); }
     }
     if (rv) paras.push(`두 팀의 맞대결은 '${rv.name}'${rv.alt ? `(${rv.alt})` : ''}${Sim.josa(rv.alt || rv.name, '으로', '로').slice((rv.alt || rv.name).length)} 불립니다. ${rv.desc}`);
-    if (k === 'title' && t1) { const n = Object.values(App.state.champs || {}).filter(id => id === t1.id).length; paras.push(`${Sim.josa(t1.short, '은', '는')} 이번 커리어에서 ${n}번째 우승을 차지했습니다.${Rivalry.forTeam(t1.id).length ? ` 라이벌 ${Rivalry.forTeam(t1.id).map(r => Schedule.team(Rivalry.other(r, t1.id)).short).join('·')} 팬들의 속은 쓰릴 듯합니다.` : ''}`); }
+    if (k === 'title' && t1) { const n = Object.values(App.state.champs || {}).filter(id => id === t1.id).length; paras.push(`${Sim.josa(t1.short, '은', '는')} ${String(Clock.START).slice(0, 4)}년 이후 ${n}번째 우승을 차지했습니다.${Rivalry.forTeam(t1.id).length ? ` 라이벌 ${Rivalry.forTeam(t1.id).map(r => Schedule.team(Rivalry.other(r, t1.id)).short).join('·')} 팬들의 속은 쓰릴 듯합니다.` : ''}`); }
     if (p && ['sign', 'fa', 'rumor', 'trade', 'rest', 'release', 'soloq', 'analysis'].includes(k)) {
       facts.push(['선수', `${p.name}${p.nativeName || p.realName ? ` (${p.nativeName || p.realName})` : ''}`], ['포지션', G.ROLE_KO[p.role] || '-'], ['나이', p.age ? p.age + '세' : '-'], ['국적', G.nationName(p.nation)], ['오버롤', p.ovr || '-']);
       if (F.pt && F.pt.id !== 'free') facts.push(['현 소속', F.pt.name]);

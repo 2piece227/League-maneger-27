@@ -68,10 +68,12 @@ const Cond = {
     const t = Roster.team(); if (!t || App.state.unemployed) return;
     t.players.forEach(p => {
       if (p.role === 'COACH' || this.of(p.id) > -.7 * this.amp(p)) return;
+      if (this._sent === Clock.today()) return;   // 하루에 한 명만 (여럿이 같은 날 면담을 신청하지 않게)
       const k = 'counsel:' + p.id + ':' + Clock.today().slice(0, 7);
       if (!Engine.once(k)) return;
+      this._sent = Clock.today();
       Inbox.push({ from: { name: p.name, role: 'player', photo: p.photo }, subject: `${p.name}, 감독님과 이야기하고 싶다고 합니다`, priority: 'todo', ctx: { pid: p.id, player: p.name },
-        body: `감독님, 요즘 제 플레이가 마음에 안 듭니다. 연습 때도 손이 안 따라오고, 경기에서도 자꾸 실수가 나와요.\n\n어떻게 해야 할지 이야기 좀 하고 싶습니다.`,
+        body: this.counselText(p),
         choices: [
           { label: '괜찮다고 다독인다', act: 'counsel', arg: 'enc', reply: '선수에게 지금 흐름은 금방 돌아온다고 다독였습니다.' },
           { label: '며칠 쉬게 해 준다', act: 'counsel', arg: 'rest', reply: '선수에게 며칠 머리를 식히라고 했습니다.' },
@@ -79,6 +81,15 @@ const Cond = {
           { label: '프로답게 이겨내라고 한다', act: 'counsel', arg: 'firm', reply: '선수에게 스스로 이겨내야 한다고 말했습니다.' },
         ] });
     });
+  },
+  // 면담 신청 글: 선수마다 다르게 (포지션별 고민 · 나이에 따라 말투)
+  counselText(p) {
+    const r = k => G.rand(p.id + Clock.today().slice(0, 7), 'cs' + k), pick = (k, a) => a[Math.floor(r(k) * a.length)];
+    const open = pick('o', ['감독님, 요즘 제 플레이가 마음에 안 듭니다.', '감독님, 잠깐 시간 괜찮으세요? 요즘 경기가 잘 안 풀려서요.', '감독님, 솔직히 요즘 많이 답답합니다.', '감독님, 최근 경기 보셨으면 아시겠지만 제 폼이 많이 떨어졌어요.']);
+    const role = { TOP: ['라인전에서 자꾸 손해를 보고 시작해요.', '텔레포트 타이밍을 계속 놓치고 있어요.'], JGL: ['동선을 짜도 자꾸 한 박자씩 늦어요.', '갱킹 각이 보여도 확신이 안 서서 망설이게 돼요.'], MID: ['라인전은 버티는데 합류 타이밍을 계속 놓쳐요.', '스킬이 손에 안 붙는 느낌이에요.'], BOT: ['한타에서 자리를 자꾸 잘못 잡아요.', '라인전 딜교환에서 계속 손해를 봐요.'], SUP: ['이니시 각이 보여도 손이 늦게 나가요.', '시야 동선이 계속 꼬여요.'] }[p.role] || ['연습 때도 손이 안 따라와요.'];
+    const close = (p.age || 20) >= 25 ? pick('c', ['예전처럼 하려면 뭘 바꿔야 할지 같이 이야기해 보고 싶습니다.', '경험으로 버티는 것도 한계가 있네요. 감독님 의견을 듣고 싶습니다.'])
+      : pick('c', ['어떻게 해야 할지 모르겠어요. 이야기 좀 하고 싶습니다.', '혼자 해결해 보려 했는데 잘 안 돼요. 조언 부탁드립니다.']);
+    return `${open} ${pick('r', role)}\n\n${close}`;
   },
   // 면담 결과 (숫자는 보이지 않는다)
   counselAct(pid, how) {

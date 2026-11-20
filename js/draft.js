@@ -310,7 +310,7 @@ const Draft = {
     if (I.aggr === 'aggr' && c.early < .42) out.push(['bad', '초반이 약한 조합인데 적극적으로 싸우면 손해 보는 교전이 많아집니다.']);
     if (I.aggr === 'safe' && c.early > .55) out.push(['bad', '초반이 강한 조합입니다. 신중하게 가면 강점을 못 살립니다.']);
     if (I.aggr === 'safe' && c.late > .55) out.push(['good', '후반을 보는 조합이라 신중한 운영이 잘 맞습니다.']);
-    if (I.setup !== 'five' && ts && ts.split < .35) out.push(['bad', `${Champions.byId[top.c].name}은(는) 사이드를 혼자 버티기 어려운 챔피언입니다.`]);
+    if (I.setup !== 'five' && ts && ts.split < .35) out.push(['bad', `${Sim.josa(Champions.byId[top.c].name, '은', '는')} 사이드를 혼자 버티기 어려운 챔피언입니다.`]);
     if (I.setup !== 'five' && ts && ts.split > .6) out.push(['good', `${Champions.byId[top.c].name}의 스플릿이 위협적입니다.`]);
     if (I.setup === 'five' && c.fight > .58) out.push(['good', '한타 조합이라 뭉쳐 다니는 게 좋습니다.']);
     if (I.target === 'carry' && c.engage < .4 && c.pick < .45) out.push(['bad', '들어갈 수단이 부족해 상대 딜러까지 닿기 어렵습니다.']);

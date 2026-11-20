@@ -72,11 +72,11 @@ const Spells = {
         }
         // 점멸 마무리: 체력이 바닥난 적이 사거리 바로 밖에 있으면 점멸로 붙어 끝낸다 (상대 점멸이 빠졌으면 더 과감하게)
         if (this.ready(g, p, 'Flash') && p.hp > .2) {
-          const v = foes.filter(q => { const d = D(q.pos, p.pos); return q.hp < .2 && d > R && d <= R + this.FLASH && Rift.los(p.pos, q.pos); }).sort((a, b) => a.hp - b.hp)[0];
+          const v = foes.filter(q => { const d = D(q.pos, p.pos); return q.hp < .2 && q.flashChased !== g.t && d > R && d <= R + this.FLASH && Rift.los(p.pos, q.pos); }).sort((a, b) => a.hp - b.hp)[0];   // 한 명을 여럿이 동시에 점멸로 쫓지 않는다
           const noF = v && !this.ready(g, v, 'Flash');
           if (v && g.r() < (noF ? .7 : .4) * sk) {
             const d = D(v.pos, p.pos), to = this.blinkTo(p.pos, [v.pos[0] - p.pos[0], v.pos[1] - p.pos[1]], Math.min(this.FLASH, d - R + .6));
-            if (to) { p.hitTo = v; this.flash(g, p, to, noF ? `${Sim.josa(v.name, '은', '는')} 점멸이 없어요! ${p.name}, 점멸로 따라붙어 마무리!` : `${p.name}, 점멸로 끝까지 따라갑니다!`); continue; }
+            if (to) { p.hitTo = v; v.flashChased = g.t; this.flash(g, p, to, noF ? `${Sim.josa(v.name, '은', '는')} 점멸이 없어요! ${p.name}, 점멸로 따라붙어 마무리!` : `${p.name}, 점멸로 끝까지 따라갑니다!`); continue; }
           }
         }
         // 점화: 마무리 각 (고정 피해, 4.5 안)

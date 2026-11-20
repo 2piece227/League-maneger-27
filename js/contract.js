@@ -158,10 +158,10 @@ Engine.on(today => {
       const stay = G.rand((App.state.seed || '') + p.id + c.end, 'popt') < .45 + ((t.rep || 2) - 3) * .12 + ((World.morale()[p.id] || 0) * .03);
       if (stay) {
         Contract.exercise(p.id);
-        Inbox.push({ from: board, subject: `${p.name}, 선수 옵션 행사 — 1년 잔류`, body: `${p.name}이(가) 계약서의 선수 옵션을 행사했습니다. 지금 조건 그대로 1년 더 뜁니다.` });
+        Inbox.push({ from: board, subject: `${p.name}, 선수 옵션 행사 — 1년 잔류`, body: `${Sim.josa(p.name, '이', '가')} 계약서의 선수 옵션을 행사했습니다. 지금 조건 그대로 1년 더 뜁니다.` });
         return;
       }
-      Inbox.push({ from: board, subject: `${p.name}, 선수 옵션 포기 — FA 시장으로`, priority: 'urgent', link: 'recruit-fa', body: `${p.name}이(가) 선수 옵션을 쓰지 않고 FA 시장에 나가기로 했습니다.\n\n다시 데려오려면 FA 시장에서 새 계약을 제시해야 합니다.` });
+      Inbox.push({ from: board, subject: `${p.name}, 선수 옵션 포기 — FA 시장으로`, priority: 'urgent', link: 'recruit-fa', body: `${Sim.josa(p.name, '이', '가')} 선수 옵션을 쓰지 않고 FA 시장에 나가기로 했습니다.\n\n다시 데려오려면 FA 시장에서 새 계약을 제시해야 합니다.` });
     } else Inbox.push({ from: board, subject: `${p.name}, 계약 만료로 FA`, priority: 'urgent', link: 'recruit-fa',
       body: `${p.name}의 계약이 끝나 FA가 됐습니다. 이제 다른 팀도 자유롭게 영입을 시도할 수 있습니다.\n\n다시 데려오려면 FA 시장에서 새 계약을 제시해야 합니다.` });
     Market.post(`[FA] ${p.name}, ${Sim.josa(t.short, '과', '와')} 계약 만료 — FA 시장으로`, `${t.name}의 ${G.ROLE_KO[p.role] || ''} ${p.name}(${p.age || '-'}세)이(가) 재계약하지 않고 FA 시장에 나왔습니다.`, p.id);
@@ -182,7 +182,7 @@ Engine.on(today => {
     pr.strikes = (pr.strikes || 0) + 1;
     mor[p.id] = (mor[p.id] || 0) - 2;
     if (pr.strikes === 1) Inbox.push({ from: { name: p.name, role: 'player' }, subject: `${p.name}, 계약 때 약속에 대해 면담 요청`, priority: 'todo', link: 'roster-first-team',
-      body: `감독님, 계약할 때 ${Contract.PROMISE[pr.kind]}을(를) 약속하셨는데 지금은 그렇지 않습니다.
+      body: `감독님, 계약할 때 ${Sim.josa(Contract.PROMISE[pr.kind], '을', '를')} 약속하셨는데 지금은 그렇지 않습니다.
 
 다음 달에도 이대로라면 저도 다른 길을 생각해 볼 수밖에 없습니다.` });
     else {

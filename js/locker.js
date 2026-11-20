@@ -62,20 +62,20 @@ const Locker = {
       if (L.soul === 'us') reasons.push([4, `드래곤 영혼까지 가져간 게 결정적이었습니다.`]);
       if (L.baron.us > L.baron.them) reasons.push([3, `바론을 ${L.baron.us}번 챙기면서 굳혔고요.`]);
       if (ahead[1] > 1500) reasons.push([3 + ahead[1] / 2000, `${G.ROLE_KO[ahead[0]]} 라인에서 ${k(ahead[1])} 앞선 게 끝까지 이어졌습니다.`]);
-      if (L.early.us >= L.early.them + 3) reasons.push([3, `15분 전 교전에서 ${L.early.us}:${L.early.them}로 주도권을 잡았습니다.`]);
+      if (L.early.us >= L.early.them + 3) reasons.push([3, `15분 전 교전에서 ${L.early.us}:${Sim.josa(L.early.them, '으로', '로')} 주도권을 잡았습니다.`]);
       reasons.push([1, `한타 집중력이 좋았습니다.`]);
     } else {
       if (fed && fed[1] >= 3) reasons.push([2 + fed[1], `${nameOf(fed[0])} 선수가 15분 전에만 ${fed[1]}번 잘렸어요. 거기서 흐름이 넘어갔습니다.`]);
       if (lost[1] < -1500) reasons.push([2 + -lost[1] / 2000, `${G.ROLE_KO[lost[0]]} 맞대결에서 골드가 ${k(lost[1])} 벌어졌습니다${vs(lost[0]) ? ` — ${cn(vs(lost[0]).c)} 상대가 버거웠어요` : ''}.`]);
       if (L.soul === 'them') reasons.push([4, `드래곤 영혼을 내준 뒤로 한타가 안 됐습니다.`]);
-      else if (L.drag.them >= L.drag.us + 2) reasons.push([3, `드래곤을 ${L.drag.them}:${L.drag.us}로 내줬어요. 오브젝트 앞 시야가 없었습니다.`]);
+      else if (L.drag.them >= L.drag.us + 2) reasons.push([3, `드래곤을 ${L.drag.them}:${Sim.josa(L.drag.us, '으로', '로')} 내줬어요. 오브젝트 앞 시야가 없었습니다.`]);
       if (L.baron.them > L.baron.us) reasons.push([2.5, `바론을 내주면서 사실상 끝났습니다.`]);
       reasons.push([1, `한타에서 앞라인이 먼저 무너졌습니다.`]);
     }
     reasons.sort((a, b) => b[0] - a[0]);
-    say.push(['coach', `${L.game}세트 ${L.won ? '가져왔습니다' : '내줬습니다'} (킬 ${L.kills.us}:${L.kills.them}). ${reasons[0][1]}`]);
+    say.push(['coach', `${L.game}세트 ${L.won ? '가져왔습니다' : '내줬습니다'}. 킬은 ${L.kills.us} 대 ${Sim.josa(String(L.kills.them), '이었고요', '였고요')}. ${reasons[0][1]}`]);
     if (reasons[1] && reasons[1][0] > 1) say.push(['coach', reasons[1][1]]);
-    if (L.nemesis && L.nemesis.n >= 4) say.push(['coach', `상대 ${nameOf(L.nemesis.id)}에게만 ${L.nemesis.n}번 잡혔습니다. ${cn((L.pl.find(x => x.id === L.nemesis.id) || {}).c)} 대처가 필요해요.`]);
+    if (L.nemesis && L.nemesis.n >= 4) say.push(['coach', `상대 ${nameOf(L.nemesis.id)}에게만 ${L.nemesis.n}번 잡혔습니다. 저 ${Sim.josa(cn((L.pl.find(x => x.id === L.nemesis.id) || {}).c), '을', '를')} 막을 방법이 필요해요.`]);
     else if (gl && gl[1] >= 2) say.push(['coach', `상대 정글이 초반에 ${this.laneKo[gl[0]]} 쪽만 ${gl[1]}번 왔습니다. 동선을 읽고 대비해야 합니다.`]);
     // 2. 선수: 자기 포지션 시점
     const line = (p, good) => {
@@ -101,8 +101,8 @@ const Locker = {
     // 다음 세트 계획: 근거가 붙은 안 (밴 방향 + 공략 라인을 한 번에)
     const plans = [];
     if (star && star.r >= 7) plans.push(['star', `${star.name} 묶기`, `상대 에이스 ${star.name}(${G.ROLE_KO[star.role]}) 쪽 챔피언을 밴으로 묶습니다.`, star.role, null, `밴은 ${star.name} 쪽으로 간다. 그 선수 손에 맞는 챔피언은 다 빼.`]);
-    if (ahead[1] > 800) plans.push(['ahead', `${G.ROLE_KO[ahead[0]]} 몰아주기`, `이긴 ${G.ROLE_KO[ahead[0]]} 라인(+${k(ahead[1])})에 정글 동선을 몰아 더 굴립니다.`, ahead[0], this.LANE_ROLE[ahead[0]], `${G.ROLE_KO[ahead[0]]}가 이기고 있으니 거기를 더 키운다. 정글은 그쪽으로.`]);
-    if (lost[1] < -800) plans.push(['help', `${G.ROLE_KO[lost[0]]} 지원`, `밀린 ${G.ROLE_KO[lost[0]]}(${k(lost[1])} 열세)를 정글이 받쳐 주고, 상대 그 라인 챔피언을 밴합니다.`, lost[0], this.LANE_ROLE[lost[0]], `${G.ROLE_KO[lost[0]]}를 살린다. 밴은 그쪽 상대 챔피언, 정글은 초반에 거기부터.`]);
+    if (ahead[1] > 800) plans.push(['ahead', `${G.ROLE_KO[ahead[0]]} 몰아주기`, `이긴 ${G.ROLE_KO[ahead[0]]} 라인(+${k(ahead[1])})에 정글 동선을 몰아 더 굴립니다.`, ahead[0], this.LANE_ROLE[ahead[0]], `${Sim.josa(G.ROLE_KO[ahead[0]], '이', '가')} 이기고 있으니 거기를 더 키운다. 정글은 그쪽으로.`]);
+    if (lost[1] < -800) plans.push(['help', `${G.ROLE_KO[lost[0]]} 지원`, `밀린 ${G.ROLE_KO[lost[0]]}(${k(lost[1])} 열세)를 정글이 받쳐 주고, 상대 그 라인 챔피언을 밴합니다.`, lost[0], this.LANE_ROLE[lost[0]], `${Sim.josa(G.ROLE_KO[lost[0]], '을', '를')} 살린다. 밴은 그쪽 상대 챔피언, 정글은 초반에 거기부터.`]);
     if (L.drag.them >= L.drag.us + 2 || L.soul === 'them') plans.push(['drag', '드래곤 싸움 준비', '바텀 주도권을 잡고 드래곤 앞 시야를 먼저 잡습니다.', 'BOT', 'bot', '이번엔 드래곤을 안 준다. 바텀부터 이기고 시야 먼저.']);
     const rec = plans.find(p => p[0] === (L.won ? 'ahead' : 'help')) || plans[0];
     if (plans.length) topics.push({ id: 'plan', ask: `다음 세트 어떻게 갈까요?${rec ? ` 저는 '${rec[1]}' 쪽이 좋아 보입니다.` : ''}`, rec: rec && rec[0], plans,

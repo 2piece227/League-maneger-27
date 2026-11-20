@@ -32,15 +32,15 @@ const Talk = {
           { label: '"국제대회 진출이 첫 목표입니다"', fx: { fans: 2, board: 2 }, reply: '이사회가 현실적인 목표를 반겼습니다.' },
         ] });
       this.push({ from: { name: '방송사 기자', role: 'media' }, subject: `우리 팀 말고 우승 후보를 꼽는다면?`, ctx: {},
-        body: `인터뷰 마지막 질문입니다. "${t.short}을(를) 빼고 이번 시즌 가장 강한 팀은 어디라고 보십니까?"`,
-        choices: [...rivals.map(x => ({ label: x.name, act: 'predict', arg: x.id, fx: { media: 1 }, reply: `${x.short}을(를) 꼽았습니다. 상대 팀 팬들 사이에서 화제가 됐습니다.` })),
+        body: `인터뷰 마지막 질문입니다. "${Sim.josa(t.short, '을', '를')} 빼고 이번 시즌 가장 강한 팀은 어디라고 보십니까?"`,
+        choices: [...rivals.map(x => ({ label: x.name, act: 'predict', arg: x.id, fx: { media: 1 }, reply: `${Sim.josa(x.short, '을', '를')} 꼽았습니다. 상대 팀 팬들 사이에서 화제가 됐습니다.` })),
           { label: '"우리 팀 말고는 없습니다"', fx: { fans: 2, media: -1 }, reply: '자신감 있는 답변에 팬들이 환호했지만 다른 팀 팬들은 불편해합니다.' }] });
     }
     // 2. 개인 방송 요청 (한 달에 한 번쯤, 비시즌에 더 자주)
     if (this.r(today + 'stream') < (Market.stove(today) ? .06 : .025)) {
-      const p = t.players.filter(x => x.role !== 'COACH')[Math.floor(this.r(today + 'sp') * t.players.length)];
+      const ps = t.players.filter(x => x.role !== 'COACH'), p = ps[Math.floor(this.r(today + 'sp') * ps.length)];
       if (p && Engine.once('talk:stream:' + p.id + ':' + today.slice(0, 7))) this.push({ from: { name: p.name, role: 'player', photo: p.photo }, subject: `${p.name}, 개인 방송을 하고 싶다고 합니다`, ctx: { pid: p.id, player: p.name },
-        body: `감독님, 쉬는 날 개인 방송을 좀 하고 싶습니다. 팬들이 계속 요청하기도 하고요. 연습에는 지장 없게 하겠습니다.`,
+        body: [`감독님, 쉬는 날 개인 방송을 좀 하고 싶습니다. 팬들이 계속 요청하기도 하고요. 연습에는 지장 없게 하겠습니다.`, `감독님, 팬분들이 방송 언제 하냐고 계속 물어보셔서요. 쉬는 날에 두세 시간 정도만 켜도 될까요?`, `감독님, 솔랭 방송을 해 보고 싶습니다. 연습 겸 할 수 있어서 손해는 없을 것 같아요.`][Math.floor(this.r(today + 'sv') * 3)],
         choices: [
           { label: '허락한다', fx: { fans: 2, morale: 1 }, act: 'condDelta', arg: -1, reply: '팬들이 반가워합니다. 다만 연습 시간이 조금 줄었습니다.' },
           { label: '시즌 중에는 짧게만 하라고 한다', fx: { fans: 1 }, reply: '선수가 수긍했습니다.' },
@@ -102,7 +102,7 @@ const Talk = {
     if (S.promise && series.games.some(x => x.result && x.result.stats && x.result.stats.some(s => s[0] === S.promise.pid))) { const hit = Player.find(S.promise.pid); if (hit) World.apply({ morale: 2, squad: 1 }, { pid: hit.p.id, player: hit.p.name, why: '출전 약속 지킴' }); S.promise = null; }
     // 패배 소감
     if (!won && Engine.once('talk:loss:' + m.id)) this.push({ from: { name: '경기 후 기자회견', role: 'media' }, subject: `${o.short}전 패배 — 소감을 묻습니다`, ctx: {},
-      body: `${o.name}에 ${sc[t.id] || 0}:${sc[o.id] || 0}로 졌습니다. 기자들이 패배 원인을 묻습니다.`,
+      body: `${o.name}에 ${sc[t.id] || 0}:${Sim.josa(sc[o.id] || 0, '으로', '로')} 졌습니다. 기자들이 패배 원인을 묻습니다.`,
       choices: [
         { label: '"상대가 준비를 잘해왔습니다"', fx: { media: 2 }, reply: '깔끔한 인정에 여론이 나쁘지 않습니다.' },
         { label: '"밴픽이 전반적으로 아쉬웠습니다. 제 책임입니다"', fx: { squad: 2, board: -1 }, reply: '선수들이 감독이 책임을 졌다고 받아들였습니다.' },
