@@ -101,8 +101,12 @@ const Talk = {
     // 후보 약속: 그 선수가 뛰었으면 지킨 것
     if (S.promise && series.games.some(x => x.result && x.result.stats && x.result.stats.some(s => s[0] === S.promise.pid))) { const hit = Player.find(S.promise.pid); if (hit) World.apply({ morale: 2, squad: 1 }, { pid: hit.p.id, player: hit.p.name, why: '출전 약속 지킴' }); S.promise = null; }
     // 패배 소감
-    if (!won && Engine.once('talk:loss:' + m.id)) this.push({ from: { name: '경기 후 기자회견', role: 'media' }, subject: `${o.short}전 패배 — 소감을 묻습니다`, ctx: {},
-      body: `${o.name}에 ${sc[t.id] || 0}:${Sim.josa(sc[o.id] || 0, '으로', '로')} 졌습니다. 기자들이 패배 원인을 묻습니다.`,
+    // 패배 기자회견: 중요한 경기이거나 연패가 시작될 때만, 일주일에 한 번까지 (매 패배마다 똑같은 질문이 오지 않게)
+    const streak = Results.forTeam(t.id).slice(-2).every(x => !Results.won(x, t.id));
+    const press = !won && (this.big(m) || streak) && !(S.press && Fmt.daysBetween(S.press, Clock.today()) < 7);
+    if (press) S.press = Clock.today();
+    if (press && Engine.once('talk:loss:' + m.id)) this.push({ from: { name: '경기 후 기자회견', role: 'media' }, subject: `${o.short}전 패배 — 소감을 묻습니다`, ctx: {},
+      body: `${o.name}에 ${sc[t.id] || 0}:${Sim.josa(sc[o.id] || 0, '으로', '로')} 졌습니다. ${streak ? '연패에 빠지자 기자들이 원인을 묻습니다.' : '중요한 경기를 내주자 기자들이 원인을 묻습니다.'}`,
       choices: [
         { label: '"상대가 준비를 잘해왔습니다"', fx: { media: 2 }, reply: '깔끔한 인정에 여론이 나쁘지 않습니다.' },
         { label: '"밴픽이 전반적으로 아쉬웠습니다. 제 책임입니다"', fx: { squad: 2, board: -1 }, reply: '선수들이 감독이 책임을 졌다고 받아들였습니다.' },

@@ -36,6 +36,7 @@ const Patch = {
     for (let i = 0; i < nb && mid.length; i++) { const j = Math.floor(R('b' + i) * mid.length), [c] = mid.splice(j, 1)[0]; changes.push({ c, d: Math.round((.6 + R('bs' + c) * 1.2) * 10) / 10 }); }
     // 가끔: 좋은 챔피언을 더 좋게
     if (R('god') < .18) { const [c] = ranked[4 + Math.floor(R('gi') * 6)] || []; if (c && !changes.some(x => x.c === c)) changes.push({ c, d: 2, big: true }); }
+    if (!changes.length) return;   // 바꿀 챔피언이 없으면(메타 자료를 아직 못 읽었을 때 등) 빈 패치를 내지 않는다
     changes.forEach(x => { S.adj[x.c] = Math.max(-4, Math.min(4, (S.adj[x.c] || 0) + x.d)); x.txt = this.line(x.c, x.d > 0, R('t' + x.c)); });
     S.list.push({ v, y: Y, date: today, big, changes });
     if (Draft) Draft._meta = null;

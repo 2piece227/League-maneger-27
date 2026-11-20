@@ -144,7 +144,8 @@ Screens.game = {
   init() {
     Router.init();
     Nav.init();
-    if (typeof Tutorial !== 'undefined') Tutorial.init();   // 코치 안내 (js/tutorial.js)
+    if (typeof Tutorial !== 'undefined') Tutorial.init();
+    if (typeof Stats !== 'undefined') Stats.load();   // 메타 · 챔피언 자료 미리 (밴픽 화면에 안 가고 코치에게 맡겨도 패치 · 엔진이 쓴다)   // 코치 안내 (js/tutorial.js)
   },
 
   enter() {
