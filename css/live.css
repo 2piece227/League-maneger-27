@@ -243,4 +243,4 @@
 
 /* 태블릿: 옆 칸 선수 이름 앞 팀 약칭은 뺀다 (팀 색으로 구분되니 이름이 잘리지 않게) */
 .lv-tsh { font-style: normal; }
-@media (max-width: 1150px) { .lv-tsh { display: none; } }
+@media (max-width: 1150px) { .lv-tsh { display: none; } .lv-pi small { font-size: 10px; letter-spacing: -.03em; } }
