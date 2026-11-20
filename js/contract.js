@@ -54,6 +54,12 @@ const Contract = {
     const s = this.score(p, t), r = G.rand(p.id, 'opt');
     return { salary: this.pay(p, s, t.league), end: p.contractEnd, option: this.tier(p) === 'first' && p.role !== 'COACH' && r < .22 ? (s >= 78 ? 'player' : 'team') : null, buyout: null, promise: null, bonus: [] };
   },
+  // 부임 유예: 새로 맡은 팀에서 계약이 이미 끝났거나 곧 끝나는 선수 · 코치는 부임일 + days까지 늘려 둔다
+  // (커리어 첫날이 스토브리그 첫날이라 예전에는 하루 만에 주전이 FA로 나갔다)
+  grace(t, days = 10) {
+    const until = Store.addDays(Clock.today(), days);
+    [...t.players, ...(t.staff || [])].forEach(p => { const c = this.of(p, t); if (!p.free && c.end && c.end < until) { this.st().contracts[p.id] = { ...c, end: until }; p.contractEnd = until; } });
+  },
   of(p, t) {
     if (!t) { const hit = Player.find(p.id); t = hit ? hit.t : { league: 'LCK' }; }
     const c = this.st().contracts[p.id];

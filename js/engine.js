@@ -180,6 +180,7 @@ const Engine = {
     App.state.morale = {};
     App.state.gen = {}; App.state.squad = {}; App.state.dev = {}; App.state.clTable = null; // 하부 선수단은 옛 구단에 남는다
     Squad.apply();
+    Contract.grace(t);   // 부임하자마자 계약이 끝나는 선수는 열흘 유예
     Inbox.push({ from: { name: `${t.short} 사무국장`, role: 'board' }, subject: `${t.name} 감독 부임을 환영합니다`, priority: 'urgent', stop: true,
       body: `${t.name} 구단을 대표해 환영 인사를 드립니다.\n\n이사회의 기대는 '${t.boardGoal || '좋은 성적'}'입니다. 선수단과 코칭스태프 소개는 로스터 화면에서 확인해 주십시오.` });
   },

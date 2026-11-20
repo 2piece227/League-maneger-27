@@ -24,6 +24,7 @@ const Portal = {
 
   async _setTeam(team) {
     if (team) Squad.apply();
+    if (team && !App.state.inbox && typeof Contract !== 'undefined') Contract.grace(team);   // 새 커리어: 첫날 바로 FA로 나가지 않게 열흘 유예 (시작 메시지의 만료일도 이 날짜로)
     const [raw] = await Promise.all([this.load(), Schedule.load()]);
     this.raw = this.raw || JSON.parse(JSON.stringify(raw));
     this.data = team ? this.localize(this.raw, team) : JSON.parse(JSON.stringify(this.raw));
@@ -89,7 +90,7 @@ const Portal = {
     const expiring = team.players.filter(p => p.contractEnd && Fmt.parse(p.contractEnd).getTime() <= soon);
     const tok = {
       exp1: (expiring[0] || byRole('TOP')).name, expN: expiring.length,
-      expList: expiring.length ? expiring.map(p => `· ${p.name} (${p.role}) — ${p.contractEnd.replace(/-/g, '.')} 만료`).join('\n') : '· 해당 선수 없음',
+      expList: expiring.length ? expiring.map(p => `· ${p.name} (${G.ROLE_KO[p.role] || '코치'}) — ${p.contractEnd.replace(/-/g, '.')} 만료`).join('\n') : '· 해당 선수 없음',
       opp: opp.name, oppShort: opp.short, opp2: opp2.name, opp2Short: opp2.short,
       s1: (scrim[0] || opp).short, s2: (scrim[1] || opp2).short,
       pTOP: byRole('TOP').name, pMID: byRole('MID').name,
