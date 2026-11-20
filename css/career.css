@@ -31,7 +31,7 @@
 .cr-styles b { font-size: 13px; }
 .cr-bg { font-size: 13px; color: #b3bccd; margin: 0 0 6px; line-height: 1.5; }
 
-.cr-meter { display: grid; grid-template-columns: 90px 1fr 30px; align-items: center; gap: 10px; font-size: 13px; padding: 5px 0; }
+.cr-meter { display: grid; grid-template-columns: 90px 1fr minmax(30px, auto); align-items: center; gap: 10px; font-size: 13px; padding: 5px 0; }
 .cr-meter span { color: var(--muted); }
 .cr-meter.cur span { color: var(--gold-2); font-weight: 700; }
 .cr-bar { height: 7px; border-radius: 4px; background: #1c2640; overflow: hidden; }
@@ -39,7 +39,7 @@
 .cr-bar .good { background: #3fbf7f; }
 .cr-bar .mid { background: var(--gold); }
 .cr-bar .bad { background: #e2575c; }
-.cr-meter b { text-align: right; }
+.cr-meter b { text-align: right; white-space: nowrap; }
 
 /* 평판 */
 .cr-rep-main { display: flex; flex-direction: column; align-items: flex-start; gap: 6px; grid-row: span 2; }
