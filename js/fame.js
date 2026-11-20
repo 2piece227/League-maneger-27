@@ -55,7 +55,7 @@ const Fame = {
   },
   title(p) { return this.icon(p) ? '종목 스타' : this.TITLES.find(([n]) => this.player(p) >= n)[1]; },
   // 프로필 등에 붙이는 표기: "100 · 세계적인 선수 (프랜차이즈 +13)"
-  label(p) { const f = this.franchise(p); return `${this.player(p)} · ${this.title(p)}${f ? ` <small class="cr-dim">(인지도 ${Math.round(this.known(p))} + 프랜차이즈 ${f})</small>` : ''}`; },
+  label(p) { const f = this.franchise(p); return `${this.player(p)} · ${this.title(p)}${f >= 9 ? ` <small class="cr-dim">· ${Math.round(f / 3)}년째 한 팀</small>` : ''}`; },
 
   // ---------- 연봉 ----------
   // 실력 연봉(억): OVR 99 = 20억, OVR 1당 약 10%, 최저 6천만 원

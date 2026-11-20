@@ -51,7 +51,7 @@ const Champions = {
           <div class="card ch-head">
             <div class="rs-title">
               <h2>챔피언 <small>${this.list.length}명</small></h2>
-              <span>패치 ${UI.esc(this.meta.patch)} 기준 · 포지션은 프로 경기 기준 주 라인</span>
+              <span>챔피언을 누르면 기본 능력치와 스킬을 볼 수 있습니다 · 포지션은 프로 경기에서 주로 가는 라인</span>
             </div>
             <input class="ch-search" type="search" placeholder="이름·영문명·칭호 검색" value="${UI.esc(this.q)}">
           </div>
@@ -136,7 +136,7 @@ const Champions = {
       <h4>기본 능력치 <small>1레벨 · +레벨당</small></h4>
       <div class="ch-stats">
         ${stat('체력', s.hp, s.hpPerLevel)}
-        ${stat(UI.esc(c.resource || '자원'), s.mp || '-', s.mpPerLevel || 0)}
+        ${stat(!c.resource || c.resource === '없음' ? '자원' : UI.esc(c.resource), !c.resource || c.resource === '없음' ? '없음' : s.mp || '-', s.mpPerLevel || 0)}
         ${stat('공격력', s.ad, s.adPerLevel)}
         ${stat('공격 속도', s.as.toFixed(3), s.asPerLevel + '%')}
         ${stat('방어력', s.armor, s.armorPerLevel)}

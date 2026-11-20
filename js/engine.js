@@ -349,7 +349,11 @@ const Events = {
     return ctx;
   },
 
-  fill(s, ctx) { return String(s).replace(/\{(\w+)\}/g, (m, k) => k in ctx ? ctx[k] : m); },
+  // {player}이(가) · {team}과(와) 처럼 빈칸 뒤 조사는 채운 말에 맞춘다
+  fill(s, ctx) {
+    const P = { '이(가)': ['이', '가'], '을(를)': ['을', '를'], '은(는)': ['은', '는'], '과(와)': ['과', '와'], '(으)로': ['으로', '로'] };
+    return String(s).replace(/\{(\w+)\}(이\(가\)|을\(를\)|은\(는\)|과\(와\)|\(으\)로)?/g, (m, k, j) => !(k in ctx) ? m : j ? Sim.josa(ctx[k], ...P[j]) : ctx[k]);
+  },
 
   // 하루에 무작위 이벤트는 최대 하나
   run(today) {

@@ -97,7 +97,8 @@ const Portal = {
       season: Schedule.season(), prevSeason: Schedule.season() - 1,
       league: team.league, cl: { LCK: 'LCK CL', LPL: 'LDL', LEC: 'EMEA Masters', LCS: 'NACL' }[team.league] || '2군 리그',
     };
-    const fill = o => JSON.parse(JSON.stringify(o).replace(/\{(\w+)\}/g, (m, k) => k in tok ? JSON.stringify(String(tok[k])).slice(1, -1) : m));
+    const P = { '이(가)': ['이', '가'], '을(를)': ['을', '를'], '은(는)': ['은', '는'], '과(와)': ['과', '와'], '(으)로': ['으로', '로'] };
+    const fill = o => JSON.parse(JSON.stringify(o).replace(/\{(\w+)\}(이\(가\)|을\(를\)|은\(는\)|과\(와\)|\(으\)로)?/g, (m, k, j) => k in tok ? JSON.stringify(j ? Sim.josa(String(tok[k]), ...P[j]) : String(tok[k])).slice(1, -1) : m));
     d.messages = fill(d.messages);
     d.week = this.week(d.date, team);
     d.nextMatch.competition = fill(d.nextMatch.competition);
