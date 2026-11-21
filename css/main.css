@@ -584,3 +584,7 @@ input:focus, select:focus { outline: none; border-color: var(--gold); }
   .card:has(> .rs-table), .card:has(> table) { overflow-x: auto; -webkit-overflow-scrolling: touch; }
   .cr-grid > *, .cr-page > * { min-width: 0; }
 }
+/* 아이폰은 16px보다 작은 입력칸을 누르면 화면을 확대한다: 휴대폰에서는 입력칸 글자를 16px로 */
+@media (max-width: 767px) {
+  input, select, textarea { font-size: 16px !important; }
+}

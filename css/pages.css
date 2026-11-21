@@ -529,3 +529,8 @@ button.nw-card { width: 100%; text-align: left; font: inherit; cursor: pointer; 
 /* 구단 역사: 대회별 전적 줄 (이름이 길어도 한 줄로) */
 .mh-row.hs-ev { grid-template-columns: minmax(0, 1fr) auto; }
 .mh-row.hs-ev > span:first-child { color: var(--text); }
+
+/* 휴대폰 라커룸: 아래 날짜 바(60px)까지 빼고 한 화면 (주소창이 줄었다 늘었다 해도 맞게 dvh) */
+@media (max-width: 767px) {
+  .lk-wrap { height: calc(100vh - 250px); height: calc(100dvh - 250px); padding: 6px 4px; }
+}
