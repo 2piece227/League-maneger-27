@@ -1,60 +1,67 @@
-/* ---------- 배경 음악: 상단바의 작은 재생기 + 눌러서 여는 플레이어 ---------- */
-.mu { position: relative; display: flex; align-items: center; margin-left: 10px; flex: none; }
-.mu-chip { display: flex; align-items: center; gap: 8px; height: 40px; padding: 2px 6px 2px 2px; border-radius: 8px; background: rgba(255, 255, 255, .04); border: 1px solid var(--line); }
-.mu.on .mu-chip { border-color: rgba(200, 162, 74, .45); }
-.mu-vid { position: relative; width: 64px; height: 36px; border-radius: 6px; overflow: hidden; background: #05080e; flex: none; }
-.mu-vid iframe, .mu-vid > div { width: 64px; height: 36px; display: block; border: 0; pointer-events: none; }
-.mu-open { position: absolute; inset: 0; background: none; border: 0; cursor: pointer; }
-.mu-now { display: flex; flex-direction: column; min-width: 0; width: 128px; cursor: pointer; line-height: 1.2; }
-.mu-now b { font-size: 12.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.mu-now small { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.mu-btn { width: 30px; height: 30px; display: grid; place-items: center; border-radius: 50%; border: 0; background: none; color: var(--text); cursor: pointer; flex: none; }
-.mu-btn:hover { background: rgba(255, 255, 255, .08); }
-.mu-btn:focus-visible { outline: 2px solid var(--gold); outline-offset: 1px; }
-.mu-btn svg { width: 17px; height: 17px; fill: currentColor; }
-.mu-btn.big { width: 46px; height: 46px; background: var(--gold); color: #141006; }
-.mu-btn.big:hover { background: var(--gold-2); }
-.mu-btn.big svg { width: 22px; height: 22px; }
-.mu.off .mu-vid { opacity: .35; }
-.mu.off .mu-next { display: none; }
+/* ---------- 배경 음악: 오른쪽 아래 떠 있는 재생기 (접으면 음표 버튼) ---------- */
+.mu { position: fixed; right: 16px; bottom: calc(var(--footer-h, 34px) + 14px); z-index: 70; display: flex; align-items: flex-end; gap: 10px; pointer-events: none; }
+.mu[hidden] { display: none; }
+.mu > * { pointer-events: auto; }
+.mu-sc { position: fixed; left: -9999px; top: 0; width: 1px; height: 1px; overflow: hidden; }
 
-/* 펼친 플레이어 */
-.mu-pop { position: absolute; top: calc(100% + 8px); left: 0; z-index: 80; width: 300px; padding: 12px; border-radius: 12px; background: var(--panel-2); border: 1px solid var(--line); box-shadow: 0 18px 40px rgba(0, 0, 0, .55); display: flex; flex-direction: column; gap: 10px; }
+.mu-card { position: relative; display: none; align-items: center; gap: 12px; width: 320px; padding: 10px 12px 10px 10px; border-radius: 14px;
+  background: rgba(12, 17, 28, .92); border: 1px solid var(--line); box-shadow: 0 16px 40px rgba(0, 0, 0, .55); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); }
+.mu.open .mu-card { display: flex; animation: muIn .22s ease-out; }
+@keyframes muIn { from { opacity: 0; transform: translateY(8px); } }
+.mu-art { position: relative; width: 72px; height: 72px; border-radius: 10px; overflow: hidden; flex: none; background: linear-gradient(135deg, #2a2140, #10213a); }
+.mu-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.mu-eq { position: absolute; right: 5px; bottom: 5px; display: none; gap: 2px; align-items: flex-end; height: 12px; }
+.mu.on .mu-eq { display: flex; }
+.mu-eq b { width: 3px; background: var(--gold-2); border-radius: 1px; animation: muEq .9s ease-in-out infinite; }
+.mu-eq b:nth-child(2) { animation-delay: -.3s; } .mu-eq b:nth-child(3) { animation-delay: -.6s; }
+@keyframes muEq { 0%, 100% { height: 3px; } 50% { height: 12px; } }
+.mu-main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 6px; }
+.mu-now { min-width: 0; line-height: 1.25; }
+.mu-now b { display: block; font-size: 15px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mu-now small { display: block; font-size: 12px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.mu-ctl { display: flex; align-items: center; gap: 6px; }
+.mu-btn { width: 32px; height: 32px; display: grid; place-items: center; border-radius: 50%; border: 0; background: none; color: var(--text); cursor: pointer; flex: none; }
+.mu-btn:hover { background: rgba(255, 255, 255, .08); }
+.mu-btn:focus-visible, .mu-fab:focus-visible { outline: 2px solid var(--gold); outline-offset: 2px; }
+.mu-btn svg { width: 18px; height: 18px; fill: currentColor; }
+.mu-btn.big { width: 38px; height: 38px; border: 1.5px solid rgba(255, 255, 255, .7); }
+.mu-more { margin-left: auto; color: var(--muted); }
+
+.mu-fab { width: 52px; height: 52px; border-radius: 50%; display: grid; place-items: center; cursor: pointer; flex: none;
+  background: rgba(12, 17, 28, .92); border: 1px solid var(--line); color: var(--text); box-shadow: 0 10px 26px rgba(0, 0, 0, .5); }
+.mu-fab svg { width: 24px; height: 24px; fill: currentColor; }
+.mu.on .mu-fab { border-color: var(--gold); color: var(--gold-2); }
+.mu.on:not(.open) .mu-fab svg { animation: muBob 1.6s ease-in-out infinite; }
+@keyframes muBob { 50% { transform: translateY(-2px) rotate(-6deg); } }
+.mu.off .mu-fab { opacity: .7; }
+
+/* 곡 목록 · 음량 (카드 위로 열린다) */
+.mu-pop { position: absolute; left: 0; right: 0; bottom: calc(100% + 8px); padding: 12px; border-radius: 12px; background: var(--panel-2); border: 1px solid var(--line); box-shadow: 0 16px 40px rgba(0, 0, 0, .55); display: flex; flex-direction: column; gap: 10px; }
 .mu-pop[hidden] { display: none; }
-.mu-pop-art { position: relative; border-radius: 8px; overflow: hidden; aspect-ratio: 16 / 9; background: #05080e; }
-.mu-pop-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.mu-list { position: absolute; left: 8px; top: 8px; font-size: 11px; font-weight: 700; padding: 2px 8px; border-radius: 999px; background: rgba(5, 8, 14, .8); color: var(--gold-2); letter-spacing: .02em; }
-.mu-pop-now b { display: block; font-size: 16px; }
-.mu-pop-now small { color: var(--muted); font-size: 12.5px; }
-.mu-pop-ctl { display: flex; align-items: center; justify-content: center; gap: 18px; }
+.mu-pop-h { display: flex; align-items: center; justify-content: space-between; }
+.mu-list { color: var(--gold-2); font-size: 13px; }
+.mu-off { display: flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--muted); cursor: pointer; }
+.mu-off input, .mu-vol input { accent-color: var(--gold); }
 .mu-vol { display: flex; align-items: center; gap: 8px; color: var(--muted); }
 .mu-vol svg { width: 18px; height: 18px; fill: currentColor; flex: none; }
-.mu-vol input { flex: 1; accent-color: var(--gold); }
-.mu-tracks { list-style: none; margin: 0; padding: 0; max-height: 168px; overflow-y: auto; border-top: 1px solid var(--line); }
-.mu-tracks li { display: flex; justify-content: space-between; gap: 8px; padding: 7px 4px; font-size: 12.5px; cursor: pointer; border-bottom: 1px solid rgba(255, 255, 255, .04); }
+.mu-vol input { flex: 1; }
+.mu-tracks { list-style: none; margin: 0; padding: 0; max-height: 220px; overflow-y: auto; border-top: 1px solid var(--line); }
+.mu-tracks li { display: flex; justify-content: space-between; gap: 8px; padding: 7px 4px; font-size: 13px; cursor: pointer; border-bottom: 1px solid rgba(255, 255, 255, .04); }
 .mu-tracks li:hover { background: rgba(255, 255, 255, .04); }
-.mu-tracks li small { color: var(--muted); white-space: nowrap; }
+.mu-tracks li small { color: var(--muted); }
 .mu-tracks li.cur b { color: var(--gold-2); }
 .mu-tracks li.bad { opacity: .4; text-decoration: line-through; }
-.mu-off { display: flex; align-items: center; gap: 8px; font-size: 12.5px; color: var(--muted); cursor: pointer; }
-.mu-off input { accent-color: var(--gold); }
-.mu-note { margin: 0; font-size: 11px; color: var(--muted); }
+.mu-src { font-size: 11px; color: var(--muted); text-decoration: none; }
+.mu-src:hover { color: var(--text); }
 
-/* 태블릿 · 좁은 노트북: 상단바 메뉴가 길어서 영상 + 재생 버튼만 */
-@media (max-width: 1400px) { .mu-now, .mu-chip .mu-next { display: none; } .mu-chip { gap: 2px; } .mu { margin-left: 6px; } }
-/* 휴대폰: 영상 + 재생 버튼만, 오른쪽으로 붙인다 */
+/* 밴픽 · 중계 화면: 버튼을 작게 (확정 버튼 · 해설 칸을 덜 가리게) */
+.mu.busy .mu-fab { width: 42px; height: 42px; }
+.mu.busy .mu-fab svg { width: 20px; height: 20px; }
+
+/* 휴대폰: 아래 날짜 바 위에. 펼치면 화면 너비 */
 @media (max-width: 767px) {
-  .mu { margin-left: auto; }
-  .mu ~ .tb-badge, .tb-badge { margin-left: 6px; }
-  .mu-chip { height: 38px; gap: 2px; padding-right: 2px; }
-  .mu-vid, .mu-vid iframe, .mu-vid > div { width: 56px; height: 32px; }
-  .mu-now, .mu-chip .mu-next { display: none; }
-  .mu-pop { position: fixed; top: calc(var(--topbar-h, 56px) + 6px); left: 8px; right: 8px; width: auto; }
-}
-/* 아이패드 세로 · 가로(1100px 이하): 작은 영상만. 누르면 플레이어가 열린다 */
-@media (min-width: 768px) and (max-width: 1100px) {
-  .mu-chip .mu-play { display: none; }
-  .mu-chip { padding: 2px; }
-  .mu-vid, .mu-vid iframe, .mu-vid > div { width: 56px; height: 32px; }
-  .mu.on .mu-vid { box-shadow: 0 0 0 1.5px var(--gold); }
+  .mu { right: 10px; bottom: calc(var(--footer-h, 34px) + 70px); }
+  .mu.busy { display: none; }   /* 휴대폰 밴픽 · 중계: 확정 버튼을 가리지 않게 숨긴다 (음악은 계속 나온다) */
+  .mu-card { position: fixed; left: 10px; right: 10px; bottom: calc(var(--footer-h, 34px) + 130px); width: auto; }
+  .mu-fab { width: 46px; height: 46px; }
 }
