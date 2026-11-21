@@ -175,22 +175,21 @@ const Live = {
   caption(now) {
     const g = this.g, box = this.el && this.el.querySelector('.lv-cap'); if (!box) return;
     for (; this.capSeen < g.comm.length; this.capSeen++) this.capQ.push(g.comm[this.capSeen]);
-    // 지나간 장면 자막은 버린다: 게임 시간으로 6초 넘게 묵은 말, 이미 결과가 뒤따라 나온 '위험해요 · 비상' 콜
-    const gt = g.t, URG = /위험해요|살려야 돼요|빠져야 돼요|^비상!! (비상|\S+ 비상)/;
-    this.capQ = this.capQ.filter((c, i, a) => gt - c.t <= 6 && !(URG.test(c.text) && a.slice(i + 1).some(d => d.t - c.t <= 8 && !URG.test(d.text))));
+    // 지나간 장면 자막은 버린다: 오래 묵은 말(배속이 빠를수록 여유를 더 준다), 이미 결과가 뒤따라 나온 '위험해요' 콜
+    const gt = g.t, keep = Math.max(10, 3 * this.speed), rd = Math.pow(this.speed, .3), URG = /위험해요|살려야 돼요|빠져야 돼요|^비상!! (비상|\S+ 비상)/;
+    this.capQ = this.capQ.filter((c, i, a) => gt - c.t <= keep && !(URG.test(c.text) && a.slice(i + 1).some(d => d.t - c.t <= 8 && !URG.test(d.text))));
     if (this.capQ.length > 2) this.capQ = this.capQ.slice(-2);
-    // 지금 자막이 상황보다 뒤처졌으면(새 말이 3초 이상 뒤의 장면) 최소 1초만 보여 주고 바로 넘긴다
-    const cur = this.capCur, behind = cur && this.capQ.length && this.capQ[this.capQ.length - 1].t - cur.t >= 3 && now >= this.capShown + 1000 / Math.sqrt(this.speed);
-    // 조용한 구간엔 게임 시간이 빨리 흐른다: 장면이 8초 넘게 지나면 자막도 내린다
-    const stale = cur && gt - cur.t > 8 && now >= this.capShown + 900 / Math.sqrt(this.speed);
-    if (now < this.capUntil && !behind && !stale) return;
+    // 한 줄은 최소 2.8초(배속에 따라 조금 줄어든다)는 읽을 수 있게 둔다. 그 뒤 새 장면(5초 이상 뒤)이 밀려 있으면 넘긴다
+    const cur = this.capCur, behind = cur && this.capQ.length && this.capQ[this.capQ.length - 1].t - cur.t >= 5 && now >= this.capShown + 2800 / rd;
+    if (now < this.capUntil && !behind) return;
     const c = this.capQ.shift();
+    if (!c && now < this.capUntil + 900) return;   // 다음 말이 없으면 조금 더 남겨 두었다가 내린다
     if (!c) { if (box.firstChild && !box.firstChild.classList.contains('out')) { box.firstChild.classList.add('out'); this.capCur = null; setTimeout(() => { if (box.firstChild && box.firstChild.classList.contains('out')) box.innerHTML = ''; }, 220); } return; }
     this.capCur = c; this.capShown = now;
     const p = g.pl.filter(x => x.name && x.name.length >= 2 && c.text.includes(x.name)).sort((a, b) => c.text.indexOf(a.name) - c.text.indexOf(b.name))[0];
     const who = c.by || Sim.voice(g, c.who) || '', face = p && p.p.photo ? `<img class="${p.side === 'B' ? 'b' : 'r'}" src="${p.p.photo}" alt="" referrerpolicy="no-referrer" onerror="this.outerHTML='<i class=&quot;${c.who}&quot;>${UI.esc(who.slice(0, 1))}</i>'">` : p ? `<span class="${p.side === 'B' ? 'b' : 'r'}">${SoloQ.ic(p.c)}</span>` : `<i class="${c.who}">${UI.esc(who.slice(0, 1))}</i>`;
     box.innerHTML = `<div class="lv-cap-in ${c.who}">${face}<div><b>${UI.esc(who)}</b><p>${UI.esc(c.text)}</p></div></div>`;
-    this.capUntil = now + Math.max(2000, Math.min(4200, 1300 + c.text.length * 42)) / Math.sqrt(this.speed);
+    this.capUntil = now + Math.max(3200, Math.min(5600, 1800 + c.text.length * 65)) / rd;   // 글자 수만큼 읽을 시간
   },
   // 맵 위 챔피언 · 효과를 캔버스 한 장에 그린다 (프레임마다). f = 이번 틱의 진행도 0~1
   icon(p) { const m = (this.imgs ||= new Map()); let im = m.get(p.c); if (!im) { im = new Image(); im.src = Champions.byId[p.c].icon; m.set(p.c, im); } return im; },
