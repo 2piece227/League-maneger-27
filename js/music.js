@@ -17,8 +17,6 @@ const Music = {
       { sc: 'burn-it-all-down', title: 'Burn It All Down', artist: 'PVRIS', year: 2021 },
       { sc: 'gods', title: 'GODS', artist: 'NewJeans', year: 2023 },
       { sc: 'awaken-ft-valerie-broussard-ray-chen', title: 'Awaken', artist: 'Valerie Broussard, Ray Chen', year: 2019 },
-      { sc: 'legends-never-die-remix', title: 'Legends Never Die (Remix)', artist: 'League of Legends', year: 2017 },
-      { sc: 'worlds-collide-arty-remix', title: 'Worlds Collide (Arty Remix)', artist: 'Arty', year: 2015 },
     ] },
     draft: { name: '밴픽', tracks: [
       { sc: 'worlds-2020-orchestral-theme', title: 'Worlds 2020 Orchestral Theme', artist: 'League of Legends', year: 2020 },
