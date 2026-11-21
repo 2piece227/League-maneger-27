@@ -28,7 +28,7 @@ const Spells = {
     p.ssCd[s] = g.t + this.CD[s];
     (g.sk ||= []).push({ t: g.t, i: g.pl.indexOf(p), key: s === 'Flash' ? 'F' : 'D', kind: s === 'Flash' ? 'dash' : 'self', shape: '', cc: '', name: this.KO[s], icon: this.icon(s), from: [...p.pos], to: to ? [...to] : [...p.pos], hit: [], miss: [], ally: [], big: false, col: '255,236,150', kit: true, ss: s });
     // 점멸 도주 · 추격 같은 흔한 장면은 30초에 한 번, 절반만 부른다 (한 경기에 열 번 넘게 나오던 것). 점멸 이니시 · 마무리 같은 큰 장면은 그대로
-    const minor = say && /살아 나갑니다|벽을 넘어|따라붙습니다|끝까지 따라|정화로|탈진/.test(say);
+    const minor = say && /살아 나갑니다|점멸로 빠집니다|벽을 넘어|따라붙습니다|끝까지 따라|정화로|탈진/.test(say);
     if (say && g.r() < .7 && (!minor || (g.t - (g.ssSay ?? -99) >= 30 && g.r() < .5))) { Sim.say(g, 'cast', say); if (minor) g.ssSay = g.t; }
   },
   // 각을 보는 실력 (0.6 ~ 1.2)
@@ -123,7 +123,7 @@ const Spells = {
           const sc = far + (over ? 3 : 0) - Math.abs(da);
           if (!best || sc > best.sc) best = { to, sc, over };
         }
-        if (best) { this.flash(g, p, best.to, best.over ? `${p.name}, 점멸로 벽을 넘어 빠집니다!` : `${p.name}, 점멸로 살아 나갑니다!`); p.fled = f.id; Sim.retreat(g, p, 18); continue; }
+        if (best) { this.flash(g, p, best.to, best.over ? `${p.name}, 점멸로 벽을 넘어 빠집니다!` : `살았어요! ${p.name}, 점멸로 빠집니다!`); p.fled = f.id; Sim.retreat(g, p, 18); continue; }
       }
       // 유체화: 도망 · 추격
       if (this.ready(g, p, 'Ghost') && (p.fled === f.id || foes.some(q => q.fled === f.id && q.hp < .3)) && g.r() < .6 * sk) { p.ghost = g.t + 5; Sim.refresh(p); this.use(g, p, 'Ghost'); }
