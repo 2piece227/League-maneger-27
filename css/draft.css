@@ -287,3 +287,75 @@
 /* 포지션별 지시 버튼: 예전 % 자리(오른쪽 여백) 때문에 긴 이름이 옆 버튼으로 넘쳤다 */
 .dr-tac .dr-opt.sm { flex: 1 1 auto; overflow: hidden; }
 .dr-tac .dr-opt.sm b { padding-right: 0; overflow: hidden; text-overflow: ellipsis; }
+
+/* ── 휴대폰 밴픽: 위에서 아래로 [팀 · 차례] → [밴] → [블루 픽 5칸] → [레드 픽 5칸] → [챔피언 목록 · 추천 · 확정] ── */
+@media (max-width: 600px) {
+  .dr-board { padding: 6px 8px; gap: 5px; }
+  .dr-top { grid-template-columns: 1fr auto 1fr; gap: 6px; }
+  .dr-team { padding: 4px 8px; gap: 6px; min-width: 0; }
+  .dr-team .tm-lg, .dr-team img, .dr-team > span:first-child:not(:only-child) { width: 26px; height: 26px; }
+  .dr-team b { font-size: 13px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dr-team small { display: none; }
+  .dr-team > div { min-width: 0; }
+  .dr-center { min-width: 0; max-width: 150px; gap: 0 6px; }
+  .dr-center small { font-size: 10px; }
+  .dr-center b { font-size: 13px; }
+  .dr-turn { font-size: 11px; padding: 1px 7px; }
+  .dr-timer { font-size: 17px; }
+  .dr-banbar { grid-template-columns: auto auto; justify-content: space-between; gap: 6px; }
+  .dr-steps { display: none; }
+  .dr-ban { width: 25px; height: 25px; }
+  .dr-ban.gap { margin-right: 6px; } .dr-bans.red .dr-ban.gap { margin-left: 6px; }
+  .dr-bans { gap: 3px; }
+  .dr-main { grid-template-columns: 1fr; grid-template-rows: auto auto minmax(0, 1fr); grid-template-areas: 'b' 'r' 'pool'; gap: 5px; }
+  .dr-main > .dr-col:first-child { grid-area: b; } .dr-main > .dr-col:last-child { grid-area: r; } .dr-main > .dr-pool { grid-area: pool; }
+  .dr-col { flex-direction: row; gap: 4px; }
+  .dr-slot { flex: 1 1 0; min-width: 0; min-height: 52px; height: 52px; }
+  .dr-slot::before { background-position: center 20%; }
+  .dr-slot::after, .dr-slot.red::after { background: linear-gradient(0deg, rgba(7, 11, 20, .9), rgba(7, 11, 20, .05) 75%); }
+  .dr-slot.blue { border-left-width: 1px; border-bottom: 2px solid var(--dr-b); } .dr-slot.red { border-right-width: 1px; border-bottom: 2px solid var(--dr-r); }
+  .dr-slot-in, .dr-slot.red .dr-slot-in { padding: 3px 4px; align-items: flex-start; text-align: left; }
+  .dr-ch { font-size: 11px; line-height: 1.15; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 100%; }
+  .dr-ch.dim { font-size: 10px; }
+  .dr-pl { font-size: 9.5px; gap: 2px; white-space: nowrap; overflow: hidden; max-width: 100%; }
+  .dr-pl .pos-ic, .dr-pl img { width: 10px; height: 10px; }
+  .dr-pl .dr-m { display: none; }
+  .dr-pool { padding: 6px; gap: 6px; }
+  .dr-filter { flex-wrap: wrap; gap: 6px; }
+  .dr-filter .seg { flex: 1 1 100%; } .dr-filter .seg button { flex: 1; padding: 5px 0; }
+  .dr-grid { grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); gap: 5px; }
+  .dr-c img { width: 46px; height: 46px; }
+  .dr-c span { font-size: 9.5px; max-width: 52px; }
+  .dr-act { grid-template-columns: 1fr; gap: 6px; padding-top: 6px; }
+  .dr-coach-h small { display: none; }
+  .dr-sugs { grid-template-columns: repeat(3, 1fr); gap: 4px; }
+  .dr-sug { padding: 3px 4px; gap: 4px; }
+  .dr-sug .sq-ic { width: 24px; height: 24px; }
+  .dr-sug b { font-size: 11px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .dr-sug small { display: none; }
+  .dr-lock { flex-direction: row; flex-wrap: wrap; align-items: center; }
+  .dr-lock .dr-role { flex: 1 1 100%; }
+  .dr-lockin { flex: 1; padding: 10px; font-size: 15px; }
+  .dr-tools { display: flex; gap: 4px; flex-wrap: wrap; }
+  .dr-tools button { font-size: 11px; padding: 6px 8px; }
+}
+@media (max-width: 600px) {
+  .dr-team .team-logo, .dr-team .team-badge { width: 26px !important; height: 26px !important; font-size: 9px; flex: none; }
+  .dr-team .team-logo img { width: 100%; height: 100%; }
+  .dr-team.red { justify-content: flex-end; }
+}
+
+/* ── 휴대폰 전술 화면: 한 열로 쌓는다 ── */
+@media (max-width: 600px) {
+  .dr-tac .dr-tac-top { grid-template-columns: 1fr !important; }
+  .dr-ins, .dr-tac .dr-ins { grid-template-columns: 1fr !important; gap: 8px; padding: 0 8px 10px; }
+  .dr-ins-row { min-width: 0; } .dr-ins-row .seg { min-width: 0; }
+  .dr-ins-row > span { width: 64px; font-size: 12px; }
+  .dr-ins-row .seg { flex-wrap: nowrap; }
+  .dr-ins-row .seg button { font-size: 11.5px; padding: 6px 2px; white-space: nowrap; }
+  .dr-tac .dr-rt { grid-template-columns: 1fr; }
+  .dr-tac .dr-rt-row { grid-template-columns: 96px 1fr !important; }
+  .dr-tac .dr-dims { grid-template-columns: 1fr 1fr; }
+  .dr-presets { margin-left: 0; }
+  .dr-tac-foot { justify-content: stretch; } .dr-tac-foot button { flex: 1; }
+}

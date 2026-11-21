@@ -533,7 +533,8 @@ const Draft = {
     this.drive(el, S);
   },
   // 보드 높이를 화면에 맞춘다 (태블릿에서도 확정 버튼이 항상 보이게)
-  fit(el) { const b = el.querySelector('.dr-board'); if (b) b.style.height = Math.max(400, window.innerHeight - b.getBoundingClientRect().top - (parseInt(getComputedStyle(document.documentElement).getPropertyValue('--footer-h')) || 34) - 4) + 'px'; },
+  fit(el) { const b = el.querySelector('.dr-board'); if (!b) return; const tc = document.querySelector('.tb-clock'), bar = tc && getComputedStyle(tc).position === 'fixed' ? tc.offsetHeight : 0;   // 휴대폰은 날짜 바가 아래에 붙는다
+    b.style.height = Math.max(400, window.innerHeight - b.getBoundingClientRect().top - (parseInt(getComputedStyle(document.documentElement).getPropertyValue('--footer-h')) || 34) - bar - 4) + 'px'; },
   // 챔피언을 고르는 동안에는 타이머·상대 차례 예약을 건드리지 않고 화면만 다시 그린다
   reboard(el, S) { const t = this._tick, a = this._ai, left = this.left; this._noDrive = true; this.board(el, S); this._noDrive = false; this._tick = t; this._ai = a; this.left = left; const tm = $('.dr-timer', el); if (tm && this.timerOn) tm.textContent = left; },
   drawGrid(S, taken, ourLine) {

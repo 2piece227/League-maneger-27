@@ -245,3 +245,44 @@
 /* 태블릿: 옆 칸 선수 이름 앞 팀 약칭은 뺀다 (팀 색으로 구분되니 이름이 잘리지 않게) */
 .lv-tsh { font-style: normal; }
 @media (max-width: 1150px) { .lv-tsh { display: none; } .lv-pi small { font-size: 10px; letter-spacing: -.03em; } }
+
+/* ── 휴대폰 중계: 위에서 아래로 [스코어] → [맵, 화면 너비 가득] → [선수 기록] → [조작 · 그래프 · 해설 목록], 세로로 스크롤 ── */
+@media (max-width: 600px) {
+  .lv-wrap { display: flex; flex-direction: column; gap: 6px; padding: 4px; overflow-y: auto; -webkit-overflow-scrolling: touch; }
+  .lv-bc { flex: none; overflow: visible; border-radius: 6px; }
+  .lv-top { padding: 4px 6px; gap: 4px; }
+  .lv-tm { gap: 5px; }
+  .lv-tm .team-logo, .lv-tm .team-badge { display: none; }
+  .lv-tm b { font-size: 15px; }
+  .lv-pips i { width: 9px; height: 4px; }
+  .lv-ms { min-width: 24px; height: 26px; font-size: 18px; }
+  .lv-sc { font-size: 12px; }
+  .lv-row { gap: 5px; }
+  .lv-row .lv-k { font-size: 19px; min-width: 20px; }
+  .lv-gd { min-width: 0; font-size: 11.5px; }
+  .lv-tw { font-size: 11px; min-width: 0; }
+  .lv-sub { gap: 6px; }
+  .lv-dr { min-width: 0; }
+  .lv-clock { font-size: 13px; }
+  .lv-mid { display: block; flex: none; }
+  .lv-side, .lv-cam { display: none; }
+  .lv-mapbox { width: 100%; aspect-ratio: 1000 / 946; }
+  .lv-bot { display: block; height: auto; overflow: visible; }
+  .lv-stats { padding: 4px 4px 6px; gap: 3px; }
+  .lv-cap { left: 2%; right: 2%; bottom: 2%; }
+  .lv-cap-in { gap: 6px; padding: 4px 8px 4px 4px; }
+  .lv-cap-in img, .lv-cap-in > i, .lv-cap-in > span .sq-ic { width: 30px; height: 30px; }
+  .lv-cap-in p { font-size: 12px; }
+  .lv-cap-in b { font-size: 9.5px; }
+  .lv-klog { transform: scale(.8); transform-origin: top right; }
+  .lv-feed { transform: scale(.85); transform-origin: top center; }
+  .lv-panel { flex: none; display: flex; flex-direction: column; gap: 6px; }
+  .lv-ctrl { justify-content: space-between; }
+  .lv-ctrl .lv-speed { flex: 1 1 100%; order: 3; } .lv-ctrl .lv-speed button { flex: 1; }
+  .lv-comm { flex: none; max-height: none; overflow: visible; }
+  .lv-evs, .lv-info { display: block; }
+}
+@media (max-width: 600px) {
+  .lv-panel { flex-direction: column; flex-wrap: nowrap; width: 100%; }
+  .lv-panel > * { width: 100%; box-sizing: border-box; flex: none; }
+}

@@ -578,3 +578,9 @@ input:focus, select:focus { outline: none; border-color: var(--gold); }
   .profile-form { overflow: visible; padding: 16px; }
   .form-foot { flex-wrap: wrap; }
 }
+
+/* ── 휴대폰: 넓은 표는 카드 안에서 옆으로 넘긴다 (화면 전체가 밀리지 않게) ── */
+@media (max-width: 767px) {
+  .card:has(> .rs-table), .card:has(> table) { overflow-x: auto; -webkit-overflow-scrolling: touch; }
+  .cr-grid > *, .cr-page > * { min-width: 0; }
+}
