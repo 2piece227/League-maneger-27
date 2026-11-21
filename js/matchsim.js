@@ -244,7 +244,7 @@ const Sim = {
     // 라이벌전 첫 멘트 (점수가 높을수록 들뜬다)
     const rv = typeof Rivalry !== 'undefined' && Rivalry.of(g.side.B.t.id, g.side.R.t.id);
     if (rv) this.say(g, rv.score >= 4.5 ? 'hype' : 'anal', rv.score >= 4.5 ? this.pick(g, [`${rv.name}입니다! 오늘은 순위 같은 거 다 필요 없어요!`, `팬들이 제일 기다리는 경기, ${rv.name}! 분위기가 벌써 뜨겁습니다!`]) : `${this.josa(rv.name, '이', '')}죠. ${rv.desc}`);
-    this.say(g, 'anal', `${this.josa(g.side.B.t.short, "은", "는")} ${Draft.TEAM_TAC[g.side.B.tac].n}, ${this.josa(g.side.R.t.short, "은", "는")} ${Draft.TEAM_TAC[g.side.R.tac].n} 전술입니다. ${this.compTalk(g)}`);
+    this.say(g, 'anal', `${g.side.B.tac === g.side.R.tac ? `양 팀 모두 ${Draft.TEAM_TAC[g.side.B.tac].n} 전술입니다.` : `${this.josa(g.side.B.t.short, "은", "는")} ${Draft.TEAM_TAC[g.side.B.tac].n}, ${this.josa(g.side.R.t.short, "은", "는")} ${Draft.TEAM_TAC[g.side.R.tac].n} 전술입니다.`} ${this.compTalk(g)}`);
     const lop = g.pl.filter(p => p.side === 'B' && p.mu.g >= 5 && Math.abs(p.mu.wr - .5) >= .08)[0];
     if (lop) { const o = g.pl.find(q => q.side === 'R' && q.role === lop.role), fav = lop.mu.wr > .5 ? lop : o; this.say(g, 'anal', `${G.ROLE_KO[lop.role]} 매치업은 ${this.cn(fav)} 쪽이 유리합니다. 프로 경기 ${lop.mu.g}판 기준 승률 ${Math.round((fav === lop ? lop.mu.wr : 1 - lop.mu.wr) * 100)}%예요.`); }
     g.pl.forEach(p => { p.goal = this.target(g, p, 0); });
@@ -601,7 +601,7 @@ const Sim = {
         if (v.sh && v.sh.until > g.t && v.sh.v > 0) { const ab = Math.min(v.sh.v, dmg); v.sh.v -= ab; dmg -= ab; if (dmg <= 0) return; }
         v.hp -= dmg;
         // 큰 싸움에서 우리 딜러가 죽기 직전: 실제 중계처럼 이름을 반복해서 외친다 (한 싸움에 한 번)
-        if (!f.dang && f.size >= 6 && v.hp > 0 && v.hp < .25 && this.isCarry(v) && v.role !== 'SUP') { f.dang = v; this.say(g, 'cast', this.pick(g, [`${v.name} 위험해요, ${v.name} 위험해요!`, `${v.name} 살려야 돼요, 살려야 돼요!`, `빠져야 돼요, ${v.name} 빠져야 돼요!`])); if (g.r() < .55) this.say(g, 'hype', this.pick(g, [`비상!! 비상이에요!`, `비상!! ${v.name} 비상!`])); }
+        if (!f.dang && f.size >= 6 && v.hp > 0 && v.hp < .25 && this.isCarry(v) && v.role !== 'SUP' && v.fled !== f.id) { f.dang = v; this.say(g, 'cast', this.pick(g, [`${v.name} 위험해요, ${v.name} 위험해요!`, `${v.name} 살려야 돼요, 살려야 돼요!`, `빠져야 돼요, ${v.name} 빠져야 돼요!`])); if (g.r() < .55) this.say(g, 'hype', this.pick(g, [`비상!! 비상이에요!`, `비상!! ${v.name} 비상!`])); }
         if (typeof Kits !== 'undefined') Kits.vamp(g, a, v, dmg);        // 총공세 크산테 모든 피해 흡혈 20%
         const ctb = f.dmg.get(v) || new Map(); ctb.set(a, (ctb.get(a) || 0) + dmg); f.dmg.set(v, ctb); v.lastHit = a; v.lastHitT = g.t;
         if (v.hp <= 0) {
@@ -1273,7 +1273,7 @@ const Sim = {
       const o = lp && g.pl.find(q => q.side === 'R' && q.role === lp.role);
       this.say(g, 'anal', lp && Math.abs(lp.mu.gd) > 40 ? `${Sim.josa(G.ROLE_KO[lp.role], '은', '는')} ${lp.mu.gd > 0 ? lp.name : o.name} 쪽이 CS를 더 챙기고 있어요. 매치업 상성이 그대로 나오네요.` : this.pick(g, ['라인전 단계, 양 팀 모두 CS를 챙기며 탐색전입니다.', '정글이 위아래로 갈렸거든요. 반대편 라인이 버텨 주느냐가 중요해요.', '아직 조용한데요, 6레벨 찍는 순간부터 그림이 달라집니다.', '양 팀 정글러가 어디 있는지가 제일 궁금한 시간이에요.']));
     } else if (m < 20 || g.r() < .6) this.say(g, 'anal', this.flow(g, m));
-    else this.say(g, 'cast', this.pick(g, (L => (L = L.filter(x => this.objUp(g, 'baron') || !/바론/.test(x)), L.filter(x => !(g.said || {})[x]).length ? L.filter(x => !(g.said || {})[x]) : L))(Math.abs(dg) < 3000 ? ['아직 승부는 알 수 없습니다!', '한타 한 번에 경기가 끝날 수 있는 시간대예요.', '바론 앞 신경전이 이어집니다.', '서로 눈치 보고 있습니다. 먼저 움직이는 쪽이 손해일 수 있어요.', '이 시간대엔 실수 하나면 그대로 끝나요.'] : [`${this.josa(g.side[dg > 0 ? 'R' : 'B'].t.short, '은', '는')} 한 번만 받아치면 돼요. 아직 끝난 게 아닙니다!`, '이 시간대엔 실수 하나면 그대로 끝나요.', '바론 앞 신경전이 이어집니다.'])));   // 아직 안 한 말부터
+    else if (!g.fights.length) this.say(g, 'cast', this.pick(g, (L => (L = L.filter(x => this.objUp(g, 'baron') || !/바론/.test(x)), L.filter(x => !(g.said || {})[x]).length ? L.filter(x => !(g.said || {})[x]) : L))(Math.abs(dg) < 3000 ? ['아직 승부는 알 수 없습니다!', '한타 한 번에 경기가 끝날 수 있는 시간대예요.', '바론 앞 신경전이 이어집니다.', '서로 눈치 보고 있습니다. 먼저 움직이는 쪽이 손해일 수 있어요.', '이 시간대엔 실수 하나면 그대로 끝나요.'] : [`${this.josa(g.side[dg > 0 ? 'R' : 'B'].t.short, '은', '는')} 한 번만 받아치면 돼요. 아직 끝난 게 아닙니다!`, '이 시간대엔 실수 하나면 그대로 끝나요.', '바론 앞 신경전이 이어집니다.'])));   // 아직 안 한 말부터
   },
 
   // ---------- 이동 ----------
