@@ -3,7 +3,9 @@
    경기 중계(match-live)에서는 같은 곡을 작게 깔아 둔다.
    음원은 라이엇 공식 사운드클라우드(soundcloud.com/leagueoflegends)를 사운드클라우드 퍼가기 재생기로 튼다
    (광고 없음 · 저장소에 음원 파일을 올리지 않는다). 곡을 바꾸려면 LISTS만 고치면 된다.
-   직접 가진 음원 파일은 { src: 'assets/music/파일.mp3', title, artist }처럼 적으면 된다.
+   음원 파일: assets/music/worlds/ 와 assets/music/draft/ 폴더에 mp3를 넣으면 그 폴더 곡이 플레이리스트가 된다
+   (GitHub 웹에서 올리기만 하면 됨, 코드 수정 없음). 파일 이름은 "가수 - 제목 (연도).mp3".
+   폴더 목록은 GitHub API로 읽고, 안 되면 assets/music/playlist.json을 읽는다. 폴더가 비어 있으면 사운드클라우드 곡을 쓴다.
    화면: 오른쪽 아래 떠 있는 재생기. 접으면 음표 버튼 하나. 밴픽 · 중계 화면에서는 자동으로 접힌다. */
 const Music = {
   SC: 'https://soundcloud.com/leagueoflegends/',
@@ -30,11 +32,12 @@ const Music = {
   list: null, idx: 0, order: [], w: null, audio: null, ready: false, playing: false, unlocked: false, duck: 1, bad: new Set(), art: {},
 
   init() {
+    this.files = this.scan();
     try { Object.assign(this.pref, JSON.parse(localStorage.getItem(this.KEY) || '{}')); } catch (e) {}
     this.mount();
     Router.onRoute(r => this.route(r));
     // 브라우저는 사용자가 한 번 누르기 전에는 소리를 못 낸다: 첫 터치에서 시작
-    const go = () => { this.unlocked = true; document.removeEventListener('pointerdown', go, true); if (this.pref.on && this.inGame()) this.start(); };
+    const go = () => { this.unlocked = true; this.unlockAudio(); document.removeEventListener('pointerdown', go, true); if (this.pref.on && this.inGame()) this.start(); };
     document.addEventListener('pointerdown', go, true);
     // 게임 화면에서만: 메인 화면 등으로 나가면 멈추고 재생기도 숨긴다
     const show = App.show.bind(App);
@@ -44,6 +47,41 @@ const Music = {
   save() { try { localStorage.setItem(this.KEY, JSON.stringify(this.pref)); } catch (e) {} },
   inGame() { return !!document.querySelector('#screen-game.active'); },
   want(r = Router.current()) { return r === 'match-draft' ? 'draft' : 'worlds'; },
+  // ---------- 음원 폴더 ----------
+  EXT: /\.(mp3|m4a|aac|ogg|opus|wav|flac)$/i,
+  async scan() {
+    const KEY = 'lm27.music.files', now = Date.now();
+    let got = null;
+    try { const c = JSON.parse(localStorage.getItem(KEY) || 'null'); if (c && now - c.t < 30 * 60 * 1000) got = c.d; } catch (e) {}   // 30분 캐시 (GitHub API는 시간당 60번 제한)
+    if (!got) {
+      got = {};
+      const gh = location.hostname.match(/^([^.]+)\.github\.io$/), repo = location.pathname.split('/')[1];
+      if (gh && repo) {
+        for (const k of ['worlds', 'draft']) {
+          try {
+            const r = await fetch(`https://api.github.com/repos/${gh[1]}/${repo}/contents/assets/music/${k}`);
+            if (r.ok) got[k] = (await r.json()).filter(f => f.type === 'file' && this.EXT.test(f.name)).map(f => f.name);
+          } catch (e) {}
+        }
+      }
+      if (!got.worlds && !got.draft) {   // API가 안 되면(로컬 · 제한 초과) 목록 파일
+        try { const r = await fetch('assets/music/playlist.json', { cache: 'no-cache' }); if (r.ok) got = await r.json(); } catch (e) {}
+      }
+      try { localStorage.setItem(KEY, JSON.stringify({ t: now, d: got })); } catch (e) {}
+    }
+    for (const k of ['worlds', 'draft']) {
+      const names = (got[k] || []).filter(n => this.EXT.test(n));
+      if (names.length) this.LISTS[k].tracks = names.map(n => this.parse(n, `assets/music/${k}/`));
+    }
+    if (this.el) this.paint();
+  },
+  // "가수 - 제목 (2024).mp3" → { artist, title, year }. 하이픈이 없으면 파일 이름이 제목
+  parse(n, dir) {
+    let b = n.replace(this.EXT, '').replace(/_/g, ' ').trim(), year = null;
+    const y = b.match(/[\(\[]\s*((?:19|20)\d\d)\s*[\)\]]/); if (y) { year = +y[1]; b = b.replace(y[0], '').trim(); }
+    const i = b.indexOf(' - ');
+    return { src: dir + encodeURIComponent(n), title: i > 0 ? b.slice(i + 3).trim() : b, artist: i > 0 ? b.slice(0, i).trim() : 'League of Legends', year };
+  },
   track() { const L = this.LISTS[this.list]; return L && L.tracks[this.order[this.idx]]; },
   url(t) { return t.sc ? this.SC + t.sc : t.src; },
 
@@ -108,6 +146,7 @@ const Music = {
     const img = $('.mu-art img', el), a = t && this.art[this.url(t)];
     img.style.visibility = a ? '' : 'hidden'; if (a && img.src !== a) img.src = a;
     $('.mu-list', el).textContent = L ? L.name : '';
+    $('.mu-src', el).hidden = !!(t && t.src);
     $('.mu-tracks', el).innerHTML = L ? L.tracks.map((x, i) => `<li data-i="${i}" class="${t === x ? 'cur' : ''} ${this.bad.has(this.url(x)) ? 'bad' : ''}"><b>${UI.esc(x.title)}</b><small>${x.year || ''}</small></li>`).join('') : '';
   },
 
@@ -117,8 +156,9 @@ const Music = {
     if (on) { this.unlocked = true; this.start(); } else this.pause();
     this.paint();
   },
-  start() {
+  async start() {
     if (!this.pref.on) return;
+    await this.files;
     const w = this.want();
     if (this.list !== w || !this.order.length) this.use(w); else this.play();
   },
@@ -129,7 +169,8 @@ const Music = {
     if (!this.pref.on || !this.unlocked) return;
     const w = this.want(r); if (w !== this.list) this.fade(() => this.use(w));
   },
-  use(name) {
+  async use(name) {
+    await this.files;
     const L = this.LISTS[name]; this.list = name;
     this.order = L.tracks.map((_, i) => i);
     for (let i = this.order.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [this.order[i], this.order[j]] = [this.order[j], this.order[i]]; }   // 매번 다른 순서
@@ -145,7 +186,7 @@ const Music = {
     this.paint();
     if (t.src) {
       if (this.w && this.ready) this.w.pause();
-      this.audio ||= Object.assign(new Audio(), { onended: () => this.step(1), onerror: () => this.skip(this.track()), onplay: () => this.set(true), onpause: () => this.set(false) });
+      this.mkAudio();
       this.audio.src = t.src; this.applyVol(); if (play) this.audio.play().catch(() => this.set(false));
       return;
     }
@@ -158,6 +199,13 @@ const Music = {
         this.w.getCurrentSound(s => { if (s && s.artwork_url) { this.art[this.url(t)] = s.artwork_url.replace('-large', '-t300x300'); this.paint(); } });
       } });
     });
+  },
+  mkAudio() { return this.audio ||= Object.assign(new Audio(), { preload: 'auto', onended: () => this.step(1), onerror: () => { if (this.audio.src.startsWith('data:')) return; this.skip(this.track()); }, onplay: () => this.set(true), onpause: () => this.set(false) }); },
+  // 아이폰 사파리는 사용자가 누른 그 순간에 한 번 재생해 둔 오디오만 나중에 틀 수 있다: 첫 터치에서 무음으로 한 번 열어 둔다
+  unlockAudio() {
+    const a = this.mkAudio(); if (a.src) return;
+    a.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
+    const p = a.play(); if (p) p.then(() => { a.pause(); }).catch(() => {});
   },
   skip(t) {
     if (!t) return; this.bad.add(this.url(t));
