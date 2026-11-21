@@ -169,7 +169,7 @@ const Kits = {
     // ----- 챔피언별 효과 -----
     const mul = this.hot(p) && key !== 'R' ? 1.5 : 1;                     // 럼블 위험 상태: 스킬 50% 강화
     if (p.c === 'Rumble') {
-      if (key !== 'R') { k.heat = Math.min(100, k.heat + 20); if (k.heat >= 100 && !k.over) { k.over = g.t + 2; p.km = { v: 1.35, until: g.t + 2 }; this.say(g, p, `${p.name}, 과열! 평타가 불을 뿜습니다!`); } }
+      if (key !== 'R') { k.heat = Math.min(100, k.heat + 20); if (k.heat >= 100 && !k.over) { k.over = g.t + 2; p.km = { v: 1.35, until: g.t + 2 }; this.say(g, p, Sim.lt(g, 'heat', { p: p.name })); } }
       if (this.hot(p) && s.colHot) col = s.colHot;
       if (key === 'E') hit.forEach(v => { const twice = (v.slow || 0) > g.t; v.slow = g.t + 2; v.vuln = { v: 1 + .06 * (twice ? 2 : 1) * mul, until: g.t + 3 }; }), cc = 'slow';
       if (key === 'W') { p.dash = g.t + 1; }
@@ -184,7 +184,7 @@ const Kits = {
       if (key === 'E' && !o.follow && hit.length) k.q.push({ key: 'E', at: g.t + 1, tg: hit[0], shape: 'dash' });                      // E E 평
       if (key === 'W') { p.km = { v: 1.15, until: g.t + 2 }; }                                                                            // W 평
       if (['Q', 'E'].includes(key) || o.follow) p.dash = g.t + 1;                                                                         // 스킬 뒤 돌진 (추격 · 도주)
-      if (key === 'R' && tg) { tg.cc = g.t + 1; cc = 'stun'; p.km = { v: 1.3, until: g.t + 4 }; this.blink(g, p, tg, 1.2); this.say(g, p, `${p.name}의 ${this.nm(p, 'R')}! ${Sim.josa(tg.name, '을', '를')} 꽂고 뒤로 넘어갑니다!`); }
+      if (key === 'R' && tg) { tg.cc = g.t + 1; cc = 'stun'; p.km = { v: 1.3, until: g.t + 4 }; this.blink(g, p, tg, 1.2); this.say(g, p, Sim.lt(g, 'ultHop', { p: p.name, u: this.nm(p, 'R'), tg: tg.name })); }
       if (o.follow && o.follow.key === 'Q') hit.forEach(v => { v.vuln = { v: 1.12, until: g.t + 2 }; });
     } else if (p.c === 'KSante') {
       const AO = this.allout(p);
@@ -208,7 +208,7 @@ const Kits = {
         { const r = this.rank(p, 'R'), A = CStats.now(p), bhp = A ? A.maxHP - (CStats.of(p.c).hp + CStats.of(p.c).hpL * CStats.grow(p.lvl)) : 0;   // R 피해 (데이터): 80~150, 벽을 넘기면 두 번 (160~300 + 추가 체력 5%)
           this.deal(g, p, tg, { p: wall ? [160, 230, 300][r - 1] + bhp * .05 : [80, 115, 150][r - 1] }, o.f); }
         k.allout = g.t + 7; p.hp = Math.min(p.hp, .65); k.cd.W = g.t;     // 총공세에 들어가면 W 재사용 대기 초기화
-        this.say(g, p, wall ? `${p.name}, ${Sim.josa(tg.name, '을', '를')} 벽 너머로 끌고 갑니다! 총공세!` : `${p.name}의 납치! ${Sim.josa(tg.name, '을', '를')} 진영 밖으로 걷어찹니다!`);
+        this.say(g, p, Sim.lt(g, wall ? 'ksWall' : 'ksKick', { p: p.name, tg: tg.name }));
       }
     }
     // 암베사 패시브(용사냥개의 발걸음): 스킬을 쓸 때마다 짧게 도약 (칼리스타처럼) + 다음 평타 강화.
@@ -256,7 +256,7 @@ const Kits = {
     return dmg;
   },
   nm(p, key) { return (Skills.of(p.c).find(x => x.key === key) || {}).name || key; },
-  say(g, p, text) { if (g.r() < .5) Sim.say(g, 'cast', text); },
+  say(g, p, text) { if (text && g.r() < .5) Sim.say(g, 'cast', text); },
   hop(g, p, ctx, tg) {
     const D = Sim.dist, d = 2;                                              // 약 300 유닛
     let dir;

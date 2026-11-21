@@ -241,7 +241,7 @@ const Skills = {
         from: [...p.pos], to, hit: hit.map(q => g.pl.indexOf(q)), miss: dg.miss.map(q => g.pl.indexOf(q)), ally: ally.filter(Boolean).map(q => g.pl.indexOf(q)), big: f.size >= 4 });
       // 해설: 여러 명을 묶은 이니시 궁
       if (s.key === 'R' && hit.length >= 3 && ['up', 'stun', 'pull', 'back'].includes(s.cc) && g.r() < .6)
-        Sim.say(g, 'cast', Sim.pick(g, [`${p.name}의 ${s.name}! ${hit.length}명이 한꺼번에 걸립니다!`, `${s.name}! ${Sim.josa(p.name, '이', '가')} ${hit.length}명을 묶어 버려요!`, `들어갑니다! ${Sim.cn(p)}의 ${s.name}, ${hit.length}명 적중!`]));
+        Sim.line(g, 'ccMulti', { p: p.name, u: s.name, n: hit.length });
       };
       one(); if (g.r() < .5) one();
     });
@@ -258,7 +258,7 @@ const JunglePet = {
       const st = this.stage(p); if (st <= (p.pet || 1)) { p.pet ||= 1; return; }
       p.pet = st;
       // 완전 성장: 펫이 강타에 흡수돼 아이템 칸에서 사라진다 (그 칸에 여섯 번째 아이템이 들어간다)
-      if (st === 3) { p.smite2 = g.t; p.petItem = p.build.start; const i = p.inv.findIndex(x => p.build.start && x.n === p.build.start.n); if (i >= 0) p.inv.splice(i, 1); Sim.say(g, 'anal', Sim.pick(g, [`${p.name}, 정글 펫이 다 컸습니다. 이제 강화된 강타를 써요.`, `${Sim.cn(p)} 정글 펫 완전 성장! ${p.name}, 이제 강화된 강타를 씁니다.`])); }
+      if (st === 3) { p.smite2 = g.t; p.petItem = p.build.start; const i = p.inv.findIndex(x => p.build.start && x.n === p.build.start.n); if (i >= 0) p.inv.splice(i, 1); Sim.line(g, 'pet', { p: p.name }); }
     });
   },
 };

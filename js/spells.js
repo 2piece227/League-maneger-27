@@ -28,7 +28,7 @@ const Spells = {
     p.ssCd[s] = g.t + this.CD[s];
     (g.sk ||= []).push({ t: g.t, i: g.pl.indexOf(p), key: s === 'Flash' ? 'F' : 'D', kind: s === 'Flash' ? 'dash' : 'self', shape: '', cc: '', name: this.KO[s], icon: this.icon(s), from: [...p.pos], to: to ? [...to] : [...p.pos], hit: [], miss: [], ally: [], big: false, col: '255,236,150', kit: true, ss: s });
     // 점멸 도주 · 추격 같은 흔한 장면은 30초에 한 번, 절반만 부른다 (한 경기에 열 번 넘게 나오던 것). 점멸 이니시 · 마무리 같은 큰 장면은 그대로
-    const minor = say && /살아 나갑니다|점멸로 빠집니다|벽을 넘어|따라붙습니다|끝까지 따라|정화로|탈진/.test(say);
+    const minor = say && /점멸로 빠집니다|벽 넘어 빠집니다|따라붙습니다|끝까지 쫓아|정화로|탈진/.test(say);
     if (say && g.r() < .7 && (!minor || (g.t - (g.ssSay ?? -99) >= 30 && g.r() < .5))) { Sim.say(g, 'cast', say); if (minor) g.ssSay = g.t; }
   },
   // 각을 보는 실력 (0.6 ~ 1.2)
@@ -57,7 +57,7 @@ const Spells = {
         if (!foes.length) continue;
         const D = Sim.dist, sk = this.skill(p), R = this.reach(p);
         // 정화: 묶였으면 바로 푼다
-        if ((p.cc || 0) > g.t && this.ready(g, p, 'Cleanse') && p.hp < .85) { p.cc = 0; this.use(g, p, 'Cleanse', null, `${p.name}, 정화로 풀어냅니다!`); }
+        if ((p.cc || 0) > g.t && this.ready(g, p, 'Cleanse') && p.hp < .85) { p.cc = 0; this.use(g, p, 'Cleanse', null, Sim.lt(g, 'cleanse', { p: p.name })); }
         if ((p.cc || 0) > g.t || p.fled) continue;
         // 점멸 이니시: 싸움이 막 열릴 때, 묶는 궁(이니시 궁)이 있는 앞라인 · 돌진형이 점멸로 붙어 바로 궁 — 반응할 틈이 없다
         if (g.t - f.t0 <= 1 && f.size >= 3 && !(f.fe && f.fe[p.side]) && this.ready(g, p, 'Flash') && this.initUlt(g, p)) {
@@ -68,7 +68,7 @@ const Spells = {
             if (to) {
               (f.fe ||= {})[p.side] = 1; p.flashEng = g.t; p.forceR = g.t; p.hitTo = tg;
               const rc = ((typeof Skills !== 'undefined' ? Skills.of(p.c) : [])[3] || {}).cc, hit = { up: '그대로 띄워집니다', stun: '그대로 묶입니다', pull: '그대로 끌려옵니다', back: '그대로 밀려납니다' }[rc];   // 묶는 궁일 때만 '묶입니다'
-              this.flash(g, p, to, Sim.pick(g, [`점멸 이니시! ${p.name}의 ${Sim.cn(p)}, 반응할 틈이 없습니다!`, hit ? `${p.name}, 점멸 ${this.ultName(p)}! ${Sim.josa(tg.name, '이', '가')} ${hit}!` : `${p.name}, 점멸 ${this.ultName(p)}! 곧바로 ${Sim.josa(tg.name, '을', '를')} 덮칩니다!`, `플래시 궁! ${Sim.josa(p.name, '이', '가')} 한 번에 들어가요!`]));
+              this.flash(g, p, to, Sim.lt(g, hit ? 'flashEngage' : 'flashEngageNoHit', { p: p.name, u: this.ultName(p), tg: tg.name, hit }));
               continue;
             }
           }
@@ -79,7 +79,7 @@ const Spells = {
           const noF = v && !this.ready(g, v, 'Flash');
           if (v && g.r() < (noF ? .7 : .4) * sk) {
             const d = D(v.pos, p.pos), to = this.blinkTo(p.pos, [v.pos[0] - p.pos[0], v.pos[1] - p.pos[1]], Math.min(this.FLASH, d - R + .6));
-            if (to) { p.hitTo = v; v.flashChased = g.t; this.flash(g, p, to, noF ? `${Sim.josa(v.name, '은', '는')} 점멸이 없어요! ${p.name}, 점멸로 따라붙습니다!` : `${p.name}, 점멸로 끝까지 따라갑니다!`); continue; }
+            if (to) { p.hitTo = v; v.flashChased = g.t; this.flash(g, p, to, Sim.lt(g, 'flashChase', { p: p.name, v: v.name })); continue; }
           }
         }
         // 점화: 마무리 각 (고정 피해, 4.5 안)
@@ -91,7 +91,7 @@ const Spells = {
         if (this.ready(g, p, 'Exhaust')) {
           const us = mem.filter(q => q.side === p.side && Sim.isCarry(q) && q.hp < .7);
           const v = foes.filter(q => (q.kind === 'dive' || q.kind === 'bruiser' || q.kind === 'adc') && D(q.pos, p.pos) <= 4.5 && us.some(c => D(c.pos, q.pos) < 4.5)).sort((a, b) => Sim.ppow(b, Sim.min(g)) - Sim.ppow(a, Sim.min(g)))[0];
-          if (v && g.r() < .55 * sk) { v.exh = g.t + 2; this.use(g, p, 'Exhaust', v.pos, g.r() < .4 ? `${p.name}, ${Sim.josa(v.name, '에게', '에게')} 탈진! 딜이 안 들어갑니다!` : null); }
+          if (v && g.r() < .55 * sk) { v.exh = g.t + 2; this.use(g, p, 'Exhaust', v.pos, g.r() < .4 ? Sim.lt(g, 'exhaust', { p: p.name, v: v.name }) : null); }
         }
       }
     }
@@ -123,7 +123,7 @@ const Spells = {
           const sc = far + (over ? 3 : 0) - Math.abs(da);
           if (!best || sc > best.sc) best = { to, sc, over };
         }
-        if (best) { this.flash(g, p, best.to, best.over ? `${p.name}, 점멸로 벽을 넘어 빠집니다!` : `살았어요! ${p.name}, 점멸로 빠집니다!`); p.fled = f.id; Sim.retreat(g, p, 18); continue; }
+        if (best) { this.flash(g, p, best.to, Sim.lt(g, best.over ? 'flashWall' : 'flashEscape', { p: p.name })); p.fled = f.id; Sim.retreat(g, p, 18); continue; }
       }
       // 유체화: 도망 · 추격
       if (this.ready(g, p, 'Ghost') && (p.fled === f.id || foes.some(q => q.fled === f.id && q.hp < .3)) && g.r() < .6 * sk) { p.ghost = g.t + 5; Sim.refresh(p); this.use(g, p, 'Ghost'); }

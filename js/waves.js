@@ -66,7 +66,7 @@ Object.assign(Sim, {
           v.hp -= base * (1 + .4 * Math.min(3, st.heat)) * this.KIND[v.kind].take; st.heat++;
           if (v.hp <= 0) {
             const lh = v.lastHit && v.lastHit.side === k && g.t - (v.lastHitT || -99) <= 12 ? v.lastHit : this.alive(g, k).filter(q => this.dist(q.pos, v.pos) <= 14).sort((x, y) => this.dist(x.pos, v.pos) - this.dist(y.pos, v.pos))[0];
-            if (lh) { this.kill(g, lh, v, [], true); g.twKills++; const f = g.fights.find(x => x.mem.has(v)); if (f) f.kills[k]++; if (g.r() < .6) this.say(g, 'cast', this.pick(g, [`${v.name}, 포탑에 맞고 쓰러집니다! 다이브가 너무 깊었어요!`, `포탑이 마무리합니다! ${this.josa(v.name, '이', '가')} 살아 나오지 못해요.`])); }
+            if (lh) { this.kill(g, lh, v, [], true); g.twKills++; const f = g.fights.find(x => x.mem.has(v)); if (f) f.kills[k]++; if (g.r() < .6) this.line(g, 'towerKill', { v: v.name }); }
             else this.execute(g, v, k);
             st.tg = null; st.heat = 0;
           } else if (!(v.dive > g.t) || v.hp < .35) { v.dive = 0; v.noDive = g.t + 15; v.shotT = g.t; v.recall = 0; if (!v.hold || this.danger(g, o, v.hold.to)) this.retreat(g, v, 10); }   // 다이브가 아니면 맞는 즉시 빠진다
@@ -89,7 +89,7 @@ Object.assign(Sim, {
       s.plate[lane]--; g.plateN++;
       const ps = this.alive(g, k).filter(p => this.dist(p.pos, st.pos) <= 14);
       ps.forEach(p => { p.gold += this.PLATE_G / ps.length; });
-      if (ps.length && g.r() < .25) this.say(g, 'anal', `${ps.sort((a, b) => this.dist(a.pos, st.pos) - this.dist(b.pos, st.pos))[0].name}, ${this.laneKo(lane)} 포탑 방패를 뜯어냅니다. 골드 차이가 벌어져요.`);
+      if (ps.length && g.r() < .25) this.line(g, 'plate', { p: ps.sort((a, b) => this.dist(a.pos, st.pos) - this.dist(b.pos, st.pos))[0].name, lane: this.laneKo(lane) });
     }
   },
   towerGold(g, k, st) {
