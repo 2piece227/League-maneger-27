@@ -179,7 +179,7 @@ const Live = {
     if (now < this.capUntil) return;
     const c = this.capQ.shift(); if (!c) { if (box.firstChild && now > this.capUntil + 1500) box.innerHTML = ''; return; }
     const p = g.pl.filter(x => x.name && x.name.length >= 2 && c.text.includes(x.name)).sort((a, b) => c.text.indexOf(a.name) - c.text.indexOf(b.name))[0];
-    const who = Sim.CAST[c.who] || '', face = p && p.p.photo ? `<img class="${p.side === 'B' ? 'b' : 'r'}" src="${p.p.photo}" alt="" referrerpolicy="no-referrer" onerror="this.outerHTML='<i class=&quot;${c.who}&quot;>${UI.esc(who.slice(-2, -1))}</i>'">` : p ? `<span class="${p.side === 'B' ? 'b' : 'r'}">${SoloQ.ic(p.c)}</span>` : `<i class="${c.who}">${UI.esc(who.slice(-2, -1))}</i>`;
+    const who = c.by || Sim.voice(g, c.who) || '', face = p && p.p.photo ? `<img class="${p.side === 'B' ? 'b' : 'r'}" src="${p.p.photo}" alt="" referrerpolicy="no-referrer" onerror="this.outerHTML='<i class=&quot;${c.who}&quot;>${UI.esc(who.slice(0, 1))}</i>'">` : p ? `<span class="${p.side === 'B' ? 'b' : 'r'}">${SoloQ.ic(p.c)}</span>` : `<i class="${c.who}">${UI.esc(who.slice(0, 1))}</i>`;
     box.innerHTML = `<div class="lv-cap-in ${c.who}">${face}<div><b>${UI.esc(who)}</b><p>${UI.esc(c.text)}</p></div></div>`;
     this.capUntil = now + Math.max(2000, Math.min(4200, 1300 + c.text.length * 42)) / Math.sqrt(this.speed);
   },
@@ -537,7 +537,7 @@ const Live = {
     const comm = $('.lv-comm', el);
     if (comm.dataset.n != g.comm.length) {
       comm.dataset.n = g.comm.length;
-      comm.innerHTML = g.comm.slice(-30).map(c => `<div class="lv-line ${c.who}"><span>${Sim.clock(c.t)}</span><b>${Sim.CAST[c.who]}</b><p>${UI.esc(c.text)}</p></div>`).join('');
+      comm.innerHTML = g.comm.slice(-30).map(c => `<div class="lv-line ${c.who}"><span>${Sim.clock(c.t)}</span><b>${UI.esc(c.by || Sim.voice(g, c.who))}</b><p>${UI.esc(c.text)}</p></div>`).join('');
       comm.scrollTop = comm.scrollHeight;
     }
   },

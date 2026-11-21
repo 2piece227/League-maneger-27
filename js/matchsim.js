@@ -237,7 +237,10 @@ const Sim = {
     g.wph = { top: r() * 6.283, mid: r() * 6.283, bot: r() * 6.283 };
     g.said = {}; g.fights = []; g.fid = 0; g.core3 = {};
     this.wavesInit(g);   // 미니언 웨이브 · 포탑 (js/waves.js)
-    this.say(g, 'cast', this.pick(g, [`자, ${this.josa(g.side.B.t.name, '과', '와')} ${g.side.R.t.name}의 ${gameNo ? gameNo + '세트' : '경기'}, 지금 시작합니다!`, `${gameNo ? gameNo + '세트' : '경기'} 만나 보시죠. ${g.side.B.t.short} 대 ${g.side.R.t.short}, 시작합니다!`]));
+    g.caster = r() < .5 ? 'jin' : 'castle';
+    this.draftTalk(g, S);
+    const setN = gameNo ? gameNo + '세트' : '경기';
+    this.say(g, 'cast', this.byCaster(g, { jin: `자~ ${this.josa(g.side.B.t.name, '과', '와')} ${g.side.R.t.name}의 ${setN}, 시작합니다~!`, castle: this.pick(g, [`자, 바로 만나 보시죠! ${g.side.B.t.short} 대 ${g.side.R.t.short}, ${setN} 시작합니다!`, `양 팀 준비 끝났습니다. ${setN}, 지금 시작합니다!`]) }));
     // 라이벌전 첫 멘트 (점수가 높을수록 들뜬다)
     const rv = typeof Rivalry !== 'undefined' && Rivalry.of(g.side.B.t.id, g.side.R.t.id);
     if (rv) this.say(g, rv.score >= 4.5 ? 'hype' : 'anal', rv.score >= 4.5 ? this.pick(g, [`${rv.name}입니다! 오늘은 순위 같은 거 다 필요 없어요!`, `팬들이 제일 기다리는 경기, ${rv.name}! 분위기가 벌써 뜨겁습니다!`]) : `${this.josa(rv.name, '이', '')}죠. ${rv.desc}`);
@@ -275,6 +278,27 @@ const Sim = {
     const d = () => Math.round(10 + g.r() * g.r() * 170);
     ob.go = { B: ob.at + d(), R: ob.at + d() };
   },
+  // 밴픽 해설: 밴이 누구를 노렸나 · 시그니처 · 스왑 픽 · 메타 픽. 엔진이 아는 사실로만
+  draftTalk(g, S) {
+    const P = k => g.pl.filter(p => p.side === k), cnm = c => (Champions.byId[c] || {}).name || c;
+    this.say(g, 'cast', this.byCaster(g, { jin: '밴픽 끝났습니다~ 양 팀 조합, 한번 보시죠!', castle: '자, 밴픽 정리해 보겠습니다.' }));
+    // 밴: 상대 한 선수의 주력 챔피언을 두 장 이상 뺐나
+    for (const k of ['B', 'R']) {
+      const o = this.other(k), bans = (S.bans && S.bans[k]) || [];
+      const hit = P(o).map(p => { const top = Mastery.pool(p.p.id).slice().sort((a, b) => b.m - a.m).slice(0, 4).map(e => e.c); return { p, n: bans.filter(c => top.includes(c)), }; }).sort((a, b) => b.n.length - a.n.length)[0];
+      if (hit && hit.n.length >= 2) { this.say(g, 'anal', `${g.side[k].t.short} 밴을 보면 ${this.josa(hit.n.map(cnm).join(', '), '이', '가')} 다 ${hit.p.name} 쪽이거든요. ${this.josa(hit.p.name, '을', '를')} 묶겠다는 거죠.`); break; }
+    }
+    // 스왑 픽: 그 포지션에서 거의 안 쓰는 챔피언
+    // (정글 나피리처럼 프로에서 흔한 유연한 픽은 빼고, 원딜 자리에 원딜이 아닌 챔피언처럼 누가 봐도 이상한 픽만)
+    const swap = g.pl.find(p => { const ch = Champions.byId[p.c]; return ch && ch.positions && !ch.positions.includes(p.role) && ((p.role === 'BOT' && p.kind !== 'adc') || (p.role === 'SUP' && this.isCarry(p) && p.kind !== 'ench')); });
+    if (swap) this.say(g, 'hype', this.pick(g, [`어? ${this.cn(swap)} ${G.ROLE_KO[swap.role]}요? 이거 진짜 나왔습니다!`, `${this.josa(this.cn(swap), '을', '를')} ${G.ROLE_KO[swap.role]}로? 이건 준비해 온 카드예요!`]));
+    // 시그니처: 그 선수 손에 맞는 챔피언
+    const sig = g.pl.filter(p => p.sig).sort((a, b) => b.m - a.m)[0];
+    if (sig) this.say(g, 'anal', this.pick(g, [`${sig.name}의 ${this.josa(this.cn(sig), '이', '가')} 나왔습니다. 믿고 쓰는 카드죠.`, `${this.josa(this.cn(sig), '을', '를')} 풀어 줬어요. ${sig.name} 상대로 이걸 주는 건 꽤 과감한 선택이거든요.`]));
+    // 메타 픽
+    const hot = g.pl.slice().sort((a, b) => b.meta - a.meta)[0];
+    if (hot && hot.meta >= .7 && hot !== sig) this.say(g, 'anal', `요즘 제일 많이 나오는 ${this.josa(this.cn(hot), '은', '는')} ${this.josa(g.side[hot.side].t.short, '이', '가')} 가져갔고요.`);
+  },
   compTalk(g) {
     const b = g.side.B.comp, r = g.side.R.comp, B = g.side.B.t.short, R = g.side.R.t.short;
     if (b.early - r.early > .12) return `${this.josa(B, '이', '가')} 초반에 훨씬 강한 그림이에요.`;
@@ -309,7 +333,14 @@ const Sim = {
 
   // ---------- 해설 ----------
   // 중계진 (가상 인물): 캐스터 — 장면을 크게 외친다 / 해설 정민 — 차분한 분석 / 해설 태오 — 텐션 높은 리액션
-  CAST: { cast: '캐스터 한도윤', anal: '해설 정민', hype: '해설 태오' },
+  // 중계진 (별명으로 부르는 가상 캐릭터): 캐스터 한 명 + 해설 둘. 캐스터는 경기마다 진 · 캐슬 중 하나
+  //   진 캐스터: 소리를 길게 끄는 큰 외침 ("끝~났습니다!") / 캐슬 캐스터: 빠르고 시원한 진행
+  //   왕자 해설(anal): 차분하게 이유를 짚는다 ("~거든요") / 구름 해설(hype): 급박한 순간 "비상!!"을 외친다
+  CREW: { jin: '진 캐스터', castle: '캐슬 캐스터', prince: '왕자 해설', cloud: '구름 해설' },
+  CAST: { cast: '진 캐스터', anal: '왕자 해설', hype: '구름 해설' },
+  voice(g, who) { return who === 'cast' ? this.CREW[(g && g.caster) || 'jin'] : this.CAST[who] || ''; },
+  // 캐스터마다 다른 말: { jin, castle } 중 이번 캐스터 것
+  byCaster(g, o) { return o[g.caster] || o.jin; },
   // 궁극기 연출: 전장 어디든 합류하는 궁(텔레포트처럼 정신집중 3초) · 멀리서 도망가는 적을 잡는 궁
   ULT_JOIN: ['Shen', 'TwistedFate', 'Galio', 'Pantheon', 'Nocturne', 'Taliyah'],
   ULT_SNIPE: ['Jinx', 'Ezreal', 'Ashe', 'Senna', 'Draven', 'Karthus'],
@@ -319,7 +350,7 @@ const Sim = {
   // 같은 문장: 해설(anal)은 한 경기에 한 번, 캐스터 · 리액션은 두 번까지(90초 넘게 떨어져 있을 때만)
   // 해설이 캐스터의 말을 받아 이유를 붙인다 (실제 중계: "맞습니다", "그렇죠"로 받고 "~거든요"로 설명)
   reply(g, text) { this.say(g, 'anal', (g.r() < .55 ? this.pick(g, ['맞습니다. ', '그렇죠. ', '네, ', '이거죠. ']) : '') + text); },
-  say(g, who, text) { const S = (g.said ||= {}), n = S[text] || 0, last = (g.saidT ||= {})[text]; if (n >= (who === 'anal' ? 1 : 2) || (last != null && g.t - last < 90)) return; S[text] = n + 1; g.saidT[text] = g.t; g.comm.push({ t: g.t, who, text }); },   // 같은 문장은 한 경기에 두 번까지
+  say(g, who, text) { const S = (g.said ||= {}), n = S[text] || 0, last = (g.saidT ||= {})[text]; if (n >= (who === 'anal' ? 1 : 2) || (last != null && g.t - last < 90)) return; S[text] = n + 1; g.saidT[text] = g.t; g.comm.push({ t: g.t, who, text, by: this.voice(g, who) }); },   // 같은 문장은 한 경기에 두 번까지
   clock: t => `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(Math.floor(t % 60)).padStart(2, '0')}`,
   pick(g, arr) { return arr[Math.floor(g.r() * arr.length)]; },
   cn: p => Champions.byId[p.c].name,
@@ -396,7 +427,7 @@ const Sim = {
     g.side[killer.side].kills++;
     g.kills.push({ t: g.t, k: killer, v: victim, at: [...victim.pos] });
     g.feed.push({ t: g.t, killer, victim, first });
-    if (first) this.say(g, 'cast', this.pick(g, [`퍼스트 블러드! ${g.side[killer.side].t.short} ${killer.name}, ${this.josa(victim.name, '을', '를')} 잡아냅니다!`, `첫 킬 나왔습니다! ${this.josa(killer.name, '이', '가')} ${this.josa(victim.name, '을', '를')} 잡아요!`, `잡았어요, 잡았어요! 퍼스트 블러드는 ${killer.name}!`]));
+    if (first) this.say(g, 'cast', this.byCaster(g, { jin: this.pick(g, [`퍼스트~ 블러드! ${killer.name}~!`, `잡~았습니다! 퍼스트 블러드는 ${killer.name}!`]), castle: this.pick(g, [`퍼스트 블러드! ${g.side[killer.side].t.short} ${killer.name}, ${this.josa(victim.name, '을', '를')} 잡아냅니다!`, `첫 킬 나왔습니다! ${this.josa(killer.name, '이', '가')} ${this.josa(victim.name, '을', '를')} 잡아요!`]) }));
   },
   pickKiller(g, ps) {
     const w = ps.map(p => ({ p, w: ({ MID: 1.3, BOT: 1.5, JGL: 1.1, TOP: 1, SUP: .35 }[p.role]) * (1 + p.st.pick * .5 + p.st.early * .2) }));
@@ -570,7 +601,7 @@ const Sim = {
         if (v.sh && v.sh.until > g.t && v.sh.v > 0) { const ab = Math.min(v.sh.v, dmg); v.sh.v -= ab; dmg -= ab; if (dmg <= 0) return; }
         v.hp -= dmg;
         // 큰 싸움에서 우리 딜러가 죽기 직전: 실제 중계처럼 이름을 반복해서 외친다 (한 싸움에 한 번)
-        if (!f.dang && f.size >= 6 && v.hp > 0 && v.hp < .25 && this.isCarry(v) && v.role !== 'SUP') { f.dang = v; this.say(g, 'cast', this.pick(g, [`${v.name} 위험해요, ${v.name} 위험해요!`, `${v.name} 살려야 돼요, 살려야 돼요!`, `빠져야 돼요, ${v.name} 빠져야 돼요!`])); }
+        if (!f.dang && f.size >= 6 && v.hp > 0 && v.hp < .25 && this.isCarry(v) && v.role !== 'SUP') { f.dang = v; this.say(g, 'cast', this.pick(g, [`${v.name} 위험해요, ${v.name} 위험해요!`, `${v.name} 살려야 돼요, 살려야 돼요!`, `빠져야 돼요, ${v.name} 빠져야 돼요!`])); if (g.r() < .55) this.say(g, 'hype', this.pick(g, [`비상!! 비상이에요!`, `비상!! ${v.name} 비상!`])); }
         if (typeof Kits !== 'undefined') Kits.vamp(g, a, v, dmg);        // 총공세 크산테 모든 피해 흡혈 20%
         const ctb = f.dmg.get(v) || new Map(); ctb.set(a, (ctb.get(a) || 0) + dmg); f.dmg.set(v, ctb); v.lastHit = a; v.lastHitT = g.t;
         if (v.hp <= 0) {
@@ -701,7 +732,7 @@ const Sim = {
     if (!f) return;
     const ws = g.side[f.wk].t.short;
     if (!f.n && !f.t) { if (f.size >= 4 && g.r() < .4) this.say(g, 'anal', `${where ? where + '에서 ' : ''}부딪혔지만 둘 다 빠집니다. 킬 없이 체력만 주고받았어요.`); return; }
-    if (f.ace) { this.say(g, 'cast', this.pick(g, [`에이스! ${this.josa(ws, '이', '가')} 상대를 전멸시킵니다!`, `다 잡았어요, 다 잡았어요! ${ws} 에이스!`])); this.say(g, 'hype', this.pick(g, ['이제 넥서스까지 갈 수 있습니다!', '전멸! 이건 경기 끝날 수도 있어요!', '라스트 맨 스탠딩도 없어요. 그냥 들어가면 됩니다!'])); }
+    if (f.ace) { this.say(g, 'cast', this.byCaster(g, { jin: `에이~스! ${this.josa(ws, '이', '가')} 다 잡아냅니다~!`, castle: this.pick(g, [`에이스! ${this.josa(ws, '이', '가')} 상대를 전멸시킵니다!`, `다 잡았어요, 다 잡았어요! ${ws} 에이스!`]) })); this.say(g, 'hype', this.pick(g, ['이제 넥서스까지 갈 수 있습니다!', '전멸! 이건 경기 끝날 수도 있어요!', '라스트 맨 스탠딩도 없어요. 그냥 들어가면 됩니다!'])); }
     // '대규모 교전'은 킬이 4개 이상 오간 한타에만 (킬 2~3개짜리에 붙던 문제)
     else if (f.big && f.n + f.t >= 4) this.say(g, 'cast', this.pick(g, [`한타 열립니다! ${this.josa(ws, '이', '가')} ${f.n}킬을 가져가요!`, (f.n === f.t ? `대규모 교전! ${f.n} 대 ${Sim.josa(f.t, '으로', '로')} 서로 주고받습니다!` : `대규모 교전! ${ws} 쪽으로 기웁니다, ${f.n} 대 ${f.t}!`)]));
     else if (f.big && f.n + f.t >= 3) this.say(g, 'cast', `한타 열립니다! ${this.josa(ws, '이', '가')} ${f.n}킬을 가져가요!`);
@@ -747,6 +778,7 @@ const Sim = {
       this.say(g, 'cast', `억제기까지 깨집니다! ${this.josa(ks, '이', '가')} 슈퍼 미니언을 앞세웁니다.`);
     } else if (st.kind === 'nexusT') {
       s.ntp[st.i] -= dmg; if (s.ntp[st.i] > 0) return;
+      if (s.nexusT === 2) this.say(g, 'hype', `비상!! ${g.side[o].t.short} 쌍둥이 포탑 하나 깨졌어요! 이제 넥서스가 열립니다!`);
       s.ntp[st.i] = 0; s.nexusT--; s.down++; this.towerGold(g, k, st); this.mark(g, k, 'nexusT', 'tower', '쌍둥이 포탑 파괴'); g.fx.push({ type: 'tower', at: st.pos, t: g.t, side: k });
     } else { s.nxhp -= dmg; if (s.nxhp <= 0) this.endGame(g, k); }
   },
@@ -1107,7 +1139,7 @@ const Sim = {
       if (g.t < 90 || !a || !b || a.tac === 'hold' || b.tac === 'hold' || a.recall || b.recall || a.tpCh || b.tpCh || this.dist(a.pos, b.pos) > 13 || this.distLane(a.pos, lane) > 5 || this.distLane(b.pos, lane) > 5 || g.r() > this.TRADE * this.agr(g) * Math.max((a && a.fx && a.fx.trade) || 1, (b && b.fx && b.fx.trade) || 1)) return;   // 미니언이 만나기(1:30) 전에는 싸움이 없다
       // 라인 딜교환: 1대1 교전 (매치업·압박 전술은 유리함으로). 대부분 체력만 주고받고 빠진다
       const press = (a.tac === 'press' ? 3 : 0) - (b.tac === 'press' ? 3 : 0) + ((a.fx || {}).duel || 0) - ((b.fx || {}).duel || 0), muE = (a.mu.wr - .5) * 25;   // 독고다이 · 라인전 전문가
-      this.fightAt(g, [(a.pos[0] + b.pos[0]) / 2, (a.pos[1] + b.pos[1]) / 2], 8, { bonus: { side: 'B', v: press + muE }, onEnd: f => { if (f.n) { const w = g.pl.find(x => x.side === f.wk && x.role === role), l = g.pl.find(x => x.side !== f.wk && x.role === role); this.say(g, 'cast', this.pick(g, [`${w.name}, ${this.laneKo(lane)} 솔로킬! ${this.cn(w)} 라인전에서 압도합니다!`, `${this.josa(l.name, '이', '가')} 잘렸어요! ${w.name}의 피지컬!`, `${w.name}, 1대1에서 이겨냅니다!`])); } } });
+      this.fightAt(g, [(a.pos[0] + b.pos[0]) / 2, (a.pos[1] + b.pos[1]) / 2], 8, { bonus: { side: 'B', v: press + muE }, onEnd: f => { if (f.n && g.kills.length > 1) { const w = g.pl.find(x => x.side === f.wk && x.role === role), l = g.pl.find(x => x.side !== f.wk && x.role === role); this.say(g, 'cast', this.pick(g, [`${w.name}, ${this.laneKo(lane)} 솔로킬! ${this.cn(w)} 라인전에서 압도합니다!`, `${this.josa(l.name, '이', '가')} 잘렸어요! ${w.name}의 피지컬!`, `${w.name}, 1대1에서 이겨냅니다!`])); } } });
     });
     const bb = this.near(g, 'B', Rift.lane('bot', .5), 60).filter(p => ['BOT', 'SUP'].includes(p.role)), rb = this.near(g, 'R', Rift.lane('bot', .5), 60).filter(p => ['BOT', 'SUP'].includes(p.role));
     if (g.t >= 90 && bb.length && rb.length && this.dist(bb[0].pos, rb[0].pos) < 13 && this.distLane(bb[0].pos, 'bot') < 5 && g.r() < this.TRADE * .9 * this.agr(g)) {
@@ -1204,7 +1236,9 @@ const Sim = {
     // 시리즈를 끝내는 세트면 시리즈 스코어까지
     const ser = g.S && g.S.series, need = ser && ser.bo > 1 ? Math.ceil(ser.bo / 2) : 0;
     const sc = need && typeof Season !== 'undefined' ? Season.seriesScore(ser) : {}, wN = (sc[s.t.id] || 0) + 1, lN = sc[g.side[this.other(k)].t.id] || 0;
-    if (need && wN >= need) this.say(g, 'cast', this.pick(g, [`넥서스 깨면서 갑니다! ${this.josa(s.t.name, '이', '가')} ${wN}:${Sim.josa(lN, '으로', '로')} 시리즈를 가져갑니다!`, `끝났습니다! ${s.t.short}, 세트 스코어 ${wN} 대 ${Sim.josa(lN, '으로', '로')} 승리합니다!`]));
+    if (need && wN >= need && g.caster === 'jin') this.say(g, 'cast', `끝~났습니다! ${s.t.name}, 세트 스코어 ${wN} 대 ${Sim.josa(lN, '으로', '로')} 시리즈를 가져갑니다~!`);
+    else if (need && wN >= need) this.say(g, 'cast', this.pick(g, [`넥서스 깨면서 갑니다! ${this.josa(s.t.name, '이', '가')} ${wN}:${Sim.josa(lN, '으로', '로')} 시리즈를 가져갑니다!`, `끝났습니다! ${s.t.short}, 세트 스코어 ${wN} 대 ${Sim.josa(lN, '으로', '로')} 승리합니다!`]));
+    else if (g.caster === 'jin') this.say(g, 'cast', `넥서스~ 파괴! ${this.josa(s.t.name, '이', '가')} ${g.S && g.S.game ? g.S.game + '세트를' : '경기를'} 가져갑니다~!`);
     else this.say(g, 'cast', this.pick(g, [`넥서스 파괴! ${this.josa(s.t.name, '이', '가')} ${this.clock(g.t)}에 승리합니다!`, `넥서스 깨면서 갑니다! ${s.t.short}, ${g.S && g.S.game ? g.S.game + '세트' : '경기'} 가져갑니다!`]));
     // 복기: 한쪽이 크게 앞서다 뒤집힌 경기면 그 얘기를
     const hist = g.leadHist || [], sg = k === 'B' ? 1 : -1, worst = Math.min(0, ...hist.map(v => v * sg));
@@ -1239,7 +1273,7 @@ const Sim = {
       const o = lp && g.pl.find(q => q.side === 'R' && q.role === lp.role);
       this.say(g, 'anal', lp && Math.abs(lp.mu.gd) > 40 ? `${Sim.josa(G.ROLE_KO[lp.role], '은', '는')} ${lp.mu.gd > 0 ? lp.name : o.name} 쪽이 CS를 더 챙기고 있어요. 매치업 상성이 그대로 나오네요.` : this.pick(g, ['라인전 단계, 양 팀 모두 CS를 챙기며 탐색전입니다.', '정글이 위아래로 갈렸거든요. 반대편 라인이 버텨 주느냐가 중요해요.', '아직 조용한데요, 6레벨 찍는 순간부터 그림이 달라집니다.', '양 팀 정글러가 어디 있는지가 제일 궁금한 시간이에요.']));
     } else if (m < 20 || g.r() < .6) this.say(g, 'anal', this.flow(g, m));
-    else this.say(g, 'cast', this.pick(g, Math.abs(dg) < 3000 ? ['아직 승부는 알 수 없습니다!', '한타 한 번에 경기가 끝날 수 있는 시간대예요.', '바론 앞 신경전이 이어집니다.', '서로 눈치 보고 있습니다. 먼저 움직이는 쪽이 손해일 수 있어요.', '이 시간대엔 실수 하나면 그대로 끝나요.'] : [`${this.josa(g.side[dg > 0 ? 'R' : 'B'].t.short, '은', '는')} 한 번만 받아치면 돼요. 아직 끝난 게 아닙니다!`, '이 시간대엔 실수 하나면 그대로 끝나요.', '바론 앞 신경전이 이어집니다.']));
+    else this.say(g, 'cast', this.pick(g, (L => L.filter(x => !(g.said || {})[x]).length ? L.filter(x => !(g.said || {})[x]) : L)(Math.abs(dg) < 3000 ? ['아직 승부는 알 수 없습니다!', '한타 한 번에 경기가 끝날 수 있는 시간대예요.', '바론 앞 신경전이 이어집니다.', '서로 눈치 보고 있습니다. 먼저 움직이는 쪽이 손해일 수 있어요.', '이 시간대엔 실수 하나면 그대로 끝나요.'] : [`${this.josa(g.side[dg > 0 ? 'R' : 'B'].t.short, '은', '는')} 한 번만 받아치면 돼요. 아직 끝난 게 아닙니다!`, '이 시간대엔 실수 하나면 그대로 끝나요.', '바론 앞 신경전이 이어집니다.'])));   // 아직 안 한 말부터
   },
 
   // ---------- 이동 ----------
