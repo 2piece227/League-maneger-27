@@ -398,6 +398,7 @@ const Career = {
               <div class="set-row"><div>기본 시뮬레이션 속도</div>
                 <select id="st-speed"><option value="slow">느리게</option><option value="normal">보통</option><option value="fast">빠르게</option></select></div>
               <div class="set-row"><div>효과음 볼륨</div><input type="range" id="st-vol" min="0" max="100" value="${s.volume}"></div>
+              <div class="set-row"><div>배경 음악<small>밴픽에서는 밴픽 음악, 그 밖의 화면에서는 월즈 주제가 (상단바 재생기)</small></div><input type="checkbox" id="st-music" ${typeof Music !== 'undefined' && Music.pref.on ? 'checked' : ''}></div>
               <div class="set-row"><div>튜토리얼<small>코치진이 화면마다 처음 들어갈 때 안내합니다</small></div><button class="btn-ghost sm" id="st-tut">처음부터 다시 보기</button></div>
               <div class="sv-foot"><button class="btn-ghost" id="st-title">메인 화면으로</button></div>
             </div>
@@ -411,6 +412,7 @@ const Career = {
       $('#st-vol', el).onchange = e => { s.volume = +e.target.value; persist(); };
       $('#st-title', el).onclick = () => App.show('title');
       $('#st-tut', el).onclick = () => Tutorial.reset();
+      $('#st-music', el).onchange = e => { if (typeof Music !== 'undefined') Music.setOn(e.target.checked); UI.toast(e.target.checked ? '배경 음악 켜짐' : '배경 음악 꺼짐'); };
       $$('.sv-slot', el).forEach(row => {
         const id = row.dataset.slot;
         const data = id === 'auto' ? SaveSystem.auto() : SaveSystem.list()[SaveSystem.SLOTS.indexOf(id)];
