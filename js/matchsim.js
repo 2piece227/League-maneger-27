@@ -347,13 +347,13 @@ const Sim = {
   // 같은 문장: 해설(anal)은 한 경기에 한 번, 캐스터 · 리액션은 두 번까지(90초 넘게 떨어져 있을 때만)
   // 해설이 캐스터의 말을 받아 이유를 붙인다 (실제 중계: "맞습니다", "그렇죠"로 받고 "~거든요"로 설명)
   // 대사는 전부 js/lines.js에 있다. line = 그 키의 문장을 말한다, lt = 문장만 받는다
-  line(g, key, v) { const t = Lines.text(g, key, v); if (t) this.say(g, Lines.L[key].who, t); return t; },
+  line(g, key, v) { const who = Lines.voice(g, key), t = Lines.text(g, key, v, who); if (t) { this.say(g, who, t); if (Lines.L[key].who === 'anal') g.lastAn = who; } return t; },
   lt(g, key, v) { return Lines.text(g, key, v); },
   // 비상!!: 경기가 넘어갈 수 있는 위기에서만, 한 경기 두 번까지
   crisis(g, key, v) { if ((g.bisang || 0) >= 2) return; g.bisang = (g.bisang || 0) + 1; this.line(g, key, v); },
   // 왕자 해설이 캐스터 말을 바로 받을 때만 '네, / 그렇죠.'를 붙인다
-  reply(g, key, v) { const t = Lines.text(g, key, v); if (!t) return; const last = g.comm[g.comm.length - 1]; this.say(g, 'anal', (last && last.who !== 'anal' && g.t - last.t <= 2 && g.r() < .4 ? this.pick(g, ['네, ', '그렇죠. ']) : '') + t); },
-  say(g, who, text) { const S = (g.said ||= {}), n = S[text] || 0, last = (g.saidT ||= {})[text]; if (n >= (who === 'anal' ? 1 : 2) || (last != null && g.t - last < 90)) return; S[text] = n + 1; g.saidT[text] = g.t; g.comm.push({ t: g.t, who, text, by: this.voice(g, who) }); },   // 같은 문장은 한 경기에 두 번까지
+  reply(g, key, v) { const who = Lines.voice(g, key), t = Lines.text(g, key, v, who); if (!t) return; const last = g.comm[g.comm.length - 1]; this.say(g, who, (who === 'anal' && last && last.who === 'cast' && g.t - last.t <= 2 && g.r() < .4 ? this.pick(g, ['네, ', '그렇죠. ']) : '') + t); g.lastAn = who; },
+  say(g, who, text) { const S = (g.said ||= {}), n = S[text] || 0, last = (g.saidT ||= {})[text]; if (n >= (who === 'cast' ? 2 : 1) || (last != null && g.t - last < 90)) return; S[text] = n + 1; g.saidT[text] = g.t; g.comm.push({ t: g.t, who, text, by: this.voice(g, who) }); },   // 같은 문장은 한 경기에 두 번까지
   clock: t => `${String(Math.floor(t / 60)).padStart(2, '0')}:${String(Math.floor(t % 60)).padStart(2, '0')}`,
   pick(g, arr) { return arr[Math.floor(g.r() * arr.length)]; },
   cn: p => Champions.byId[p.c].name,
