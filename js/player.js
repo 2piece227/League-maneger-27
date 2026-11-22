@@ -72,6 +72,7 @@ const Player = {
             ${p.role !== 'COACH' && p.pa != null ? `<h4>평가 <small>${this.isMine(t) ? '코치진 평가' : '스카우트 추정'}</small></h4>
               <div class="pp-morale"><span>현재 기량</span><b>${UI.stars(Attributes.stars(p.ca))} <small>OVR ${p.ovr}</small></b></div>
               <div class="pp-morale"><span>잠재력</span><b>${UI.stars(Attributes.stars(p.pa))} <small>최고 OVR ${Squad.potRange(p, !this.isMine(t))} 예상</small></b></div>` : ''}
+            ${p.role !== 'COACH' && typeof Persona !== 'undefined' ? `<h4>계약 성향 <small>${this.isMine(t) ? '코치진 평가' : '스카우트 보고'}</small></h4><p class="pp-line">${Persona.of(p).label ? `<b>${Persona.of(p).label}</b> — ` : ''}${UI.esc(Persona.line(p))}</p>` : ''}
             ${sq ? `<h4>솔랭</h4><p class="pp-line">${SoloQ.SERVER[t.league]} 서버 <b>${sq.rank}위</b> · ${sq.lpNow.toLocaleString()} LP · 승률 ${SoloQ.wr(sq)}%</p>` : ''}
           </div>
           <div class="pp-col">

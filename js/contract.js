@@ -217,3 +217,13 @@ Engine.on(today => {
 지금 그대로면 11월 1일에 부담금 약 ${Player.money(tax)} 원을 내야 합니다.` });
   else { World.ledger().push({ date: today, label: '균형 지출 부담금', amount: -Math.round(tax * 1e8) }); World.apply({ board: tax >= 10 ? -3 : -1 }, {}); Inbox.push({ from: board, subject: `균형 지출 부담금 ${Player.money(tax)} 원 납부`, body: `올 시즌 상위 5인 연봉 합산 ${Player.money(used)} 원 기준으로 부담금을 냈습니다. 이사회가 지출에 신경 쓰고 있습니다.` }); }
 });
+
+// 연봉 예산 점검 (매달 1일): 선수단 연봉이 예산의 65%를 넘으면 이사회 신뢰가 떨어진다. 많이 넘으면 크게.
+Engine.on(today => {
+  const t = Roster.team(); if (!t || App.state.unemployed || today.slice(8) !== '01') return;
+  const room = Club.wageRoom(t), B = Club.budget(t); if (room >= 0) return;
+  const big = room < -B * .1, board = { name: '사무국장', role: 'board' };
+  World.apply({ board: big ? -3 : -1 }, {});
+  Inbox.push({ from: board, subject: big ? '재정 경고: 연봉 지출이 예산을 크게 넘었습니다' : '연봉 지출이 예산을 넘었습니다', priority: big ? 'urgent' : 'todo', link: 'club-finance',
+    body: `선수단 연봉이 예산보다 ${Player.money(-room)} 원 많습니다.\n\n${big ? '이대로면 이사회 신뢰가 매달 크게 떨어집니다. 연봉이 높은 선수를 정리하거나 트레이드로 지출을 줄여 주세요.' : '당분간 큰 계약은 이사회 승인을 받기 어렵습니다.'}` });
+});

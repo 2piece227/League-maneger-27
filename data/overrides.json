@@ -30,7 +30,7 @@
     },
     "Gen.G": {
       "rep": 5,
-      "fin": 5,
+      "fin": 3,
       "color": "#aa8a00",
       "tags": [
         "운영 중심",
@@ -57,7 +57,7 @@
     },
     "Kiwoom DRX": {
       "rep": 3,
-      "fin": 2,
+      "fin": 3,
       "color": "#5a8dee",
       "tags": [
         "탑 캐리",

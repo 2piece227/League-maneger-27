@@ -22,7 +22,7 @@ const Neg = {
   // 선수의 바람: 우선순위 가중치 · 원하는 기간 · 옵션 · 역할
   wants(p) {
     const r = k => G.rand(p.id, 'w' + k), s = Contract.score(p, Player.find(p.id)?.t || {}), age = p.age || 22;
-    const w = { money: .3 + r(1) * .35, play: .15 + r(2) * .25 + (s >= 70 ? .1 : 0), win: .15 + r(3) * .2 + (s >= 80 ? .15 : 0), home: (p.nation === 'South Korea' ? .3 : .15) + r(4) * .2, loyal: r(5) * .35 };
+    const w = typeof Persona !== 'undefined' ? { ...Persona.of(p).w } : { money: .3 + r(1) * .35, play: .15 + r(2) * .25 + (s >= 70 ? .1 : 0), win: .15 + r(3) * .2 + (s >= 80 ? .15 : 0), home: (p.nation === 'South Korea' ? .3 : .15) + r(4) * .2, loyal: r(5) * .35 };   // 성향 (js/persona.js)
     const years = age >= 27 ? 2 + (r(6) > .5 ? 1 : 0) : age <= 20 ? 1 + (r(6) > .6 ? 1 : 0) : s >= 85 ? 2 : 1 + (r(6) > .4 ? 1 : 0);
     const opt = s >= 80 ? 'player' : s < 65 ? 'any' : 'none';
     return { w, years, opt, role: p.sub ? 'rotation' : 'starter', s };
@@ -43,12 +43,17 @@ const Neg = {
     ask *= 1 - disc;
     if (p.nation === 'South Korea' && my.league !== 'LCK') ask *= 1 + W.w.home * .8;           // 한국 선수가 해외로 가려면 더 받아야
     if (mode === 'renew') ask *= 1 - W.w.loyal * .15 - Fame.franchise(p) * .01;                  // 재계약 의리 할인 + 프랜차이즈 점수 1당 1%
-    if (mode === 'renew' && cur && (p.age || 22) < 28) ask = Math.max(ask, cur.salary * 1.05);    // 젊은 선수는 연봉 삭감을 받지 않는다
+    const P = typeof Persona !== 'undefined' ? Persona.of(p) : null, likes = P && Persona.likes(p, my);
+    if (likes) ask *= .85;                                                                      // 선호 구단 · 선호 코치가 있는 팀: 연봉 양보
+    if (mode === 'renew' && P && P.tag === 'oneclub' && P.club === my.id) ask *= P.cut;          // 원클럽맨 재계약: 연봉을 깎아서라도 남는다
+    else if (mode === 'renew' && cur && (p.age || 22) < 28) ask = Math.max(ask, cur.salary * 1.05);    // 젊은 선수는 연봉 삭감을 받지 않는다
+    if (mode !== 'renew' && P && P.tag === 'career' && my.rep < 4) ask *= 1.15;                 // 커리어 우선: 약팀이면 더 달라고 한다
     ask = Contract.r1(Math.min(Fame.cap(my.league), Math.max(Contract.MIN.first, ask)));   // LPL 개인 연봉 상한
     const S = M.neg[p.id] = { pid: p.id, mode, date: Clock.today(), patience: K[1], max: K[1], ask, ask0: ask, rivals, asked: {}, log: [], rounds: 0 };
     const opening = `${my.name} 측 연락 감사합니다. ${p.name} 선수 에이전트 ${A.name}(${A.agency})입니다.\n\n`
       + (mode === 'renew' ? `선수는 ${my.short}에 남는 걸 긍정적으로 보고 있지만, 그에 맞는 대우를 원합니다. ` : mode === 'transfer' ? `구단 간 합의 소식 들었습니다. 선수도 ${my.short} 이적에 관심이 있습니다. ` : `선수는 새 팀을 찾고 있고, ${rivals}개 팀과 이야기 중입니다. `)
       + (disc >= .03 ? `${my.short}에서 뛸 수 있다면 연봉은 어느 정도 양보할 수 있습니다. ` : '')
+      + (likes ? (P.favCoach.length && !P.fav.includes(my.id) ? '선수가 이 팀 코치진과 꼭 함께하고 싶어 합니다. ' : P.tag === 'oneclub' ? `선수는 ${my.short}에서 커리어를 끝내고 싶어 합니다. ` : `선수에게 ${my.short}는 특별한 팀입니다. `) : '')
       + `연봉은 최소 ${Player.money(ask)} 원, 계약 기간은 ${W.years}년을 생각하고 있습니다.${W.role === 'starter' && W.s >= 65 ? ' 주전으로 뛰는 것도 중요합니다.' : ''}`;
     S.log.push({ who: 'agent', text: opening });
     return S;
@@ -237,6 +242,14 @@ const Neg = {
     if (mode === 'fa' && !p.free && !(Player.days(p) < 0)) return `${Sim.josa(p.name, '은', '는')} 이미 ${Sim.josa(t.short, '과', '와')} 계약했습니다.`;
     if (mode === 'transfer') { const b = Transfer.open$(p.id); if (!b || b.status !== 'agreed') return '구단 간 이적 합의가 유효하지 않습니다.'; }
     if (mode === 'renew' && !Player.isMine(t)) return `${Sim.josa(p.name, '은', '는')} 이미 팀을 떠났습니다.`;
+    // 연봉 예산: 이 계약으로 선수단 연봉이 예산의 65%를 넘으면 이사회 승인이 필요하다.
+    //   조금(예산의 5% 안) 넘으면 이사회 신뢰가 55 이상일 때 마지못해 승인(신뢰 -2), 그보다 많이 넘으면 신뢰 75 이상이어야 승인(신뢰 -5)
+    const my = Roster.team(), cur = mode === 'renew' && !p.free ? Contract.of(p, t).salary : 0, after = Club.wageRoom(my) + cur - ((S.deal || {}).salary || 0), B = Club.budget(my), trust = World.rel().board;
+    if (after < 0 && !(mode === 'renew' && ((S.deal || {}).salary || 0) <= cur)) {
+      const need = after >= -B * .05 ? 55 : 75;
+      if (trust < need) return `이사회가 예산 초과 계약을 승인하지 않았습니다. 이 계약이면 연봉 예산을 ${Player.money(-after)} 원 넘습니다. 다른 선수를 내보내 여유를 만들거나 연봉을 낮춰 주세요.`;
+      S._overBudget = need === 55 ? 2 : 5;
+    }
     return null;
   },
 
@@ -247,6 +260,7 @@ const Neg = {
     const fee = mode === 'transfer' ? (Transfer.open$(p.id) || {}).fee : 0;
     const startEnd = mode === 'renew' && cur && cur.end && cur.end >= Clock.today() ? cur.end : Contract.seasonEnd(my);
     const end = Contract.addYears(startEnd, o.years);
+    if (S._overBudget) { World.apply({ board: -S._overBudget }, {}); Inbox.push({ from: { name: '이사회', role: 'board' }, subject: '예산 초과 계약 승인', body: `${Sim.josa(p.name, '과', '와')}의 계약은 연봉 예산을 넘지만 이번에는 승인했습니다. 앞으로 지출을 줄여 주시기 바랍니다.` }); S._overBudget = 0; }
     if (mode === 'transfer') Transfer.complete(p.id);
     Contract.sign(p.id, my.id, { salary: o.salary, end, option: o.option, buyout: o.buyout, promise: o.promise, bonus: o.bonus, signing: o.signing, years: o.years });
     if (o.signing) World.ledger().push({ date: Clock.today(), label: `${p.name} 계약금`, amount: -Math.round(o.signing * 1e8) });

@@ -5,7 +5,8 @@ const Club = {
   today() { return Clock.today(); },
   r(t, k) { return G.rand(t.id, k); },
   // 시즌 예산(억 원): 재정 등급·리그 기준, 시작 시점 선수 연봉의 1.5배 이상
-  budget(t) { return Math.round(Math.max(((t.fin || 2) * 40 + 30) * ({ LCK: 1, LPL: 1.3, LEC: .6, LCS: .7 }[t.league] || 1), (t._pay0 ||= (t._base ? t._base.players : t.players).reduce((s, p) => s + Contract.base(p, t).salary, 0)) * 1.5)); },
+  // 재정 등급이 기준. 시작 연봉이 그보다 크면 그 연봉의 1.1배까지만 인정한다 (예전에는 1.5배라 연봉이 큰 팀일수록 예산도 커졌다)
+  budget(t) { return Math.round(Math.max(((t.fin || 2) * 40 + 30) * ({ LCK: 1, LPL: 1.3, LEC: .6, LCS: .7 }[t.league] || 1), (t._pay0 ||= (t._base ? t._base.players : t.players).reduce((s, p) => s + Contract.base(p, t).salary, 0)) / .65 * 1.02)); },
   wageRoom(t) { return this.budget(t) * .65 - this.payroll(t); },
   payroll(t) { return t.players.reduce((s, p) => s + Player.salary(p, t), 0); },
   staffPay(t) { return (t.staff || []).reduce((s, p) => s + Player.salary(p, t), 0); },
