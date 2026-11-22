@@ -2,7 +2,9 @@
 //  - 너무 못하면 시즌 중 경질 → 무직(App.state.unemployed). 지금 평판으로 이력서를 내 다른 팀을 구한다(커리어 > 다른 팀 보기)
 //  - 계약 만료 때 아쉬웠으면 재계약 없음 → 무직
 //  - 아주 잘하면 시즌 중에 조기 재계약 제안
-// 트레이드: 우리 ↔ 다른 구단 선수 맞교환. 우리가 제안하거나, 다른 구단이 제안해 온다. 트레이드설이 돌면 그 선수와 감독 관계가 크게 떨어진다.
+// 트레이드: 우리 ↔ 다른 구단 선수 맞교환. 우리가 제안하거나, 다른 구단이 제안해 온다.
+//  트레이드설: 우리가 내놓으려다 새어 나가면 그 선수와의 관계가 크게 떨어진다. 다른 구단이 탐낸다는 소문은 감독 탓이 아니라 관계는 그대로,
+//  야망이 큰 선수만 마음이 조금 흔들린다. 어느 쪽이든 선수가 물어 오면 답할 수 있고, 면담(js/meet.js)으로 풀 수도 있다.
 const Board = {
   // 구단 평판(별)별 기대 순위
   EXP: { 5: 2, 4: 4, 3: 6, 2: 8, 1: 9 },
@@ -64,14 +66,23 @@ const Trade = {
   // 바꾼 뒤에도 그 팀이 다섯 포지션을 다 채우는지
   roleOk(t, out, inn) { const ps = t.players.filter(x => x !== out).concat([inn]); return G.ROLES.every(r => ps.some(x => x.role === r)); },
   swap(a, b) {
-    const A = Player.find(a.id).t, B = Player.find(b.id).t, M = Contract.st();
+    const A = Player.find(a.id).t, B = Player.find(b.id).t, M = Contract.st(), my = Roster.team();
+    [a, b].forEach(x => { if (Player.find(x.id).t === my && typeof Meet !== 'undefined') Meet.traded(x.id); });   // '사실무근'이라 해 놓고 보내면
     M.moves[a.id] = B.id; M.moves[b.id] = A.id; Squad.apply();
     Market.post(`[오피셜] ${A.short}·${B.short} 트레이드 — ${a.name} ↔ ${b.name}`, `${A.name}의 ${Sim.josa(a.name, '과', '와')} ${B.name}의 ${Sim.josa(b.name, '이', '가')} 맞교환됐습니다.`, a.id);
   },
-  rumor(p, other) {
-    Rel.add(p.id, -15, `트레이드설 (${other.short})`); const mor = World.morale(); mor[p.id] = (mor[p.id] || 0) - 2;
+  rumor(p, other, ours = true) {
+    const mor = World.morale(), amb = ((p.attributes || {}).hidden || {}).ambition || 11;
+    if (ours) { Rel.add(p.id, -12, `트레이드설 (${other.short})`); mor[p.id] = (mor[p.id] || 0) - 2; }
+    else if (amb >= 14) mor[p.id] = (mor[p.id] || 0) - 1;                  // 다른 구단의 관심: 야망이 큰 선수는 마음이 흔들린다
     Market.post(`[이적설] ${p.name}, ${Sim.josa(other.short, '과', '와')} 트레이드 카드로?`, `${Sim.josa(Roster.team().name, '이', '가')} ${Sim.josa(p.name, '을', '를')} 트레이드 카드로 쓰려 한다는 이야기가 돌고 있습니다. 선수 본인은 당황스럽다는 반응입니다.`, p.id);
-    Inbox.push({ from: { name: p.name, role: 'player', photo: p.photo }, subject: `${p.name}, 트레이드설에 대해 묻습니다`, body: '감독님, 제가 트레이드 카드라는 기사가 사실인가요? 솔직히 충격입니다.' });
+    Inbox.push({ from: { name: p.name, role: 'player', photo: p.photo }, subject: `${p.name}, 트레이드설에 대해 묻습니다`, priority: 'todo', ctx: { pid: p.id, player: p.name, ours },
+      body: ours ? '감독님, 제가 트레이드 카드라는 기사가 사실인가요? 솔직히 충격입니다.' : `감독님, ${Sim.josa(other.short, '이', '가')} 저를 원한다는 기사를 봤어요. 구단은 어떻게 생각하시는지 궁금합니다.`,
+      choices: [
+        { label: '팔 생각 없다고 안심시킨다', act: 'rumorTalk', arg: 'deny', reply: '선수에게 트레이드할 생각이 없다고 말했습니다.' },
+        { label: '팀 사정을 솔직하게 설명한다', act: 'rumorTalk', arg: 'honest', reply: '선수에게 구단 사정을 있는 그대로 설명했습니다.' },
+        { label: '지금은 말할 수 없다고 한다', act: 'rumorTalk', arg: 'mum', reply: '지금은 말해 줄 수 없다고 했습니다.' },
+      ] });
   },
   // 우리 → 다른 구단
   propose(theirId) {
@@ -84,7 +95,7 @@ const Trade = {
         const out = Player.find(back.querySelector('.tr-out').value).p;
         const theirV = this.val(p, t), ourV = Contract.value(out, t) * (out.sub ? .8 : 1.1), locked = Transfer.price(p, t).locked;
         if (!locked && ourV >= theirV * .95 && this.roleOk(t, p, out) && this.roleOk(my, out, p)) { this.swap(out, p); UI.toast(`${Sim.josa(t.short, '이', '가')} 트레이드를 받아들였습니다`, 3500); Router.go(Router.current()); }
-        else { UI.toast(`${Sim.josa(t.short, '이', '가')} 거절했습니다${locked ? ' (핵심 선수라 팔 생각이 없다고 합니다)' : ''}`, 3500); if (G.rand(out.id + Clock.today(), 'leak') < .35) this.rumor(out, t); }
+        else { UI.toast(`${Sim.josa(t.short, '이', '가')} 거절했습니다${locked ? ' (핵심 선수라 팔 생각이 없다고 합니다)' : ''}`, 3500); if (G.rand(out.id + Clock.today(), 'leak') < .35) this.rumor(out, t, true); }
       } }] });
   },
   // 다른 구단 → 우리
@@ -102,7 +113,7 @@ const Trade = {
     Inbox.push({ from: { name: `${t.short} 단장`, role: 'board' }, subject: `${t.short} 트레이드 제안: ${x.name} ↔ ${want.name}`, priority: 'todo', ctx: { a: want.id, b: x.id },
       body: `${t.name}입니다. 우리 ${G.ROLE_KO[x.role]} ${x.name}(OVR ${x.ovr || '-'})${Sim.josa(x.name, '과', '와').slice(x.name.length)} 귀 구단 ${G.ROLE_KO[want.role]} ${want.name}(OVR ${want.ovr || '-'})의 맞교환을 제안합니다.`,
       choices: [{ label: '받아들인다', act: 'tradeYes', reply: '트레이드가 성사됐습니다.' }, { label: '거절한다', act: 'tradeNo', reply: '제안을 거절했습니다.' }] });
-    if (G.rand(today + want.id, 'leak') < .4) this.rumor(want, t);
+    if (G.rand(today + want.id, 'leak') < .4) this.rumor(want, t, false);   // 상대가 탐낸 것: 감독 탓이 아니다
   },
 };
 // 제안을 받은 뒤 상황이 바뀌었으면(선수가 이미 팀을 옮겼거나 포지션이 비게 되면) 무산
@@ -112,4 +123,13 @@ Engine.ACTS.tradeYes = m => {
   if (ok) Trade.swap(a.p, b.p); else m.choices[0].reply = '그사이 상황이 바뀌어 트레이드는 무산됐습니다.';
 };
 Engine.ACTS.tradeNo = () => {};
+// 트레이드설에 대한 답 (선수 메시지)
+Engine.ACTS.rumorTalk = (m, arg) => {
+  const pid = m.ctx.pid, hit = Player.find(pid); if (!hit) return;
+  const p = hit.p, loy = ((p.attributes || {}).hidden || {}).loyalty || 11, ours = m.ctx.ours !== false;
+  if (typeof Meet !== 'undefined') Meet.clear(pid);
+  if (arg === 'deny') { Rel.add(pid, ours ? 9 : 4, '트레이드설: 안심시킴'); if (typeof Meet !== 'undefined') Meet.st().denied[pid] = Clock.today(); }
+  else if (arg === 'honest') Rel.add(pid, ours ? (loy >= 14 ? 6 : loy >= 10 ? 2 : -3) : (loy >= 10 ? 2 : -2), '트레이드설: 솔직하게 설명');
+  else Rel.add(pid, ours ? -3 : -1, '트레이드설: 답을 피함');
+};
 Engine.on(today => { if (App.state.teamId && App.db.free) Trade.daily(today); });

@@ -215,9 +215,14 @@ const Squad = {
   },
 
   // 코치가 보는 최고 OVR: 실제 잠재력 ±3 (코치 눈이 완벽하지 않다)
-  potRange(p) { const v = Math.min(99, this.toOvr(p.pa, p.role)), lo = Math.max(p.ovr || 0, v - 3 + Math.round(G.rand(p.id, 'pe') * 2)); return lo >= 99 ? '99' : `${lo}~${Math.min(99, lo + 5)}`; },
+  // 우리 코치는 ±3 안팎(폭 5), 다른 팀 선수는 스카우트 추정이라 폭이 넓다(10). FM처럼 정확한 잠재력 숫자는 보여 주지 않는다
+  potRange(p, wide) {
+    if (p.pa == null) return '-';
+    const v = Math.min(99, this.toOvr(p.pa, p.role)), w = wide ? 10 : 5, lo = Math.max(p.ovr || 0, v - Math.round(w * .6) + Math.round(G.rand(p.id, 'pe') * 2));
+    return lo >= 99 ? '99' : `${lo}~${Math.min(99, lo + w)}`;
+  },
   stars(p) { return p.ca != null ? `${UI.stars(Attributes.stars(p.ca))}` : '-'; },
-  pot(p) { return p.pa != null ? `${UI.stars(Attributes.stars(p.pa))}` : '-'; },
+  pot(p) { return p.pa != null ? `<span class="sq-pot">${UI.stars(Attributes.stars(p.pa))}<small>최고 ${this.potRange(p)}</small></span>` : '-'; },
   coach() { const t = this.team(); return ((t.clStaff || [])[0] || (t.staff || [])[1] || {}).name || '2군'; },
 
   // 포지션별 가장 잘하는 1명씩 → 평균 현재 기량 (빈 자리는 6)

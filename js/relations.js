@@ -15,7 +15,10 @@ const Relations = {
         <td><div class="pl-cell">${G.face(p, 'pl-ph')}<div>${G.ovr(p)}<b>${UI.esc(p.name)}</b>${p.sub ? ' <small>(후보)</small>' : ''}</div></div></td>
         <td class="rl-v">${this.bar(v)}<b>${Rel.word(p.id)}</b><small>${v}</small></td>
         <td><span class="morale ${mc}">${ml}</span></td>
+        ${''}
         <td class="rl-log">${log.length ? log.map(e => `<div><em class="${e.v > 0 ? 'up' : 'dn'}">${e.v > 0 ? '▲' : '▼'}${Math.abs(e.v)}</em> ${UI.esc(e.why || '기타')} <small>${this.ago(e.d)}</small></div>`).join('') : '<small class="cr-dim">아직 변화 없음</small>'}</td>
+      
+        <td><button class="btn-ghost btn-sm rl-meet" data-meet="${p.id}">${Meet.left(p.id) ? `면담 (${Meet.left(p.id)}일 뒤)` : '면담'}</button></td>
       </tr>`;
     };
     // 팀합 표: 두 선수가 지금 팀에서 같이 보낸 기간
@@ -39,7 +42,7 @@ const Relations = {
         </div>
         ${cold.length ? `<div class="card rl-alert"><b>관계가 나쁜 선수</b><span>${cold.map(p => UI.esc(p.name)).join(', ')} — 재계약 협상이 어렵고, 계속 나빠지면 이적을 요청할 수 있습니다. 면담이나 약속으로 풀어 보세요.</span></div>` : ''}
         <div class="card" style="padding:0"><div class="card-head" style="padding:14px 16px 0"><h3>감독과의 관계</h3></div>
-          <table class="rs-table rl-table"><thead><tr><th>포지션</th><th>선수</th><th>관계</th><th>사기</th><th>최근 변화</th></tr></thead><tbody>${ps.map(row).join('')}</tbody></table>
+          <table class="rs-table rl-table"><thead><tr><th>포지션</th><th>선수</th><th>관계</th><th>사기</th><th>최근 변화</th><th></th></tr></thead><tbody>${ps.map(row).join('')}</tbody></table>
         </div>
         <div class="cr-grid">
           <div class="card"><div class="card-head"><h3>선수 간 호흡 <small>주전끼리 같이 뛴 기간</small></h3></div>${grid}
@@ -49,6 +52,7 @@ const Relations = {
             <p class="cr-dim rl-note">소통 보정 ${comm.toFixed(1)} (최대 -3). 리그 언어와 다른 선수는 팀에서 3년이 지나면 문제가 사라집니다.</p></div>
         </div>
       </div>`;
+    el.querySelectorAll('[data-meet]').forEach(b => b.onclick = () => Meet.open(b.dataset.meet));
   },
 };
 Views['roster-relations'] = el => Relations.render(el);

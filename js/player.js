@@ -69,6 +69,9 @@ const Player = {
               <div class="pp-morale"><span>사기</span><b class="morale ${Roster.MORALE[st.morale][1]}">${Roster.MORALE[st.morale][0]}</b></div>
               ${this.isMine(t) && typeof Rel !== 'undefined' ? `<div class="pp-morale"><span>감독과의 관계</span><b>${Rel.word(p.id)}</b></div>` : ''}
               <div class="pp-morale"><span>최근 폼</span><span class="form-pts">${st.form.map(v => `<i class="${Roster.formCls(v)}">${v}</i>`).join('')}</span></div>` : ''}
+            ${p.role !== 'COACH' && p.pa != null ? `<h4>평가 <small>${this.isMine(t) ? '코치진 평가' : '스카우트 추정'}</small></h4>
+              <div class="pp-morale"><span>현재 기량</span><b>${UI.stars(Attributes.stars(p.ca))} <small>OVR ${p.ovr}</small></b></div>
+              <div class="pp-morale"><span>잠재력</span><b>${UI.stars(Attributes.stars(p.pa))} <small>최고 OVR ${Squad.potRange(p, !this.isMine(t))} 예상</small></b></div>` : ''}
             ${sq ? `<h4>솔랭</h4><p class="pp-line">${SoloQ.SERVER[t.league]} 서버 <b>${sq.rank}위</b> · ${sq.lpNow.toLocaleString()} LP · 승률 ${SoloQ.wr(sq)}%</p>` : ''}
           </div>
           <div class="pp-col">
@@ -81,6 +84,7 @@ const Player = {
         ${p.attributes && p.role !== 'COACH' ? `<div class="pp-attrs"><h4>능력치 <small>OVR ${p.ovr} · 기술 40% 운영 30% 멘탈 10% 특화 20%</small></h4>${Attributes.table(p.attributes, p.role)}</div>` : ''}
         <div class="pp-foot">
           ${this.isMine(t) && p.role !== 'COACH' ? `<span class="pp-mv" data-pid="${p.id}">${Squad.buttons(p)}</span>` : ''}
+          ${this.isMine(t) && p.role !== 'COACH' ? '<button class="btn-ghost pp-meet">면담</button>' : ''}
           <button class="btn-ghost pp-list">${listed ? '관심 목록에서 빼기' : '관심 목록에 추가'}</button>
           ${this.isMine(t) ? '<button class="btn-primary pp-talk">재계약 협상</button>' : (p.free || this.days(p) < 0 ? '<button class="btn-primary pp-ask">계약 협상</button>' : '<button class="btn-ghost pp-trade">트레이드 제안</button><button class="btn-primary pp-ask">영입 문의</button>')}
         </div>
@@ -97,6 +101,7 @@ const Player = {
     if (talk) talk.onclick = () => { close(); this.contractModal(p.id); };
     if (ask) ask.onclick = () => { close(); this.inquiryModal(p.id); };
     const trd = $('.pp-trade', back); if (trd) trd.onclick = () => { close(); Trade.propose(p.id); };
+    const mt = $('.pp-meet', back); if (mt) mt.onclick = () => { close(); Meet.open(p.id); };
   },
 
   toggleShortlist(id) {
