@@ -31,14 +31,14 @@ const Market = {
         const s = Contract.score(p, t), cl = p.level === 'cl', top = !cl && s >= this.best(t, p.role, p) - 3;
         if (c.option === 'player' && this.rnd(p.id, c.end, 'po') < .5 + ((t.rep || 2) - 3) * .12) { Contract.st().contracts[p.id] = { ...c, end: Contract.addYears(c.end, 1), option: null }; return; }
         if (c.option === 'team' && top) { Contract.st().contracts[p.id] = { ...c, end: Contract.addYears(c.end, 1), option: null }; return; }
-        const keep = cl ? (p.ca || 8) >= 10.5 || this.rnd(p.id, 'k') < .45 : top ? this.rnd(p.id, 'k') < .8 : this.rnd(p.id, 'k') < .35;
+        const keep = cl ? (p.ovr || 0) >= 70 || this.rnd(p.id, 'k') < .45 : top ? this.rnd(p.id, 'k') < .8 : this.rnd(p.id, 'k') < .35;
         const stay = this.rnd(p.id, 'st') < (cl ? .85 : .75 + ((t.rep || 2) - 3) * .06);
         if (keep && stay) {
           this.write(p, t, this.deal(p, t, 1 + this.rnd(p.id, 'r') * .15));
           if (s >= 75) this.post(`[오피셜] ${t.short}, ${Sim.josa(p.name, '과', '와')} 재계약`, `${Sim.josa(t.name, '이', '가')} ${G.ROLE_KO[p.role] || ''} ${Sim.josa(p.name, '과', '와')} 재계약했습니다. 계약은 ${Contract.label(Contract.st().contracts[p.id])}까지입니다.`, p.id);
         } else {
           this.free(p);
-          if (s >= 65 || (cl && (p.ca || 0) >= 11)) this.post(`[FA] ${p.name}, ${Sim.josa(t.short, '과', '와')} 계약 만료 — FA 시장으로`, `${t.name}의 ${G.ROLE_KO[p.role] || ''} ${p.name}(${p.age || '-'}세)이(가) 재계약하지 않고 FA 시장에 나왔습니다.`, p.id);
+          if (s >= 65 || (cl && (p.ovr || 0) >= 74)) this.post(`[FA] ${p.name}, ${Sim.josa(t.short, '과', '와')} 계약 만료 — FA 시장으로`, `${t.name}의 ${G.ROLE_KO[p.role] || ''} ${p.name}(${p.age || '-'}세)이(가) 재계약하지 않고 FA 시장에 나왔습니다.`, p.id);
         }
       });
     });

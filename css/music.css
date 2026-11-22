@@ -65,8 +65,11 @@
   .mu-card { position: fixed; left: 10px; right: 10px; bottom: calc(var(--footer-h, 34px) + 130px); width: auto; }
   .mu-fab { width: 46px; height: 46px; }
 }
-/* 휴대폰 메인 화면 · 감독 만들기: 아래 날짜 바가 없으니 바닥 가까이 */
+/* 게임 밖 화면(처음 화면 · 감독 만들기 · 팀 선택): 왼쪽 아래. 오른쪽 아래의 '다음' 버튼을 가리지 않게 */
+.mu.out { right: auto; left: 16px; flex-direction: row-reverse; }
+.mu.out .mu-pop { left: 0; right: 0; }
 @media (max-width: 767px) {
-  .mu.out { bottom: calc(var(--footer-h, 34px) + 12px); }
+  .mu.out { left: 10px; bottom: calc(var(--footer-h, 34px) + 12px); }
+  .mu.out.busy { display: flex; }
   .mu.out .mu-card { bottom: calc(var(--footer-h, 34px) + 70px); }
 }

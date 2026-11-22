@@ -27,6 +27,7 @@ const Data = {
       else if (!p.attributes) { const ca = Attributes.caFor(Contract.score(p, t), p.role); p.attributes = Attributes.generate(p.role, ca, ca, Squad.rng('at:' + p.id)); delete p._sc; }
       p.ovr = Attributes.overall(p.attributes, p.role);
     }));
+    Squad._teams = db.teams;   // 생성 선수 이름이 실제 선수와 겹치지 않게
     db.teams.forEach(t => { (t.cl || []).forEach(p => Squad.initCl(p)); Squad.fillSecond(t); });
     return db;
   },

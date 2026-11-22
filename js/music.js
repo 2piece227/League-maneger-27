@@ -58,6 +58,7 @@ const Music = {
   // 화면(메인 ↔ 게임)이 바뀔 때: 게임 밖에서는 늘 월즈 목록, 작게 줄인 소리도 원래대로
   screen() {
     const r = this.inGame() ? Router.current() : '';
+    if (this.el.classList.contains('out') !== !this.inGame()) this._userOpen = false;
     this.el.classList.toggle('out', !this.inGame());   // 게임 밖(메인 화면): 아래 날짜 바가 없다
     this.layout(r); this.duck = r === 'match-live' ? .35 : 1; this.applyVol();
     if (!this.pref.on || !this.unlocked) return;
@@ -140,7 +141,8 @@ const Music = {
   },
   // 밴픽 · 중계 · 휴대폰에서는 접은 채로 (게임 화면을 가리지 않게), 그 밖에는 마지막으로 둔 대로
   layout(r = Router.current()) {
-    const busy = this.inGame() && (r === 'match-draft' || r === 'match-live' || r === 'match-locker');
+    // 밴픽 · 중계 · 라커룸, 그리고 게임 밖 화면(처음 화면 · 감독 만들기 · 팀 선택: 오른쪽 아래에 '다음' 버튼이 있다)에서는 접어 둔다
+    const busy = !this.inGame() || r === 'match-draft' || r === 'match-live' || r === 'match-locker';
     this.el.classList.toggle('busy', busy);
     this.el.classList.toggle('open', busy ? !!this._userOpen : !!this.pref.open);
   },

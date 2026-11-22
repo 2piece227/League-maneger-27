@@ -2,6 +2,46 @@
 // 하부 경기는 직접 보거나 지휘하지 않는다. 결과·성장·내부 평가만 메시지로 온다 (FM 유스 방식).
 const Squad = {
   CL_MAX: 10,
+  // ── 잠재력 기준 ──
+  // 현재 기량 ca = 능력치에서 바로 나온 원점수 (1~20, OVR = ca / 포지션 기준 × 99). 저장값이 아니라 늘 능력치에서 계산한다.
+  // 잠재력 pa = 같은 눈금의 도달 가능한 최고치. 모든 선수(1군 · 챌린저스 · 아카데미)가 갖는다.
+  //   남은 성장 폭 = 나이별 기본 폭 × 아카데미 수준 배율 × 선수별 편차 (가끔 '대박' 유망주)
+  //   나이: 17세 이하 4.2 · 18세 3.6 · 19세 2.9 · 20세 2.2 · 21세 1.6 · 22세 1.1 · 23세 0.7 · 24세 0.35 · 25세 이상 0 (원점수 1 ≈ OVR 5)
+//   보통 수준(50) 17세 유망주는 평균 OVR +21, T1(100)은 +26, HLE(30)는 +19. 잠재력은 OVR 99를 넘지 않는다
+  // 아카데미 수준(화면에는 표시하지 않음): 유망주를 키워 내는 힘. 0~100, 50이 보통.
+  //   T1 100 (제우스 · 오너 · 구마유시 · 해태 · 클라우드 · 리헨즈 · 스카웃 …) · DK 80 (루시드 · 쇼메이커 · 시우 …) · BFX 80 · NS 60 · GEN 50 · HLE 30
+  ACADEMY_Q: { t1: 100, 'dplus-kia': 80, 'bnk-fearx': 80, 'nongshim-redforce': 60, 'gen-g': 50, 'kt-rolster': 45, 'kiwoom-drx': 45, 'hanjin-brion': 40, 'dn-soopers': 35, 'hanwha-life-esports': 30 },
+  AGE_ROOM: { 17: 4.2, 18: 3.6, 19: 2.9, 20: 2.2, 21: 1.6, 22: 1.1, 23: .7, 24: .35 },
+  // 실제 정보로 따로 맞춘 선수: [지금 OVR, 잠재력 OVR]
+  SPECIAL: { 'cloud-moon-hyeon-ho': [80, 89], haetae: [78, 86] },
+  q(tid) { return this.ACADEMY_Q[tid] ?? 40; },
+  ref(role) { return Attributes.REF[role] || 19.5; },
+  toOvr(v, role) { return Math.round(v / this.ref(role) * 99); },
+  // 남은 성장 폭: 나이 · 아카데미 수준 · 선수별 편차 (시드 고정)
+  room(p, q = 50) {
+    // 나이는 데이터 기준일(2026-11-21) 나이로 고정: 해가 바뀌어 다시 읽어도 잠재력이 흔들리지 않게
+    const age = p.birthdate ? Data.ageOn(p.birthdate, '2026-11-21') : (p.age0 ?? p.age ?? 21), base = age <= 17 ? 4.2 : this.AGE_ROOM[age] ?? 0;
+    if (!base) return 0;
+    const r = this.rng('pot:' + p.id), m = .75 + q / 100 * .5;          // 수준 30 → 0.9배, 50 → 1배, 100 → 1.25배
+    const gem = r() < .01 + q / 100 * .05;                                // 대박 유망주: 수준 100이면 6%, 30이면 2.5%
+    return base * m * (.45 + r() * 1.1) * (gem ? 1.6 : 1);
+  },
+  // 능력치에서 현재 기량을 다시 읽고, 잠재력이 없으면 만든다 (잠재력은 현재 기량보다 낮을 수 없다)
+  rate(p, q = 50) {
+    if (!p.attributes || p.role === 'COACH') return;
+    p.ca = this.round(Attributes.raw(p.attributes, p.role));
+    const top = Attributes.caFor(99, p.role);                            // 잠재력 상한 = OVR 99
+    if (p.pa == null) p.pa = this.round(Math.min(top, p.ca + this.room(p, q)));
+    p.pa = Math.max(Math.min(p.pa, top), p.ca);
+  },
+  // 능력치를 한꺼번에 늘려 목표 OVR에 맞춘다
+  scaleTo(p, ovr) {
+    for (let i = 0; i < 4; i++) {
+      const k = Attributes.caFor(ovr, p.role) / Attributes.raw(p.attributes, p.role);
+      ['physical', 'macro', 'mental', 'role'].forEach(g => Object.keys(p.attributes[g] || {}).forEach(x => { p.attributes[g][x] = Math.max(1, Math.min(20, p.attributes[g][x] * k)); }));
+    }
+    p.ovr = Attributes.overall(p.attributes, p.role);
+  },
   LV: { first: '1군', cl: '챌린저스', academy: '아카데미' },
   GROW: { academy: .0012, cl: .0018, first: .0022 }, // 잠재력까지 남은 차이 × 하루 비율
 
@@ -17,14 +57,14 @@ const Squad = {
 
   // 실명 2군 선수: 기록이 없으니 현재 기량·잠재력을 선수별 고정값으로 만든다
   initCl(p) {
-    const r = this.rng('cl:' + p.id);
-    let ca = 8 + r() * 4;
-    const sh = (Data.sheet || {})[p.id];                                  // 기록 자동 산정이 있으면 그 능력치
-    if (sh) { p.attributes = Attributes.fromSheet(sh, p.role); ca = Math.max(5, Attributes.raw(p.attributes, p.role) - 3); } // 현재 기량 눈금(2군 8~12)에 맞춤
-    const pa = Math.max(ca, ca + r() * r() * 8);
-    p.ca = this.round(ca); p.pa = this.round(pa);
-    if (!sh) p.attributes = Attributes.generate(p.role, ca, pa, r);
+    const r = this.rng('cl:' + p.id), sh = (Data.sheet || {})[p.id];     // 기록 자동 산정이 있으면 그 능력치
+    if (sh) p.attributes = Attributes.fromSheet(sh, p.role);
+    else { const ca = Attributes.caFor(62 + r() * 12, p.role); p.attributes = Attributes.generate(p.role, ca, ca, r); }   // 기록 없는 2군: OVR 62~74
     p.ovr = Attributes.overall(p.attributes, p.role);
+    const sp = this.SPECIAL[p.id];
+    if (sp) { this.scaleTo(p, sp[0]); p.pa = this.round(Attributes.caFor(sp[1], p.role)); }
+    else delete p.pa;
+    p.ca = this.round(Attributes.raw(p.attributes, p.role));   // 잠재력은 나이가 정해진 뒤(Squad.apply)에 만든다
   },
 
   // 2군 데이터가 없는 팀(LCS 전체, 일부 LPL·LEC)은 2군을 생성하고, 있는 팀도 빈 포지션은 생성 선수로 채운다
@@ -40,7 +80,10 @@ const Squad = {
     return league === 'LPL' && r() < .7 ? pick(N.cn) + pick(N.cn2) : pick(N.a) + pick(N.b) + (r() < .25 ? pick(N.b) : '');
   },
   uniqueName(r, league) {
-    const used = this._names ||= new Set(App.db ? Player.all().map(x => x.p.name.toLowerCase()) : []);
+    // 실제 선수 · 이미 만든 선수와 이름이 겹치지 않게. 데이터를 읽는 중(App.db 전)에는 Data가 넘겨준 팀 목록으로 센다
+    const teams = (App.db && App.db.teams) || this._teams || [];
+    if (!this._names || (this._namesN || 0) < teams.length) { this._names = new Set([...(this._names || []), ...teams.flatMap(t => [...t.players, ...(t.cl || []), ...(t.staff || [])].map(p => (p.name || '').toLowerCase()))]); this._namesN = teams.length; }
+    const used = this._names;
     let n = this.proName(r, league);
     for (let i = 0; used.has(n.toLowerCase()) && i < 20; i++) n = this.proName(r, league);
     used.add(n.toLowerCase());
@@ -50,7 +93,7 @@ const Squad = {
     if (!t.clTeam) t.clTeam = { id: t.id + '-academy', name: `${t.name} Academy`, short: `${t.short}.A`, logo: t.logo, color: t.color, made: true };
     G.ROLES.filter(role => !t.cl.some(p => p.role === role)).forEach(role => {
       const r = this.rng(`${role}#${t.id}#second`);
-      const ca = 8 + r() * 3, pa = Math.max(ca, ca + r() * r() * 8);
+      const ca = Attributes.caFor(60 + r() * 12, role), pa = ca;
       const p = {
         id: `made-${t.id}-${role.toLowerCase()}`, made: true, team: t.id, name: this.uniqueName(r, t.league), realName: '', nativeName: '', role,
         nation: this.NATION[t.league][Math.floor(r() * this.NATION[t.league].length)], age: 17 + Math.floor(r() * 5), photo: null,
@@ -58,7 +101,7 @@ const Squad = {
         ca: this.round(ca), pa: this.round(pa), attributes: Attributes.generate(role, ca, pa, r),
       };
       if (p.nation === 'South Korea') p.military = 'none';
-      p.ovr = Attributes.overall(p.attributes, p.role);
+      p.ovr = Attributes.overall(p.attributes, p.role); delete p.pa; this.rate(p, this.q(t.id));
       t.cl.push(p);
     });
   },
@@ -71,11 +114,28 @@ const Squad = {
       id, gen: true, name: acc.name, role: acc.role, age: acc.age, nation: 'South Korea', photo: null,
       ca: acc.ca ?? 7, pa: acc.pa ?? 9, ca0: acc.ca0 ?? acc.ca ?? 7, evalCa: acc.ca ?? 7,
       attributes: acc.attrs || Attributes.create(acc.role), grade: acc.grade || '',
-      joined: acc.date || today, contractEnd: Store.addDays(today, 730), military: 'none',
+      joined: acc.date || today, contractEnd: Store.addDays(today, 730), military: 'none', org: App.state.teamId,
     };
     this.gen()[id].ovr = Attributes.overall(this.gen()[id].attributes, acc.role);
     this.moves()[id] = level;
     return id;
+  },
+
+  // 아카데미 기본 명단: 감독을 맡은 팀마다 처음 한 번 만든다 (포지션별 1명 + 1명, 16~19세, OVR 44~60).
+  // 잠재력은 아카데미 수준을 따른다 (T1이면 '대박' 유망주가 나올 확률이 가장 높다)
+  seedAcademy(t) {
+    const seeded = (App.state.acSeed ||= {});
+    if (!t || seeded[t.id] || Object.values(this.gen()).some(g => g.org === t.id)) { seeded[t && t.id] = true; return; }
+    seeded[t.id] = true;
+    const q = this.q(t.id), roles = [...G.ROLES, G.ROLES[Math.floor(G.rand(t.id, 'acx') * 5)]];
+    roles.forEach((role, i) => {
+      const r = this.rng(`ac#${t.id}#${i}#${App.state.seed || ''}`), age = 16 + Math.floor(r() * 4);
+      const ca = Attributes.caFor(44 + r() * 16, role), id = `gen-ac-${t.id}-${i}-${Math.floor(r() * 1e6)}`;
+      const g = { id, gen: true, org: t.id, name: this.uniqueName(r, t.league), role, age, nation: this.NATION[t.league || 'LCK'][0], photo: null,
+        attributes: Attributes.generate(role, ca, ca, r), grade: '', joined: Clock.today(), contractEnd: Store.addDays(Clock.today(), 730), military: 'none' };
+      g.ovr = Attributes.overall(g.attributes, role); this.rate(g, q); g.ca0 = g.ca; g.evalCa = g.ca;
+      this.gen()[id] = g; this.moves()[id] = 'academy';
+    });
   },
 
   // 옛 저장(챌린저스 = 테스트 합격자 배열)을 아카데미 생성 선수로 옮긴다
@@ -96,16 +156,21 @@ const Squad = {
     Contract.applyWorld();
     // 다른 팀은 포지션별로 가치가 높은 선수가 주전
     App.db.teams.filter(t => t.id !== App.state.teamId).forEach(t => { t.players.sort((a, b) => Contract.score(b, t) - Contract.score(a, t)); MOCK.markSubs(t.players); });
+    // 모든 팀 선수: 현재 기량은 능력치에서, 잠재력은 없으면 나이 · 아카데미 수준으로 (1군 선수는 보통 수준 50)
+    App.db.teams.forEach(x => { x.players.forEach(p => this.rate(p)); (x.cl || []).forEach(p => this.rate(p, this.q(x.id))); });
     const t = this.team(); if (!t) return;
     this.migrate();
+    Object.values(this.gen()).forEach(g => { g.org ||= t.id; });           // 예전 저장의 연습생은 지금 팀 소속
+    this.seedAcademy(t);
     const dev = this.dev();
-    const all = [...t.players.map(p => [p, 'first']), ...t.cl.map(p => [p, 'cl']), ...Object.values(this.gen()).map(p => [p, 'academy'])];
+    const all = [...t.players.map(p => [p, 'first']), ...t.cl.map(p => [p, 'cl']), ...Object.values(this.gen()).filter(g => g.org === t.id).map(p => [p, 'academy'])];
     t.players = []; t.cl = []; t.academy = [];
     all.forEach(([p, def]) => {
       const lv = this.moves()[p.id] || def;
       if (lv === 'out') return;
       if (dev[p.id]) Object.assign(p, dev[p.id]);
-      if (p.attributes && p.role !== 'COACH') { p.attributes = Attributes.fix(p.attributes, p.role); p.ovr = Attributes.overall(p.attributes, p.role); } // 예전 세이브 능력치 → 새 구성
+      if (p.attributes && p.role !== 'COACH') { p.attributes = Attributes.fix(p.attributes, p.role); p.ovr = Attributes.overall(p.attributes, p.role); this.rate(p, this.q(t.id)); } // 예전 세이브 능력치 → 새 구성 · 현재 기량 다시 읽기
+      const sp = this.SPECIAL[p.id]; if (sp && p.attributes && (p.ovr || 0) < sp[0]) { this.scaleTo(p, sp[0]); p.pa = Math.max(p.pa || 0, this.round(Attributes.caFor(sp[1], p.role))); this.rate(p); }   // 저장된 능력치가 맞춘 값보다 낮으면 올린다
       p.level = lv;
       ({ first: t.players, cl: t.cl, academy: t.academy })[lv].push(p);
     });
@@ -149,6 +214,8 @@ const Squad = {
     });
   },
 
+  // 코치가 보는 최고 OVR: 실제 잠재력 ±3 (코치 눈이 완벽하지 않다)
+  potRange(p) { const v = Math.min(99, this.toOvr(p.pa, p.role)), lo = Math.max(p.ovr || 0, v - 3 + Math.round(G.rand(p.id, 'pe') * 2)); return lo >= 99 ? '99' : `${lo}~${Math.min(99, lo + 5)}`; },
   stars(p) { return p.ca != null ? `${UI.stars(Attributes.stars(p.ca))}` : '-'; },
   pot(p) { return p.pa != null ? `${UI.stars(Attributes.stars(p.pa))}` : '-'; },
   coach() { const t = this.team(); return ((t.clStaff || [])[0] || (t.staff || [])[1] || {}).name || '2군'; },
@@ -216,7 +283,7 @@ const Squad = {
     if (!me || me.league === 'LCK' || today.slice(8) !== '10' || today.slice(5, 7) === '12' || me.cl.length < 5) return;
     const ln = this.lineup(me.cl).filter(Boolean);
     const mine = this.strength(me.cl) + (G.rand(App.state.seed + today, 'sec') - .5) * 2;
-    const field = Array.from({ length: 9 }, (_, i) => 8.5 + G.rand(today + 'sc' + me.id + i, 'f') * 3);
+    const field = Array.from({ length: 9 }, (_, i) => Attributes.caFor(65 + G.rand(today + 'sc' + me.id + i, 'f') * 15, 'MID'));
     const place = 1 + field.filter(v => v > mine).length;
     ln.forEach(p => this.grow(p, 'cl', .008));
     (App.state.secResults ||= []).push({ d: today, place });
@@ -234,7 +301,7 @@ const Squad = {
     if (list.length < 5) return;
     const ln = this.lineup(list).map((p, i) => p || list.filter(x => !this.lineup(list).includes(x))[i]).filter(Boolean);
     const mine = ln.reduce((s, p) => s + (p.ca || 7), 0) / Math.max(1, ln.length) + (G.rand(App.state.seed + today, 'acm') - .5) * 2;
-    const field = Array.from({ length: 11 }, (_, i) => 7.5 + G.rand(today + 'ac' + i, 'f') * 3);
+    const field = Array.from({ length: 11 }, (_, i) => Attributes.caFor(47 + G.rand(today + 'ac' + i, 'f') * 15, 'MID'));
     const place = 1 + field.filter(v => v > mine).length;
     ln.forEach(p => this.grow(p, 'academy', .01));
     const mvp = [...ln].sort((x, y) => (y.ca || 0) + G.rand(today + y.id, 'm') * 3 - (x.ca || 0) - G.rand(today + x.id, 'm') * 3)[0];
@@ -253,7 +320,7 @@ const Squad = {
     ['physical', 'macro', 'mental', 'role'].forEach(g => Object.keys(p.attributes[g] || {}).forEach(k => {
       p.attributes[g][k] = Math.min(20, p.attributes[g][k] + d * (.4 + G.rand(p.id + Clock.today() + k, 'ag') * 1.2));
     }));
-    p.ovr = Attributes.overall(p.attributes, p.role);
+    p.ovr = Attributes.overall(p.attributes, p.role); p.ca = this.round(Attributes.raw(p.attributes, p.role)); p.pa = Math.max(p.pa, p.ca);
     if (!p.gen) this.dev()[p.id] = { ca: p.ca, attributes: p.attributes, evalCa: p.evalCa };
   },
 
@@ -267,11 +334,12 @@ const Squad = {
       const vals = ['physical', 'macro', 'mental', 'role'].flatMap(g => Object.entries(p.attributes[g] || {}));
       vals.sort((a, b) => b[1] - a[1]);
       const up = p.evalCa == null ? null : p.ca - p.evalCa;
-      const opinion = lv === 'academy' ? (p.ca >= 11 ? '챌린저스 콜업을 추천합니다.' : p.pa - p.ca < 1 && p.ca < 9 ? '성장이 멈췄습니다. 방출을 고려해 볼 만합니다.' : '지금처럼 아카데미에서 키우는 게 좋겠습니다.')
-        : (p.ca >= 13.5 ? '1군 콜업을 검토해 볼 만합니다.' : p.pa - p.ca < 1 && p.ca < 10 ? '더 오르기는 어려워 보입니다. 거취를 고민해야 합니다.' : '챌린저스에서 경험을 더 쌓아야 합니다.');
+      const ov = p.ovr || this.toOvr(p.ca, p.role), left = p.pa - p.ca;
+      const opinion = lv === 'academy' ? (ov >= 62 ? '챌린저스 콜업을 추천합니다.' : left < .4 && ov < 55 ? '성장이 멈췄습니다. 방출을 고려해 볼 만합니다.' : '지금처럼 아카데미에서 키우는 게 좋겠습니다.')
+        : (ov >= 78 ? '1군 콜업을 검토해 볼 만합니다.' : left < .4 && ov < 70 ? '더 오르기는 어려워 보입니다. 거취를 고민해야 합니다.' : '챌린저스에서 경험을 더 쌓아야 합니다.');
       p.evalCa = p.ca;
       if (!p.gen) this.dev()[p.id] = { ...(this.dev()[p.id] || {}), evalCa: p.ca };
-      return `■ ${p.name} (${this.LV[lv]} · ${G.ROLE_KO[p.role]} · ${p.age || '-'}세)\n  현재 기량 ${Attributes.starText(p.ca)}  잠재력 ${Attributes.starText(p.pa)}\n  강점: ${lab[vals[0][0]]}, ${lab[vals[1][0]]} / 약점: ${lab[vals.at(-1)[0]]}\n  지난 평가 이후: ${up == null ? '첫 평가' : up >= .5 ? '크게 성장' : up >= .15 ? '꾸준히 성장' : '정체'}\n  의견: ${opinion}`;
+      return `■ ${p.name} (${this.LV[lv]} · ${G.ROLE_KO[p.role]} · ${p.age || '-'}세)\n  현재 기량 ${Attributes.starText(p.ca)} (OVR ${ov})  잠재력 ${Attributes.starText(p.pa)} (최고 OVR ${this.potRange(p)} 예상)\n  강점: ${lab[vals[0][0]]}, ${lab[vals[1][0]]} / 약점: ${lab[vals.at(-1)[0]]}\n  지난 평가 이후: ${up == null ? '첫 평가' : up >= .5 ? '크게 성장' : up >= .15 ? '꾸준히 성장' : '정체'}\n  의견: ${opinion}`;
     });
     Inbox.push({ from: { name: `${this.coach()} 코치`, role: 'coach' }, subject: `하부 선수단 내부 평가 보고서 (${+today.slice(5, 7)}월)`, priority: 'todo', link: 'roster-challengers',
       body: `챌린저스와 아카데미 선수 ${list.length}명의 내부 평가 결과입니다.\n\n${rep.join('\n\n')}` });

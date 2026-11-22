@@ -141,16 +141,18 @@ Engine.on(today => {
     Contract.st().contracts[p.id] = { ...c, end, signed: today }; p.contractEnd = end;
     Inbox.push({ from: board, subject: `${p.name} 코치 계약 1년 연장`, link: 'club-staff', body: `${p.name} 코치의 계약이 끝나 사무국이 같은 조건으로 1년 연장했습니다. 새 만료일은 ${Fmt.dayLabel(end)}입니다.` });
   });
-  // 2군 선수도 계약이 끝나면 같은 조건으로 1년 연장 (만료일이 지난 날짜로 남아 있던 문제). 내보내려면 방출을 쓴다
+  // 2군 선수도 계약이 끝나면 같은 조건으로 1년 연장 (만료일이 지난 날짜로 남아 있던 문제). 내보내려면 방출을 쓴다.
+  // 단, 1군 계약(연봉 1억 넘게)으로 챌린저스에 내려간 선수는 자동 연장하지 않는다 → 아래 1군과 똑같이 만료 안내 · FA
+  const big = p => Contract.of(p, t).salary > 1;
   const clRenew = [];
   (t.cl || []).forEach(p => {
     const c = Contract.of(p, t);
-    if (!c.end || c.end >= today) return;
+    if (!c.end || c.end >= today || big(p)) return;
     let end = Contract.addYears(c.end, 1); while (end < today) end = Contract.addYears(end, 1);
     Contract.st().contracts[p.id] = { ...c, end, signed: today }; p.contractEnd = end; clRenew.push(p.name);
   });
   if (clRenew.length) Inbox.push({ from: board, subject: `2군 계약 1년 연장 (${clRenew.length}명)`, link: 'roster-challengers', body: `계약이 끝난 2군 선수 ${clRenew.join(', ')}의 계약을 같은 조건으로 1년 연장했습니다.\n\n내보낼 선수는 챌린저스 화면에서 방출할 수 있습니다.` });
-  [...t.players].forEach(p => {
+  [...t.players, ...(t.cl || []).filter(big)].forEach(p => {
     const c = Contract.of(p, t), d = c.end ? Fmt.daysBetween(today, c.end) : null;
     if (d == null) return;
     if (c.option === 'team' && d <= 7 && d >= 0 && Engine.once('topt:' + p.id + c.end)) Inbox.push({ from: board, subject: `${p.name} 구단 옵션 행사 여부`, priority: 'todo', ctx: { pid: p.id, player: p.name },
