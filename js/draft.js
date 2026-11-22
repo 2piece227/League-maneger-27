@@ -83,7 +83,14 @@ const Draft = {
     // 국제대회 기간: 우리 팀은 등록한 주전만
     const reg = t && t.id === App.state.teamId && typeof Register !== 'undefined' && Register.active();
     if (reg) return G.ROLES.map(r => { const id = reg.starters[r], hit = id && Player.find(id); return hit ? hit.p : null; });
-    return G.ROLES.map(r => { const ps = t.players.filter(p => p.role === r).sort((a, b) => (a.sub - b.sub) || (b.ovr || 0) - (a.ovr || 0)); return ps[0] || null; }); },
+    return G.ROLES.map(r => { const ps = t.players.filter(p => p.role === r).sort((a, b) => (a.sub - b.sub) || (b.ovr || 0) - (a.ovr || 0)); return ps[0] || this.standIn(t, r); }); },
+  // 상대 팀(AI) 1군에 빈 포지션이 있으면 경기 때만 대신 뛸 선수: 2군 · 아카데미 → 그 포지션 FA (스토브리그 트라이아웃처럼).
+  // 계약은 하지 않는다 (빈자리는 Market.shop이 콜업 · 영입으로 채운다). 우리 팀은 대신 채우지 않는다 (출전 불가 안내)
+  standIn(t, r) {
+    if (!t || t.id === App.state.teamId) return null;
+    const ok = p => p && p.role === r && (p.ovr || 0) > 0, by = (a, b) => (b.ovr || 0) - (a.ovr || 0);
+    return [...(t.cl || []), ...(t.academy || [])].filter(ok).sort(by)[0] || ((App.db.free && App.db.free.players) || []).filter(ok).sort(by)[0] || null;
+  },
   metaMap() {
     if (this._meta) return this._meta;
     const agg = {};

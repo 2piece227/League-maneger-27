@@ -36,9 +36,18 @@ const Music = {
     try { Object.assign(this.pref, JSON.parse(localStorage.getItem(this.KEY) || '{}')); } catch (e) {}
     this.mount();
     Router.onRoute(r => this.route(r));
-    // 브라우저는 사용자가 한 번 누르기 전에는 소리를 못 낸다: 첫 터치에서 시작
-    const go = () => { this.unlocked = true; this.unlockAudio(); document.removeEventListener('pointerdown', go, true); if (this.pref.on) this.start(); };
-    document.addEventListener('pointerdown', go, true);
+    // 브라우저는 사용자가 화면을 한 번 누르기 전에는 소리를 못 낸다 (어느 사이트나 같다).
+    // 그래서 첫 곡을 미리 불러와 대기시켜 두고, 첫 터치 · 클릭 · 키 입력 그 순간에 바로 튼다.
+    // 휴대폰은 손을 뗄 때(touchend · click)가 '누름'으로 쳐지므로 여러 이벤트에서 시도하고, 소리가 나면 그만둔다
+    this.files.then(() => this.cue());
+    const EV = ['pointerdown', 'touchend', 'click', 'keydown'];
+    this._kick = e => {
+      if (e.target && e.target.closest && e.target.closest('.mu')) return;   // 재생기 버튼은 그 버튼이 처리
+      this.unlocked = true; this.unlockAudio();
+      if (this.pref.on && !this.playing) { if (this.cued && this.list === this.want()) this.play(); else this.start(); }
+    };
+    this._unkick = () => EV.forEach(k => document.removeEventListener(k, this._kick, true));
+    EV.forEach(k => document.addEventListener(k, this._kick, true));
     // 메인 화면 · 감독 만들기 화면에서도 같은 월즈 플레이리스트가 이어진다. 게임 화면에서는 화면에 맞는 목록으로
     const show = App.show.bind(App);
     App.show = id => { show(id); this.screen(); };
@@ -158,6 +167,16 @@ const Music = {
   },
 
   // ---------- 재생 ----------
+  // 첫 곡을 미리 불러 둔다 (첫 터치에서 기다림 없이 바로 나오게)
+  cue() {
+    if (!this.pref.on || this.list) return;
+    const L = this.LISTS[this.want()]; this.list = this.want();
+    this.order = L.tracks.map((_, i) => i);
+    for (let i = this.order.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [this.order[i], this.order[j]] = [this.order[j], this.order[i]]; }
+    this.idx = 0; const t = this.track(); this.paint();
+    if (t.src) { const a = this.mkAudio(); a.src = t.src; a.load(); this.cued = true; }
+    else this.withSC(() => { this.cued = true; this.applyVol(); this.w.getCurrentSound(s => { if (s && s.artwork_url) { this.art[this.url(t)] = s.artwork_url.replace('-large', '-t300x300'); this.paint(); } }); });
+  },
   setOn(on) {
     this.pref.on = on; this.save(); $('#mu-on', this.el).checked = on;
     if (on) { this.unlocked = true; this.start(); } else this.pause();
@@ -207,7 +226,7 @@ const Music = {
       } });
     });
   },
-  mkAudio() { return this.audio ||= Object.assign(new Audio(), { preload: 'auto', onended: () => this.step(1), onerror: () => { if (this.audio.src.startsWith('data:')) return; this.skip(this.track()); }, onplay: () => this.set(true), onpause: () => this.set(false) }); },
+  mkAudio() { return this.audio ||= Object.assign(new Audio(), { preload: 'auto', onended: () => { if (!this.audio.src.startsWith('data:')) this.step(1); }, onerror: () => { if (this.audio.src.startsWith('data:')) return; this.skip(this.track()); }, onplay: () => { if (!this.audio.src.startsWith('data:')) this.set(true); }, onpause: () => { if (!this.audio.src.startsWith('data:')) this.set(false); } }); },   // 무음(잠금 풀기)은 재생으로 치지 않는다
   // 아이폰 사파리는 사용자가 누른 그 순간에 한 번 재생해 둔 오디오만 나중에 틀 수 있다: 첫 터치에서 무음으로 한 번 열어 둔다
   unlockAudio() {
     const a = this.mkAudio(); if (a.src) return;
@@ -222,7 +241,7 @@ const Music = {
   play() { const t = this.track(); if (!t) return; if (t.src && this.audio) this.audio.play().catch(() => {}); else this.withSC(() => this.w.play()); },
   pause() { if (this.audio) this.audio.pause(); if (this.w && this.ready) this.w.pause(); this.set(false); },
   toggle() { if (!this.pref.on) return this.setOn(true); this.unlocked = true; if (this.playing) this.pause(); else if (!this.list) this.start(); else this.play(); },
-  set(p) { this.playing = p; if (p) clearTimeout(this._to); this.paint(); },
+  set(p) { this.playing = p; if (p) { clearTimeout(this._to); if (this._unkick) { this._unkick(); this._unkick = null; } } this.paint(); },
   vol() { return Math.round(this.pref.vol * this.duck * (this.fadeK ?? 1)); },
   applyVol() { const v = this.vol(); if (this.audio) this.audio.volume = v / 100; if (this.w && this.ready) this.w.setVolume(v); },
   // 플레이리스트가 바뀔 때 0.6초 동안 소리를 줄였다가 넘긴다
