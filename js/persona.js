@@ -26,10 +26,12 @@ const Persona = {
     if (!p) return null;
     const F = this.FIX[p.id], r = k => G.rand(p.id, 'ps' + k), loy = this.hid(p, 'loyalty'), amb = this.hid(p, 'ambition'), yrs = this.years(p);
     const team = (Player.find(p.id) || {}).t;
+    // 연봉은 중하위 선수일수록, 우승은 최상위 선수일수록, 출전은 중상위(주전 경쟁) 선수가 더 원한다
+    const ov = p.ovr || 60;
     let w = {
-      money: .25 + r(1) * .35 + (amb <= 9 ? .1 : 0),
-      play: .15 + r(2) * .25 + ((p.ovr || 0) >= 70 ? .1 : 0),
-      win: .1 + r(3) * .2 + (amb - 10) * .03 + ((p.ovr || 0) >= 85 ? .12 : 0),
+      money: .15 + r(1) * .3 + (amb <= 9 ? .08 : 0) + (ov < 75 ? .1 : 0) - (ov >= 90 ? .08 : 0),
+      play: .15 + r(2) * .25 + (ov >= 70 && ov < 85 ? .1 : 0),
+      win: .08 + r(3) * .25 + (amb - 10) * .03 + (ov >= 85 ? .18 : 0) + (ov >= 92 ? .15 : 0),
       home: (p.nation === 'South Korea' ? .3 : .15) + r(4) * .25,
       loyal: Math.max(0, Math.min(1, (loy - 9) * .07 + Math.min(4, yrs) * .06 + r(5) * .15)),
     };
@@ -40,7 +42,7 @@ const Persona = {
       if (w.loyal >= .8 && yrs >= 4) tag = 'oneclub';
       else if (w.loyal >= .6) tag = 'loyal';
       else if (w.home <= .25 && p.nation === 'South Korea') tag = 'abroad';
-      else { const top = ['money', 'win', 'play'].sort((a, b) => w[b] - w[a])[0]; tag = w[top] >= .45 ? top : (w.home >= .5 ? 'stay' : null); }
+      else { const top = ['money', 'win', 'play'].sort((a, b) => w[b] - w[a])[0]; tag = w[top] >= .38 ? top : (w.home >= .48 ? 'stay' : null); }
     }
     return { w, tag, label: tag ? this.LABEL[tag] : '', fav: (F && F.fav) || [], favCoach: (F && F.favCoach) || [], club: (F && F.club) || (tag === 'oneclub' && team ? team.id : null), cut: (F && F.cut) || (tag === 'oneclub' ? .9 : 1) };
   },

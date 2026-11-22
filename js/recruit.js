@@ -278,4 +278,32 @@ Views['recruit-reports'] = el => Recruit.reports(el);
 Views['recruit-fa'] = el => Recruit.fa(el);
 Views['recruit-offers'] = el => Recruit.offers(el);
 Views['recruit-teams'] = el => Recruit.teams(el);
+// 영입 › 유망주: 다른 LCK 팀 아카데미 선수 (스카우트 추정 잠재력 · 육성 보상금) — 데려오려면 '영입 제안'
+const YouthView = {
+  role: 'ALL',
+  async render(el) {
+    await Portal.ready;
+    const my = Roster.team();
+    const draw = () => {
+      const list = App.db.teams.filter(t => t !== my && t.league === 'LCK').flatMap(t => (t.academy || []).map(g => ({ g, t, I: Squad.poachInfo(g) })))
+        .filter(x => this.role === 'ALL' || x.g.role === this.role).sort((a, b) => b.g.pa - a.g.pa);
+      el.innerHTML = `
+        <div class="cr-page">
+          <div class="card rs-head"><div class="rs-title"><h2>유망주 <small>다른 LCK 팀 아카데미</small></h2><span>다른 팀 아카데미 선수입니다. 육성 보상금을 내고 데려올 수 있어요. 잠재력은 스카우트 추정이라 범위가 넓습니다. 각 팀은 1월 · 7월에 새 유스를 받고, 크지 않는 선수는 내보냅니다.</span></div>
+            <div class="rs-stats"><div><span class="k">유망주</span><b>${list.length}</b></div></div></div>
+          <div class="seg yt-rf">${['ALL', ...G.ROLES].map(r => `<button class="${this.role === r ? 'on' : ''}" data-r="${r}">${r === 'ALL' ? '전체' : G.pos(r)}</button>`).join('')}</div>
+          <div class="card" style="padding:0"><table class="rs-table yt-table"><thead><tr><th>선수</th><th>팀</th><th>포지션</th><th class="num">나이</th><th>현재 기량</th><th>잠재력</th><th class="num">보상금</th><th></th></tr></thead><tbody>
+            ${list.map(({ g, t, I }) => `<tr class="sq-click" data-pid="${g.id}"><td><div class="pl-cell">${G.face(g)}<div>${G.ovr(g)}<b>${UI.esc(g.name)}</b></div></div></td><td>${G.team(t, 'xs')} ${UI.esc(t.short)}</td><td>${G.pos(g.role)}</td><td class="num">${g.age}</td>
+              <td>${UI.stars(Attributes.stars(g.ca))}</td><td><span class="sq-pot">${UI.stars(Attributes.stars(g.pa))}<small>최고 ${Squad.potRange(g, true)}</small></span></td><td class="num">${Player.money(I.fee)}</td>
+              <td>${I.locked ? '<span class="cr-dim">핵심 유망주</span>' : `<button class="btn-ghost btn-sm" data-poach="${g.id}">영입 제안</button>`}</td></tr>`).join('') || '<tr><td colspan="8" class="cr-dim">유망주가 없습니다.</td></tr>'}
+          </tbody></table></div>
+        </div>`;
+      $('.yt-rf', el).onclick = e => { const b = e.target.closest('button'); if (!b) return; this.role = b.dataset.r; draw(); };
+      el.querySelectorAll('[data-poach]').forEach(b => b.onclick = e => { e.stopPropagation(); Squad.poach(b.dataset.poach); });
+      el.querySelectorAll('tr.sq-click').forEach(tr => tr.onclick = e => { if (!e.target.closest('button')) Player.open(tr.dataset.pid); });
+    };
+    draw();
+  },
+};
+Views['recruit-youth'] = el => YouthView.render(el);
 Views['recruit-assignments'] = el => Recruit.assignments(el);

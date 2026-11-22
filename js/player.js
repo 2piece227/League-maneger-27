@@ -87,7 +87,7 @@ const Player = {
           ${this.isMine(t) && p.role !== 'COACH' ? `<span class="pp-mv" data-pid="${p.id}">${Squad.buttons(p)}</span>` : ''}
           ${this.isMine(t) && p.role !== 'COACH' ? '<button class="btn-ghost pp-meet">면담</button>' : ''}
           <button class="btn-ghost pp-list">${listed ? '관심 목록에서 빼기' : '관심 목록에 추가'}</button>
-          ${this.isMine(t) ? '<button class="btn-primary pp-talk">재계약 협상</button>' : (p.free || this.days(p) < 0 ? '<button class="btn-primary pp-ask">계약 협상</button>' : '<button class="btn-ghost pp-trade">트레이드 제안</button><button class="btn-primary pp-ask">영입 문의</button>')}
+          ${!this.isMine(t) && p.gen && p.level === 'academy' ? '<button class="btn-primary pp-poach">유망주 영입 제안</button>' : this.isMine(t) ? '<button class="btn-primary pp-talk">재계약 협상</button>' : (p.free || this.days(p) < 0 ? '<button class="btn-primary pp-ask">계약 협상</button>' : '<button class="btn-ghost pp-trade">트레이드 제안</button><button class="btn-primary pp-ask">영입 문의</button>')}
         </div>
       </div>`;
     document.body.appendChild(back);
@@ -103,6 +103,7 @@ const Player = {
     if (ask) ask.onclick = () => { close(); this.inquiryModal(p.id); };
     const trd = $('.pp-trade', back); if (trd) trd.onclick = () => { close(); Trade.propose(p.id); };
     const mt = $('.pp-meet', back); if (mt) mt.onclick = () => { close(); Meet.open(p.id); };
+    const pc = $('.pp-poach', back); if (pc) pc.onclick = () => { close(); Squad.poach(p.id); };
   },
 
   toggleShortlist(id) {

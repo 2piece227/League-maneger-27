@@ -123,19 +123,81 @@ const Squad = {
 
   // 아카데미 기본 명단: 감독을 맡은 팀마다 처음 한 번 만든다 (포지션별 1명 + 1명, 16~19세, OVR 44~60).
   // 잠재력은 아카데미 수준을 따른다 (T1이면 '대박' 유망주가 나올 확률이 가장 높다)
+  // 유스 한 명 만들기: 나이 · OVR 범위 안에서, 잠재력은 그 팀 아카데미 수준을 따른다
+  youth(t, key, ages = [16, 19], ovr = [44, 60], role) {
+    const r = this.rng(`ac#${t.id}#${key}#${App.state.seed || ''}`), q = this.q(t.id);
+    role ||= G.ROLES[Math.floor(r() * 5)];
+    const age = ages[0] + Math.floor(r() * (ages[1] - ages[0] + 1)), ca = Attributes.caFor(ovr[0] + r() * (ovr[1] - ovr[0]), role), id = `gen-ac-${t.id}-${key}-${Math.floor(r() * 1e6)}`;
+    const g = { id, gen: true, org: t.id, name: this.uniqueName(r, t.league), role, age, age0: age, nation: this.NATION[t.league || 'LCK'][0], photo: null,
+      attributes: Attributes.generate(role, ca, ca, r), grade: '', joined: Clock.today(), contractEnd: Store.addDays(Clock.today(), 730), military: 'none' };
+    g.ovr = Attributes.overall(g.attributes, role); this.rate(g, q); g.ca0 = g.ca; g.evalCa = g.ca;
+    this.gen()[id] = g; if (t.id === App.state.teamId) this.moves()[id] = 'academy';
+    return g;
+  },
+  // 아카데미 기본 명단: 팀마다 처음 한 번 (포지션별 1명 + 1명, 16~19세, OVR 44~60). 우리 팀이 아니어도 LCK 팀은 모두 (다른 팀 유망주를 데려올 수 있게)
   seedAcademy(t) {
     const seeded = (App.state.acSeed ||= {});
-    if (!t || seeded[t.id] || Object.values(this.gen()).some(g => g.org === t.id)) { seeded[t && t.id] = true; return; }
+    if (!t || seeded[t.id] || Object.values(this.gen()).some(g => g.org === t.id)) { if (t) seeded[t.id] = true; return; }
     seeded[t.id] = true;
-    const q = this.q(t.id), roles = [...G.ROLES, G.ROLES[Math.floor(G.rand(t.id, 'acx') * 5)]];
-    roles.forEach((role, i) => {
-      const r = this.rng(`ac#${t.id}#${i}#${App.state.seed || ''}`), age = 16 + Math.floor(r() * 4);
-      const ca = Attributes.caFor(44 + r() * 16, role), id = `gen-ac-${t.id}-${i}-${Math.floor(r() * 1e6)}`;
-      const g = { id, gen: true, org: t.id, name: this.uniqueName(r, t.league), role, age, nation: this.NATION[t.league || 'LCK'][0], photo: null,
-        attributes: Attributes.generate(role, ca, ca, r), grade: '', joined: Clock.today(), contractEnd: Store.addDays(Clock.today(), 730), military: 'none' };
-      g.ovr = Attributes.overall(g.attributes, role); this.rate(g, q); g.ca0 = g.ca; g.evalCa = g.ca;
-      this.gen()[id] = g; this.moves()[id] = 'academy';
+    [...G.ROLES, G.ROLES[Math.floor(G.rand(t.id, 'acx') * 5)]].forEach((role, i) => this.youth(t, 's' + i, [16, 19], [44, 60], role));
+  },
+  ACADEMY_MAX: 8,
+  // 유스 입단 · 정리 (1월 10일 · 7월 10일): 팀마다 새 유스 1~2명(16~17세), 크지 않는 선수 · 나이 찬 선수는 내보낸다
+  intake(today) {
+    if (!['01-10', '07-10'].includes(today.slice(5))) return;
+    const me = this.team(), G2 = this.gen();
+    App.db.teams.filter(t => t.league === 'LCK' || t.id === App.state.teamId).forEach(t => {
+      this.seedAcademy(t);
+      const mine = t.id === App.state.teamId, list = () => Object.values(G2).filter(g => g.org === t.id && (!mine || (this.moves()[g.id] || 'academy') === 'academy'));
+      const n = 1 + (G.rand(t.id + today, 'yn') < .35 + this.q(t.id) / 400 ? 1 : 0);    // 수준 높은 아카데미는 2명 들어올 때가 많다
+      const added = Array.from({ length: n }, (_, i) => this.youth(t, today + i, [16, 17], [40, 55]));
+      // 정리: 20세 이상인데 OVR 60 미만 · 18세 이상인데 성장이 멈췄고 OVR 58 미만 · 계약 만료(OVR 62 미만) · 정원(8명) 초과는 잠재력 낮은 순
+      const out = [];
+      list().forEach(g => {
+        const stall = g.pa - g.ca < .3, exp = g.contractEnd && g.contractEnd < today;
+        if ((g.age >= 20 && g.ovr < 60) || (g.age >= 18 && stall && g.ovr < 58) || (exp && g.ovr < 62) || (!mine && g.age >= 21)) out.push(g);
+        else if (exp) g.contractEnd = Store.addDays(today, 365);
+      });
+      out.forEach(g => this.drop(g));
+      const rest = list().sort((a, b) => a.pa - b.pa); while (rest.length > this.ACADEMY_MAX) this.drop(rest.shift(), out);
+      if (mine) Inbox.push({ from: { name: `${this.coach()} 코치`, role: 'coach' }, subject: `아카데미 유스 입단 · 정리 (${+today.slice(5, 7)}월)`, link: 'roster-academy',
+        body: `새로 들어온 유스:\n${added.map(g => `■ ${g.name} (${G.ROLE_KO[g.role]} · ${g.age}세) 현재 ${Attributes.starText(g.ca)} · 잠재력 ${Attributes.starText(g.pa)}`).join('\n')}`
+          + (out.length ? `\n\n내보낸 선수:\n${out.map(g => `■ ${g.name} (${G.ROLE_KO[g.role]} · ${g.age}세 · OVR ${g.ovr}) — ${g.age >= 20 && g.ovr < 60 ? '나이에 비해 기량이 부족합니다' : g.pa - g.ca < .3 ? '성장이 멈췄습니다' : '계약 만료'}`).join('\n')}` : '') });
     });
+    this.apply();
+  },
+  drop(g, out) { delete this.gen()[g.id]; delete this.moves()[g.id]; if (out) out.push(g); },
+  // 생일이 지나면 나이를 올린다 (생성 선수는 입단일 기준 1년마다)
+  ageGen(today) {
+    Object.values(this.gen()).forEach(g => { if (g.joined && g.age0 != null) { const a = g.age0 + Math.floor(Fmt.daysBetween(g.joined, today) / 365); if (a !== g.age) g.age = a; } });
+  },
+
+  // 다른 팀 아카데미 유망주 영입: 육성 보상금을 내고 데려온다.
+  //   보상금 = 잠재력 · 그 팀 아카데미 수준 · 나이로 정한다. 최고 수준 아카데미(80 이상)의 '핵심 유망주'(예상 최고 OVR 85+)는 팔지 않는다.
+  //   선수 본인도 옮기고 싶어야 한다: 우리 팀 명성 · 아카데미 수준이 지금 팀보다 많이 낮으면 거절한다
+  poachInfo(g) {
+    const from = App.db.teams.find(t => t.id === g.org), me = this.team(), top = this.toOvr(g.pa, g.role), q = this.q(g.org);
+    const fee = Contract.r1(Math.max(.1, (.15 + Math.max(0, top - 60) * .045) * (q / 60) * ((g.age || 17) <= 17 ? 1.2 : 1)));
+    const locked = q >= 80 && top >= 85;
+    const want = ((me.rep || 2) - (from.rep || 2)) * .12 + (this.q(me.id) - q) / 120 + (G.rand(g.id + me.id, 'pc') - .5) * .5;
+    return { from, fee, locked, willing: want > -.2, top };
+  },
+  poach(gid) {
+    const g = this.gen()[gid]; if (!g || g.org === App.state.teamId) return;
+    const me = this.team(), I = this.poachInfo(g);
+    if (App.state.unemployed) return UI.toast('무직 상태에서는 구단 업무를 볼 수 없습니다.', 3000);
+    UI.modal({ title: `${g.name} 영입 제안 (${I.from.short} 아카데미)`, body: `<p>${UI.esc(I.from.name)} 아카데미의 ${G.ROLE_KO[g.role]} ${UI.esc(g.name)}(${g.age}세)를 데려옵니다.</p>
+      <dl class="cr-dl"><dt>스카우트 평가</dt><dd>현재 ${UI.stars(Attributes.stars(g.ca))} · 잠재력 ${UI.stars(Attributes.stars(g.pa))} (최고 OVR ${this.potRange(g, true)})</dd>
+      <dt>육성 보상금</dt><dd>${Player.money(I.fee)} 원</dd></dl>
+      ${I.locked ? `<p class="cr-dim">${UI.esc(I.from.short)}는 이 선수를 핵심 유망주로 보고 있어 보내지 않을 가능성이 큽니다.</p>` : ''}`,
+      actions: [{ label: '취소' }, { label: '제안한다', primary: true, onClick: () => {
+        if (I.locked) return UI.toast(`${Sim.josa(I.from.short, '이', '가')} 거절했습니다. 핵심 유망주라 보낼 생각이 없다고 합니다.`, 3500);
+        if (!I.willing) return UI.toast(`${Sim.josa(g.name, '이', '가')} 지금 아카데미에 남고 싶다며 거절했습니다.`, 3500);
+        g.org = me.id; g.joined = Clock.today(); g.contractEnd = Store.addDays(Clock.today(), 730); this.moves()[g.id] = 'academy';
+        World.ledger().push({ date: Clock.today(), label: `${g.name} 육성 보상금`, amount: -Math.round(I.fee * 1e8) });
+        Market.post(`[유스] ${g.name}, ${I.from.short} 아카데미에서 ${me.short}로`, `${Sim.josa(me.name, '이', '가')} ${I.from.name} 아카데미의 ${G.ROLE_KO[g.role]} 유망주 ${Sim.josa(g.name, '을', '를')} 육성 보상금을 내고 데려왔습니다.`);
+        this.apply(); UI.toast(`${g.name} 영입 — 아카데미에 합류했습니다`, 3000); Router.go(Router.current());
+      } }] });
   },
 
   // 옛 저장(챌린저스 = 테스트 합격자 배열)을 아카데미 생성 선수로 옮긴다
@@ -162,6 +224,8 @@ const Squad = {
     this.migrate();
     Object.values(this.gen()).forEach(g => { g.org ||= t.id; });           // 예전 저장의 연습생은 지금 팀 소속
     this.seedAcademy(t);
+    // 다른 LCK 팀 아카데미 (생성 유스): 화면 · 영입 제안용
+    App.db.teams.filter(x => x !== t && x.league === 'LCK').forEach(x => { this.seedAcademy(x); x.academy = Object.values(this.gen()).filter(g => g.org === x.id); x.academy.forEach(g => { g.level = 'academy'; }); });
     const dev = this.dev();
     const all = [...t.players.map(p => [p, 'first']), ...t.cl.map(p => [p, 'cl']), ...Object.values(this.gen()).filter(g => g.org === t.id).map(p => [p, 'academy'])];
     t.players = []; t.cl = []; t.academy = [];
@@ -354,6 +418,8 @@ const Squad = {
 Engine.on(today => {
   const me = Squad.team(); if (!me || App.state.unemployed) return;
   me.academy.forEach(p => Squad.grow(p, 'academy'));
+  App.db.teams.forEach(x => { if (x !== me) (x.academy || []).forEach(p => Squad.grow(p, 'academy')); });   // 다른 팀 유스도 같은 속도로 자란다
+  Squad.ageGen(today); Squad.intake(today);
   me.cl.forEach(p => Squad.grow(p, 'cl'));
   me.players.filter(p => p.gen).forEach(p => Squad.grow(p, 'first'));
   Squad.clDay(today);
