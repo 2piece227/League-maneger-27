@@ -65,3 +65,8 @@
   .mu-card { position: fixed; left: 10px; right: 10px; bottom: calc(var(--footer-h, 34px) + 130px); width: auto; }
   .mu-fab { width: 46px; height: 46px; }
 }
+/* 휴대폰 메인 화면 · 감독 만들기: 아래 날짜 바가 없으니 바닥 가까이 */
+@media (max-width: 767px) {
+  .mu.out { bottom: calc(var(--footer-h, 34px) + 12px); }
+  .mu.out .mu-card { bottom: calc(var(--footer-h, 34px) + 70px); }
+}

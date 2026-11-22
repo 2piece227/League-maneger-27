@@ -37,16 +37,23 @@ const Music = {
     this.mount();
     Router.onRoute(r => this.route(r));
     // 브라우저는 사용자가 한 번 누르기 전에는 소리를 못 낸다: 첫 터치에서 시작
-    const go = () => { this.unlocked = true; this.unlockAudio(); document.removeEventListener('pointerdown', go, true); if (this.pref.on && this.inGame()) this.start(); };
+    const go = () => { this.unlocked = true; this.unlockAudio(); document.removeEventListener('pointerdown', go, true); if (this.pref.on) this.start(); };
     document.addEventListener('pointerdown', go, true);
-    // 게임 화면에서만: 메인 화면 등으로 나가면 멈추고 재생기도 숨긴다
+    // 메인 화면 · 감독 만들기 화면에서도 같은 월즈 플레이리스트가 이어진다. 게임 화면에서는 화면에 맞는 목록으로
     const show = App.show.bind(App);
-    App.show = id => { show(id); this.el.hidden = id !== 'game'; if (id === 'game') { if (this.pref.on && this.unlocked) this.start(); } else this.pause(); };
-    this.el.hidden = !this.inGame();
+    App.show = id => { show(id); this.screen(); };
   },
   save() { try { localStorage.setItem(this.KEY, JSON.stringify(this.pref)); } catch (e) {} },
   inGame() { return !!document.querySelector('#screen-game.active'); },
-  want(r = Router.current()) { return r === 'match-draft' ? 'draft' : 'worlds'; },
+  want(r = Router.current()) { return this.inGame() && r === 'match-draft' ? 'draft' : 'worlds'; },
+  // 화면(메인 ↔ 게임)이 바뀔 때: 게임 밖에서는 늘 월즈 목록, 작게 줄인 소리도 원래대로
+  screen() {
+    const r = this.inGame() ? Router.current() : '';
+    this.el.classList.toggle('out', !this.inGame());   // 게임 밖(메인 화면): 아래 날짜 바가 없다
+    this.layout(r); this.duck = r === 'match-live' ? .35 : 1; this.applyVol();
+    if (!this.pref.on || !this.unlocked) return;
+    const w = this.want(r); if (w !== this.list) this.fade(() => this.use(w)); else if (!this.playing) this.play();
+  },
   // ---------- 음원 폴더 ----------
   EXT: /\.(mp3|m4a|aac|ogg|opus|wav|flac)$/i,
   async scan() {
@@ -124,7 +131,7 @@ const Music = {
   },
   // 밴픽 · 중계 · 휴대폰에서는 접은 채로 (게임 화면을 가리지 않게), 그 밖에는 마지막으로 둔 대로
   layout(r = Router.current()) {
-    const busy = r === 'match-draft' || r === 'match-live' || r === 'match-locker';
+    const busy = this.inGame() && (r === 'match-draft' || r === 'match-live' || r === 'match-locker');
     this.el.classList.toggle('busy', busy);
     this.el.classList.toggle('open', busy ? !!this._userOpen : !!this.pref.open);
   },
