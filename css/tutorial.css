@@ -16,3 +16,6 @@
 .tut-btns .tut-skip { margin-right: auto; }
 .tut-n { color: var(--muted); font-size: 12px; margin-right: 4px; }
 .tut-help { font: 700 15px var(--f-ui); }
+.tb-discord { display: inline-flex; align-items: center; justify-content: center; text-decoration: none; }
+.tb-discord svg { width: 17px; height: 17px; }
+.tb-discord:hover { color: #8b93ff; }

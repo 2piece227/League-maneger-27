@@ -177,6 +177,9 @@ const Tutorial = {
     if (bar && !document.querySelector('.tut-help')) {
       const b = document.createElement('button'); b.className = 'icon-btn tut-help'; b.title = '이 화면 안내'; b.textContent = '?';
       b.onclick = () => this.replay(); bar.appendChild(b);
+      const d = document.createElement('a'); d.className = 'icon-btn tb-discord'; d.href = G.DISCORD; d.target = '_blank'; d.rel = 'noopener'; d.title = '디스코드 (버그 제보 · 피드백)';
+      d.innerHTML = '<svg viewBox="0 0 24 24"><path fill="currentColor" d="M19.3 5.3A16.6 16.6 0 0 0 15.2 4l-.5 1a15.4 15.4 0 0 0-5.4 0l-.5-1a16.6 16.6 0 0 0-4.1 1.3C2.1 9.2 1.4 13 1.7 16.7a16.7 16.7 0 0 0 5 2.6l1.1-1.7a10.7 10.7 0 0 1-1.7-.8l.4-.3a11.9 11.9 0 0 0 11 0l.4.3-1.7.8 1.1 1.7a16.6 16.6 0 0 0 5-2.6c.4-4.3-.7-8-3-11.4ZM8.7 14.4c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8.9 1.8 2-.8 2-1.8 2Zm6.6 0c-1 0-1.8-.9-1.8-2s.8-2 1.8-2 1.8.9 1.8 2-.8 2-1.8 2Z"/></svg>';
+      bar.appendChild(d);
     }
   },
   // 같은 주소 안에서 화면이 바뀌는 곳: 밴픽이 끝나면 전술 화면

@@ -85,6 +85,7 @@ Screens.title = {
   },
 
   actions: {
+    discord() { window.open(G.DISCORD, '_blank', 'noopener'); },
     new() {
       App.show('profile');
     },

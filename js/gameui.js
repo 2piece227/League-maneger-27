@@ -1,5 +1,6 @@
 // 게임 화면 공용 그래픽: 팀 로고 배지, 포지션 아이콘, 국기, 결정적 목업 값
 const G = {
+  DISCORD: 'https://discord.com/invite/exEqjKpTQ',   // 베타 디스코드 (타이틀 메뉴 · 상단바)
   // 경기 단계 이름 (일정 데이터는 영어): Week 3 → 3주 차, Playoffs Round 1 → 플레이오프 1라운드
   tab(t) {
     if (!t) return '';
