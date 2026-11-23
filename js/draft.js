@@ -242,7 +242,7 @@ const Draft = {
   // 드래프트 상태 만들기 (us: 우리 진영, 없으면 AI 대 AI)
   make({ series, teams, us = null, mode = 'delegate', official = false }) {
     return {
-      id: `${series.key}:${series.games.length + 1}:${Date.now().toString(36)}`, series, game: series.games.length + 1, mode, us,
+      id: `${series.key}:${series.games.length + 1}:${Date.now().toString(36)}`, series, game: series.games.length + 1, mode, mode0: mode, us,   // mode0: 세트를 시작할 때 고른 방식 (중간에 코치에게 맡겨도 다음 세트는 원래대로)
       teams, bans: { B: [], R: [] }, picks: { B: [], R: [] }, step: 0, done: false, phase: 'draft',
       fearless: series.games.flatMap(g => [...g.picks.B, ...g.picks.R].map(x => x.c)), official,
     };
@@ -512,7 +512,7 @@ const Draft = {
               <div class="dr-lock">
                 ${mine && step[1] === 'pick' && this.sel ? `<div class="seg dr-role">${this.openRoles(S, S.us).map(r => `<button class="${(this.selRole || this.openRoles(S, S.us).find(x => this.fits(this.sel, x))) === r ? 'on' : ''}" data-r="${r}">${G.pos(r)} ${UI.esc((ourLine[G.ROLES.indexOf(r)] || { name: '공석' }).name)}</button>`).join('')}</div>` : ''}
                 <button class="btn-primary dr-lockin" ${mine && this.sel ? '' : 'disabled'}>${step[1] === 'ban' ? '밴 확정' : '선택 확정'}</button>
-                <div class="dr-tools"><button class="btn-ghost dr-timer-t">${this.timerOn ? '타이머 끄기' : '타이머 켜기'}</button>${S.mode === 'direct' ? '<button class="btn-ghost dr-deleg">코치에게 맡기기</button>' : ''}${S.official || S.scrim ? '<button class="btn-ghost dr-result">결과만 보기</button>' : '<button class="btn-ghost dr-quit">밴픽 그만두기</button>'}</div>
+                <div class="dr-tools"><button class="btn-ghost dr-timer-t">${this.timerOn ? '타이머 끄기' : '타이머 켜기'}</button>${S.mode === 'direct' ? '<button class="btn-ghost dr-deleg">코치에게 맡기기</button>' : S.us ? '<button class="btn-primary dr-take">직접 하기</button>' : ''}${S.official || S.scrim ? '<button class="btn-ghost dr-result">결과만 보기</button>' : '<button class="btn-ghost dr-quit">밴픽 그만두기</button>'}</div>
               </div>
             </div>
           </div>
@@ -529,6 +529,7 @@ const Draft = {
     $('.dr-lockin', el).onclick = () => { if (!mine || !this.sel) return; this.act(S, this.sel, this.selRole); this.next(el, S); };
     $('.dr-timer-t', el).onclick = () => { this.timerOn = !this.timerOn; this.left = this.TIME; this.board(el, S); };
     const dg = $('.dr-deleg', el); if (dg) dg.onclick = () => { S.mode = 'delegate'; this.next(el, S); };
+    const tk = $('.dr-take', el); if (tk) tk.onclick = () => { clearTimeout(this._ai); S.mode = 'direct'; S.mode0 = 'direct'; this.left = this.TIME; this.next(el, S); };   // 코치에게 맡겼다가 다시 직접
     const rs = $('.dr-result', el); if (rs) rs.onclick = () => {
       if (S.scrim) { if (!confirm('남은 판을 코치가 치르고 결과만 볼까요?')) return; clearInterval(this._tick); clearTimeout(this._ai); const sc = Scrim.find(S.scrim); Scrim.finish(S.scrim, Scrim.autoPlay(sc, S.series)); UI.toast(`스크림 ${sc.result}`, 3500); Router.go('training-scrims'); return; }
       const m = Schedule.all.find(x => x.id === S.series.key); if (!m || !confirm('남은 세트를 코치가 치르고 결과만 볼까요?')) return;
@@ -630,7 +631,7 @@ const Draft = {
       // 라커룸 기록이 없을 때 (예전 저장): 진 팀이 블루로 다음 세트
       else if (b.classList.contains('dr-nextset')) {
         const lost = played.win !== my.id;
-        this.start({ opp: ot.id, side: lost ? 'B' : 'R', mode: S.mode, bo: S.series.bo, key: S.official ? S.series.key : null, continueSeries: true });
+        this.start({ opp: ot.id, side: lost ? 'B' : 'R', mode: S.mode0 || S.mode, bo: S.series.bo, key: S.official ? S.series.key : null, continueSeries: true });
         return this.render(el);
       }
       else return;
