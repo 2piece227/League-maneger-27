@@ -562,3 +562,37 @@ button.nw-card { width: 100%; text-align: left; font: inherit; cursor: pointer; 
 .ct-lp .pl-ph { width: 36px; height: 36px; }
 .ct-lp-n { flex: 1; min-width: 160px; display: flex; flex-direction: column; }
 .ct-lp-n small { color: var(--muted); font-size: 12px; }
+
+/* ── 휴대폰 협상 창: 한 줄로 쌓아 전체가 스크롤 (예전엔 입력칸 두 열이 화면 밖으로 밀리고, 선수 정보 · 연봉 여유 · 인내심이 숨겨졌다) ──
+   위에서 아래로 [선수 · 연봉 여유 · 인내심 요약] → [대화] → [질문] → [제안 입력] → [협상 종료 · 제안 보내기 (아래에 붙음)] */
+@media (max-width: 760px) {
+  .ng-back { padding: 6px; align-items: stretch; }
+  .ng { display: flex; flex-direction: column; height: auto; max-height: calc(100vh - 12px); max-height: calc(100dvh - 12px); overflow-y: auto; overscroll-behavior: contain; }
+  .ng .pp-x { position: sticky; top: 6px; margin-left: auto; margin-bottom: -40px; z-index: 3; }
+  .ng-side { display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: 2px 10px; padding: 12px 52px 10px 12px; overflow: visible; flex: none; }
+  .ng-ph { width: 48px; height: 48px; grid-row: span 2; }
+  .ng-ph.pl-ph-empty { font-size: 18px; }
+  .ng-name { font-size: 16px; margin: 0; min-width: 0; }
+  .ng-sub { min-width: 0; flex-wrap: wrap; }
+  .ng-side .cr-dl { grid-column: 1 / -1; margin-top: 6px; display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 2px 10px; font-size: 11.5px; }
+  .ng-side .cr-dl dt, .ng-side .cr-dl dd { margin: 0; min-width: 0; }
+  .ng-pat { grid-column: 1 / -1; margin-top: 4px; }
+  .ng-main { min-height: auto; flex: none; }
+  .ng-head { padding: 10px 12px 8px; }
+  .ng-log { flex: none; max-height: 38vh; min-height: 110px; padding: 10px 12px; }
+  .ng-msg { max-width: 88%; }
+  .ng-qs { padding: 8px 12px; }
+  .ng-qs button { font-size: 12.5px; }
+  .ng-form { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); padding: 10px 12px 0; }
+  .ng-form > * { min-width: 0; }
+  .ng-form input, .ng-form select { width: 100%; min-width: 0; box-sizing: border-box; padding: 8px; }
+  .ng-term { grid-column: 1 / -1; flex-direction: row; align-items: baseline; justify-content: flex-start; gap: 8px; }
+  .ng-bonus { gap: 8px 14px; }
+  .ng-act { position: sticky; bottom: 0; margin: 0 -12px; padding: 10px 12px calc(10px + env(safe-area-inset-bottom, 0px)); background: var(--panel); border-top: 1px solid var(--line); z-index: 2; }
+  .ng-act button { flex: 1; padding: 11px; }
+}
+/* 모든 크기: 입력칸이 칸 너비를 넘지 않게. 태블릿 세로(761~1000px)는 두 열 */
+.ng-form > * { min-width: 0; }
+.ng-form input, .ng-form select { width: 100%; min-width: 0; box-sizing: border-box; }
+@media (min-width: 761px) and (max-width: 1000px) { .ng { grid-template-columns: 210px minmax(0, 1fr); } .ng-form { grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); } }
+@media (max-width: 760px) { .ng-act.ng-act-bottom { margin: 0; flex: none; } }

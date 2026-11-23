@@ -209,6 +209,8 @@ const Neg = {
       </div>`;
     document.body.appendChild(back);
     const f = $('.ng-form', back);
+    // 휴대폰: 버튼 줄을 창 맨 아래로 (입력 칸 안에 있으면 그 칸이 보일 때만 아래에 붙는다)
+    if (matchMedia('(max-width: 760px)').matches) { f.id = 'ng-form-live'; const act = $('.ng-act', back); act.querySelector('.ng-send').setAttribute('form', 'ng-form-live'); act.classList.add('ng-act-bottom'); back.querySelector('.ng').appendChild(act); }
     f.salary.value = (S.deal ? S.deal.salary : S.ask).toFixed(1);
     f.years.value = String(this.wants(p).years);
     const close = () => { back.remove(); document.removeEventListener('keydown', onKey); Router.go(Router.current()); };
@@ -225,6 +227,7 @@ const Neg = {
       const over = S.done || S.cool;
       $('.ng-qs', back).innerHTML = over ? (this.held(S) ? `<button class="btn-primary ng-sign">계약서에 사인</button><small class="ng-hold">${S.hold.replace(/-/g, '.')}까지 사인하지 않으면 합의가 무효가 됩니다</small>` : '') : this.QUESTIONS.filter(([k]) => !S.asked[k]).map(([k, l]) => `<button class="btn-ghost btn-sm" data-q="${k}">${l}</button>`).join('');
       $$('input,select,button', f).forEach(x => { if (!x.classList.contains('ng-quit')) x.disabled = !!over; });
+      { const sd = $('.ng-send', back); if (sd) sd.disabled = !!over; }
       $$('[data-q]', back).forEach(b => b.onclick = () => { this.answer(p, S, b.dataset.q); draw(); });
       const sign = $('.ng-sign', back); if (sign) sign.onclick = () => { if (this.finish(p, t, S, mode)) close(); else draw(); };
     };
