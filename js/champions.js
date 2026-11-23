@@ -13,12 +13,26 @@ const Champions = {
   DMG: { PHYSICAL_DAMAGE: '물리', MAGIC_DAMAGE: '마법' },
 
   // 처음 열 때 한 번만 불러온다. 다른 화면(밴픽·숙련도)에서도 Champions.load()를 쓴다.
+  // 겸용 포지션 (프로 경기 기록 + 잘 알려진 플렉스 픽). 베타 건의: 나피리 정글
+  FLEX: {
+    Naafiri: ['JGL'], Taliyah: ['JGL', 'MID'], Sylas: ['MID', 'JGL', 'TOP'], Gragas: ['TOP', 'JGL', 'MID', 'SUP'], Pantheon: ['TOP', 'JGL', 'MID', 'SUP'],
+    Rumble: ['TOP', 'JGL', 'MID'], Sejuani: ['JGL', 'TOP'], Jayce: ['TOP', 'MID'], Yone: ['MID', 'TOP'], Yasuo: ['MID', 'TOP', 'BOT'], Akali: ['MID', 'TOP'],
+    LeeSin: ['JGL', 'TOP'], Poppy: ['TOP', 'JGL', 'SUP'], Galio: ['MID', 'SUP', 'TOP'], Tristana: ['BOT', 'MID'], Ziggs: ['BOT', 'MID'], Seraphine: ['SUP', 'BOT', 'MID'],
+    Lucian: ['BOT', 'MID'], Corki: ['MID', 'BOT'], Smolder: ['BOT', 'MID', 'TOP'], Kennen: ['TOP', 'MID'], Karma: ['SUP', 'MID', 'TOP'], Neeko: ['MID', 'SUP'],
+    Maokai: ['SUP', 'JGL', 'TOP'], Rell: ['SUP', 'JGL'], Zac: ['JGL', 'TOP', 'SUP'], MonkeyKing: ['JGL', 'TOP'], Qiyana: ['MID', 'JGL'], Aurora: ['MID', 'TOP'],
+    Hwei: ['MID', 'SUP'], Ambessa: ['TOP', 'JGL'], Skarner: ['JGL', 'TOP'], Nocturne: ['JGL', 'MID'], Diana: ['JGL', 'MID'], Ekko: ['JGL', 'MID'],
+    Vladimir: ['MID', 'TOP', 'BOT'], Swain: ['SUP', 'MID', 'BOT', 'TOP'], Brand: ['SUP', 'MID', 'JGL', 'TOP'], Senna: ['SUP', 'BOT'], Varus: ['BOT', 'MID', 'TOP'],
+    Heimerdinger: ['MID', 'TOP', 'SUP'], Mel: ['MID', 'SUP', 'BOT'], Nidalee: ['JGL', 'TOP'], Nasus: ['TOP', 'JGL'], Darius: ['TOP', 'JGL'], Malphite: ['TOP', 'JGL', 'SUP', 'MID'],
+    Aatrox: ['TOP', 'JGL'], Elise: ['JGL', 'SUP'], Zyra: ['SUP', 'MID'], Xerath: ['MID', 'SUP', 'BOT'], Shyvana: ['JGL', 'TOP'], Anivia: ['MID', 'TOP', 'SUP'], Kaisa: ['BOT', 'MID'],
+  },
   load() {
     if (!this._p) {
       this._p = fetch('data/champions.json').then(r => r.json()).then(d => {
         this.meta = d.meta;
         this.list = d.champions;
         this.byId = Object.fromEntries(d.champions.map(c => [c.id, c]));
+        // 겸용 챔피언: 프로 경기에서 여러 포지션으로 나오는 챔피언은 그 포지션 모두에 넣는다 (원래 주 포지션이 맨 앞)
+        Object.entries(this.FLEX).forEach(([id, ps]) => { const c = this.byId[id]; if (c) c.positions = [...new Set([...c.positions, ...ps])]; });
         return this.list;
       });
     }
