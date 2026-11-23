@@ -48,7 +48,7 @@ const Player = {
           <div class="pp-id">
             <div class="pp-team">${G.team(p.level === 'cl' && t.clTeam ? { ...t.clTeam, color: t.color } : t, 'xs')}<span>${UI.esc(p.level === 'cl' && t.clTeam ? t.clTeam.name : p.level === 'academy' ? t.name + ' 아카데미' : t.name)}</span>${p.sub ? '<i class="sub-tag">후보</i>' : ''}</div>
             <h2>${G.ovr(p, 'xl')}${UI.esc(p.name)}</h2>
-            <div class="pp-sub">${UI.esc(p.nativeName || p.realName || '')}${p.realName && p.nativeName ? ` · ${UI.esc(p.realName)}` : ''}</div>
+            <div class="pp-sub">${p.made ? '<span class="pp-made" title="실제 2군 데이터가 없어 게임이 만든 선수입니다">가상 선수</span> ' : ''}${UI.esc(p.nativeName || p.realName || '')}${p.realName && p.nativeName ? ` · ${UI.esc(p.realName)}` : ''}</div>
             <div class="pp-tags">${p.role !== 'COACH' ? G.pos(p.role, true) : '<span class="ch-tag">코칭스태프</span>'}<span class="nat">${G.flag(p.nation)} ${G.nationName(p.nation)}</span>${p.age ? `<span>${p.age}세</span>` : ''}</div>
           </div>
           <div class="pp-val"><span>시장 가치</span><b>${this.money(this.value(p, t))}</b></div>
@@ -192,7 +192,7 @@ const Player = {
               const d = this.days(p), [cs, cc] = this.contractState(p);
               const pct = d == null ? 0 : Math.max(2, Math.min(100, d / 1095 * 100));
               return `<tr data-id="${p.id}">
-                <td><div class="pl-cell">${G.face(p, 'pl-ph')}<div>${G.ovr(p)}<b>${UI.esc(p.name)}</b><small class="pl-real">${UI.esc(p.nativeName || p.realName || '')}</small></div></div></td>
+                <td><div class="pl-cell">${G.face(p, 'pl-ph')}<div>${G.ovr(p)}<b>${UI.esc(p.name)}</b><small class="pl-real">${p.made ? '가상 선수' : UI.esc(p.nativeName || p.realName || '')}</small></div></div></td>
                 <td>${p.role === 'COACH' ? '코칭스태프' : G.pos(p.role, true)}</td>
                 <td class="num">${p.contractEnd ? p.contractEnd.replace(/-/g, '.') : '-'}</td>
                 <td>${(o => o.option ? `+1년 ${Contract.OPT[o.option]}` : '-')(Contract.of(p, t))}</td>

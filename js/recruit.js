@@ -26,7 +26,7 @@ const Recruit = {
     return `
       <tr data-pid="${p.id}">
         <td>${this.star(p.id)}</td>
-        <td><div class="pl-cell">${G.face(p, 'pl-ph')}<div>${G.ovr(p)}<b>${UI.esc(p.name)}</b>${sig.length ? `<i class="ms-sig static">SIG ${sig.length}</i>` : ''}<small class="pl-real">${UI.esc(p.nativeName || p.realName || '')}</small></div></div></td>
+        <td><div class="pl-cell">${G.face(p, 'pl-ph')}<div>${G.ovr(p)}<b>${UI.esc(p.name)}</b>${sig.length ? `<i class="ms-sig static">SIG ${sig.length}</i>` : ''}<small class="pl-real">${p.made ? '가상 선수' : UI.esc(p.nativeName || p.realName || '')}</small></div></div></td>
         <td><span class="fx-team">${G.team(t, 'xs')}<b>${UI.esc(t.short)}</b>${this.LV[lv] ? `<small class="rc-lv">${this.LV[lv]}</small>` : ''}</span></td>
         <td>${G.pos(p.role)}</td>
         <td class="num">${p.age || '-'}</td>

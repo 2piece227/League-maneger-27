@@ -17,6 +17,10 @@ const MAP = {
   'giantx': 'GIANTX PRIDE',
   'movistar-koi': 'Movistar KOI Fénix',
   'team-heretics': 'Team Heretics Academy',
+  'anyone-s-legend': "Anyone's Legend.Young",
+  'lng-esports': 'LNG Academy',
+  'g2-esports': 'G2 NORD',
+  'team-vitality': 'Vitality.Bee',
 };
 const slug = s => s.toLowerCase().normalize('NFKD').replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '');
 const ROLE = { Top: 'TOP', Jungle: 'JGL', Mid: 'MID', Bot: 'BOT', Support: 'SUP' };
@@ -59,7 +63,7 @@ for (const [parent, n] of Object.entries(MAP)) {
 current.forEach(r => {
   const p = pb[r.Link] || {};
   cl.players.push({
-    id: slug(r.Link), team: slug(r.Team), name: p.ID || r.Link, realName: p.Name || '', nativeName: p.NativeName || '',
+    id: slug(r.Link), team: slug(r.Team), name: (p.ID || r.Link).replace(/\s*\(.*\)$/, ''), realName: (p.Name || '').replace(/&nbsp;/g, ' '), nativeName: p.NativeName || '',   // 'Lime (Zhang Xing-Che)' 같은 문서명 괄호 · &nbsp; 정리
     role: ROLE[r.Role] || (/coach/i.test(r.Role) ? 'COACH' : ROLE[p.Role] || r.Role || ''),
     nation: p.NationalityPrimary || p.Country || '', birthdate: p.Birthdate || null, contractEnd: p.Contract || null,
     photo: urls[(photo[r.Link] || {}).FileName] || null, sourcePage: r.Link,
