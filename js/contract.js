@@ -113,6 +113,11 @@ const Contract = {
     if (teamId !== App.state.teamId) delete Squad.moves()[pid];
     Squad.apply();
   },
+  // 구단 표준 조건: 다른 구단이 만료 선수에게 주는 조건과 같다 (Market.deal, 원클럽맨은 연봉을 깎는다)
+  stdOffer(p, t) {
+    const P = typeof Persona !== 'undefined' ? Persona.of(p) : null, one = P && P.tag === 'oneclub' && P.club === t.id;
+    return Market.deal(p, t, one ? P.cut : 1.08);
+  },
   release(pid) {
     const M = this.st();
     M.moves[pid] = 'free'; delete M.contracts[pid];
@@ -158,12 +163,23 @@ Engine.on(today => {
     if (c.option === 'team' && d <= 7 && d >= 0 && Engine.once('topt:' + p.id + c.end)) Inbox.push({ from: board, subject: `${p.name} 구단 옵션 행사 여부`, priority: 'todo', ctx: { pid: p.id, player: p.name },
       body: `${p.name}의 계약(${c.end.replace(/-/g, '.')} 만료)에는 1년 연장 구단 옵션이 있습니다.\n\n옵션을 행사하면 지금 연봉(${Player.money(c.salary)} 원) 그대로 1년 더 함께합니다. 포기하면 계약 만료일에 FA로 풀립니다.`,
       choices: [{ label: '옵션 행사 (1년 연장)', act: 'optExercise', reply: '옵션 행사를 선수 측에 통보했습니다.' }, { label: '옵션 포기', act: 'optDecline', reply: '옵션을 행사하지 않기로 했습니다. 재계약하지 않으면 만료일에 FA가 됩니다.' }] });
+    // 미리 알림 (60일 · 30일 전) + 14일 전에 '재계약 의사 확인': 다른 팀이 만료 때 하는 판정과 같은 조건 · 같은 기준으로 붙잡아 볼 수 있다
+    if ((d === 60 || d === 30) && Engine.once(`exp${d}:` + p.id + c.end)) Inbox.push({ from: board, subject: `${p.name} 계약 만료 ${d}일 전`, link: 'roster-contracts', ctx: { pid: p.id },
+      body: `${p.name}(${G.ROLE_KO[p.role] || '코치'})의 계약이 ${Fmt.dayLabel(c.end)}에 끝납니다. 붙잡으려면 미리 재계약 협상을 시작하는 게 좋습니다.` });
+    if (d === 14 && p.role !== 'COACH' && Engine.once('exp14:' + p.id + c.end)) {
+      const o = Contract.stdOffer(p, t);
+      Inbox.push({ from: board, subject: `${p.name} 재계약 의사 확인`, priority: 'todo', link: 'roster-contracts', ctx: { pid: p.id, player: p.name },
+        body: `${p.name}의 계약이 ${Fmt.dayLabel(c.end)}에 끝납니다. 다른 구단들이 만료 선수에게 내미는 것과 같은 구단 표준 조건으로 붙잡아 볼 수 있습니다.\n\n표준 조건: 연봉 ${Player.money(o.salary)} 원 · ${Contract.term(o.years, o.option)}\n\n선수가 남을지는 선수 성향에 달려 있습니다. 조건을 직접 정하고 싶으면 재계약 협상을 여세요.`,
+        choices: [{ label: `표준 조건으로 재계약 제안 (${Player.money(o.salary)} 원 · ${o.years}년)`, act: 'stdRenew', reply: '선수 측에 구단 표준 조건을 전달했습니다.' },
+          { label: '직접 협상하겠다', act: 'none', reply: '선수 정보 창의 재계약 협상에서 조건을 제시하세요.' },
+          { label: '재계약하지 않는다', act: 'none', reply: '계약이 끝나면 FA로 풀리게 됩니다.' }] });
+    }
     if (d === 3 && Engine.once('exp3:' + p.id + c.end)) Inbox.push({ from: board, subject: `${p.name} 계약 만료 3일 전`, priority: 'todo', link: 'roster-contracts', ctx: { pid: p.id },
       body: `${p.name}(${G.ROLE_KO[p.role] || '코치'})의 계약이 ${Fmt.dayLabel(c.end)}에 끝납니다.\n\n그 전에 재계약하지 않으면 FA로 풀려 다른 팀과 자유롭게 협상할 수 있습니다.` });
     if (d >= 0) return;
     if (Neg.held(Contract.st().neg[p.id])) return;                          // 재계약 합의 후 사인 대기 중이면 풀지 않는다
     if (c.option === 'player') {
-      const stay = G.rand((App.state.seed || '') + p.id + c.end, 'popt') < .45 + ((t.rep || 2) - 3) * .12 + ((World.morale()[p.id] || 0) * .03);
+      const stay = Persona.stays(p, t, c.end + 'po') || ((World.morale()[p.id] || 0) >= 3 && G.rand(p.id + c.end, 'popt') < .4);   // 다른 팀과 같은 성향 기준 + 사기가 아주 좋으면 조금 더
       if (stay) {
         Contract.exercise(p.id);
         Inbox.push({ from: board, subject: `${p.name}, 선수 옵션 행사 — 1년 잔류`, body: `${Sim.josa(p.name, '이', '가')} 계약서의 선수 옵션을 행사했습니다. 지금 조건 그대로 1년 더 뜁니다.` });
@@ -227,3 +243,17 @@ Engine.on(today => {
   Inbox.push({ from: board, subject: big ? '재정 경고: 연봉 지출이 예산을 크게 넘었습니다' : '연봉 지출이 예산을 넘었습니다', priority: big ? 'urgent' : 'todo', link: 'club-finance',
     body: `선수단 연봉이 예산보다 ${Player.money(-room)} 원 많습니다.\n\n${big ? '이대로면 이사회 신뢰가 매달 크게 떨어집니다. 연봉이 높은 선수를 정리하거나 트레이드로 지출을 줄여 주세요.' : '당분간 큰 계약은 이사회 승인을 받기 어렵습니다.'}` });
 });
+
+// '재계약 의사 확인'에서 표준 조건 제안: 다른 구단과 같은 판정 (선수 성향) + 우리 연봉 예산
+Engine.ACTS.stdRenew = m => {
+  const hit = Player.find(m.ctx.pid), t = Roster.team(); if (!hit || hit.t !== t) { m.choices[0].reply = '그사이 상황이 바뀌어 제안할 수 없습니다.'; return; }
+  const p = hit.p, o = Contract.stdOffer(p, t), cur = Contract.of(p, t).salary || 0;
+  const over = Club.wageRoom(t) + cur - o.salary < 0 && o.salary > cur && World.rel().board < 55;
+  if (over) { m.choices[0].reply = '이사회가 연봉 예산 초과를 이유로 승인하지 않았습니다. 다른 지출을 줄이거나 직접 협상해 보세요.'; return; }
+  if (!Persona.stays(p, t, Contract.of(p, t).end)) { m.choices[0].reply = `${Sim.josa(p.name, '이', '가')} 표준 조건을 거절했습니다. ${Persona.line(p)} 직접 협상하면 마음을 돌릴 수도 있습니다.`; return; }
+  const c = Contract.of(p, t), end = Contract.addYears(c.end, o.years);
+  Contract.sign(p.id, t.id, { salary: o.salary, end, option: o.option, years: o.years, bonus: [] });
+  m.choices[0].reply = `${Sim.josa(p.name, '이', '가')} 표준 조건을 받아들였습니다. 연봉 ${Player.money(o.salary)} 원 · ${Contract.label({ end, option: o.option })}까지.`;
+  Market.post(`[오피셜] ${t.short}, ${Sim.josa(p.name, '과', '와')} 재계약`, `${Sim.josa(t.name, '이', '가')} ${G.ROLE_KO[p.role] || ''} ${Sim.josa(p.name, '과', '와')} 재계약했습니다. 계약은 ${Contract.label({ end, option: o.option })}까지입니다.`, p.id);
+};
+Engine.ACTS.none ||= () => {};

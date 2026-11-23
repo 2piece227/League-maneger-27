@@ -62,6 +62,14 @@ const Persona = {
     return w.money * pay + w.win * power * 1.4 + w.home * (homeLg ? (t.league === homeLg ? .6 : -.4) : 0) + (t.rep || 2) * .05
       + (fromId && fromId === t.id ? w.loyal * .8 : 0) + this.likes(p, t) * 1.2;
   },
+  // 계약이 끝날 때 지금 팀에 남을 마음이 있나 (AI 구단 재계약 · 우리 팀 표준 조건 제안 · 선수 옵션 모두 이 기준)
+  stays(p, t, key = '') {
+    const P = this.of(p); if (!P || !t) return false;
+    if (P.tag === 'oneclub' && P.club === t.id) return true;
+    if (P.tag === 'career' || (P.tag === 'homecoming' && !P.fav.includes(t.id)) || (P.tag === 'coach' && !this.likes(p, t))) return false;
+    const cl = p.level === 'cl', r = G.rand(p.id + key, 'stay');
+    return r < (cl ? .85 : .55 + P.w.loyal * .45 + ((t.rep || 2) - 3) * .05 - (P.w.win > .5 && (t.rep || 2) <= 3 ? .2 : 0));
+  },
   // 스카우트 보고 한 줄 (숫자 없이)
   line(p) {
     const P = this.of(p); if (!P) return '';

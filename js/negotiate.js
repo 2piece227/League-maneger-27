@@ -37,8 +37,11 @@ const Neg = {
     if (this.held(old) && old.mode === mode) return old;                                       // 합의했지만 아직 사인 전
     const A = this.agent(p), W = this.wants(p), K = this.KIND[A.kind];
     const hit = Player.find(p.id), cur = hit && !p.free ? Contract.of(p, hit.t) : null;
-    const rivals = mode === 'transfer' ? 0 : mode === 'fa' && Market.rivals(p.id) ? Market.rivals(p.id) : mode === 'renew' ? Math.floor(G.rand(p.id + Clock.year(), 'riv') * (W.s >= 75 ? 4 : 2)) : 1 + Math.floor(G.rand(p.id + Clock.year(), 'riv') * (W.s >= 75 ? 4 : 2));
-    let ask = Contract.pay(p, W.s, my.league) * (1 + K[2] * 3 + .12 + rivals * .04);
+    // 시기: 계약이 많이 남은 재계약은 급할 게 없고, 다른 팀이 계약 기간 중인 선수에게 제안할 수는 없다 (만료 60일 안 · 스토브리그에만 관심이 붙는다)
+    const left = mode === 'renew' && cur && cur.end ? Fmt.daysBetween(Clock.today(), cur.end) : null, stove = Market.stove(Clock.today());
+    const phase = mode === 'renew' ? (left == null || left <= 60 || stove ? 'late' : left > 400 ? 'early' : 'mid') : mode === 'fa' ? (stove ? 'stove' : 'season') : 'transfer';
+    const rivals = mode === 'transfer' ? 0 : mode === 'fa' && Market.rivals(p.id) ? Market.rivals(p.id) : mode === 'renew' ? (phase === 'late' ? Math.floor(G.rand(p.id + Clock.year(), 'riv') * (W.s >= 75 ? 4 : 2)) : 0) : 1 + Math.floor(G.rand(p.id + Clock.year(), 'riv') * (W.s >= 75 ? 4 : 2));
+    let ask = Contract.pay(p, W.s, my.league) * (1 + K[2] * 3 + .12 + rivals * .04) * (phase === 'early' ? 1.06 : phase === 'season' ? .94 : 1);   // 한참 남은 연장은 웃돈, 시즌 중 FA는 협상력이 약하다
     const disc = mode === 'renew' ? 0 : Fame.discount(my, p);                                   // 명문 할인: 팀 평판이 선수보다 높으면
     ask *= 1 - disc;
     if (p.nation === 'South Korea' && my.league !== 'LCK') ask *= 1 + W.w.home * .8;           // 한국 선수가 해외로 가려면 더 받아야
@@ -51,7 +54,11 @@ const Neg = {
     ask = Contract.r1(Math.min(Fame.cap(my.league), Math.max(Contract.MIN.first, ask)));   // LPL 개인 연봉 상한
     const S = M.neg[p.id] = { pid: p.id, mode, date: Clock.today(), patience: K[1], max: K[1], ask, ask0: ask, rivals, asked: {}, log: [], rounds: 0 };
     const opening = `${my.name} 측 연락 감사합니다. ${p.name} 선수 에이전트 ${A.name}(${A.agency})입니다.\n\n`
-      + (mode === 'renew' ? `선수는 ${my.short}에 남는 걸 긍정적으로 보고 있지만, 그에 맞는 대우를 원합니다. ` : mode === 'transfer' ? `구단 간 합의 소식 들었습니다. 선수도 ${my.short} 이적에 관심이 있습니다. ` : `선수는 새 팀을 찾고 있고, ${rivals}개 팀과 이야기 중입니다. `)
+      + (mode === 'renew' ? ({
+          early: `계약이 아직 ${Math.round(left / 30)}개월 남았는데 벌써 연장 이야기라니 반갑네요. 선수는 지금 계약에 불만이 없어서 서두를 생각은 없습니다. 미리 묶어 두시려면 그만한 대우가 필요합니다. `,
+          mid: `선수는 ${my.short}에 남는 걸 긍정적으로 보고 있습니다. 시즌 중이라 차분히 이야기할 수 있겠네요. 다만 활약에 맞는 대우는 원합니다. `,
+          late: rivals ? `계약 만료가 얼마 안 남아서 다른 팀들도 연락을 해 오고 있습니다. 선수는 ${my.short}에 남는 쪽을 먼저 생각하고 있지만, 시간이 많지는 않습니다. ` : `계약 만료가 얼마 안 남았습니다. 선수는 ${my.short}에 남는 걸 긍정적으로 보고 있지만, 그에 맞는 대우를 원합니다. `,
+        })[phase] : mode === 'fa' && phase === 'season' ? `시즌 중이라 선수도 빨리 뛸 팀을 정하고 싶어 합니다. ` : mode === 'fa' && rivals ? `스토브리그라 여러 팀이 선수에게 관심을 보이고 있습니다. ` : mode === 'transfer' ? `구단 간 합의 소식 들었습니다. 선수도 ${my.short} 이적에 관심이 있습니다. ` : `선수는 새 팀을 찾고 있고, ${rivals}개 팀과 이야기 중입니다. `)
       + (disc >= .03 ? `${my.short}에서 뛸 수 있다면 연봉은 어느 정도 양보할 수 있습니다. ` : '')
       + (likes ? (P.favCoach.length && !P.fav.includes(my.id) ? '선수가 이 팀 코치진과 꼭 함께하고 싶어 합니다. ' : P.tag === 'oneclub' ? `선수는 ${my.short}에서 커리어를 끝내고 싶어 합니다. ` : `선수에게 ${my.short}는 특별한 팀입니다. `) : '')
       + `연봉은 최소 ${Player.money(ask)} 원, 계약 기간은 ${W.years}년을 생각하고 있습니다.${W.role === 'starter' && W.s >= 65 ? ' 주전으로 뛰는 것도 중요합니다.' : ''}`;
@@ -138,7 +145,7 @@ const Neg = {
     const top = Object.entries(W.w).sort((a, b) => b[1] - a[1]);
     const txt = {
       top: `선수가 가장 중요하게 보는 건 ${this.TOP[top[0][0]]}이고, 그다음은 ${this.TOP[top[1][0]]}입니다.`,
-      rivals: S.rivals ? (A.kind === 'tough' ? `${S.rivals + 1}개 팀이 구체적인 조건을 보내왔습니다. 시간이 많지 않습니다.` : `${S.rivals}개 팀이 관심을 보이고 있습니다.`) : (A.kind === 'tough' ? '그건 말씀드리기 곤란합니다.' : '아직 구체적인 제안은 없습니다.'),
+      rivals: S.mode === 'renew' && !S.rivals && !Market.stove(Clock.today()) ? '계약 기간 중이라 다른 팀이 정식으로 제안할 수는 없죠. 관심을 보인다는 이야기는 들립니다만.' : S.rivals ? (A.kind === 'tough' ? `${S.rivals + 1}개 팀이 구체적인 조건을 보내왔습니다. 시간이 많지 않습니다.` : `${S.rivals}개 팀이 관심을 보이고 있습니다.`) : (A.kind === 'tough' ? '그건 말씀드리기 곤란합니다.' : '아직 구체적인 제안은 없습니다.'),
       years: `${W.years}년을 원합니다. ${W.opt === 'player' ? `${W.years}+1년이라면 연장 선택권(+1년)은 선수가 갖는 조건이어야 합니다.` : W.opt === 'any' ? '+1년 옵션은 크게 상관없습니다.' : '+1년 구단 옵션은 가능하면 피하고 싶습니다.'}`,
       role: W.role === 'starter' && W.s >= 65 ? '선수는 주전으로 뛰길 원합니다. 약속해 주시면 큰 힘이 될 겁니다.' : '경쟁은 각오하고 있습니다. 기회만 주시면 됩니다.',
     }[q];

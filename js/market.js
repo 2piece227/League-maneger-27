@@ -45,8 +45,7 @@ const Market = {
         const mult = one ? P.cut : 1 + this.rnd(p.id, 'r') * .15, offer = this.deal(p, t, mult);
         const afford = cl || one || this.affords(t, p, offer.salary);
         const keep = afford && (one || (cl ? (p.ovr || 0) >= 70 || this.rnd(p.id, 'k') < .45 : top ? this.rnd(p.id, 'k') < .8 : this.rnd(p.id, 'k') < .35));
-        const stay = one || (P.tag !== 'career' && !(P.tag === 'homecoming' && !P.fav.includes(t.id)) && !(P.tag === 'coach' && !Persona.likes(p, t)) &&   // 친정팀 선호 · 따라가고 싶은 코치가 다른 팀에 있으면 FA로 나가 본다
-           this.rnd(p.id, 'st') < (cl ? .85 : .55 + P.w.loyal * .45 + ((t.rep || 2) - 3) * .05 - (P.w.win > .5 && (t.rep || 2) <= 3 ? .2 : 0)));
+        const stay = Persona.stays(p, t, c.end);   // 우리 팀 표준 조건 제안과 같은 기준 (js/persona.js)
         if (!afford && !cl && s >= 75) p._capOut = t.id;                         // 재정 때문에 놓아준 선수 (뉴스 문구)
         if (keep && stay) {
           this.write(p, t, offer);
