@@ -18,6 +18,7 @@ const App = {
     }
     next.classList.add('active');
     this.current = next;
+    try { if (id === 'game') sessionStorage.setItem('lm27.tab', '1'); else if (id === 'title' || id === 'intro') sessionStorage.removeItem('lm27.tab'); } catch (e) {}   // 새로고침 이어 가기 (js/save.js)
     const s = Screens[id];
     if (s && s.enter) s.enter();
   },

@@ -106,7 +106,7 @@ const Live = {
     map.style.width = Math.floor(mw) + 'px'; map.style.height = Math.floor(mw / r) + 'px';
     this.mw = Math.floor(mw); this.mh = Math.floor(mw / r);
     // 캔버스: 화면 배율보다 넉넉히 (확대해도 흐려지지 않게), 최대 3배
-    const cv = map.querySelector('.lv-cv'); if (cv) { const d = Math.min(3, (window.devicePixelRatio || 1) * 1.5); cv.width = Math.round(this.mw * d); cv.height = Math.round(this.mh * d); this.dpr = d; this.ctx = cv.getContext('2d'); }
+    const cv = map.querySelector('.lv-cv'); if (cv) { const d = Math.min(3, (window.devicePixelRatio || 1) * 1.5, Math.sqrt(4e6 / Math.max(1, this.mw * this.mh))); /* 캔버스 픽셀 상한 약 400만 (태블릿 메모리 부족으로 탭이 새로 열리지 않게) */ cv.width = Math.round(this.mw * d); cv.height = Math.round(this.mh * d); this.dpr = d; this.ctx = cv.getContext('2d'); }
   },
   structures() {
     Rift.init();

@@ -60,9 +60,20 @@ const SaveSystem = {
   PENDING: 'lm27.pending',
   // 주소의 화면(#match-draft 등)을 지우고 새로 읽는다: 이전 커리어의 화면 주소가 새 커리어에 남지 않게
   restart(p) { try { sessionStorage.setItem(this.PENDING, JSON.stringify(p)); } catch (e) { console.warn(e); } try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {} location.reload(); },
+  // ── 갑작스런 새로고침 대비 ──
+  // 게임 화면에 있는 동안 이 탭에 표시(sessionStorage)를 남기고, 화면이 가려지거나 페이지가 내려갈 때 · 날짜가 넘어갈 때(20초에 한 번까지) 진행을 RESUME 키에 저장한다.
+  // 같은 탭이 다시 열리면(당겨서 새로고침 · 메모리 부족으로 브라우저가 다시 읽음) 그 진행으로 바로 들어간다. 메인 화면으로 직접 나가면 표시를 지운다
+  RESUME: 'lm27.resume', TAB: 'lm27.tab',
+  keep(force) {
+    if (!App.careerActive || !this.canSave() || !document.querySelector('#screen-game.active')) return;
+    const now = Date.now(); if (!force && now - (this._kept || 0) < 20000) return; this._kept = now;
+    if (!Store.set(this.RESUME, this.snapshot())) { Store.del(this.RESUME); }
+    try { sessionStorage.setItem(this.TAB, '1'); } catch (e) {}
+  },
   // 새로 읽은 페이지에서: 미뤄 둔 커리어로 바로 들어간다
   resume() {
     let p = null; try { p = JSON.parse(sessionStorage.getItem(this.PENDING)); sessionStorage.removeItem(this.PENDING); } catch {}
+    if (!p) { let tab = null; try { tab = sessionStorage.getItem(this.TAB); } catch (e) {} const r = tab && Store.get(this.RESUME); if (r && r.state) { p = { state: r.state }; setTimeout(() => UI.toast('페이지가 새로 열려서, 직전 진행 상태에서 이어 갑니다', 4000), 800); } }
     if (!p || !p.state) return false;
     App.state = { ...p.state, settings: App.state.settings };
     App.careerActive = true;
@@ -94,3 +105,8 @@ const SaveSystem = {
     return `${d.getFullYear()}.${String(d.getMonth() + 1).padStart(2, '0')}.${String(d.getDate()).padStart(2, '0')} ${String(d.getHours()).padStart(2, '0')}:${String(d.getMinutes()).padStart(2, '0')}`;
   },
 };
+
+// 화면이 가려질 때(앱 전환 · 새로고침 직전 · 탭 닫기) 바로 저장, 날짜가 넘어갈 때는 20초에 한 번까지
+document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'hidden') SaveSystem.keep(true); });
+window.addEventListener('pagehide', () => SaveSystem.keep(true));
+document.addEventListener('DOMContentLoaded', () => { if (typeof Engine !== 'undefined') Engine.on(() => SaveSystem.keep(false)); });   // save.js가 engine.js보다 먼저 읽힌다

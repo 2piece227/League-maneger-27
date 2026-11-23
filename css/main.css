@@ -619,3 +619,7 @@ input:focus, select:focus { outline: none; border-color: var(--gold); }
   #screen-title .title-layout, #screen-title:has(.winners-strip.has-photos) .title-layout { bottom: 0; }
   .main-menu { margin-top: 12px; gap: 4px; }
 }
+
+/* ── 당겨서 새로고침 막기: 칸 맨 위에서 아래로 쓸어도 페이지가 새로고침되지 않게 (안드로이드 크롬 · 삼성 인터넷 · iPad 사파리 16+) ── */
+html, body { overscroll-behavior: none; }
+.game-body, .lv-wrap, .lv-comm, .team-list, .team-detail, .profile-form, .avatar-panel, .dr-grid, .mu-tracks, .modal, .pp, .ng, #modal-root * { overscroll-behavior: contain; }
