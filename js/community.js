@@ -44,6 +44,7 @@ const Community = {
   kind(x) {
     const t = x.title;
     if (x.hire) return 'hire';
+    if (/^\[Thank you\]/.test(t)) return 'thanks';   // 계약 만료 작별 인사 (js/contract.js Lapse)
     if (/^\[패치\]/.test(t)) return 'patch';
     if (/^\[우승\]/.test(t)) return 'title';
     if (/역풍|도발.*패배/.test(t)) return 'trashLose';
@@ -81,6 +82,12 @@ const Community = {
     },
     join: ['{p} {t} 간다고? 개추', '{p} 연봉 얼마냐 ㄷㄷ', '{t} 이번 오프시즌 잘했다', '{p} 폼 돌아오면 무섭지', '이 영입 맞냐…', '{t} 팬인데 기대된다', '{role} 보강 제대로 했네', '{p} {t}랑 합 잘 맞을 듯', '{t} 프런트 일 잘하네', '{p}면 바로 주전이지', '{t} 이제 {role} 걱정은 끝', '{p} 이번 시즌 증명해야 한다', '{p} 어서 와라 환영한다'],
     stay: ['{p} 잔류 다행이다', '{t} 프런트 일 잘했다', '{p} 연봉 얼마 올려 줬냐 ㄷㄷ', '역시 {p}는 {t}에 있어야지', '{p} 남아 줘서 고맙다', '재계약 기간 길게 잡았네', '{t} 팬들 한숨 돌렸다'],
+    // 작별 인사 (Thank you): 떠나는 선수에게 고마움 · 아쉬움 · 다음 행선지 궁금증. 그 팀 팬은 더 짠하게
+    thanks: {
+      neutral: ['{p} 고생 많았다', '{t}에서 보여 준 거 잊지 않는다', '{p} 다음 팀 어디 가려나', '{p} 실력이면 새 팀 금방 찾는다', 'Thank you 글 보니까 찡하네', '이별은 늘 아쉽다', '{p} 어디서든 응원한다', 'FA 시장에서 {p} 행선지가 제일 궁금함', '{p} 커리어 이제부터다', '{t} 작별 영상 잘 만들었더라', '{p} 데려갈 팀 줄 섰을 듯'],
+      fanW: ['{p} 그동안 고마웠다 진짜…', '{t} 유니폼 입은 {p} 못 보는 거 실화냐', '{p} 덕분에 행복했다', '보내 주기 싫다 ㅠㅠ', '{p} 나중에 꼭 돌아와라', '{t} 프런트 대체자 제대로 구해라', '{p} 우리 상대로만 살살 해 줘', '{p}랑 같이 본 경기들 다 기억한다', '오늘은 {t} 팬 갤 조용하다…'],
+    },
+    THANKS_REPLY: ['ㅠㅠ', '진짜 고마웠다', '인정', '좋은 데 가라', '눈물 난다', '잘 가라', '어디서든 응원한다', '이별은 언제나 싫다'],
     leave: ['{p} 잘 가라… 고마웠다', '{p} 떠나는 건 좀 슬프다', '{t} 팬인데 보내 주자', '{p} 새 팀에서 잘하길', '이적료 대박이네', '{t} 이제 {role}는 어쩌냐', '{p} 응원은 계속한다'],
     fa: ['{p} 어디 가냐 진짜', '제발 우리 팀 와라 {p}', '{p} 몸값 감당 가능한 팀 있나', '{p} 은퇴만 하지 마라', '{p} 데려오는 팀이 이번 시즌 무섭다', '{t}가 {p}를 잡았어야지', '{role} 급한 팀들 줄 서겠네', '{p} 해외 가는 거 아님?', '{t} 재정 문제인가'],
     rumor: ['찌라시 아니냐', '{p} 가면 진짜 슬플 듯', '이번엔 진짜일 것 같은데', '{t} 오피셜 언제 뜸?', '{p} 본인 방송에서 부정했다던데', '출처가 어디냐', '이런 소문 나오면 보통 진짜더라', '{t} 팬들 멘붕 오겠다', '기자 이름 보고 걸러라'],
@@ -146,7 +153,7 @@ const Community = {
       const site = fanT && this.r(seed, 'fs' + i) < .55 ? [`${fanT.short} 팬 갤러리`, 'fan'] : this.pick(seed, 's' + i, this.SITES);
       const up = Math.floor(this.r(seed, 'u' + i) ** 2 * (300 + heat * 180)), reps = [];
       const nr = up > 200 ? Math.floor(this.r(seed, 'r' + i) * 3) : this.r(seed, 'r' + i) < .2 ? 1 : 0;
-      for (let j = 0; j < nr; j++) reps.push({ nick: this.nick(seed, 'rn' + i + j), text: this.pick(seed, 'rp' + i + j, this.REPLY), up: Math.floor(this.r(seed, 'ru' + i + j) * up * .4) });
+      for (let j = 0; j < nr; j++) reps.push({ nick: this.nick(seed, 'rn' + i + j), text: this.pick(seed, 'rp' + i + j, k === 'thanks' ? this.POOLS.THANKS_REPLY : this.REPLY), up: Math.floor(this.r(seed, 'ru' + i + j) * up * .4) });
       out.push({ site: site[0], cls: site[1], nick: this.nick(seed, 'nk' + i), text, up, ago: this.pick(seed, 'ag' + i, this.AGO), replies: reps });
     });
     return out.sort((a, b) => b.up - a.up);
