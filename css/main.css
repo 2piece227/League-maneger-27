@@ -588,3 +588,34 @@ input:focus, select:focus { outline: none; border-color: var(--gold); }
 @media (max-width: 767px) {
   input, select, textarea { font-size: 16px !important; }
 }
+
+/* ── 모든 기기: 감독 만들기 · 팀 선택은 칸이 화면 높이에 맞춰 줄고 그 안에서 스크롤. '다음' · '시작' 버튼은 늘 아래에 붙어 보인다 ──
+   (낮은 가로 화면 — 갤럭시탭 가로 · 노트북 — 에서 칸이 내용만큼 늘어나 버튼이 화면 밖으로 잘리던 문제) */
+.profile-layout, .team-layout { grid-template-rows: minmax(0, 1fr); }
+.profile-form, .avatar-panel, .team-list, .team-detail { min-height: 0; }
+.avatar-panel { overflow: auto; }
+.form-foot { position: sticky; bottom: -22px; margin-bottom: -22px; padding-bottom: 14px; background: linear-gradient(to top, var(--panel) 75%, transparent); z-index: 2; }
+.td-foot { position: sticky; bottom: 0; background: linear-gradient(to top, var(--panel) 75%, transparent); z-index: 2; }
+/* 아주 낮은 화면: 머리말 · 여백을 줄인다 */
+@media (max-height: 620px) {
+  .screen-head { padding-top: 8px; padding-bottom: 8px; }
+  .profile-layout { padding-top: 10px; padding-bottom: 10px; gap: 12px; }
+  .avatar-panel { padding: 12px; gap: 10px; }
+  .profile-form { padding-top: 14px; }
+  .team-layout { padding-top: 10px; padding-bottom: 10px; }
+}
+
+/* ── 처음 화면: 메뉴가 아래 역대 우승팀 띠에 가리지 않게 (띠 높이만큼 비우고, 낮은 화면에서는 띠를 줄이거나 숨긴다) ── */
+#screen-title:has(.winners-strip.has-photos) .title-layout { bottom: 196px; }
+@media (max-height: 820px) {
+  .winners-strip, .winners-strip.has-photos { height: 124px; }
+  .win-card.photo { width: 220px; }
+  #screen-title .title-layout, #screen-title:has(.winners-strip.has-photos) .title-layout { bottom: 124px; }
+  .logo-main { font-size: clamp(44px, 6vw, 72px); }
+  .main-menu { margin-top: 20px; }
+}
+@media (max-height: 640px) {
+  #screen-title .winners-strip { display: none; }
+  #screen-title .title-layout, #screen-title:has(.winners-strip.has-photos) .title-layout { bottom: 0; }
+  .main-menu { margin-top: 12px; gap: 4px; }
+}
