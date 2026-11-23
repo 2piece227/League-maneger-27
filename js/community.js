@@ -41,6 +41,14 @@ const Community = {
     const teams = App.db.teams.filter(t => at(t) >= 0).sort((a, b) => at(a) - at(b)), hit = x.pid && Player.find(x.pid);
     return { teams, p: hit ? hit.p : null, pt: hit ? hit.t : null };
   },
+  // 지난 1년 리그 경기 승률이 리그 하위 절반이면 '부진'
+  weakLast(t) {
+    if (!t || !t.league || typeof Results === 'undefined' || !Results.list) return false;
+    const from = Store.addDays(Clock.today(), -400), rate = id => { const ms = Results.list.filter(m => m.league === t.league && (m.t1 === id || m.t2 === id) && (m.kst || m.t || '').slice(0, 10) >= from && m.w); if (ms.length < 4) return null; return ms.filter(m => (m.w === 1 ? m.t1 : m.t2) === id).length / ms.length; };
+    const mine = rate(t.id); if (mine == null) return false;
+    const all = App.db.teams.filter(x => x.league === t.league).map(x => rate(x.id)).filter(v => v != null).sort((a, b) => b - a);
+    return all.indexOf(mine) >= all.length / 2;
+  },
   kind(x) {
     const t = x.title;
     if (x.hire) return 'hire';
@@ -87,6 +95,10 @@ const Community = {
       neutral: ['{p} 고생 많았다', '{t}에서 보여 준 거 잊지 않는다', '{p} 다음 팀 어디 가려나', '{p} 실력이면 새 팀 금방 찾는다', 'Thank you 글 보니까 찡하네', '이별은 늘 아쉽다', '{p} 어디서든 응원한다', 'FA 시장에서 {p} 행선지가 제일 궁금함', '{p} 커리어 이제부터다', '{t} 작별 영상 잘 만들었더라', '{p} 데려갈 팀 줄 섰을 듯'],
       fanW: ['{p} 그동안 고마웠다 진짜…', '{t} 유니폼 입은 {p} 못 보는 거 실화냐', '{p} 덕분에 행복했다', '보내 주기 싫다 ㅠㅠ', '{p} 나중에 꼭 돌아와라', '{t} 프런트 대체자 제대로 구해라', '{p} 우리 상대로만 살살 해 줘', '{p}랑 같이 본 경기들 다 기억한다', '오늘은 {t} 팬 갤 조용하다…'],
     },
+    // 핵심 선수 · 프랜차이즈 스타를 놓쳤을 때: 그 팀 팬이 프런트에 화낸다
+    thanksStar: ['프런트 뭐 하냐 {p}를 보내?', '{p} 못 잡은 건 프런트 책임이다', '{t}의 상징을 이렇게 보내냐', '{p} 없는 {t}는 상상이 안 된다', '연봉 아끼다 팀 망한다', '단장 나와라 진짜', '이건 납득 못 함', '{t}에서 몇 년을 뛰었는데 이런 이별이냐', '{p}는 {t} 그 자체였다'],
+    // 팀이 지난 시즌 부진했을 때: 떠나는 걸 이해하고, 따라가겠다는 팬도
+    thanksWeak: ['솔직히 {t} 성적 보면 떠나는 게 맞다', '{p} 더 좋은 팀 가서 우승해라', '{p} 커리어 생각하면 이해한다', '{p} 가는 팀 응원하러 간다', '나도 {p} 따라 응원 팀 옮긴다 ㅋㅋ', '{t}에서 고생만 했다 이제 꽃길 걷자', '{p} 재능이 아까웠지', '{p} 탓 아니다 팀이 문제였다'],
     THANKS_REPLY: ['ㅠㅠ', '진짜 고마웠다', '인정', '좋은 데 가라', '눈물 난다', '잘 가라', '어디서든 응원한다', '이별은 언제나 싫다'],
     leave: ['{p} 잘 가라… 고마웠다', '{p} 떠나는 건 좀 슬프다', '{t} 팬인데 보내 주자', '{p} 새 팀에서 잘하길', '이적료 대박이네', '{t} 이제 {role}는 어쩌냐', '{p} 응원은 계속한다'],
     fa: ['{p} 어디 가냐 진짜', '제발 우리 팀 와라 {p}', '{p} 몸값 감당 가능한 팀 있나', '{p} 은퇴만 하지 마라', '{p} 데려오는 팀이 이번 시즌 무섭다', '{t}가 {p}를 잡았어야지', '{role} 급한 팀들 줄 서겠네', '{p} 해외 가는 거 아님?', '{t} 재정 문제인가'],
@@ -145,6 +157,13 @@ const Community = {
     else { add(P.neutral, 'n', Math.ceil(n * .4)); add(P.fanW, 'w', Math.ceil(n * .25)); if (k !== 'title' || l) add(P.fanL, 'l', Math.ceil(n * .2)); }   // 우승 기사에 준우승 팀이 안 나오면 '준우승' 팬 글은 뺀다
     if (k === 'win') { if (sc && n2 === 0) add(P.sweep, 'sw', 1); if (sc && n2 > 0 && n1 - n2 === 1) add(P.close, 'cl', 2); if (R.pog) add(P.pog, 'pg', 2); if (R.upset) add(P.upset, 'up', 2); }
     if (k === 'soloq' && !F.p) add(this.POOLS.soloqAm, 'am', 2);
+    if (k === 'thanks' && F.p && w) {   // 작별: 핵심 선수였나 · 팀이 부진했나
+      const j = Fame.join && Fame.join[F.p.id], yrs = j ? Fmt.daysBetween(j, Clock.today()) / 365 : 0;
+      const ov = F.p.ovr || 0, weak = this.weakLast(w), star = ov >= 88 || (yrs >= 3 && ov >= 80);
+      // 부진한 팀을 떠나면 이해 · 응원 (팀의 얼굴급 슈퍼스타만 그래도 화낸다), 아니면 핵심 선수를 놓친 프런트에 화낸다
+      if (weak && ov < 92) add(this.POOLS.thanksWeak, 'n', 4);
+      else if (star) add(this.POOLS.thanksStar, 'w', 3 + (ov >= 92 ? 1 : 0));
+    }
     if (rv && k === 'win') { add(this.POOLS.rivalWin, 'rw', 3); add(this.POOLS.rivalLose, 'rl', 2); }
     const used = new Set(), out = [];
     lines.forEach((L, i) => {
