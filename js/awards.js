@@ -23,14 +23,14 @@ const Awards = {
   },
   // 시즌 점수: 평균 평점 + POG 비율 + 승률 + 기량 조금
   score(r, ovr) { const g = r[0] || 1; return r[3] / g + r[2] / g * 1.2 + r[1] / g * .8 + ((ovr || 75) - 80) * .025; },
-  ranked(Y, lg, minFrac = .4) {
+  ranked(Y, lg, minFrac = .4, hw = 1) {
     const L = (this.st().ps[Y] || {})[lg] || {}, mx = Math.max(0, ...Object.values(L).map(r => r[0]));
     return Object.entries(L).filter(([, r]) => r[0] >= mx * minFrac).map(([pid, r]) => {
       const h = Player.find(pid); if (!h || h.p.role === 'COACH' || !G.ROLES.includes(h.p.role)) return null;
-      return { pid, p: h.p, t: h.t, r, s: this.score(r, h.p.ovr) + this.honorPts(pid, Y) };
+      return { pid, p: h.p, t: h.t, r, s: this.score(r, h.p.ovr) + this.honorPts(pid, Y) * hw };
     }).filter(Boolean).sort((a, b) => b.s - a.s);
   },
-  honorPts(pid, Y) { return (this.st().hon[pid] || []).filter(h => h.y === +Y).reduce((s, h) => s + (({ worlds: .6, fmvp: .4, intl: .3 })[h.k] || 0), 0); },
+  honorPts(pid, Y) { return (this.st().hon[pid] || []).filter(h => h.y === +Y).reduce((s, h) => s + (({ worlds: .6, fmvp: .4, intl: .3, league: .2 })[h.k] || 0), 0); },
 
   // ---------- 수상 경력 ----------
   give(pid, Y, k, label) { const L = (this.st().hon[pid] ||= []); if (!L.some(h => h.label === label)) L.push({ y: +Y, k, label }); },
@@ -105,7 +105,8 @@ const Awards = {
   gala(Y) {
     const s = this.st(); if (s.gala[Y]) return;
     const R = this.ranked(Y, 'LCK'); if (R.length < 15) return;
-    const all = this.ranked(Y, 'ALL', .3).filter(x => (s.ps[Y].LCK || {})[x.pid]);
+    const all = this.ranked(Y, 'ALL', .3, 2.5)   // 올해의 선수는 한 해 성적 + 우승 · 파이널 MVP를 크게 본다
+     .filter(x => (s.ps[Y].LCK || {})[x.pid]);
     const poy = (all[0] || R[0]).pid, roty = (R.find(x => this.rookie(x.pid, Y)) || {}).pid || null;
     // 올해의 감독: 우승 점수 + 승률이 가장 높은 LCK 팀
     const PTS = { worlds: 10, msi: 6, ewc: 4, 'first-stand': 3, 'lck-po': 5, 'lck-cup': 3, kespa: 1 };
@@ -166,7 +167,7 @@ const Awards = {
     rate(series, m);
     series.games.forEach((x, gi) => {
       const res = x.result; if (!res) return;
-      if (res.stats && res.stats.length) res.stats.forEach(([pid, , k, d, a]) => { const h = Player.find(pid), won = !!h && h.t.id === res.win; Awards.add(pid, m, Season.rating(k, d, a, won, res.mvp === pid), won, res.mvp === pid); });
+      if (res.stats && res.stats.length) res.stats.forEach(([pid, , k, d, a]) => { const h = Player.find(pid), won = !!h && h.t.id === res.win; Awards.add(pid, m, 6.5 + (Season.rating(k, d, a, won, res.mvp === pid) - 6.5) * .7, won, res.mvp === pid); });   // 정밀 엔진(우리 경기)은 KDA로 평점이 더 벌어져 경량 시뮬 폭에 맞춘다
       else [m.t1, m.t2].forEach(tid => { const t = Schedule.team(tid); if (!t) return; Draft.lineup(t).forEach(p => { if (!p) return; const won = tid === res.win; Awards.add(p.id, m, 6.3 + (won ? .6 : -.5) + (G.rand(p.id + m.id + gi, 'rt') - .5) * 2 + (res.mvp === p.id ? .9 : 0), won, res.mvp === p.id); }); });
     });
   };
