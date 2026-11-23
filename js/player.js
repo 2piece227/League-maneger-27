@@ -181,6 +181,9 @@ const Player = {
             <div><span class="k">계약 인원</span><b>${rows.length}</b></div>
           </div>
         </div>
+        ${(L => L.length ? `<div class="card ct-lapsed"><div class="card-head"><h3>계약 만료 선수 <small>FA가 됐지만 아직 다른 팀과 계약하지 않았습니다</small></h3></div>
+          ${L.map(x => `<div class="ct-lp" data-id="${x.p.id}">${G.face(x.p, 'pl-ph')}<div class="ct-lp-n">${G.ovr(x.p)}<b>${UI.esc(x.p.name)}</b><small>${G.ROLE_KO[x.p.role] || ''} · ${Fmt.dayLabel(x.date)} 만료 · ${Lapse.waits(x.p) ? '우리 제안을 기다리는 중' : '다른 팀 제안도 듣는 중'}</small></div>
+            <button class="btn-primary btn-sm" data-re="${x.p.id}">재계약 협상</button><button class="btn-ghost btn-sm" data-ty="${x.p.id}">Thank you</button></div>`).join('')}</div>` : '')(Lapse.mine())}
         <div class="card rs-table-wrap" style="padding:0">
           <table class="rs-table ct-table">
             <thead><tr><th>이름</th><th>역할</th><th>계약 만료</th><th>옵션</th><th>상태</th><th class="num">연봉</th><th>남은 기간</th><th></th></tr></thead>
@@ -201,6 +204,9 @@ const Player = {
           </table>
         </div>
       </div>`;
+    el.querySelectorAll('[data-re]').forEach(b => b.onclick = () => Neg.open(b.dataset.re, 'fa'));
+    el.querySelectorAll('[data-ty]').forEach(b => b.onclick = () => UI.modal({ title: 'Thank you', body: `${UI.esc((Player.find(b.dataset.ty) || { p: {} }).p.name)} 선수에게 작별 인사를 전하고 보냅니다. 이후에는 원 소속팀으로서 기다려 주지 않습니다.`,
+      actions: [{ label: '취소' }, { label: '작별 인사', primary: true, onClick: () => { Lapse.thank(b.dataset.ty); this.contracts(el); } }] }));
     $('.ct-table tbody', el).onclick = e => {
       const b = e.target.closest('.ct-btn');
       if (b) { this.contractModal(b.dataset.id); return; }

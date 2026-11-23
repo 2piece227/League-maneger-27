@@ -58,7 +58,7 @@ const Contract = {
   // (커리어 첫날이 스토브리그 첫날이라 예전에는 하루 만에 주전이 FA로 나갔다)
   grace(t, days = 10) {
     const until = Store.addDays(Clock.today(), days);
-    [...t.players, ...(t.staff || [])].forEach(p => { const c = this.of(p, t); if (!p.free && c.end && c.end < until) { this.st().contracts[p.id] = { ...c, end: until }; p.contractEnd = until; } });
+    void until;   // 더 이상 만료일을 늘리지 않는다: 선수는 모든 팀과 같은 날 만료되고 '계약 만료 선수' 명단에서 협상, 코치진은 만료되면 사무국이 1년 연장한다
   },
   of(p, t) {
     if (!t) { const hit = Player.find(p.id); t = hit ? hit.t : { league: 'LCK' }; }
@@ -186,10 +186,10 @@ Engine.on(today => {
         return;
       }
       Inbox.push({ from: board, subject: `${p.name}, 선수 옵션 포기 — FA 시장으로`, priority: 'urgent', link: 'recruit-fa', body: `${Sim.josa(p.name, '이', '가')} 선수 옵션을 쓰지 않고 FA 시장에 나가기로 했습니다.\n\n다시 데려오려면 FA 시장에서 새 계약을 제시해야 합니다.` });
-    } else Inbox.push({ from: board, subject: `${p.name}, 계약 만료로 FA`, priority: 'urgent', link: 'recruit-fa',
-      body: `${p.name}의 계약이 끝나 FA가 됐습니다. 이제 다른 팀도 자유롭게 영입을 시도할 수 있습니다.\n\n다시 데려오려면 FA 시장에서 새 계약을 제시해야 합니다.` });
+    } else Inbox.push({ from: board, subject: `${p.name}, 계약 만료`, priority: 'urgent', link: 'roster-contracts',
+      body: `${p.name}의 계약이 끝났습니다. 계약 현황의 '계약 만료 선수'에 남아 있습니다.\n\n${Persona.stays(p, t, c.end) ? `선수는 ${t.short}에 남는 쪽을 먼저 생각하고 있어 열흘 동안은 우리 제안을 기다립니다.` : '선수는 다른 팀 제안도 들어 보고 싶어 합니다. 서두르지 않으면 다른 팀이 먼저 데려갈 수 있습니다.'} 재계약하려면 재계약 협상을, 보내려면 Thank you를 눌러 작별 인사를 전하세요.` });
     Market.post(`[FA] ${p.name}, ${Sim.josa(t.short, '과', '와')} 계약 만료 — FA 시장으로`, `${t.name}의 ${G.ROLE_KO[p.role] || ''} ${p.name}(${p.age || '-'}세)이(가) 재계약하지 않고 FA 시장에 나왔습니다.`, p.id);
-    Contract.release(p.id);
+    Contract.release(p.id); Lapse.add(p, t);
   });
 });
 
@@ -257,3 +257,44 @@ Engine.ACTS.stdRenew = m => {
   Market.post(`[오피셜] ${t.short}, ${Sim.josa(p.name, '과', '와')} 재계약`, `${Sim.josa(t.name, '이', '가')} ${G.ROLE_KO[p.role] || ''} ${Sim.josa(p.name, '과', '와')} 재계약했습니다. 계약은 ${Contract.label({ end, option: o.option })}까지입니다.`, p.id);
 };
 Engine.ACTS.none ||= () => {};
+
+// ── 계약 만료 선수 ──
+// 계약이 끝난 선수는 FA가 되지만 원 소속팀의 '계약 만료' 명단에 남는다. 거기서 재계약하거나, 'Thank you'(작별 인사)를 띄우거나,
+// 다른 팀이 데려가면 명단에서 사라진다. 다른 구단은 놓아준 선수에게 며칠 뒤 Thank you 기사를 낸다.
+// 만료 직후 열흘은 남을 마음이 있는 선수가 원 소속팀 제안을 기다린다 (다른 팀과 같은 기회) — Market.shop의 FA 결정에서 본다
+const Lapse = {
+  WAIT: 10,
+  st() { return (Contract.st().lapsed ||= {}); },
+  add(p, t) { this.st()[p.id] = { team: t.id, date: Clock.today() }; },
+  of(pid) { return this.st()[pid] || null; },
+  mine() { const me = App.state.teamId; return Object.entries(this.st()).filter(([, v]) => v.team === me && !v.thanked).map(([pid, v]) => ({ p: (Player.find(pid) || {}).p, ...v })).filter(x => x.p && x.p.free); },
+  // 원 소속팀 제안을 기다리나: 만료 열흘 안 · 작별 전 · 남을 마음이 있거나 그 팀과 협상 중
+  waits(p) {
+    const L = this.of(p.id); if (!L || L.thanked || Fmt.daysBetween(L.date, Clock.today()) > this.WAIT) return false;
+    const t = App.db.teams.find(x => x.id === L.team), S = Contract.st().neg[p.id];
+    const talking = S && !S.done && !(S.cool && S.cool > Clock.today()) && Fmt.daysBetween(S.date, Clock.today()) <= 3;
+    return !!t && (talking || (typeof Persona !== 'undefined' && Persona.stays(p, t, L.date)));
+  },
+  thank(pid, silent) {
+    const L = this.of(pid), hit = Player.find(pid); if (!L || !hit) return;
+    L.thanked = Clock.today();
+    const t = App.db.teams.find(x => x.id === L.team), p = hit.p, me = Roster.team();
+    if (silent && !(me && t.league === me.league) && (p.ovr || 0) < 85) return;   // 다른 리그 작별 기사는 정상급 선수만 (뉴스가 넘치지 않게)
+    Market.post(`[Thank you] ${t.short}, ${Sim.josa(p.name, '과', '와')} 작별`, `${Sim.josa(t.name, '이', '가')} 계약이 끝난 ${G.ROLE_KO[p.role] || ''} ${p.name}에게 작별 인사를 전했습니다. "${p.name} 선수, 그동안 ${t.short}에서 보여 준 모든 순간에 감사합니다. 앞날을 응원합니다." ${Sim.josa(p.name, '은', '는')} 이제 FA 시장에서 새 팀을 찾습니다.`, pid);
+    if (!silent && t.id === App.state.teamId) UI.toast(`${p.name} 선수에게 작별 인사를 전했습니다`, 3000);
+  },
+  // 누군가와 계약하면 명단에서 뺀다
+  signed(pid) { delete this.st()[pid]; },
+  // 다른 구단: 놓아준 선수에게 3~7일 뒤 Thank you
+  daily(today) {
+    Object.entries(this.st()).forEach(([pid, L]) => {
+      const hit = Player.find(pid);
+      if (!hit || !hit.p.free) { delete this.st()[pid]; return; }          // 이미 어딘가와 계약
+      if (L.thanked) { if (Fmt.daysBetween(L.thanked, today) > 60) delete this.st()[pid]; return; }
+      if (L.team !== App.state.teamId && Fmt.daysBetween(L.date, today) >= 3 + Math.floor(G.rand(pid, 'ty') * 5)) this.thank(pid, true);
+    });
+  },
+};
+Engine.on(today => { if (App.state.teamId) Lapse.daily(today); });
+// 계약이 생기면 만료 명단에서 뺀다
+(() => { const sign = Contract.sign.bind(Contract); Contract.sign = (pid, teamId, c) => { Lapse.signed(pid); return sign(pid, teamId, c); }; })();

@@ -555,3 +555,10 @@ button.nw-card { width: 100%; text-align: left; font: inherit; cursor: pointer; 
 .mt-res { margin: 0; font-size: 13px; color: var(--muted); }
 .mt-res b { color: var(--text); }
 .rl-meet { white-space: nowrap; }
+
+/* 계약 만료 선수 */
+.ct-lapsed { padding-bottom: 8px; }
+.ct-lp { display: flex; align-items: center; gap: 10px; padding: 8px 16px; border-top: 1px solid var(--line); flex-wrap: wrap; }
+.ct-lp .pl-ph { width: 36px; height: 36px; }
+.ct-lp-n { flex: 1; min-width: 160px; display: flex; flex-direction: column; }
+.ct-lp-n small { color: var(--muted); font-size: 12px; }

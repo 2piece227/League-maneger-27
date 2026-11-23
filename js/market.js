@@ -51,7 +51,7 @@ const Market = {
           this.write(p, t, offer);
           if (s >= 75) this.post(`[오피셜] ${t.short}, ${Sim.josa(p.name, '과', '와')} 재계약`, `${Sim.josa(t.name, '이', '가')} ${G.ROLE_KO[p.role] || ''} ${Sim.josa(p.name, '과', '와')} 재계약했습니다. 계약은 ${Contract.label(Contract.st().contracts[p.id])}까지입니다.`, p.id);
         } else {
-          this.free(p);
+          this.free(p); if (!cl) Lapse.add(p, t);
           if (s >= 65 || (cl && (p.ovr || 0) >= 74)) this.post(`[FA] ${p.name}, ${Sim.josa(t.short, '과', '와')} 계약 만료 — FA 시장으로`, `${t.name}의 ${G.ROLE_KO[p.role] || ''} ${p.name}(${p.age || '-'}세)이(가) ${p._capOut === t.id ? '구단의 연봉 여력이 부족해 재계약하지 못하고' : '재계약하지 않고'} FA 시장에 나왔습니다.`, p.id);
         }
       });
@@ -104,6 +104,7 @@ const Market = {
       if (!hit || !hit.p.free) { delete F[pid]; return; }
       if (!offers.some(o => o.until <= today)) return;
       if (Neg.held(Contract.st().neg[pid])) return;                                       // 우리와 합의 후 사인 대기 중
+      if (typeof Lapse !== 'undefined' && Lapse.waits(Player.find(pid).p) && Lapse.of(pid).team === App.state.teamId) return;   // 만료 열흘: 원 소속팀(우리) 제안을 기다린다
       const p = hit.p;
       const pay0 = Math.max(...offers.map(o => { const t = App.db.teams.find(x => x.id === o.team); return t ? o.mult * Contract.pay(p, Contract.score(p, t), t.league) : 0; })) || 1;
       const util = o => { const t = App.db.teams.find(x => x.id === o.team); if (t && typeof Persona !== 'undefined') return Persona.appeal(p, t, o.mult * Contract.pay(p, Contract.score(p, t), t.league) / pay0, p._o && p._o.team);  return o.mult * Contract.pay(p, Contract.score(p, t), t.league) / Contract.pay(p, Contract.score(p, t), 'LCK') * .5 + (t.rep || 2) * .08 + (p.nation === 'South Korea' && t.league === 'LCK' ? .25 : 0); };

@@ -5,7 +5,7 @@
    2026-27 스토브리그 기준:
      쇼메이커 — 팀이 무너지는 순간에도 연봉을 깎고 DK 재계약 (원클럽맨)
      스매쉬 — 연차는 짧지만 DK 잔류 (의리)
-     시우 · 루시드 — 커리어를 위해 DK를 떠남 (커리어 우선)
+     시우 · 루시드 · 커리어 — 계약이 2027년까지 남았지만 DK가 FA로 풀어 줌 (커리어 우선)
      제우스 — 한화의 돈을 거절하고 T1 복귀 (친정팀 선호, 연봉보다 우승)
      도란 — KRX의 돈을 거절하고 씨맥을 따라 DK (선호 코치) */
 const Persona = {
@@ -13,8 +13,9 @@ const Persona = {
     showmaker: { tag: 'oneclub', club: 'dplus-kia', w: { money: .1, play: .3, win: .25, home: .5, loyal: 1 }, cut: .82 },
     faker: { tag: 'oneclub', club: 't1', w: { money: .05, play: .3, win: .5, home: .6, loyal: 1 }, cut: .9 },
     'smash-shin-geum-jae': { tag: 'loyal', club: 'dplus-kia', w: { money: .25, play: .45, win: .2, home: .4, loyal: .75 } },
-    siwoo: { tag: 'career', w: { money: .3, play: .5, win: .6, home: .3, loyal: 0 } },
-    'lucid-choi-yong-hyeok': { tag: 'career', w: { money: .3, play: .5, win: .6, home: .3, loyal: 0 } },
+    career: { tag: 'career', w: { money: .3, play: .5, win: .55, home: .3, loyal: 0 }, release: { by: 'dplus-kia', on: '2026-11-17' } },
+    siwoo: { tag: 'career', release: { by: 'dplus-kia', on: '2026-11-17' }, w: { money: .3, play: .5, win: .6, home: .3, loyal: 0 } },
+    'lucid-choi-yong-hyeok': { tag: 'career', release: { by: 'dplus-kia', on: '2026-11-17' }, w: { money: .3, play: .5, win: .6, home: .3, loyal: 0 } },
     zeus: { tag: 'homecoming', fav: ['t1'], w: { money: .15, play: .3, win: .65, home: .5, loyal: .1 } },
     'doran-choi-hyeon-jun': { tag: 'coach', favCoach: ['cvmax'], w: { money: .15, play: .45, win: .35, home: .5, loyal: .1 } },
   },
@@ -88,3 +89,12 @@ const Persona = {
     })[P.tag] || '특별히 두드러진 성향은 보이지 않습니다.';
   },
 };
+// 실제 이적시장에서 구단이 계약 기간 중에 풀어 준 선수 (FIX.release): 그날 FA로 풀고 Thank you. 우리가 그 팀을 맡고 있으면 감독이 정한다
+Engine.on(today => {
+  if (!App.state.teamId) return;
+  Object.entries(Persona.FIX).forEach(([pid, F]) => {
+    const R = F.release; if (!R || today !== R.on || R.by === App.state.teamId) return;
+    const hit = Player.find(pid); if (!hit || hit.t.id !== R.by) return;
+    Market.free(hit.p); Lapse.add(hit.p, hit.t); Squad.apply(); Lapse.thank(pid, true);
+  });
+});
