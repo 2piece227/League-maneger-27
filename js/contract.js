@@ -297,4 +297,4 @@ const Lapse = {
 };
 Engine.on(today => { if (App.state.teamId) Lapse.daily(today); });
 // 계약이 생기면 만료 명단에서 뺀다
-(() => { const sign = Contract.sign.bind(Contract); Contract.sign = (pid, teamId, c) => { Lapse.signed(pid); return sign(pid, teamId, c); }; })();
+(() => { const sign = Contract.sign.bind(Contract); Contract.sign = (pid, teamId, c) => { Lapse.signed(pid); delete (Contract.st().fadl || {})[pid]; delete Market.fa()[pid]; return sign(pid, teamId, c); }; })();

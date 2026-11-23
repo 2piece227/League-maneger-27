@@ -63,6 +63,27 @@ const Persona = {
     return w.money * pay + w.win * power * 1.4 + w.home * (homeLg ? (t.league === homeLg ? .6 : -.4) : 0) + (t.rep || 2) * .05
       + (fromId && fromId === t.id ? w.loyal * .8 : 0) + this.likes(p, t) * 1.2;
   },
+  // 지금 이 팀과는 이야기조차 하지 않는다: 'homecoming' 친정팀이 아직 그 자리를 비워 두고 있다 · 'oneclub' 원 소속팀과 먼저 ·
+  //   'home' 스토브 초반엔 익숙한 리그만 · 'win' 우승을 노리는 최상위 선수가 리그 하위권 팀을 스토브 초반에 거절. 이유 키 또는 null
+  refuses(p, t, today = Clock.today()) {
+    const P = this.of(p); if (!P || !t || this.likes(p, t)) return null;
+    const stv = Schedule.events.find(e => e.kind === 'stove' && e.start <= today && today <= e.end), day = stv ? Fmt.daysBetween(stv.start, today) : 999;
+    if (P.tag === 'homecoming' && stv) {
+      const open = P.fav.map(id => App.db.teams.find(x => x.id === id)).filter(Boolean).find(f => !f.players.some(x => !x.free && x.id !== p.id && x.role === p.role && Contract.score(x, f) >= (p.ovr || 0) - 2));
+      if (open) { this._fav = open; return 'homecoming'; }
+    }
+    if (P.tag === 'oneclub' && P.club && P.club !== t.id && day < 30) return 'oneclub';
+    const homeLg = p.nation === 'South Korea' ? 'LCK' : p.nation === 'China' ? 'LPL' : null;
+    if (homeLg && t.league !== homeLg && P.w.home >= .45 && day < 45) return 'home';
+    if ((p.ovr || 0) >= 85 && (P.tag === 'win' || P.w.win >= .55) && this.rank(t) >= .7 && day < 30) return 'win';   // 하위권 팀은 스토브 첫 30일 거절, 그 뒤엔 웃돈 (js/negotiate.js)
+    return null;
+  },
+  // 리그 안 전력 순위 (0 = 1위, 1에 가까울수록 하위권)
+  rank(t) {
+    if (typeof Season === 'undefined') return .5 - ((t.rep || 2) - 3) * .2;
+    const L = App.db.teams.filter(x => x.league === t.league).map(x => Season.power(x)).sort((a, b) => b - a);
+    return L.length > 1 ? L.indexOf(Season.power(t)) / (L.length - 1) : 0;
+  },
   // 계약이 끝날 때 지금 팀에 남을 마음이 있나 (AI 구단 재계약 · 우리 팀 표준 조건 제안 · 선수 옵션 모두 이 기준)
   stays(p, t, key = '') {
     const P = this.of(p); if (!P || !t) return false;

@@ -83,13 +83,15 @@ const Market = {
       const late = !st || Fmt.daysBetween(st.start, today) >= 7;                      // 스토브 1주가 지나도 빈자리면 2군에서 올린다
       const pick = empty && late && (t.cl || []).some(p => p.role === g.role) ? null : cands[0];
       if (pick) {
+        if (Persona.refuses(pick.p, t, today)) return;                                   // 선수가 이 팀과는 이야기하지 않는다 (같은 기준으로 우리 팀도)
         (F[pick.p.id] ||= []).push({ team: t.id, mult: 1.02 + this.rnd(pick.p.id, t.id, 'm') * .2, until: Store.addDays(today, 2 + Math.floor(this.rnd(pick.p.id, 'u') * 3)) });
+        this.deadline(pick.p, today); this.buzz(pick.p, t, today);
         return;
       }
       if (empty) {
         const up = (t.cl || []).filter(p => p.role === g.role).sort((a, b) => (b.ca || 0) - (a.ca || 0))[0];
         if (up) { Contract.st().moves[up.id] = t.id; changed = true; this.post(`${t.short}, 2군 ${up.name} 1군 콜업`, `${Sim.josa(t.name, '이', '가')} 비어 있던 ${G.ROLE_KO[g.role]} 자리에 2군 ${Sim.josa(up.name, '을', '를')} 올렸습니다.`, up.id); }
-        else if (late || !stove) {
+        else if (!stove || (st && Fmt.daysBetween(st.start, today) >= 14)) {   // 스토브 2주는 정상 경쟁(고민 기간)을 거친다. 그 뒤에도 비어 있으면 바로 계약
           // 2군도 없으면 그 포지션 FA 중 가장 나은 선수와 바로 계약 (주전 없이 공식전에 나가지 않게)
           // 연봉 여력 안에서 가장 나은 선수 (예전에는 연봉을 보지 않아, 돈 때문에 놓아준 선수를 바로 다시 데려왔다). 그런 선수가 없으면 가장 싼 선수
           const pool = free.filter(p => p.role === g.role && !Neg.held(Contract.st().neg[p.id])), fit = pool.filter(p => this.affords(t, p, Contract.pay(p, Contract.score(p, t), t.league)));
@@ -99,19 +101,40 @@ const Market = {
       }
     });
     // 제안 마감: 가장 좋은 조건(연봉 + 팀 명성 + 리그)을 고른다
-    Object.entries(F).forEach(([pid, offers]) => {
-      const hit = Player.find(pid);
-      if (!hit || !hit.p.free) { delete F[pid]; return; }
-      if (!offers.some(o => o.until <= today)) return;
-      if (Neg.held(Contract.st().neg[pid])) return;                                       // 우리와 합의 후 사인 대기 중
+    const NG = Contract.st().neg, D = this.dls();
+    const ids = new Set([...Object.keys(F), ...Object.keys(NG).filter(k => NG[k].pending), ...Object.keys(D)]);
+    [...ids].forEach(pid => {
+      const offers = F[pid] || [], hit = Player.find(pid), S = NG[pid], mine = S && S.pending && S.bid;
+      if (!hit || !hit.p.free) { delete F[pid]; delete D[pid]; if (S && S.pending) { S.pending = false; S.done = true; S.lost = true; } return; }
+      if (!offers.length && !mine) { delete D[pid]; return; }
+      if (Neg.held(S)) return;                                                            // 우리와 합의 후 사인 대기 중
+      const dl = this.deadline(hit.p, today);
+      if (mine) this.nudge(hit.p, S, dl, today);                                          // 우리 입찰이 밀리고 있으면 에이전트가 알려 준다
+      if (dl > today) { this.eve(hit.p, dl, today); return; }
       if (typeof Lapse !== 'undefined' && Lapse.waits(Player.find(pid).p) && Lapse.of(pid).team === App.state.teamId) return;   // 만료 열흘: 원 소속팀(우리) 제안을 기다린다
       const p = hit.p;
-      const pay0 = Math.max(...offers.map(o => { const t = App.db.teams.find(x => x.id === o.team); return t ? o.mult * Contract.pay(p, Contract.score(p, t), t.league) : 0; })) || 1;
-      const util = o => { const t = App.db.teams.find(x => x.id === o.team); if (t && typeof Persona !== 'undefined') return Persona.appeal(p, t, o.mult * Contract.pay(p, Contract.score(p, t), t.league) / pay0, p._o && p._o.team);  return o.mult * Contract.pay(p, Contract.score(p, t), t.league) / Contract.pay(p, Contract.score(p, t), 'LCK') * .5 + (t.rep || 2) * .08 + (p.nation === 'South Korea' && t.league === 'LCK' ? .25 : 0); };
-      const P = typeof Persona !== 'undefined' ? Persona.of(p) : null, homeLg = p.nation === 'South Korea' ? 'LCK' : p.nation === 'China' ? 'LPL' : null;
-      const stv = Schedule.events.find(e => e.kind === 'stove' && e.start <= today && today <= e.end), early = stv && Fmt.daysBetween(stv.start, today) < 45;
-      const ok = offers.filter(x => { const t = App.db.teams.find(y => y.id === x.team); return t && t.players.length < 6 && t.players.filter(y => y.role === p.role).length < 2 && !(early && P && homeLg && P.w.home >= .45 && t.league !== homeLg); }), o = ok.sort((a, b) => util(b) - util(a))[0];   // 익숙한 리그 선호: 스토브 첫 45일은 해외 제안을 보지 않는다
-      delete F[pid];
+      // 아직 자리가 있고 선수가 이야기할 마음이 있는 팀의 제안만 · 우리 입찰도 같은 저울 (js/persona.js appeal)
+      const ok = this.ranked(p).filter(({ o }) => { if (o.mine) return true; const t = App.db.teams.find(y => y.id === o.team); return t && t.players.length < 6 && t.players.filter(y => y.role === p.role).length < 2 && !Persona.refuses(p, t, today); });
+      const o = ok.length ? ok[0].o : null, n = ok.length;
+      delete F[pid]; delete D[pid];
+      if (mine) {
+        S.pending = false;
+        if (o && o.mine) {                                                                 // 우리를 골랐다: 사인 대기
+          S.done = true; S.deal = S.bid; S.hold = Store.addDays(today, Neg.HOLD);
+          S.log.push({ who: 'agent', text: `선수가 ${n > 1 ? `${n}개 팀 제안을 놓고 고민한 끝에 ` : ''}${Sim.josa(Roster.team().short, '을', '를')} 택했습니다. 서류를 준비하겠습니다.\n\n(${S.hold.replace(/-/g, '.')}까지 계약서에 사인해 주세요)` });
+          Inbox.push({ from: { name: `${Neg.agent(p).name} (${p.name} 에이전트)`, role: 'agent' }, subject: `${p.name}, 우리 팀을 택했다`, priority: 'todo', ctx: { pid, player: p.name },
+            body: `${p.name} 측에서 연락이 왔습니다. ${n > 1 ? `${n}개 팀의 제안을 비교한 끝에 ` : ''}${Sim.josa(Roster.team().short, '을', '를')} 택했다고 합니다.\n\n${Neg.offerText(S.deal)}\n\n${S.hold.replace(/-/g, '.')}까지 계약서에 사인하지 않으면 합의는 무효가 됩니다.`,
+            choices: [{ label: '계약서에 사인', act: 'negSign', reply: '계약서에 사인했습니다.' }, { label: '나중에', act: 'none', reply: '협상 창에서 사인할 수 있습니다.' }] });
+          return;
+        }
+        S.done = true; S.lost = true;
+        const wt = o && App.db.teams.find(x => x.id === o.team);
+        const msg = wt ? `선수는 ${Sim.josa(wt.short, '을', '를')} 택했습니다. ${this.why(p, wt, S.bid, o)}` : '선수가 이번에는 어느 팀과도 계약하지 않기로 했습니다.';
+        S.log.push({ who: 'agent', text: `죄송합니다. ${msg}` });
+        Inbox.push({ from: { name: `${Neg.agent(p).name} (${p.name} 에이전트)`, role: 'agent' }, subject: `${p.name}, 다른 팀을 택했다`, priority: 'normal', ctx: { pid },
+          body: `${p.name} 측에서 연락이 왔습니다. 좋은 제안 감사하지만, ${msg}${n > 1 ? `\n\n${n}개 팀이 경쟁했습니다.` : ''}` });
+        S._told = true;
+      }
       if (!o) return;
       // 높은 오버롤 선수에게 약팀 제안만 왔다면 계약 대신 휴식을 택하기도 한다
       const best = App.db.teams.find(x => x.id === o.team);
@@ -126,12 +149,12 @@ const Market = {
       const s = Contract.score(p, t);
       const back = p._o && p._o.team === t.id;                                            // FA로 나왔다가 원 소속팀과 다시 계약
       this.post(back ? `[오피셜] ${p.name}, ${t.short} 잔류` : `[오피셜] ${p.name}, ${t.short} 입단`,
-        (back ? `FA ${Sim.josa(p.name, '이', '가')} 원 소속팀 ${Sim.josa(t.name, '과', '와')} 다시 계약했습니다.` : `FA ${Sim.josa(p.name, '이', '가')} ${Sim.josa(t.name, '과', '와')} 계약했습니다.`) + (offers.length > 1 ? ` ${offers.length}개 팀이 경쟁한 끝에 ${Sim.josa(t.short, '을', '를')} 택했습니다.` : ''), p.id);
+        (back ? `FA ${Sim.josa(p.name, '이', '가')} 원 소속팀 ${Sim.josa(t.name, '과', '와')} 다시 계약했습니다.` : `FA ${Sim.josa(p.name, '이', '가')} ${Sim.josa(t.name, '과', '와')} 계약했습니다.`) + (n > 1 ? ` ${n}개 팀이 경쟁한 끝에 ${Sim.josa(t.short, '을', '를')} 택했습니다.` : ''), p.id);
       const neg = Contract.st().neg[pid], talking = !!(neg && !neg.signed && neg.mode === 'fa' && Fmt.daysBetween(neg.date, today) <= 14);
       // 메시지함에는 우리와 관련 있는 계약만: 협상 중이던 선수 · 관심 목록 · 라이벌 구단 · 같은 리그 구단. 나머지는 뉴스로만
       const from = p._o && p._o.team ? App.db.teams.find(x => x.id === p._o.team) : null, myT = Roster.team();
       const shortl = Player.shortlist().includes(pid), rival = [t.id, from && from.id].some(id => id && Rivalry.isRival(id)), local = myT && [t, from].some(x => x && x.league === myT.league && x.id !== myT.id);
-      if (!App.state.unemployed && (talking || shortl || rival || local))
+      if (!App.state.unemployed && !(neg && neg._told) && (talking || shortl || rival || local))
         Inbox.push({ from: { name: '스카우트 팀', role: 'coach' }, subject: `${p.name}, ${Sim.josa(t.short, '과', '와')} 계약${rival ? ' (라이벌)' : ''}`, priority: talking ? 'todo' : 'normal', link: 'portal-news', ctx: { pid },
           body: `${talking ? (neg.deal ? '합의했지만 사인하지 않았던 ' : '협상 중이던 ') : shortl ? '관심 목록에 있던 ' : rival ? '라이벌 구단 관련 소식입니다. ' : ''}${Sim.josa(p.name, '이', '가')} ${Sim.josa(t.name, '과', '와')} 계약했습니다.` });
       if (neg) { neg.done = true; neg.lapsed = true; }
@@ -139,6 +162,77 @@ const Market = {
     if (changed) Squad.apply();
   },
   rivals(pid) { return (this.fa()[pid] || []).length; },
+  // 제안이 몰리면 루머 기사 (오버롤 78 이상, 2팀 · 4팀째에)
+  buzz(p, t, today) {
+    const L = this.offersFor(p), n = L.length; if (n !== 2 && n !== 4) return;
+    if (!this.near(p, L, 82)) return;
+    if (!Engine.once(`buzz:${p.id}:${n}:${(Lapse.of(p.id) || {}).date || ''}`)) return;
+    const names = L.map(o => (App.db.teams.find(x => x.id === o.team) || {}).short).filter(Boolean);
+    this.post(`[루머] FA ${p.name}, ${n}개 구단 영입 경쟁`, `FA 시장에 나온 ${G.ROLE_KO[p.role] || ''} ${Sim.josa(p.name, '을', '를')} 두고 ${names.join(' · ')} 등 ${n}개 구단이 영입 경쟁을 벌이고 있다는 소식입니다. ${p.name} 측은 제안을 모두 들어 본 뒤 ${Fmt.dayLabel(this.deadline(p, today))} 무렵 결정할 것으로 알려졌습니다.`, p.id);
+  },
+  // 기사로 낼 만한가: 리그 전체가 주목할 거물이거나, 우리 리그 · 우리 팀과 얽힌 선수 (오버롤 75 이상)
+  near(p, L, star) {
+    const o = p.ovr || 0, my = Roster.team(); if (o >= star) return true; if (o < 75 || !my) return false;
+    return L.some(x => x.mine || (App.db.teams.find(t => t.id === x.team) || {}).league === my.league) || Player.shortlist().includes(p.id);
+  },
+  // 결정 전날: 막판 경쟁 기사 (오버롤 82 이상, 제안 2개 이상)
+  eve(p, dl, today) {
+    if (Store.addDays(today, 1) !== dl) return;
+    const R = this.ranked(p); if (R.length < 2 || !this.near(p, R.map(x => x.o), 85) || !Engine.once('eve:' + p.id + dl)) return;
+    const a = App.db.teams.find(x => x.id === R[0].o.team), b = App.db.teams.find(x => x.id === R[1].o.team); if (!a || !b) return;
+    this.post(`[루머] ${p.name}, ${a.short} · ${b.short} 막판 저울질`, `FA ${Sim.josa(p.name, '이', '가')} 결정을 앞두고 있습니다. 업계에서는 ${Sim.josa(a.short, '과', '와')} ${Sim.josa(b.short, '이', '가')} 마지막까지 경쟁하고 있다고 전합니다. 이르면 내일 행선지가 정해질 전망입니다.`, p.id);
+  },
+  // 우리 입찰이 1순위에서 밀리면 에이전트가 알려 준다 (팀마다 한 번) — 조건을 올려 다시 제안할 수 있다
+  nudge(p, S, dl, today) {
+    const R = this.ranked(p), top = R[0]; if (!top || top.o.mine) return;
+    const t = App.db.teams.find(x => x.id === top.o.team); if (!t || (S.warned ||= {})[t.id]) return;
+    S.warned[t.id] = today;
+    const money = this.pay(p, top.o) > this.pay(p, S.bid) * 1.03;
+    S.patience = Math.min(S.max, (S.patience || 0) + 1);
+    S.log.push({ who: 'agent', text: `${t.short} 쪽에서 ${money ? '더 높은 금액을' : '좋은 조건을'} 제시해 왔습니다. 지금으로선 선수 마음이 그쪽으로 조금 기울어 있습니다. ${Fmt.dayLabel(dl)}에 결정하니 조건을 다시 보시려면 그 전에 말씀해 주세요.` });
+    Inbox.push({ from: { name: `${Neg.agent(p).name} (${p.name} 에이전트)`, role: 'agent' }, subject: `${p.name}: 다른 구단이 ${money ? '더 높은 금액을' : '좋은 조건을'} 제시`, priority: 'todo', ctx: { pid: p.id, player: p.name },
+      body: `${t.short} 쪽에서 ${money ? '우리보다 높은 금액을' : '선수가 끌릴 만한 조건을'} 제시했습니다. 지금으로선 선수 마음이 그쪽으로 조금 기울어 있습니다.\n\n선수는 ${Fmt.dayLabel(dl)}에 결정합니다. 그 전에 조건을 올려 다시 제안할 수 있습니다.`,
+      choices: [{ label: '협상 창 열기', act: 'negOpen', reply: '협상 창을 열었습니다.' }, { label: '지금 조건 유지', act: 'none', reply: '지금 조건으로 결정을 기다립니다.' }] });
+  },
+  // ---------- FA의 고민 기간: 거물일수록 오래 제안을 모은다 (시즌 중에는 빨리 정한다) ----------
+  dls() { return (Contract.st().fadl ||= {}); },
+  deadline(p, today = Clock.today()) {
+    const D = this.dls(); if (D[p.id]) return D[p.id];
+    const o = p.ovr || 0, r = this.rnd(p.id, today, 'dl'), stove = this.stove(today);
+    let d = o >= 85 ? 7 + r * 7 : o >= 75 ? 4 + r * 4 : 2 + r * 2;
+    if (!stove) d = Math.max(2, d / 2);
+    return (D[p.id] = Store.addDays(today, Math.round(d)));
+  },
+  // 제안 하나의 매력 (pay0 = 받은 제안 중 최고 연봉). 우리 제안 · AI 제안 모두 같은 저울
+  pay(p, o) { if (o.mine) return o.salary + (o.signing || 0) / (o.years || 1); const t = App.db.teams.find(x => x.id === o.team); return t ? o.mult * Contract.pay(p, Contract.score(p, t), t.league) : 0; },
+  util(p, o, pay0) {
+    const t = App.db.teams.find(x => x.id === o.team); if (!t) return -9;
+    return Persona.appeal(p, t, this.pay(p, o) / (pay0 || 1), p._o && p._o.team) + (o.mine && o.promise === 'starter' ? .04 : 0);
+  },
+  // 이 FA가 받아 둔 제안 전부 (우리 입찰 포함)
+  offersFor(p) {
+    const S = Contract.st().neg[p.id], list = [...(this.fa()[p.id] || [])];
+    if (S && S.pending && S.bid) list.push({ ...S.bid, team: App.state.teamId, mine: true });
+    return list;
+  },
+  ranked(p) { const L = this.offersFor(p), pay0 = Math.max(1e-6, ...L.map(o => this.pay(p, o))); return L.map(o => ({ o, u: this.util(p, o, pay0) })).sort((a, b) => b.u - a.u); },
+  // 우리가 요구액을 맞춘 제안: 압도적이면 바로 합의, 아니면 다른 제안과 함께 고민한다
+  bid(p, o) {
+    const ai = this.fa()[p.id] || [];
+    if (!ai.length && (p.ovr || 0) < 80) return 'now';                                   // 경쟁자 없는 중하위 선수는 바로
+    const mine = { ...o, team: App.state.teamId, mine: true }, L = [...ai, mine], pay0 = Math.max(1e-6, ...L.map(x => this.pay(p, x)));
+    const me = this.util(p, mine, pay0), best = Math.max(-9, ...ai.map(x => this.util(p, x, pay0)));
+    if (ai.length && me - best >= .3) return 'now';                                      // 압도적인 조건이면 고민 없이
+    this.deadline(p); return 'wait';
+  },
+  // 왜 그 팀을 골랐나 (결과 메일)
+  why(p, t, mineO, w) {
+    const P = Persona.of(p);
+    if (Persona.likes(p, t)) return P.favCoach.length && !P.fav.includes(t.id) ? '함께하고 싶은 코치가 있는 팀이라고 합니다.' : P.tag === 'oneclub' ? `${t.short}에서 커리어를 끝내고 싶다고 합니다.` : `${Sim.josa(t.short, '은', '는')} 선수에게 특별한 팀이라고 합니다.`;
+    if (w && mineO && this.pay(p, w) > this.pay(p, mineO) * 1.04) return '연봉 조건이 더 좋았다고 합니다.';
+    if (Persona.rank(t) < Persona.rank(Roster.team())) return '우승 가능성을 가장 크게 봤다고 합니다.';
+    return '팀 분위기와 조건을 두루 따져 봤다고 합니다.';
+  },
   resting(pid, today = Clock.today()) { const u = (Contract.st().rest || {})[pid]; return !!u && today < u; },
 };
 Engine.on(today => { if (!App.db.free) return; Market.expire(today); Market.shop(today); });
@@ -149,3 +243,4 @@ Engine.on(today => {
   if (typeof Champions !== 'undefined' && Champions.meta) s['patch:' + Champions.meta.patch] ||= today;
   if (t) s[`recap:${t.id}:${Schedule.BASE}`] ||= today;
 });
+Engine.ACTS.negOpen = m => { if (m.ctx && m.ctx.pid) setTimeout(() => Neg.open(m.ctx.pid, (Contract.st().neg[m.ctx.pid] || {}).mode || 'fa'), 50); };

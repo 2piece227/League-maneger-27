@@ -35,6 +35,8 @@ const Neg = {
     if (old && old.cool && old.cool > Clock.today()) return old;
     if (old && !old.done && !old.cool && Fmt.daysBetween(old.date, Clock.today()) <= 3 && old.mode === mode) return old;
     if (this.held(old) && old.mode === mode) return old;                                       // 합의했지만 아직 사인 전
+    if (old && old.pending && old.mode === mode) return old;                                   // 다른 제안과 함께 검토 중
+    if (old && old.lost && old.mode === mode && Player.find(p.id) && Player.find(p.id).p.free && Fmt.daysBetween(old.date, Clock.today()) <= 3) return old;
     const A = this.agent(p), W = this.wants(p), K = this.KIND[A.kind];
     const hit = Player.find(p.id), cur = hit && !p.free ? Contract.of(p, hit.t) : null;
     // 시기: 계약이 많이 남은 재계약은 급할 게 없고, 다른 팀이 계약 기간 중인 선수에게 제안할 수는 없다 (만료 60일 안 · 스토브리그에만 관심이 붙는다)
@@ -51,6 +53,22 @@ const Neg = {
     if (mode === 'renew' && P && P.tag === 'oneclub' && P.club === my.id) ask *= P.cut;          // 원클럽맨 재계약: 연봉을 깎아서라도 남는다
     else if (mode === 'renew' && cur && (p.age || 22) < 28) ask = Math.max(ask, cur.salary * 1.05);    // 젊은 선수는 연봉 삭감을 받지 않는다
     if (mode !== 'renew' && P && P.tag === 'career' && my.rep < 4) ask *= 1.15;                 // 커리어 우선: 약팀이면 더 달라고 한다
+    const rank = Persona.rank(my);
+    if (mode !== 'renew' && !likes && W.w.win >= .4 && rank >= .5) ask *= 1 + (W.w.win - .3) * .6 * rank;   // 우승을 원하는 선수가 하위권 팀으로 가려면 웃돈
+    // 아예 이야기하지 않는 경우 (AI 구단도 같은 기준: js/persona.js refuses)
+    const no = mode !== 'renew' ? Persona.refuses(p, my) : null;
+    if (no) {
+      const fav = Persona._fav, homeLg = p.nation === 'South Korea' ? 'LCK' : 'LPL', club = P.club && App.db.teams.find(x => x.id === P.club);
+      const txt = ({
+        homecoming: `솔직하게 말씀드리겠습니다. 선수는 ${fav ? fav.short : '친정팀'} 복귀를 가장 먼저 생각하고 있습니다. 그쪽 이야기가 정리되기 전에는 다른 팀과 조건을 논의하지 않겠다고 합니다.`,
+        oneclub: `선수는 ${club ? club.short : '원 소속팀'}과의 이야기를 먼저 마무리하고 싶어 합니다. 지금은 다른 팀 제안을 듣지 않겠다고 합니다.`,
+        home: `선수가 아직 해외 진출은 생각하지 않고 있습니다. 스토브리그 초반에는 ${homeLg} 팀들 이야기만 들어 보겠다고 합니다.`,
+        win: `돌려 말하지 않겠습니다. 선수는 다음 시즌 우승을 노릴 수 있는 팀을 원합니다. 지금 ${my.short} 전력으로는 선수를 설득하기 어렵습니다.`,
+      })[no];
+      const S = M.neg[p.id] = { pid: p.id, mode, date: Clock.today(), patience: 0, max: K[1], ask: 0, ask0: 0, rivals, asked: {}, log: [], rounds: 0, done: true, refused: no };
+      S.log.push({ who: 'agent', text: `${my.name} 측 연락 감사합니다. ${p.name} 선수 에이전트 ${A.name}(${A.agency})입니다.\n\n${txt}` });
+      return S;
+    }
     ask = Contract.r1(Math.min(Fame.cap(my.league), Math.max(Contract.MIN.first, ask)));   // LPL 개인 연봉 상한
     const S = M.neg[p.id] = { pid: p.id, mode, date: Clock.today(), patience: K[1], max: K[1], ask, ask0: ask, rivals, asked: {}, log: [], rounds: 0 };
     const opening = `${my.name} 측 연락 감사합니다. ${p.name} 선수 에이전트 ${A.name}(${A.agency})입니다.\n\n`
@@ -109,6 +127,13 @@ const Neg = {
     const W = this.wants(p), K = this.KIND[this.agent(p).kind], R = this.judge(p, S, o), r = G.rand(p.id + S.date + S.rounds, 'say');
     S.rounds++;
     S.log.push({ who: 'me', text: this.offerText(o) });
+    if (R.u >= R.need && S.mode === 'fa' && (S.pending || Market.bid(p, o) === 'wait')) {
+      const up = !S.pending; S.pending = true; S.bid = o; S.date = Clock.today();
+      const dl = Market.deadline(p), n = Market.rivals(p.id);
+      S.log.push({ who: 'agent', text: up ? `좋은 조건입니다. 다만 선수가 ${n ? `다른 팀 ${n}곳의 제안도 받아 둔 상태라` : '다른 팀 이야기도 들어 보고 싶어 해서'} 함께 검토하겠습니다. ${Fmt.dayLabel(dl)}까지 답을 드리겠습니다.\n\n(그 전에 조건을 올려 다시 제안할 수 있습니다)`
+        : `수정 조건 잘 받았습니다. 선수에게 전달하겠습니다. 결정은 ${Fmt.dayLabel(dl)}입니다.` });
+      return 'wait';
+    }
     if (R.u >= R.need) {
       S.done = true; S.deal = o; S.hold = Store.addDays(Clock.today(), this.HOLD);
       S.log.push({ who: 'agent', text: this.pick(this.say.accept, r) + `\n\n(${S.hold.replace(/-/g, '.')}까지 계약서에 사인해 주세요. 그때까지는 다른 팀과 계약하지 않습니다)` });
@@ -211,7 +236,7 @@ const Neg = {
     const f = $('.ng-form', back);
     // 휴대폰: 버튼 줄을 창 맨 아래로 (입력 칸 안에 있으면 그 칸이 보일 때만 아래에 붙는다)
     if (matchMedia('(max-width: 760px)').matches) { f.id = 'ng-form-live'; const act = $('.ng-act', back); act.querySelector('.ng-send').setAttribute('form', 'ng-form-live'); act.classList.add('ng-act-bottom'); back.querySelector('.ng').appendChild(act); }
-    f.salary.value = (S.deal ? S.deal.salary : S.ask).toFixed(1);
+    f.salary.value = ((S.deal || S.bid) ? (S.deal || S.bid).salary : S.ask).toFixed(1);
     f.years.value = String(this.wants(p).years);
     const close = () => { back.remove(); document.removeEventListener('keydown', onKey); Router.go(Router.current()); };
     const onKey = e => { if (e.key === 'Escape') close(); };
@@ -225,7 +250,7 @@ const Neg = {
       const tx = $('.ng-tax', back); if (tx) { const a = Club.tax(my), b = Club.tax(my, { pid: p.id, salary: off }); tx.innerHTML = `${Player.money(b.tax)} <small>${b.tax > a.tax ? `+${Player.money(b.tax - a.tax)}` : '변화 없음'}</small>`; }
       $('.ng-room', back).innerHTML = `<span class="${rm - off < 0 ? 'warn' : ''}">${rm - off >= 0 ? '' : '−'}${Player.money(Math.abs(rm - off))}</span> <small>제안 후</small>`;
       const over = S.done || S.cool;
-      $('.ng-qs', back).innerHTML = over ? (this.held(S) ? `<button class="btn-primary ng-sign">계약서에 사인</button><small class="ng-hold">${S.hold.replace(/-/g, '.')}까지 사인하지 않으면 합의가 무효가 됩니다</small>` : '') : this.QUESTIONS.filter(([k]) => !S.asked[k]).map(([k, l]) => `<button class="btn-ghost btn-sm" data-q="${k}">${l}</button>`).join('');
+      $('.ng-qs', back).innerHTML = S.pending ? `<small class="ng-hold">검토 중 · ${Fmt.dayLabel(Market.deadline(p))} 결정 — 조건을 올려 다시 제안할 수 있습니다</small>` : over ? (this.held(S) ? `<button class="btn-primary ng-sign">계약서에 사인</button><small class="ng-hold">${S.hold.replace(/-/g, '.')}까지 사인하지 않으면 합의가 무효가 됩니다</small>` : '') : this.QUESTIONS.filter(([k]) => !S.asked[k]).map(([k, l]) => `<button class="btn-ghost btn-sm" data-q="${k}">${l}</button>`).join('');
       $$('input,select,button', f).forEach(x => { if (!x.classList.contains('ng-quit')) x.disabled = !!over; });
       { const sd = $('.ng-send', back); if (sd) sd.disabled = !!over; }
       $$('[data-q]', back).forEach(b => b.onclick = () => { this.answer(p, S, b.dataset.q); draw(); });
