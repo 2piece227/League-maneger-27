@@ -185,10 +185,11 @@ const Season = {
     return (b[e.id] = list);
   },
   // 라운드 하나를 채운다: 지기 전까지(L패) 살아남은 팀 중에서. 첫 라운드는 하위 시드부터(상위 시드 부전승), 이후는 덜 치른 팀 → 덜 진 팀, 결승은 최고 성적 둘
-  fillRound(round, prev, ents, isFirst, isLast, L) {
+  KO: /^(Quarterfinals|Semifinals|Third-Place Match|Finals)$/,
+  fillRound(round, prev, ents, isFirst, isLast, L, W = Infinity) {
     const rec = {}; ents.forEach((id, i) => { rec[id] = { id, seed: i, p: 0, w: 0, l: 0 }; });
     prev.forEach(m => { const w = rec[this.winner(m)], l = rec[this.loser(m)]; if (w) { w.p++; w.w++; } if (l) { l.p++; l.l++; } });
-    const cand = Object.values(rec).filter(x => x.l < L), k = round.length;
+    const cand = Object.values(rec).filter(x => x.l < L && x.w < W), k = round.length;
     let pick;
     if (isLast) pick = cand.sort((a, b) => a.l - b.l || b.w - a.w || a.seed - b.seed).slice(0, 2);
     else if (isFirst && cand.length > 2 * k) pick = cand.sort((a, b) => b.seed - a.seed).slice(0, 2 * k);
@@ -224,14 +225,30 @@ const Season = {
         const inEvent = l.some(m => !m.open || m.seeds);
         // 라운드: 시간순으로 탭이 바뀔 때마다 새 라운드 (승자조·패자조의 같은 이름 라운드는 따로)
         const rounds = []; [...br].sort((a, b) => a.t.localeCompare(b.t)).forEach(m => { const r = rounds.at(-1); r && r.tab === (m.tab || '') ? r.list.push(m) : rounds.push({ tab: m.tab || '', list: [m] }); });
+        // 토너먼트(8강 · 4강 · 3·4위전 · 결승)가 토너먼트 라운드 뒤에 오면: 바로 앞 라운드 승자끼리 (3·4위전은 패자끼리), 경기 순서대로
+        //   예전에는 'L패 전까지 생존' 규칙을 그대로 써서 8강 패자가 4강에 올라가고 8강 승자가 탈락하기도 했다 (베타 제보: 월즈 8강 승리 후 일정 종료)
+        let ko = false;
+        const koSrc = i => { const tab = rounds[i].tab; if (!this.KO.test(tab) || i < 1) return null; let src = rounds[i - 1]; if (tab === 'Finals' && src.tab === 'Third-Place Match') src = rounds[i - 2];
+          return src && this.KO.test(src.tab) && src.list.filter(m => !m.dead).length === rounds[i].list.filter(m => !m.dead).length * 2 ? src : null; };
+        for (let i = 1; i < rounds.length; i++) {
+          const tab = rounds[i].tab, src = koSrc(i); if (!src) continue;
+          const rd = rounds[i].list.filter(m => !m.dead).sort((a, b) => a.t.localeCompare(b.t)), sl = src.list.filter(m => !m.dead).sort((a, b) => a.t.localeCompare(b.t));
+          if (rd.some(m => this.rec(m)) || !sl.every(m => this.rec(m))) continue;
+          const pick = tab === 'Third-Place Match' ? m => this.loser(m) : m => this.winner(m);
+          rd.forEach((m, j) => { const a = pick(sl[2 * j]), b = pick(sl[2 * j + 1]); if (m.t1 !== a || m.t2 !== b) { m.t1 = a; m.t2 = b; ko = true; } });
+        }
+        if (ko) { changed = true; continue; }
         for (let i = 0; i < rounds.length; i++) {
           const rd = rounds[i].list.filter(m => !m.dead);
+          if (koSrc(i)) continue;   // 위에서 채운다
           if (!rd.length || rd.every(m => m.t1 && m.t2)) continue;
           const prev = rounds.slice(0, i).flatMap(r => r.list).filter(m => !m.dead);
           if (!prev.every(m => this.rec(m))) break;
           const ents = this.entrants(e, inEvent); if (!ents) break;
           const n = br.length, Q = ents.length, L = n <= Q - 1 ? 1 : n <= 2 * Q - 1 ? 2 : 3;
-          this.fillRound(rd, prev, ents, i === 0, i === rounds.length - 1, L);
+          // 월즈 스위스 스테이지: 3승 진출 · 3패 탈락 (3승 팀은 더 치르지 않는다)
+          const W = e.base === 'worlds' && !this.KO.test(rounds[i].tab) ? 3 : Infinity;
+          this.fillRound(rd, prev, ents, i === 0, i === rounds.length - 1, L, W);
           changed = true;
           break;
         }
