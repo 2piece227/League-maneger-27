@@ -69,6 +69,7 @@ const Neg = {
       S.log.push({ who: 'agent', text: `${my.name} 측 연락 감사합니다. ${p.name} 선수 에이전트 ${A.name}(${A.agency})입니다.\n\n${txt}` });
       return S;
     }
+    const hon = typeof Awards !== 'undefined' ? Awards.best(p) : null; if (hon) ask *= 1 + Awards.bump(p);   // 최근 2년 수상 경력 (파이널 MVP · 올프로 · 우승)
     ask = Contract.r1(Math.min(Fame.cap(my.league), Math.max(Contract.MIN.first, ask)));   // LPL 개인 연봉 상한
     const S = M.neg[p.id] = { pid: p.id, mode, date: Clock.today(), patience: K[1], max: K[1], ask, ask0: ask, rivals, asked: {}, log: [], rounds: 0 };
     const opening = `${my.name} 측 연락 감사합니다. ${p.name} 선수 에이전트 ${A.name}(${A.agency})입니다.\n\n`
@@ -79,6 +80,7 @@ const Neg = {
         })[phase] : mode === 'fa' && phase === 'season' ? `시즌 중이라 선수도 빨리 뛸 팀을 정하고 싶어 합니다. ` : mode === 'fa' && rivals ? `스토브리그라 여러 팀이 선수에게 관심을 보이고 있습니다. ` : mode === 'transfer' ? `구단 간 합의 소식 들었습니다. 선수도 ${my.short} 이적에 관심이 있습니다. ` : `선수는 새 팀을 찾고 있고, ${rivals}개 팀과 이야기 중입니다. `)
       + (disc >= .03 ? `${my.short}에서 뛸 수 있다면 연봉은 어느 정도 양보할 수 있습니다. ` : '')
       + (likes ? (P.favCoach.length && !P.fav.includes(my.id) ? '선수가 이 팀 코치진과 꼭 함께하고 싶어 합니다. ' : P.tag === 'oneclub' ? `선수는 ${my.short}에서 커리어를 끝내고 싶어 합니다. ` : `선수에게 ${my.short}는 특별한 팀입니다. `) : '')
+      + (hon ? `선수는 ${hon.label} 경력이 있습니다. 그에 맞는 대우를 기대합니다. ` : '')
       + `연봉은 최소 ${Player.money(ask)} 원, 계약 기간은 ${W.years}년을 생각하고 있습니다.${W.role === 'starter' && W.s >= 65 ? ' 주전으로 뛰는 것도 중요합니다.' : ''}`;
     S.log.push({ who: 'agent', text: opening });
     return S;

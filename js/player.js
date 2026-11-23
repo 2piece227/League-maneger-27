@@ -76,6 +76,7 @@ const Player = {
             ${sq ? `<h4>솔랭</h4><p class="pp-line">${SoloQ.SERVER[t.league]} 서버 <b>${sq.rank}위</b> · ${sq.lpNow.toLocaleString()} LP · 승률 ${SoloQ.wr(sq)}%</p>` : ''}
           </div>
           <div class="pp-col">
+            ${typeof Awards !== 'undefined' ? Awards.html(p) : ''}
             ${p.role !== 'COACH' ? `<h4>특성</h4>${Traits.rows(p.id)}` : ''}
             ${p.role !== 'COACH' ? `<h4>챔피언 폭 <small>최근 3시즌 프로 경기</small></h4>
               ${pool.length ? `<div class="ms-sigs pp-pool">${pool.slice(0, 8).map(e => Mastery.chip(e, true)).join('')}</div>` : '<p class="ms-none">프로 경기 기록이 없습니다.</p>'}

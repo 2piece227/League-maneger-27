@@ -204,6 +204,8 @@ const Club = {
     await Promise.all([Portal.ready, Results.load()]);
     const t = this.team(), names = this.ALIAS[t.id] || [t.name];
     const titles = App.db.history.worlds.filter(w => names.some(n => w.team.toLowerCase() === n.toLowerCase()));
+    Object.entries(App.state.champs || {}).filter(([id, w]) => w === t.id && /:worlds$/.test(id)).forEach(([id]) => { const y = +id.slice(0, 4); if (!titles.some(w => +w.year === y)) titles.push({ year: y, team: t.name }); });   // 이 커리어에서 딴 우승
+    titles.sort((a, b) => a.year - b.year);
     // 이번 시즌 기록 (시즌 첫 경기 전이면 지난 시즌)
     const all = Results.forTeam(t.id), yr = y => all.filter(m => String(m.e).startsWith(y + ':'));
     let Y = Schedule.season(), list = yr(Y); if (!list.length && yr(Y - 1).length) { Y -= 1; list = yr(Y); }
