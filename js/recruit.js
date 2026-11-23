@@ -1,11 +1,14 @@
 // 영입: 스카우트 검색 · 관심 목록 · 스카우트 리포트 · FA 시장 · 이적 제안 · 스카우트 배정
 const Recruit = {
-  f: { league: 'ALL', role: 'ALL', age: 'ALL', nat: 'ALL', contract: 'ALL', q: '', sort: 'value' },
+  f: { league: 'ALL', lv: 'ALL', role: 'ALL', age: 'ALL', nat: 'ALL', contract: 'ALL', q: '', sort: 'value' },
   faStaff: false,
 
   today() { return Clock.today(); },
   mineId() { return App.state.teamId; },
   pool() { return [...App.db.teams, ...(App.db.free ? [App.db.free] : [])].flatMap(t => t.players.map(p => ({ p, t }))); },
+  // 스카우트 검색용: 1군 + 2군(CL) + 아카데미 (lv: 소속 단계)
+  every() { return [...App.db.teams.flatMap(t => [...t.players.map(p => ({ p, t, lv: 'first' })), ...(t.cl || []).map(p => ({ p, t, lv: 'cl' })), ...(t.academy || []).map(p => ({ p, t, lv: 'academy' }))]), ...(App.db.free ? App.db.free.players.map(p => ({ p, t: App.db.free, lv: 'first' })) : [])]; },
+  LV: { cl: '2군', academy: '아카데미' },
   home(t) { return { LCK: 'South Korea', LPL: 'China', LCS: 'United States' }[t.league]; },
 
   star(id) { return `<button class="rc-star ${Player.shortlist().includes(id) ? 'on' : ''}" data-star="${id}" title="관심 목록">★</button>`; },
@@ -17,14 +20,14 @@ const Recruit = {
       if (r) Player.open(r.dataset.pid);
     });
   },
-  playerRow(p, t, extra = '') {
+  playerRow(p, t, extra = '', lv) {
     const [cs, cc] = Player.contractState(p);
     const sig = Mastery.signatures(p.id);
     return `
       <tr data-pid="${p.id}">
         <td>${this.star(p.id)}</td>
         <td><div class="pl-cell">${G.face(p, 'pl-ph')}<div>${G.ovr(p)}<b>${UI.esc(p.name)}</b>${sig.length ? `<i class="ms-sig static">SIG ${sig.length}</i>` : ''}<small class="pl-real">${UI.esc(p.nativeName || p.realName || '')}</small></div></div></td>
-        <td><span class="fx-team">${G.team(t, 'xs')}<b>${UI.esc(t.short)}</b></span></td>
+        <td><span class="fx-team">${G.team(t, 'xs')}<b>${UI.esc(t.short)}</b>${this.LV[lv] ? `<small class="rc-lv">${this.LV[lv]}</small>` : ''}</span></td>
         <td>${G.pos(p.role)}</td>
         <td class="num">${p.age || '-'}</td>
         <td><span class="nat">${G.flag(p.nation)}</span></td>
@@ -40,10 +43,11 @@ const Recruit = {
     const sel = (k, opts) => `<select class="ch-sort" data-f="${k}">${opts.map(([v, l]) => `<option value="${v}" ${this.f[k] === v ? 'selected' : ''}>${l}</option>`).join('')}</select>`;
     el.innerHTML = `
       <div class="cr-page">
-        ${Career.head('스카우트 검색', '4개 리그 1군 선수 전체. 행을 누르면 선수 프로필, ★로 관심 목록에 추가합니다.')}
+        ${Career.head('스카우트 검색', '4개 리그 1군 · 2군(CL) · 아카데미 선수 전체. 행을 누르면 선수 프로필, ★로 관심 목록에 추가합니다.')}
         <div class="ch-bar">
           <input class="ch-search rc-q" type="search" placeholder="이름 검색" value="${UI.esc(this.f.q)}">
           ${sel('league', [['ALL', '모든 리그'], ['LCK', 'LCK'], ['LPL', 'LPL'], ['LEC', 'LEC'], ['LCS', 'LCS']])}
+          ${sel('lv', [['ALL', '모든 소속'], ['first', '1군'], ['cl', '2군 (CL)'], ['academy', '아카데미']])}
           ${sel('role', [['ALL', '모든 포지션'], ...G.ROLES.map(r => [r, G.ROLE_KO[r]])])}
           ${sel('age', [['ALL', '모든 나이'], ['u21', '21세 이하'], ['22-25', '22~25세'], ['26+', '26세 이상']])}
           ${sel('nat', [['ALL', '모든 선수'], ['home', '자국 선수'], ['foreign', '외국 선수']])}
@@ -60,7 +64,8 @@ const Recruit = {
       // 자국 선수 = 그 선수가 뛰는 리그의 현지 선수 (LEC는 유럽 국적, LCS는 미국·캐나다). 무소속은 내 리그 기준
       const EU = ['France', 'Spain', 'Germany', 'Poland', 'Denmark', 'Sweden', 'United Kingdom', 'Belgium', 'Netherlands', 'Italy', 'Portugal', 'Czech Republic', 'Slovakia', 'Slovenia', 'Croatia', 'Serbia', 'Bosnia and Herzegovina', 'Bulgaria', 'Romania', 'Greece', 'Hungary', 'Austria', 'Switzerland', 'Norway', 'Finland', 'Ireland', 'Lithuania', 'Latvia', 'Estonia', 'Ukraine', 'Belarus', 'Russia', 'Turkey', 'Israel', 'Cyprus', 'Malta', 'Iceland', 'Luxembourg', 'Albania', 'North Macedonia', 'Montenegro', 'Kosovo', 'Moldova'];
       const isHome = (p, lg) => ({ LCK: n => n === 'South Korea', LPL: n => n === 'China' || n === 'Taiwan' || n === 'Hong Kong', LEC: n => EU.includes(n), LCS: n => n === 'United States' || n === 'Canada' }[lg || myLeague] || (() => false))(p.nation);
-      let rows = this.pool().filter(({ p, t }) => t.id !== this.mineId() &&
+      let rows = this.every().filter(({ p, t, lv }) => t.id !== this.mineId() &&
+        (f.lv === 'ALL' || lv === f.lv) &&
         (f.league === 'ALL' || t.league === f.league) && (f.role === 'ALL' || p.role === f.role) &&
         (f.age === 'ALL' || (f.age === 'u21' ? p.age <= 21 : f.age === '22-25' ? p.age >= 22 && p.age <= 25 : p.age >= 26)) &&
         (f.nat === 'ALL' || (f.nat === 'home') === isHome(p, t.league)) &&
@@ -74,7 +79,7 @@ const Recruit = {
       }[f.sort];
       rows.sort(by);
       $('.rc-count', el).textContent = `${rows.length}명`;
-      $('.rc-table tbody', el).innerHTML = rows.map(({ p, t }) => this.playerRow(p, t)).join('') || '<tr><td colspan="8" class="ms-none" style="text-align:center;padding:30px">조건에 맞는 선수가 없습니다.</td></tr>';
+      $('.rc-table tbody', el).innerHTML = rows.map(({ p, t, lv }) => this.playerRow(p, t, '', lv)).join('') || '<tr><td colspan="8" class="ms-none" style="text-align:center;padding:30px">조건에 맞는 선수가 없습니다.</td></tr>';
     };
     $$('select[data-f]', el).forEach(s => s.onchange = () => { this.f[s.dataset.f] = s.value; draw(); });
     $('.rc-q', el).oninput = e => { this.f.q = e.target.value; draw(); };
