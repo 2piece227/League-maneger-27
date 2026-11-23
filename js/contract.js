@@ -37,7 +37,9 @@ const Contract = {
     if (typeof Mastery !== 'undefined' && Mastery.pools && typeof Traits !== 'undefined' && Traits.cfg) p._sc = s;
     return s;
   },
-  tier(p) { return p.level === 'cl' ? 'cl' : p.level === 'academy' || p.gen ? 'academy' : 'first'; },
+  tier(p) { return p.level === 'cl' ? 'cl' : p.level === 'academy' || (p.gen && p.level !== 'first') ? 'academy' : 'first'; },   // 아카데미 출신도 1군에 올라가면 1군 계약
+  // 에이전트와 협상하나: 1군 선수, 또는 2군 · 아카데미라도 OVR 75 이상 (실력이 1군급이면 에이전트가 붙는다). 나머지는 계약서 한 장
+  agent(p) { return p.role !== 'COACH' && (this.tier(p) === 'first' || (p.ovr || 0) >= 75); },
   // 이 점수의 선수가 이 리그에서 받는 시장 연봉
   pay(p, s, league) {
     const tier = this.tier(p);

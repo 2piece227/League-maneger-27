@@ -13,7 +13,8 @@ const Squad = {
   ACADEMY_Q: { t1: 100, 'dplus-kia': 80, 'bnk-fearx': 80, 'nongshim-redforce': 60, 'gen-g': 50, 'kt-rolster': 45, 'kiwoom-drx': 45, 'hanjin-brion': 40, 'dn-soopers': 35, 'hanwha-life-esports': 30 },
   AGE_ROOM: { 17: 4.2, 18: 3.6, 19: 2.9, 20: 2.2, 21: 1.6, 22: 1.1, 23: .7, 24: .35 },
   // 실제 정보로 따로 맞춘 선수: [지금 OVR, 잠재력 OVR]
-  SPECIAL: { 'cloud-moon-hyeon-ho': [80, 89], haetae: [78, 86] },
+  SPECIAL: { 'cloud-moon-hyeon-ho': [80, 95],   // 클라우드: 2027 HLE 주전급 유망주 (최고 OVR 95)
+    haetae: [78, 86] },
   q(tid) { return this.ACADEMY_Q[tid] ?? 40; },
   ref(role) { return Attributes.REF[role] || 19.5; },
   toOvr(v, role) { return Math.round(v / this.ref(role) * 99); },
@@ -234,7 +235,7 @@ const Squad = {
       if (lv === 'out') return;
       if (dev[p.id]) Object.assign(p, dev[p.id]);
       if (p.attributes && p.role !== 'COACH') { p.attributes = Attributes.fix(p.attributes, p.role); p.ovr = Attributes.overall(p.attributes, p.role); this.rate(p, this.q(t.id)); } // 예전 세이브 능력치 → 새 구성 · 현재 기량 다시 읽기
-      const sp = this.SPECIAL[p.id]; if (sp && p.attributes && (p.ovr || 0) < sp[0]) { this.scaleTo(p, sp[0]); p.pa = Math.max(p.pa || 0, this.round(Attributes.caFor(sp[1], p.role))); this.rate(p); }   // 저장된 능력치가 맞춘 값보다 낮으면 올린다
+      const sp = this.SPECIAL[p.id]; if (sp && p.attributes) { if ((p.ovr || 0) < sp[0]) this.scaleTo(p, sp[0]); p.pa = Math.max(p.pa || 0, this.round(Attributes.caFor(sp[1], p.role))); this.rate(p); }   // 저장된 능력치 · 잠재력이 맞춘 값보다 낮으면 올린다
       p.level = lv;
       ({ first: t.players, cl: t.cl, academy: t.academy })[lv].push(p);
     });
@@ -282,7 +283,7 @@ const Squad = {
   // 우리 코치는 ±3 안팎(폭 5), 다른 팀 선수는 스카우트 추정이라 폭이 넓다(10). FM처럼 정확한 잠재력 숫자는 보여 주지 않는다
   potRange(p, wide) {
     if (p.pa == null) return '-';
-    const v = Math.min(99, this.toOvr(p.pa, p.role)), w = wide ? 10 : 5, lo = Math.max(p.ovr || 0, v - Math.round(w * .6) + Math.round(G.rand(p.id, 'pe') * 2));
+    const v = Math.min(99, this.toOvr(p.pa, p.role)), w = wide ? 10 : 5, lo = Math.max(p.ovr || 0, v - Math.round(w * .6) - Math.round(G.rand(p.id, 'pe')));   // 실제 최고치를 가운데쯤 감싼다 (예전엔 위로 치우쳐 최고치보다 3~4 높게 보였다)
     return lo >= 99 ? '99' : `${lo}~${Math.min(99, lo + w)}`;
   },
   stars(p) { return p.ca != null ? `${UI.stars(Attributes.stars(p.ca))}` : '-'; },

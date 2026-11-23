@@ -190,7 +190,7 @@ const Neg = {
   open(pid, mode = 'renew') {
     const hit = Player.find(pid); if (!hit) return;
     const { p, t } = hit;
-    if (Contract.tier(p) !== 'first' || p.role === 'COACH') return this.sheet(pid, mode);
+    if (!Contract.agent(p)) return this.sheet(pid, mode);   // 1군 · OVR 75 이상은 에이전트 (js/contract.js agent)
     const no = this.can(p, mode); if (no) { UI.toast(no, 3200); return; }
     const S = this.session(p, mode), A = this.agent(p), my = Roster.team();
     const cur = !p.free ? Contract.of(p, t) : null;
@@ -298,6 +298,7 @@ const Neg = {
     if (S._overBudget) { World.apply({ board: -S._overBudget }, {}); Inbox.push({ from: { name: '이사회', role: 'board' }, subject: '예산 초과 계약 승인', body: `${Sim.josa(p.name, '과', '와')}의 계약은 연봉 예산을 넘지만 이번에는 승인했습니다. 앞으로 지출을 줄여 주시기 바랍니다.` }); S._overBudget = 0; }
     if (mode === 'transfer') Transfer.complete(p.id);
     Contract.sign(p.id, my.id, { salary: o.salary, end, option: o.option, buyout: o.buyout, promise: o.promise, bonus: o.bonus, signing: o.signing, years: o.years });
+    if (p.gen && Squad.gen()[p.id]) { Squad.gen()[p.id].contractEnd = end; Squad.apply(); }   // 아카데미 출신(생성 유스): 계약 만료일은 유스 기록에
     if (o.signing) World.ledger().push({ date: Clock.today(), label: `${p.name} 계약금`, amount: -Math.round(o.signing * 1e8) });
     if (o.promise === 'starter' || o.promise === 'rotation') (App.state.promises ||= []).push({ pid: p.id, kind: o.promise, date: Clock.today(), due: end, src: 'contract' });
     S.done = true; S.signed = true;
