@@ -119,12 +119,12 @@ const EventPage = {
         const sim = won => { const c = tb.map(r => ({ id: r.t.id, w: r.w + (r.t.id === my ? +won : r.t.id === o.id ? +!won : 0), l: r.l + (r.t.id === my ? +!won : r.t.id === o.id ? +won : 0), d: r.sw - r.sl })); c.sort((a, b) => b.w - a.w || a.l - b.l || b.d - a.d); return c.findIndex(x => x.id === my) + 1; };
         lines.push(`현재 ${ri + 1}위 (${tb[ri].w}승 ${tb[ri].l}패)${oi >= 0 ? ` · 상대 ${oi + 1}위 (${tb[oi].w}승 ${tb[oi].l}패)` : ''}`, `이기면 ${sim(true)}위 · 지면 ${sim(false)}위`);
       }
-    } else lines.push(/Final/i.test(m.tab) ? '결승전입니다. 이기면 우승입니다.' : '토너먼트 경기입니다. 지면 탈락하거나 하위 대진으로 내려갑니다.');
+    } else lines.push(/^(Grand )?Finals?$/i.test(m.tab) ? '결승전입니다. 이기면 우승입니다.' : '토너먼트 경기입니다. 지면 탈락하거나 하위 대진으로 내려갑니다.');
     const form = Match.form(o.id), h = Results.h2h(my, o.id), hw = h.filter(x => Results.won(x, my)).length;
     lines.push(`상대 최근 5경기 ${form.join('') || '-'}${h.length ? ` · 상대 전적 ${hw}승 ${h.length - hw}패` : ''}`);
     const key = typeof PStats !== 'undefined' ? PStats.rows(Object.keys(PStats.st()).filter(id => id.startsWith(e.year + ':'))).filter(r => r.t && r.t.id === o.id && r.g >= 3).sort((a, b) => b.rat - a.rat)[0] : null;
     if (key) lines.push(`경계할 선수: ${key.p.name} (평점 ${key.rat.toFixed(1)} · KDA ${key.kda.toFixed(1)} · POG ${key.pog})`);
-    const big = /Final/i.test(m.tab) ? '결승' : e.kind === 'intl' ? '국제대회' : e.kind === 'playoffs' ? '플레이오프' : rv ? '라이벌전' : '';
+    const big = /^(Grand )?Finals?$/i.test(m.tab) ? '결승' : e.kind === 'intl' ? '국제대회' : e.kind === 'playoffs' ? '플레이오프' : rv ? '라이벌전' : '';
     Inbox.push({ time: '09:00', from: { name: '전력분석관', role: 'coach' }, subject: `오늘의 경기${big ? ` [${big}]` : ''} — ${o.short}전 (${e.short || e.label})`, link: 'match-next', body: lines.join('\n') });
   },
 };

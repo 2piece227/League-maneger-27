@@ -28,8 +28,8 @@ const News = {
       });
     // 이적시장 오피셜 (다른 구단 AI 결과, 최근 30일)
     (App.state.market?.news || []).filter(n => n.date >= d(30) && n.date <= today).forEach(n => {
-      const cat = /^\[패치\]/.test(n.title) ? 'patch' : /^\[(결과|우승|이슈)\]/.test(n.title) ? 'league' : 'transfer';
-      out.push({ cat, date: n.date, title: n.title, body: n.body, pid: n.pid, link: { patch: '#match-meta', league: '#match-history', transfer: '#recruit-fa' }[cat] });
+      const cat = /^\[패치\]/.test(n.title) ? 'patch' : /^\[(결과|우승|이슈|이변|연승|연패|프리뷰|결승 프리뷰|개막|파워랭킹|주간 결산|최종 순위|국제|올프로|LCK 어워드|파이널 MVP)\]/.test(n.title) ? 'league' : 'transfer';
+      out.push({ cat, date: n.date, title: n.title, body: n.body, pid: n.pid, link: { patch: '#match-meta', league: '#match-results', transfer: '#recruit-fa' }[cat] });
     });
     // 일정 발표 예정
     const rel = Schedule.nextRelease(t.league);
