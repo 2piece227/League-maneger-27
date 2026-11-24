@@ -931,15 +931,21 @@ const Sim = {
     const own = n => Rift.pos((p.side === 'B' ? 'b' : 'r') + n), s = g.side[p.side];
     if (!p.jq.length) {
       if (g.t < 90) p.jq = [{ pos: own(s.jstart === 'top' ? 'JB' : 'JD'), wait: 99, until: 90 }];
-      else if (!p.cleared) {
+      else if (!p.cleared && p.tac === 'gank' && s.focus) {
+        // 초반 갱킹 + 공략 라인: 그 라인 쪽 세 캠프만 돌고 3레벨에 바로 그 라인으로 (풀캠프를 다 돌고 4~5분에야 첫 갱을 가던 문제)
+        const L = Rift.lane(s.focus, .5), near = Rift.CAMPS.slice().sort((a, b) => this.dist(own(a), L) - this.dist(own(b), L)).slice(0, 3).reverse();
+        p.jq = near.map(n => ({ pos: own(n), wait: 15 })); p.cleared = true; p.l3 = true;
+      } else if (!p.cleared) {
         const order = s.jstart === 'top' ? ['JB', 'JG', 'JW', 'JR', 'JD', 'JK'] : ['JD', 'JK', 'JR', 'JW', 'JB', 'JG'];
         p.jq = order.map(n => ({ pos: own(n), wait: 15 }));
         p.jq.push({ pos: Rift.pos(s.jstart === 'top' ? (p.side === 'B' ? 'RVbm' : 'RVtm') : (p.side === 'B' ? 'RVtm' : 'RVbm')), wait: 10, kind: 'crab' });
         p.cleared = true;
       } else {
         const gankRate = .35 + p.st.early * .3 + (p.tac === 'gank' ? .25 : 0) - (p.tac === 'farm' ? .2 : 0) - (p.tac === 'invade' ? .1 : 0);
-        if (m < 15 && g.r() < gankRate) {
-          const L = ['top', 'mid', 'bot'].map(l => { const e = g.pl.find(q => q.side !== p.side && !q.dead && !q.recall && this.LANE_OF[q.role] === l && q.role !== 'SUP' && this.distLane(q.pos, l) < 6 && this.dist(q.pos, this.fountain(q.side)) > 40); return { l, e, w: e ? (1.3 - e.hp) + g.r() * .6 + (s.focus === l ? .5 : 0) : 0 }; }).sort((a, b) => b.w - a.w)[0];   // 라커룸에서 정한 공략 라인을 먼저
+        const plan = p.l3; p.l3 = false;   // 3레벨 갱: 세 캠프를 돈 직후 한 번은 반드시 공략 라인으로
+        if (m < 15 && (plan || g.r() < gankRate)) {
+          const L = ['top', 'mid', 'bot'].map(l => { const e = g.pl.find(q => q.side !== p.side && !q.dead && !q.recall && this.LANE_OF[q.role] === l && q.role !== 'SUP' && this.distLane(q.pos, l) < 6 && this.dist(q.pos, this.fountain(q.side)) > 40); return { l, e, w: e ? (1.3 - e.hp) + g.r() * .6 + (s.focus === l ? (plan ? 5 : .5) + (p.tac === 'gank' ? .4 : 0) : 0) : 0 }; }).sort((a, b) => b.w - a.w)[0];   // 라커룸 · 팀 지시의 공략 라인을 먼저
+          if (plan && L.e && L.l === s.focus) this.line(g, 'gankPlan', { p: p.name, lane: this.laneKo(L.l) });
           // 상대 서폿이 시야를 깔아 둔 쪽(바텀·미드)은 동선이 들켜 갱을 접기도 한다
           const seen = L.e && this.wardOn(g, this.other(p.side), L.l) && g.r() < .35;
           if (L.e && !seen) { p.jq = [{ kind: 'gank', e: L.e, lane: L.l, pos: L.e.pos, left: 6 }]; if (g.r() < .45 && g.t - (g.gankT || -999) > 75 && (g.gankT = g.t)) (L.e.hp < .6 ? this.line(g, 'gankLow', { p: p.name, lane: this.laneKo(L.l), e: L.e.name, hp: Math.round(L.e.hp * 100) }) : this.line(g, 'gankLook', { p: p.name, lane: this.laneKo(L.l), dir: ' 갱킹 각을' })); }
