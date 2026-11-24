@@ -62,7 +62,7 @@ const Music = {
     this.el.classList.toggle('out', !this.inGame());   // 게임 밖(메인 화면): 아래 날짜 바가 없다
     this.layout(r); this.duck = r === 'match-live' ? .35 : 1; this.applyVol();
     if (!this.pref.on || !this.unlocked) return;
-    const w = this.want(r); if (w !== this.list) this.fade(() => this.use(w)); else if (!this.playing) this.play();
+    const w = this.want(r); if (w !== this.list) this.fade(() => this.use(w)); else if (!this.playing && !this.held) this.play();
   },
   // ---------- 음원 폴더 ----------
   EXT: /\.(mp3|m4a|aac|ogg|opus|wav|flac)$/i,
@@ -202,9 +202,10 @@ const Music = {
     const L = this.LISTS[name]; this.list = name;
     this.order = L.tracks.map((_, i) => i);
     for (let i = this.order.length - 1; i > 0; i--) { const j = Math.floor(Math.random() * (i + 1)); [this.order[i], this.order[j]] = [this.order[j], this.order[i]]; }   // 매번 다른 순서
-    this.idx = 0; this.load(true);
+    this.idx = 0; this.load(!this.held);   // 일시정지해 둔 상태면 목록만 바꾸고 멈춘 채로
   },
   step(d) {
+    this.held = false;
     if (!this.pref.on) return this.setOn(true);
     if (!this.list) return this.start();
     const n = this.order.length; this.idx = (this.idx + d + n) % n; this.load(true);
@@ -242,7 +243,8 @@ const Music = {
   },
   play() { const t = this.track(); if (!t) return; if (t.src && this.audio) this.audio.play().catch(() => {}); else this.withSC(() => this.w.play()); },
   pause() { if (this.audio) this.audio.pause(); if (this.w && this.ready) this.w.pause(); this.set(false); },
-  toggle() { if (!this.pref.on) return this.setOn(true); this.unlocked = true; if (this.playing) this.pause(); else if (!this.list) this.start(); else this.play(); },
+  // 사용자가 직접 일시정지하면 화면을 옮겨도 다시 켜지 않는다 (베타 건의). 다시 재생 · 다음 곡을 누르면 풀린다
+  toggle() { if (!this.pref.on) return this.setOn(true); this.unlocked = true; if (this.playing) { this.held = true; this.pause(); } else { this.held = false; if (!this.list) this.start(); else this.play(); } },
   set(p) { this.playing = p; if (p) { clearTimeout(this._to); if (this._unkick) { this._unkick(); this._unkick = null; } } this.paint(); },
   vol() { return Math.round(this.pref.vol * this.duck * (this.fadeK ?? 1)); },
   applyVol() { const v = this.vol(); if (this.audio) this.audio.volume = v / 100; if (this.w && this.ready) this.w.setVolume(v); },

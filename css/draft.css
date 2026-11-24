@@ -359,3 +359,11 @@
   .dr-presets { margin-left: 0; }
   .dr-tac-foot { justify-content: stretch; } .dr-tac-foot button { flex: 1; }
 }
+/* 픽창 스왑 (밴픽 뒤 전술 화면) */
+.dr-swap .dr-pk { background: rgba(255,255,255,.04); border: 1px solid #2c3a5a; border-radius: 8px; padding: 6px 4px; color: inherit; cursor: pointer; min-width: 70px; }
+.dr-swap .dr-pk:hover { border-color: #4a5f8c; }
+.dr-swap .dr-pk.on { border-color: var(--gold-2, #e8c46a); background: rgba(232,196,106,.12); }
+.dr-swap .dr-pk.off-role { box-shadow: inset 0 -2px 0 #d9534f; }
+.dr-swap .dr-pk small { font-size: 11px; white-space: nowrap; }
+.dr-ms { font-style: normal; font-size: 10px; color: #9fb0cc; }
+.dr-swaphint { display: block; font-size: 11px; color: #9fb0cc; margin: 4px 0; }

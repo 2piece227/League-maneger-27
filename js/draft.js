@@ -60,8 +60,10 @@ const Draft = {
     ['R', 'ban'], ['B', 'ban'], ['R', 'ban'], ['B', 'ban'],
     ['R', 'pick'], ['B', 'pick'], ['B', 'pick'], ['R', 'pick']],
   PHASE: i => i < 6 ? '밴 1단계' : i < 12 ? '픽 1단계' : i < 16 ? '밴 2단계' : '픽 2단계',
-  TIME: 30,
-  roleF: 'ALL', q: '', sel: null, selRole: null, timerOn: true, left: 30, _tick: null, _ai: null,
+  // 밴픽 타이머: 30 · 60 · 90초 · 끄기 (베타 건의: 30초는 고민하기에 짧다). 고른 값은 다음 밴픽에도
+  TIMES: [30, 60, 90, 0],
+  TIME: (() => { try { const v = localStorage.getItem('lm27.drtime'); return v == null ? 30 : +v || 30; } catch (e) { return 30; } })(),
+  roleF: 'ALL', q: '', sel: null, selRole: null, timerOn: (() => { try { return localStorage.getItem('lm27.drtime') !== '0'; } catch (e) { return true; } })(), left: 30, _tick: null, _ai: null,
 
   st() { return App.state.draft || null; },
   team(id) { return App.db.teams.find(t => t.id === id); },
@@ -510,9 +512,9 @@ const Draft = {
                 <div class="dr-sugs">${actK === S.us ? this.suggest(S, S.us, 3).map((x, i) => `<button class="dr-sug" data-c="${x.c}" data-role="${x.role || ''}">${SoloQ.ic(x.c)}<div><b>${i + 1}. ${UI.esc(Champions.byId[x.c].name)}${x.role ? ` ${G.pos(x.role)}` : ''}</b><small>${UI.esc(x.why.slice(0, 2).join(' · '))}</small></div></button>`).join('') : `<p class="cr-dim">상대 ${UI.esc(actT.short)} 차례입니다…</p>`}</div>
               </div>
               <div class="dr-lock">
-                ${mine && step[1] === 'pick' && this.sel ? `<div class="seg dr-role">${this.openRoles(S, S.us).map(r => `<button class="${(this.selRole || this.openRoles(S, S.us).find(x => this.fits(this.sel, x))) === r ? 'on' : ''}" data-r="${r}">${G.pos(r)} ${UI.esc((ourLine[G.ROLES.indexOf(r)] || { name: '공석' }).name)}</button>`).join('')}</div>` : ''}
+                ${mine && step[1] === 'pick' && this.sel ? `<small class="dr-swaphint">챔피언만 고르세요. 누가 어떤 챔피언을 쓸지는 밴픽이 끝난 뒤 바꿀 수 있습니다 (픽창 스왑)</small>` : ''}
                 <button class="btn-primary dr-lockin" ${mine && this.sel ? '' : 'disabled'}>${step[1] === 'ban' ? '밴 확정' : '선택 확정'}</button>
-                <div class="dr-tools"><button class="btn-ghost dr-timer-t">${this.timerOn ? '타이머 끄기' : '타이머 켜기'}</button>${S.mode === 'direct' ? '<button class="btn-ghost dr-deleg">코치에게 맡기기</button>' : S.us ? '<button class="btn-primary dr-take">직접 하기</button>' : ''}${S.official || S.scrim ? '<button class="btn-ghost dr-result">결과만 보기</button>' : '<button class="btn-ghost dr-quit">밴픽 그만두기</button>'}</div>
+                <div class="dr-tools"><button class="btn-ghost dr-timer-t" title="누를 때마다 30초 → 60초 → 90초 → 끄기">타이머 ${this.timerOn ? this.TIME + '초' : '꺼짐'}</button>${S.mode === 'direct' ? '<button class="btn-ghost dr-deleg">코치에게 맡기기</button>' : S.us ? '<button class="btn-primary dr-take">직접 하기</button>' : ''}${S.official || S.scrim ? '<button class="btn-ghost dr-result">결과만 보기</button>' : '<button class="btn-ghost dr-quit">밴픽 그만두기</button>'}</div>
               </div>
             </div>
           </div>
@@ -527,7 +529,7 @@ const Draft = {
     $('.dr-sugs', el).onclick = e => { const b = e.target.closest('[data-c]'); if (!b || !mine) return; this.sel = b.dataset.c; this.selRole = b.dataset.role || null; this.reboard(el, S); };
     const rb = $('.dr-role', el); if (rb) rb.onclick = e => { const b = e.target.closest('button'); if (!b) return; this.selRole = b.dataset.r; this.reboard(el, S); };
     $('.dr-lockin', el).onclick = () => { if (!mine || !this.sel) return; this.act(S, this.sel, this.selRole); this.next(el, S); };
-    $('.dr-timer-t', el).onclick = () => { this.timerOn = !this.timerOn; this.left = this.TIME; this.board(el, S); };
+    $('.dr-timer-t', el).onclick = () => { const cur = this.timerOn ? this.TIME : 0, nx = this.TIMES[(this.TIMES.indexOf(cur) + 1) % this.TIMES.length]; this.timerOn = nx > 0; if (nx) this.TIME = nx; try { localStorage.setItem('lm27.drtime', String(nx)); } catch (x) {} this.left = this.TIME; this.board(el, S); };
     const dg = $('.dr-deleg', el); if (dg) dg.onclick = () => { S.mode = 'delegate'; this.next(el, S); };
     const tk = $('.dr-take', el); if (tk) tk.onclick = () => { clearTimeout(this._ai); S.mode = 'direct'; S.mode0 = 'direct'; this.left = this.TIME; this.next(el, S); };   // 코치에게 맡겼다가 다시 직접
     const rs = $('.dr-result', el); if (rs) rs.onclick = () => {
@@ -587,14 +589,18 @@ const Draft = {
     const us = S.us, opp = us === 'B' ? 'R' : 'B', T = S.tactics[us], my = this.side(S, us), ot = this.side(S, opp), ready = S.phase === 'ready';
     T.ins = this.insOf(T); const I = T.ins, R = this.insOf(S.rec);
     const played = (S.series.games.find(x => x.game === S.game) || {}).result || null;
-    const champRow = k => `<div class="dr-picks-row">${S.picks[k].slice().sort((a, b) => G.ROLES.indexOf(a.role) - G.ROLES.indexOf(b.role)).map(x => `<div class="dr-pk">${SoloQ.ic(x.c)}<small>${G.pos(x.role)}</small></div>`).join('')}<span class="dr-bn">${S.bans[k].map(c => SoloQ.ic(c, 'ban')).join('')}</span></div>`;
+    // 우리 조합: 픽창 스왑 — 챔피언 둘을 차례로 누르면 서로 바뀐다 (선수 · 라인은 그대로, 챔피언만). 선수 이름과 그 챔피언 숙련도를 보여 준다
+    const line = this.lineup(my), canSwap = k => k === us && !ready && !played;
+    const champRow = k => `<div class="dr-picks-row${canSwap(k) ? ' dr-swap' : ''}">${S.picks[k].slice().sort((a, b) => G.ROLES.indexOf(a.role) - G.ROLES.indexOf(b.role)).map(x => { const pl = k === us ? line[G.ROLES.indexOf(x.role)] : null, ms = pl ? this.mast(pl, x.c) : null, off = !this.fits(x.c, x.role);
+      return canSwap(k) ? `<button class="dr-pk${this._swap === x.role ? ' on' : ''}${off ? ' off-role' : ''}" data-swap="${x.role}" title="눌러서 다른 챔피언과 바꾸기">${SoloQ.ic(x.c)}<small>${G.pos(x.role)} ${UI.esc(pl ? pl.name : '공석')}</small><em class="dr-ms">${ms && ms.m ? `숙련 ${ms.m}${ms.sig ? ' ★' : ''}` : '기록 없음'}</em></button>`
+        : `<div class="dr-pk">${SoloQ.ic(x.c)}<small>${G.pos(x.role)}</small></div>`; }).join('')}<span class="dr-bn">${S.bans[k].map(c => SoloQ.ic(c, 'ban')).join('')}</span></div>`;
     const star = on => on ? ' <i class="dr-star">★</i>' : '';
     const adv = this.advice(S, us);
     el.innerHTML = `
       <div class="cr-page dr-tac">
         ${Career.head(`전술 <small>${S.series.bo > 1 ? `Bo${S.series.bo} · ${S.game}세트 · 매치 스코어 ${UI.esc(my.short)} ${Season.seriesScore(S.series)[my.id] || 0} : ${Season.seriesScore(S.series)[ot.id] || 0} ${UI.esc(ot.short)}` : '단판'}</small>`, played ? `${S.game}세트는 ${UI.esc(Schedule.team(played.win).short)} 승리로 끝났습니다 (${Sim.clock(played.t)} · 킬 ${played.kills.B}:${played.kills.R}).` : '전술은 경기 중 판단 기준입니다. 조합과 맞지 않는 지시는 경기에서 불리한 싸움으로 돌아옵니다. ★는 코치 추천.')}
         <div class="dr-tac-top">
-          <div class="card"><div class="card-head"><h3>${G.team(my, 'xs')} ${UI.esc(my.short)} 조합 <small>우리 팀</small></h3></div>${champRow(us)}${this.bars(S, us)}</div>
+          <div class="card"><div class="card-head"><h3>${G.team(my, 'xs')} ${UI.esc(my.short)} 조합 <small>${!ready && !played ? '챔피언 둘을 눌러 서로 바꿀 수 있습니다' : '우리 팀'}</small></h3></div>${champRow(us)}${this.bars(S, us)}</div>
           <div class="card dr-advice"><div class="card-head"><h3>코치 의견</h3><small>${UI.esc(this.coach(my).name)}</small></div>${adv.map(([t, x]) => `<p class="adv ${t}">${UI.esc(x)}</p>`).join('')}${ready ? '<em class="dr-saved">전술 확정됨</em>' : ''}</div>
           <div class="card"><div class="card-head"><h3>${G.team(ot, 'xs')} ${UI.esc(ot.short)} 조합 <small>상대</small></h3></div>${champRow(opp)}${this.bars(S, opp)}</div>
         </div>
@@ -618,6 +624,13 @@ const Draft = {
       </div>`;
     el.querySelector('.dr-tac').onclick = e => {
       const b = e.target.closest('button'); if (!b || b.disabled) return;
+      if (b.dataset.swap) {   // 픽창 스왑
+        const r = b.dataset.swap;
+        if (!this._swap) this._swap = r;
+        else if (this._swap === r) this._swap = null;
+        else { const P = S.picks[us], a = P.find(x => x.role === this._swap), c = P.find(x => x.role === r); if (a && c) [a.c, c.c] = [c.c, a.c]; this._swap = null; }
+        return this.tacticsView(el, S);
+      }
       if (b.dataset.pre) { T.team = b.dataset.pre; T.ins = { ...this.PRESET[T.team], focus: I.focus }; }
       else if (b.dataset.ins) { T.ins = { ...I, [b.dataset.ins]: b.dataset.v }; }
       else if (b.dataset.role) T.roles[b.dataset.role] = b.dataset.v;
