@@ -71,7 +71,7 @@ const CupDraft = {
     const rs = el.querySelector('.cd-reset'); if (rs) rs.onclick = () => { this.cur = null; this.render(el); };
   },
   board(d, seeds) {
-    const T = id => Schedule.team(id), col = (k, l) => `<div class="card"><div class="card-head"><h3>${k === 'A' ? '그룹 A' : '그룹 B'} <small>주장 ${UI.esc(T(l[0]).short)}</small></h3></div>${l.map(id => `<div class="sm-row">${G.team(T(id), 'xs')}<b>${UI.esc(T(id).name)}</b><small class="cr-dim">${seeds.indexOf(id) + 1}시드</small></div>`).join('')}</div>`;
+    const T = id => Schedule.team(id), col = (k, l) => `<div class="card"><div class="card-head"><h3>${k === 'A' ? '바론 그룹' : '장로 그룹'} <small>주장 ${UI.esc(T(l[0]).short)}</small></h3></div>${l.map(id => `<div class="sm-row">${G.team(T(id), 'xs')}<b>${UI.esc(T(id).name)}</b><small class="cr-dim">${seeds.indexOf(id) + 1}시드</small></div>`).join('')}</div>`;
     return `<div class="cr-grid">${col('A', d.A)}${col('B', d.B)}</div>`;
   },
 };

@@ -328,9 +328,11 @@ const Sim = {
   // 챔피언 스탯 갱신 (레벨 · 아이템이 바뀌면): 이동 속도 배율 · 최대 마나
   refresh(p) { const s = typeof CStats !== 'undefined' && CStats.now(p); p.msF = (s ? Math.max(.85, Math.min(1.25, s.ms / 345)) : 1) * (p._g && this.soul(p._g, p.side, '바람') ? 1.08 : 1); /* 바람 영혼: 이동 속도 */ p.mpMax = s ? s.mpMax : 0; if (p.mpCur == null || p.mpCur > p.mpMax) p.mpCur = p.mpMax; p.mp5 = s ? s.mp5 : 0; },
   STAT_K: 15,   // 스탯 피해(체력 비율/초) → 엔진 피해 배율. 예전 유형 배율(deal·take·초반 보정)의 평균과 맞춘 값
+  LANE_SKILL: 0,   // 라인전: 맞상대보다 OVR이 1 높을 때마다 10초 골드 (실험: .4는 강팀 승률에 뚜렷한 효과가 없어 보류)
+  OVR_X: 0, CURVE_W: 20,   // 전투력: OVR 차이 추가 가중(평균은 그대로, 80 기준 차이만 키운다) · 챔피언 시기 곡선 폭
   ppow(p, m = 15) {
     const ph = m < 22 ? p.curve[0] : m < 30 ? p.curve[1] : p.curve[2], items = p.inv.filter(i => i.gold >= 2000).length;
-    return p.ovr * .6 + p.m * .4 + (p.sig ? 2 : 0) + p.meta * 3 + (p.patch || 0) + p.lvl * .2 + items * .6 + (ph - .5) * 20 + Math.min(2.5, p.k * .15) - Math.min(2, p.d * .1) - (1 - p.hp) * 3;
+    return p.ovr * .6 + (p.ovr - 80) * this.OVR_X + p.m * .4 + (p.sig ? 2 : 0) + p.meta * 3 + (p.patch || 0) + p.lvl * .2 + items * .6 + (ph - .5) * this.CURVE_W + Math.min(2.5, p.k * .15) - Math.min(2, p.d * .1) - (1 - p.hp) * 3;
   },
   tpow(g, k, who) {
     const s = g.side[k], ps = (who || this.alive(g, k)), m = this.min(g), c = s.comp;
@@ -1083,6 +1085,8 @@ const Sim = {
       const st = this.structOf(g, this.other(p.side), s.push.lane), deep = st.kind !== 'tower' || st.i === 2;
       if (!(deep && m < 14)) return this.siegeSpot(g, p, s.push.lane);           // 14분 전에는 억제기 쪽까지 밀고 들어가지 않는다
     }
+    // 포탑 수비: 상대가 우리 포탑 · 억제기를 공성하는데 지키는 인원이 모자라면 가까운 선수가 간다 (예전에는 본진만 지켜, 싸움을 피한 약팀이 사이드 포탑을 다 털어 이기는 경기가 많았다 — 베타 피드백)
+    if (m >= 8) { const df = this.defendSpot(g, p); if (df) return df; }
     const ob = this.objFor(g, p, m); if (ob) return ob;
     if (m < 14) {
       if (p.role === 'JGL') return this.jungle(g, p, m);
@@ -1229,7 +1233,7 @@ const Sim = {
       const cs = p.role === 'SUP' ? .15 : p.role === 'JGL' ? (m < 14 ? 0 : 1) : m >= 14 && !this.minNear(g, this.other(p.side), p.pos, 12).length ? this.OFFWAVE : 0;
       const c = cs * (.85 + g.r() * .3) * ((p.fx || {}).cs || 1) * (m >= 14 && p.role !== 'SUP' ? this.ctl(g, p.side) : 1); p.cs += c; p.gold += 23 + c * 22;
       if (c > 0 && this.dist(p.pos, this.fountain(p.side)) > 20) this.gainXp(p, c * 55);   // 중후반 정글 캠프 · 지나가는 웨이브 (본진에 있으면 없음)
-      if (m < 14 && inLane) p.gold += Math.max(0, p.mu.gd) / 6;             // 라인전 매치업 이득 (실제 분당 골드 차이)
+      if (m < 14 && inLane) { p.gold += Math.max(0, p.mu.gd) / 6; const o = g.pl.find(q => q.side !== p.side && q.role === p.role && !q.dead); if (o && this.distLane(o.pos, lane) < 8) p.gold += Math.max(0, p.ovr - o.ovr) * this.LANE_SKILL; }   // 라인전 매치업 이득 (실제 분당 골드 차이) + 실력 차이 (예전에는 챔피언 상성만 봐서 OVR이 훨씬 높아도 라인전에서 앞서지 못했다)
       // 포지션별 경험치 속도(실제 30분 기준 탑·미드 16, 원딜·정글 15, 서폿 13 안팎) + 킬·어시 − 데스. 예전에는 30분이면 모두 18이 됐다
       if (p.xp == null) p.xp = this.XP[(p.lvl || 1) - 1];
       p.lvl = Math.max(p.lvl || 1, this.levelOf(p.xp));   // 경험치로만 (js 위 XP)
@@ -1359,6 +1363,28 @@ const Sim = {
   // 라인 맞상대끼리 라인 위에서 마주 선 것: 사거리만큼 떨어져 선다
   laneMate(a, b) { const ln = p => this.LANE_OF[p.role]; return ['top', 'mid', 'bot'].some(l => ln(a) === l && ln(b) === l && this.distLane(a.pos, l) < 5 && this.distLane(b.pos, l) < 5); },
   // 본진 위협: k팀의 쌍둥이 포탑 · 넥서스 앞에 상대가 둘 이상 와 있나 (억제기까지 넣으면 본진 앞 대치가 길어져 경기가 늘어진다 — DEF 2)
+  DEF_R: 14,
+  defendSpot(g, p) {
+    const k = p.side, o = this.other(k), s = g.side[k];
+    if (s.defT !== g.t) {
+      s.defT = g.t; s.def = {};
+      const used = new Set();
+      for (const lane of this.LANES3) {
+        const st = this.structOf(g, k, lane); if (!st || st.kind === 'nexus') continue;
+        const atk = this.near(g, o, st.pos, this.DEF_R).filter(q => !q.recall); if (!atk.length) continue;
+        const here = this.near(g, k, st.pos, 16).filter(q => !q.recall), need = atk.length - here.length; if (need <= 0) continue;
+        const cand = this.alive(g, k).filter(q => !q.recall && !q.tpCh && !used.has(q) && !here.includes(q) && this.dist(q.pos, st.pos) < 60 && !(this.objFor(g, q, this.min(g)) && this.dist(q.pos, st.pos) > 25))
+          .sort((a, b) => this.dist(a.pos, st.pos) - this.dist(b.pos, st.pos)).slice(0, need);
+        if (!cand.length) continue;
+        const important = st.kind === 'inhib' || st.i >= 1;   // 2차 포탑 · 억제기는 웬만하면 지킨다
+        if (!important && this.tpow(g, k, [...here, ...cand]) + (here.length + cand.length - atk.length) * 6 < this.tpow(g, o, atk) - 4) continue;   // 막을 수 없는 바깥 포탑에는 무리하게 가지 않는다
+        cand.forEach(q => { used.add(q); s.def[q.p.id] = lane; });
+      }
+    }
+    const lane = s.def && s.def[p.p.id]; if (!lane) return null;
+    const st = this.structOf(g, k, lane), q = this.toward(st.pos, k, 3);
+    return this.clampP([q[0] + p.off[0] * .5, q[1] + p.off[1] * .5]);
+  },
   threat(g, k) {
     const c = (g.thr ||= {}); if (c.t === g.t && c[k] !== undefined) return c[k]; if (c.t !== g.t) { g.thr = { t: g.t }; }
     let best = null;

@@ -14,6 +14,7 @@ const EventPage = {
   tname(id, cls = '') { const t = this.T(id); return t ? `<span class="fx-team ${cls}">${G.team(t, 'xs')}<b>${UI.esc(t.short)}</b></span>` : `<span class="fx-team tbd ${cls}"><i class="fx-tbd">?</i><b>미정</b></span>`; },
   // 지난 우승팀: 이 커리어에서 같은 대회의 이전 해 우승
   past(e) { return Object.entries(App.state.champs || {}).filter(([id]) => id !== e.id && (Schedule.byEvent[id] || {}).base === e.base).map(([id, tid]) => [Schedule.byEvent[id].year, tid]).sort((a, b) => b[0] - a[0]); },
+  cupGroups(e) { if (e.base !== 'lck-cup' || typeof CupDraft === 'undefined') return null; try { const d = CupDraft.get(e.year); return d && d.A && d.B ? { '바론 그룹': d.A, '장로 그룹': d.B } : null; } catch (x) { return null; } },
   champion(e) { return (App.state.champs || {})[e.id] || null; },
   format(e, ms) {
     const tabs = [...new Set(ms.map(m => m.tab))], ko = tabs.filter(t => this.knock(e, t)), grp = tabs.filter(t => !this.knock(e, t)), bo = [...new Set(ms.map(m => m.bo))].sort();
@@ -54,7 +55,7 @@ const EventPage = {
         <li>참가 팀 <b>${teams.length || '미정'}</b>${mine ? ' · <em class="ev-mine">우리 팀 참가</em>' : ''}</li>
         ${this.champion(e) ? `<li>우승 ${this.tname(this.champion(e))}</li>` : ''}
         ${past.length ? `<li>역대 우승 (이 커리어) ${past.slice(0, 4).map(([y, t]) => `${y} ${this.tname(t)}`).join(' · ')}</li>` : ''}
-      </ul>${teams.length ? `<div class="ev-teams">${teams.map(id => this.tname(id)).join('')}</div>` : ''}</div>
+      </ul>${(() => { const G2 = this.cupGroups(e); return G2 ? Object.entries(G2).map(([gn, ids]) => `<h4 class="op-cap">${gn} <small>주장 ${UI.esc((this.T(ids[0]) || {}).short || '')}</small></h4><div class="ev-teams">${ids.map(id => this.tname(id)).join('')}</div>`).join('') : teams.length ? `<div class="ev-teams">${teams.map(id => this.tname(id)).join('')}</div>` : ''; })()}</div>
       <div class="card"><div class="card-head"><h3>최근 결과 · 다음 경기</h3></div>
         ${last.map(m => this.row(m)).join('') || '<p class="ms-none">아직 치른 경기가 없습니다.</p>'}
         ${next ? `<h4 class="op-cap">다음 경기</h4>${this.row(next)}` : ''}
@@ -76,6 +77,7 @@ const EventPage = {
       return `<div class="ev-swiss">${Object.entries(by).sort((a, b) => b[0].split('-')[0] - a[0].split('-')[0] || a[0].split('-')[1] - b[0].split('-')[1]).map(([k, l]) => { const [w, lo] = k.split('-').map(Number);
         return `<div class="card ev-sw ${w >= 3 ? 'up' : lo >= 3 ? 'out' : ''}"><div class="card-head"><h3>${k} <small>${w >= 3 ? '진출' : lo >= 3 ? '탈락' : ''}</small></h3></div>${l.map(x => `<div class="ev-swr ${x.id === my ? 'mine' : ''}">${this.tname(x.id)}</div>`).join('')}</div>`; }).join('')}</div>`;
     }
+    { const G2 = this.cupGroups(e); if (G2) L.forEach(x => { x.g = Object.keys(G2).find(gn => G2[gn].includes(x.id)) || x.g; }); }   // LCK컵: 그룹 드래프트로 나뉜 바론 · 장로 그룹
     const groups = [...new Set(L.map(x => x.g).filter(Boolean))];
     const tbl = list => `<div class="card rs-table-wrap" style="padding:0"><table class="rs-table st-table"><thead><tr><th class="num">#</th><th>팀</th><th class="num">승</th><th class="num">패</th><th class="num">세트 득실</th></tr></thead><tbody>
       ${list.map((x, i) => `<tr class="${x.id === my ? 'mine' : ''}"><td class="num"><b>${i + 1}</b></td><td>${this.tname(x.id)}</td><td class="num">${x.w}</td><td class="num">${x.l}</td><td class="num ${x.sw - x.sl > 0 ? 'good' : x.sw - x.sl < 0 ? 'bad' : ''}">${x.sw - x.sl > 0 ? '+' : ''}${x.sw - x.sl}</td></tr>`).join('')}</tbody></table></div>`;

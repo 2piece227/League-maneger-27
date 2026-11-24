@@ -74,7 +74,9 @@ const Loan = {
   },
 };
 (() => {
-  const apply = Squad.apply.bind(Squad); Squad.apply = () => { apply(); try { Loan.place(); } catch (e) { console.warn('[loan]', e); } };
+  const apply = Squad.apply.bind(Squad); Squad.apply = () => { apply(); try { Loan.place(); } catch (e) { console.warn('[loan]', e); }
+    // 표시용 계약 만료일을 실제 계약에 맞춘다 (로스터를 다 짠 뒤: 2군 생성 선수는 계약 동기화 뒤에 들어와, 연장됐는데도 만료일이 지난 것처럼 보이고 이적료를 요구했다 — 베타 제보)
+    try { const M = Contract.st().contracts || {}; App.db.teams.forEach(t => [...t.players, ...(t.cl || []), ...(t.academy || [])].forEach(p => { const c = M[p.id]; if (c && c.end && !p.free) p.contractEnd = c.end; })); } catch (e) { console.warn('[contract sync]', e); } };
   const btn = Squad.buttons.bind(Squad); Squad.buttons = p => btn(p) + (Loan.can(p) ? `<button class="btn-ghost btn-sm" data-loan="${p.id}">임대</button>` : '');
   const bind = Squad.bind.bind(Squad); Squad.bind = (box, done) => { bind(box, done); $$('[data-loan]', box).forEach(b => b.onclick = e => { e.stopPropagation(); const t = Squad.team(), p = [...t.players, ...t.cl, ...t.academy].find(x => x.id === b.dataset.loan); if (p) Loan.ask(p, done); }); };
 })();
