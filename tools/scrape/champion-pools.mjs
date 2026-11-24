@@ -8,7 +8,10 @@ import { init, api, inList, OUT, log } from './lp.mjs';
 const FROM = '2024-01-01';
 const RECENT = '2026-01-01';
 
-const players = JSON.parse(await readFile(path.join(OUT, 'players.json'), 'utf8')).players.filter(p => p.role !== 'COACH' && p.sourcePage);
+// 1군(players.json) + 2군(cl.json) + 직접 추가한 FA(custom.json, sourcePage가 없으면 이름). 예전에는 1군만 받아 2군 · 추가 선수는 숙련도가 모두 0이었다
+const read = async f => { try { return JSON.parse(await readFile(path.join(OUT, f), 'utf8')); } catch { return {}; } };
+const players = [...(await read('players.json')).players || [], ...((await read('cl.json')).players || []), ...(((await read('custom.json')).freeAgents || []).map(p => ({ ...p, sourcePage: p.sourcePage || p.name })))]
+  .filter(p => p.role !== 'COACH' && p.sourcePage).filter((p, i, a) => a.findIndex(q => q.id === p.id) === i);
 const champs = JSON.parse(await readFile(path.join(OUT, 'champions.json'), 'utf8')).champions;
 const norm = s => s.toLowerCase().replace(/[^a-z0-9]/g, '');
 const champId = Object.fromEntries(champs.flatMap(c => [[norm(c.nameEn), c.id], [norm(c.id), c.id]]));
