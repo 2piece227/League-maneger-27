@@ -14,17 +14,24 @@ concurrency:
   group: pages
   cancel-in-progress: true
 
+# 업로드(build)와 배포(deploy)를 나눈다: 한 작업 안에서 올리자마자 배포하면
+# 큰 사이트(음악 파일)에서 "No artifacts named github-pages" 로 실패하는 경우가 있다
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
           path: .
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
       - id: deployment
         uses: actions/deploy-pages@v4
