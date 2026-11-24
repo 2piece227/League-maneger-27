@@ -1022,11 +1022,19 @@ const Sim = {
     const q = this.before(lane, st.pos, p.side, standoff ? 12 : open ? (p.rng > 5 ? 5 : 2.8) : this.TW_R + 2.5);
     return this.clampP([q[0] + p.off[0] * (open && !standoff ? .6 : 1), q[1] + p.off[1] * (open && !standoff ? .6 : 1)]);
   },
+  // 뭉쳐서 밀 라인: 이미 많이 밀어 둔 라인 → 상대 포탑 체력이 낮은 라인 → 바텀(드래곤 쪽) · 탑 · 미드 순. 30초는 유지한다
+  //   예전에는 항상 미드라 사이드에서 이겨도 미드부터 밀었다 (24경기 중 20경기, 2차 포탑까지 먼저 밀린 라인이 미드 — 베타 피드백)
+  pushLane(g, k) {
+    const s = g.side[k]; if (s.grp && s.grp.until > g.t) return s.grp.lane;
+    const o = g.side[this.other(k)], pref = { bot: 0, top: .05, mid: .1 };
+    const lane = ['bot', 'top', 'mid'].map(l => ({ l, v: o.towers[l] + (o.thp[l][3 - o.towers[l]] ?? 1) * .9 + pref[l] + (o.ihp[l] <= 0 ? -5 : 0) })).sort((a, b) => a.v - b.v)[0].l;
+    s.grp = { lane, until: g.t + 30 }; return lane;
+  },
   groupSpot(g, p, m) {
     const lead = this.lead(g, p.side);
-    if (lead > 2500) return this.siegeSpot(g, p, 'mid');
+    if (lead > 2500) return this.siegeSpot(g, p, this.pushLane(g, p.side));
     if (lead < -2500) { const st = this.structOf(g, p.side, 'mid'), q = this.before('mid', st.pos, this.other(p.side), 2); return this.clampP([q[0] + p.off[0], q[1] + p.off[1]]); }
-    return this.laneSpot(g, p, m, 'mid');
+    return this.laneSpot(g, p, m, this.pushLane(g, p.side));   // 비슷할 때도 늘 미드에 모여 있지 않고 밀 라인(바텀 우선)에서
   },
   target(g, p, m) {
     const s = g.side[p.side];
@@ -1225,7 +1233,7 @@ const Sim = {
     // 대치 중 이니시: 포탑 앞에서 버티는 상대에게, 더 강한 쪽이 확률적으로 들어간다
     if (m >= 14) for (const k of (g.r() < .5 ? ['B', 'R'] : ['R', 'B'])) {   // 매번 어느 쪽부터 볼지 섞는다 (늘 블루부터면 블루만 먼저 다이브했다)
       const o = this.other(k);
-      for (const lane of ['mid', 'top', 'bot']) {
+      for (const lane of (g.r() < .4 ? ['bot', 'top', 'mid'] : g.r() < .5 ? ['top', 'bot', 'mid'] : ['mid', 'bot', 'top'])) {   // 늘 미드부터 보던 순서를 섞는다
         const st = this.structOf(g, o, lane), atk = this.near(g, k, st.pos, 20), def = this.near(g, o, st.pos, 15);
         if (atk.length < 3 || def.length < 1) continue;
         // 본진(억제기 안쪽) 대치는 오래 끌지 않는다: 비슷하면 공격 쪽이 한타를 연다

@@ -110,6 +110,8 @@ Object.assign(Sim, {
   // 포탑 탱킹 공성: 우리 미니언이 없어도 (18분 이후) 인원이 2명 이상 많거나 · 지키는 상대가 없거나 · 바론 버프가 있으면 들어가서 친다.
   //   탱커 · 브루저가 앞장서고(포탑이 먼저 노린다) 체력이 빠지면 물러난다. 예전에는 미니언이 없으면 사거리에 아예 안 들어가서
   //   쌍둥이 포탑 앞에서 미니언만 기다리다 역다이브를 맞았다 (베타 피드백)
+  // 라인별 포탑 피해 보정: 바깥 포탑(20분 전) 바텀 1.15 · 탑 1 · 미드 0.7, 2차 포탑(26분 전) 바텀 1.1 · 탑 1.05 · 미드 0.85
+  laneK(st, lane, m) { if (st.kind !== 'tower') return 1; if (st.i === 0 && m < 20) return ({ bot: 1.15, top: 1, mid: .7 })[lane] || 1; if (st.i === 1 && m < 26) return ({ bot: 1.1, top: 1.05, mid: .85 })[lane] || 1; return 1; },
   siegeGo(g, m, k, st) {
     if (this.SIEGE_GO === false) return false;
     if (m < 20 || !(st.kind === 'tower' || st.kind === 'nexusT' || st.kind === 'inhib' || st.kind === 'nexus')) return false;
@@ -117,7 +119,8 @@ Object.assign(Sim, {
     const o = this.other(k), atk = this.alive(g, k).filter(p => !p.recall && !p.tpCh && this.dist(p.pos, st.pos) <= 14 && p.hp > .35), def = this.alive(g, o).filter(p => !p.recall && this.dist(p.pos, st.pos) <= 16);
     if (atk.length < 3) return false;
     const deep = /nexus/.test(st.kind) || st.kind === 'inhib' || st.i >= 2;   // 본진 · 억제기 포탑
-    const go = (atk.length - def.length >= 2 && (m >= 22 || deep)) || (!def.length && atk.length >= (deep ? 3 : 4)) || (g.side[k].baronUntil > g.t && atk.length >= def.length);
+    const go = (deep && this.lead(g, k) >= 3000 && atk.length >= def.length && atk.length >= 3)   // 상대 본진 · 억제기 앞: 크게 앞서면 들어간다 (앞에서 가만히 서 있다 미니언이 끝내던 문제)
+      || (atk.length - def.length >= 2 && (m >= 22 || deep)) || (!def.length && atk.length >= (deep ? 3 : 4)) || (g.side[k].baronUntil > g.t && atk.length >= def.length);
     if (!go) return false;
     const front = ['tank', 'bruiser', 'dive'];
     atk.forEach(p => { const lead = front.includes(p.kind); const d = this.dist(p.pos, st.pos) || 1, r = lead ? 2.2 : 4.6;   // 앞라인은 포탑 가까이, 딜러는 사거리 끝에서
@@ -139,8 +142,10 @@ Object.assign(Sim, {
       const dmg = atk.reduce((a, p) => a + this.ctOf(p, m), 0) * (st.kind === 'nexus' ? 1.4 : 1) * (bare ? .4 : 1) * this.gate(st, m) * this.TW_K * (1 + Math.max(0, Math.min(1, (this.lead(g, k) - 6000) / 8000)) * this.CLOSE);
       // 공허 유충: 한 마리당 포탑 피해 +5% (최대 +15%), 전령: 잡은 뒤 처음 닿은 바깥 · 2차 포탑에 돌진 (포탑 체력 30%)
       const sd = g.side[k], grub = st.kind === 'tower' ? 1 + Math.min(3, sd.grubs || 0) * .05 : 1;
+      // 20분 전 라인별 포탑 피해: 바텀 듀오 압박 1.2 · 탑 1 · 미드 0.75 (미드는 라인이 짧아 미니언이 포탑에 먼저 닿아, 첫 포탑 대부분이 미드였다 — 실제는 바텀이 가장 많다)
+      const laneK = this.laneK(st, lane, m);
       if (sd.heraldReady > g.t && st.kind === 'tower' && st.i <= 1) { sd.heraldReady = 0; this.hit(g, k, lane, st, .3); this.line(g, 'heraldCharge', { t: sd.t.short, lane: this.laneKo(lane) }); }
-      if (dmg > 0) { atk.forEach(p => { p.hitTw = g.t; p.hitTwAt = st.pos; }); this.hit(g, k, lane, st, dmg * grub); }
+      if (dmg > 0) { atk.forEach(p => { p.hitTw = g.t; p.hitTwAt = st.pos; }); this.hit(g, k, lane, st, dmg * grub * laneK); }
     }
   },
 
@@ -202,7 +207,7 @@ Object.assign(Sim, {
       // 막는 웨이브가 없으면 구조물을 친다
       if (!met) [['B', a], ['R', b]].forEach(([k, w]) => {
         if (!w || w.n <= .05 || g.over || Math.abs(w.s - lim[k]) > .3 / L) return;
-        const st = this.structOf(g, this.other(k), lane), dmg = pow(w, k) * this.MIN_T * this.gate(st, m);
+        const st = this.structOf(g, this.other(k), lane), dmg = pow(w, k) * this.MIN_T * this.gate(st, m) * this.laneK(st, lane, m);   // 미드는 라인이 짧아 웨이브가 포탑에 더 자주 닿는다 (첫 포탑 대부분이 미드였다)
         if (dmg > 0) this.hit(g, k, lane, st, dmg);
       });
       W.B = W.B.filter(w => w.n > .05); W.R = W.R.filter(w => w.n > .05);
