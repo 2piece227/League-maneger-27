@@ -139,6 +139,7 @@ const Player = {
           <div class="cmp-head">${G.face(p, 'pl-ph')}<div>${G.ovr(p)}<b>${UI.esc(p.name)}</b><span>${G.team(t, 'xs')} ${UI.esc(t.short)} · ${G.pos(p.role, true)}</span></div></div>
           <dl class="cr-dl">
             <dt>나이</dt><dd>${p.age || '-'}세</dd>
+            ${typeof Growth !== 'undefined' && Growth.spark(p.id) ? `<dt>OVR 추이</dt><dd>${Growth.spark(p.id)}</dd>` : ''}
             <dt>국적</dt><dd>${G.flag(p.nation)} ${G.nationName(p.nation)}</dd>
             ${p.military ? `<dt>병역</dt><dd>${this.military(p)}</dd>` : ''}
             <dt>계약 만료</dt><dd>${p.contractEnd ? p.contractEnd.replace(/-/g, '.') : '-'}</dd>

@@ -642,3 +642,17 @@ html, body { overscroll-behavior: none; }
 .upd-new { font-style: normal; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 4px; background: var(--gold); color: #1a1205; vertical-align: middle; }
 #screen-title .version { cursor: pointer; }
 #screen-title .version:hover { color: var(--gold-2); }
+
+/* 단축키 */
+.hk-toggle { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; font-size: 13px; }
+.hk-toggle small { color: var(--muted); }
+.hk-h { margin: 12px 0 4px; font-size: 13px; color: var(--gold-2); }
+.hk-t { width: 100%; font-size: 13px; border-collapse: collapse; }
+.hk-t td { padding: 3px 4px; border-bottom: 1px solid #1b2438; }
+.hk-t td:first-child { width: 42%; }
+kbd { font-family: var(--f-ui); font-size: 12px; padding: 1px 6px; border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; background: #121a2e; color: var(--text); }
+.hk-q { width: 100%; margin-bottom: 8px; }
+.hk-res { display: grid; gap: 3px; max-height: 50vh; overflow-y: auto; }
+.hk-row { display: flex; gap: 8px; align-items: center; padding: 6px 8px; border-radius: 6px; background: transparent; border: 1px solid transparent; color: var(--text); text-align: left; cursor: pointer; font-size: 13px; }
+.hk-row:hover, .hk-row:first-child { border-color: var(--line); background: #141d33; }
+.hk-row small { margin-left: auto; color: var(--muted); }

@@ -37,6 +37,15 @@ const Recruit = {
       </tr>`;
   },
 
+  SORTS: [['value', '시장 가치순'], ['ovr', 'OVR 높은 순'], ['pot', '잠재력 높은 순'], ['sig', '시그니처순'], ['age', '나이 어린 순'], ['contract', '계약 만료 빠른 순']],
+  SORT: {
+    value: (a, b) => Player.value(b.p, b.t) - Player.value(a.p, a.t),
+    ovr: (a, b) => (b.p.ovr || 0) - (a.p.ovr || 0),
+    pot: (a, b) => (b.p.pa || 0) - (a.p.pa || 0) || (b.p.ovr || 0) - (a.p.ovr || 0),
+    sig: (a, b) => Mastery.signatures(b.p.id).length - Mastery.signatures(a.p.id).length || Player.value(b.p, b.t) - Player.value(a.p, a.t),
+    age: (a, b) => (a.p.age || 99) - (b.p.age || 99),
+    contract: (a, b) => (a.p.contractEnd || '9').localeCompare(b.p.contractEnd || '9'),
+  },
   // ---------- 스카우트 검색 ----------
   async search(el) {
     await Promise.all([Portal.ready, Mastery.load()]);
@@ -52,7 +61,7 @@ const Recruit = {
           ${sel('age', [['ALL', '모든 나이'], ['u21', '21세 이하'], ['22-25', '22~25세'], ['26+', '26세 이상']])}
           ${sel('nat', [['ALL', '모든 선수'], ['home', '자국 선수'], ['foreign', '외국 선수']])}
           ${sel('contract', [['ALL', '모든 계약'], ['soon', '1년 이내 만료'], ['fa', '만료 임박·FA']])}
-          ${sel('sort', [['value', '시장 가치순'], ['sig', '시그니처순'], ['age', '나이 어린 순'], ['contract', '계약 만료 빠른 순']])}
+          ${sel('sort', this.SORTS)}
           <span class="ch-count rc-count"></span>
         </div>
         <div class="card rs-table-wrap" style="padding:0">
@@ -71,13 +80,7 @@ const Recruit = {
         (f.nat === 'ALL' || (f.nat === 'home') === isHome(p, t.league)) &&
         (f.contract === 'ALL' || p.free || (() => { const d = Player.days(p); return d != null && (f.contract === 'fa' ? d <= 60 : d <= 365); })()) &&
         (!f.q || p.name.toLowerCase().includes(f.q.toLowerCase()) || (p.nativeName || '').includes(f.q)));
-      const by = {
-        value: (a, b) => Player.value(b.p, b.t) - Player.value(a.p, a.t),
-        sig: (a, b) => Mastery.signatures(b.p.id).length - Mastery.signatures(a.p.id).length || Player.value(b.p, b.t) - Player.value(a.p, a.t),
-        age: (a, b) => (a.p.age || 99) - (b.p.age || 99),
-        contract: (a, b) => (a.p.contractEnd || '9').localeCompare(b.p.contractEnd || '9'),
-      }[f.sort];
-      rows.sort(by);
+      rows.sort(this.SORT[f.sort] || this.SORT.value);
       $('.rc-count', el).textContent = `${rows.length}명`;
       $('.rc-table tbody', el).innerHTML = rows.map(({ p, t, lv }) => this.playerRow(p, t, '', lv)).join('') || '<tr><td colspan="8" class="ms-none" style="text-align:center;padding:30px">조건에 맞는 선수가 없습니다.</td></tr>';
     };
@@ -88,18 +91,31 @@ const Recruit = {
   },
 
   // ---------- 관심 목록 ----------
+  sf: { role: 'ALL', lv: 'ALL', league: 'ALL', sort: 'added' },
   async shortlist(el) {
     await Promise.all([Portal.ready, Mastery.load()]);
     const draw = () => {
-      const list = Player.shortlist().map(id => Player.find(id)).filter(Boolean);
+      const ids = Player.shortlist(), lvOf = new Map(this.every().map(x => [x.p.id, x.lv])), f = this.sf;
+      const all = ids.map(id => Player.find(id)).filter(Boolean);
+      let list = all.filter(({ p, t }) => (f.role === 'ALL' || p.role === f.role) && (f.lv === 'ALL' || (lvOf.get(p.id) || 'first') === f.lv) && (f.league === 'ALL' || t.league === f.league));
+      if (f.sort === 'added') list.sort((a, b) => ids.indexOf(b.p.id) - ids.indexOf(a.p.id)); else list.sort(this.SORT[f.sort] || this.SORT.value);
+      const sel = (k, opts) => `<select class="ch-sort" data-sf="${k}">${opts.map(([v, l]) => `<option value="${v}" ${f[k] === v ? 'selected' : ''}>${l}</option>`).join('')}</select>`;
       el.innerHTML = `
         <div class="cr-page">
-          ${Career.head('관심 목록', '스카우트 검색·FA 시장·선수 프로필에서 ★로 추가한 선수')}
-          ${list.length ? `<div class="card rs-table-wrap" style="padding:0">
+          ${Career.head('관심 목록', '스카우트 검색·FA 시장·선수 프로필·다른 팀 스쿼드에서 ★로 추가한 선수')}
+          ${all.length ? `<div class="ch-bar">
+            ${sel('role', [['ALL', '모든 포지션'], ...G.ROLES.map(r => [r, G.ROLE_KO[r]])])}
+            ${sel('lv', [['ALL', '모든 소속'], ['first', '1군'], ['cl', '2군 (CL)'], ['academy', '아카데미']])}
+            ${sel('league', [['ALL', '모든 리그'], ['LCK', 'LCK'], ['LPL', 'LPL'], ['LEC', 'LEC'], ['LCS', 'LCS']])}
+            ${sel('sort', [['added', '최근 추가 순'], ...this.SORTS])}
+            <span class="ch-count">${list.length} / ${all.length}명</span>
+          </div>` : ''}
+          ${all.length ? `<div class="card rs-table-wrap" style="padding:0">
             <table class="rs-table rc-table"><thead><tr><th></th><th>선수</th><th>팀</th><th>포지션</th><th class="num">나이</th><th>국적</th><th>계약</th><th class="num">가치</th><th></th></tr></thead>
-            <tbody>${list.map(({ p, t }) => this.playerRow(p, t, `<td><button class="btn-ghost ct-btn" data-ask="${p.id}">영입 문의</button></td>`)).join('')}</tbody></table>
+            <tbody>${list.map(({ p, t }) => this.playerRow(p, t, `<td><button class="btn-ghost ct-btn" data-ask="${p.id}">영입 문의</button></td>`, lvOf.get(p.id))).join('') || '<tr><td colspan="9" class="ms-none" style="text-align:center;padding:24px">조건에 맞는 선수가 없습니다.</td></tr>'}</tbody></table>
           </div>` : `<div class="card fx-empty"><b>관심 목록이 비어 있습니다</b><span>스카우트 검색이나 FA 시장에서 ★를 눌러 선수를 추가하세요.</span><a class="btn-primary rc-go" href="#recruit-search">스카우트 검색으로</a></div>`}
         </div>`;
+      $$('select[data-sf]', el).forEach(x => x.onchange = () => { this.sf[x.dataset.sf] = x.value; draw(); });
       const tb = $('.rc-table', el);
       if (tb) {
         tb.addEventListener('click', e => { const a = e.target.closest('[data-ask]'); if (a) { e.stopPropagation(); Player.inquiryModal(a.dataset.ask); } }, true);

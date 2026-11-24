@@ -287,7 +287,7 @@ const Season = {
   inject() {
     if (!Results.list) return;
     Results._base ||= Results.list.slice();
-    const cur = Schedule.all.filter(m => this.st()[m.id]).map(m => { const r = this.st()[m.id], e = Schedule.eventOf(m); return { e: m.event, league: m.league, t1: m.t1, t2: m.t2, s1: r.s1, s2: r.s2, w: r.w, tab: m.tab || '', kst: Schedule.kst ? m.t : m.t, cur: true, n1: (Schedule.team(m.t1) || {}).name, n2: (Schedule.team(m.t2) || {}).name, evName: e ? e.label : m.event }; });
+    const cur = Schedule.all.filter(m => this.st()[m.id]).map(m => { const r = this.st()[m.id], e = Schedule.eventOf(m); return { id: m.id, e: m.event, league: m.league, t1: m.t1, t2: m.t2, s1: r.s1, s2: r.s2, w: r.w, tab: m.tab || '', kst: Schedule.kst ? m.t : m.t, cur: true, n1: (Schedule.team(m.t1) || {}).name, n2: (Schedule.team(m.t2) || {}).name, evName: e ? e.label : m.event }; });
     Results.list = cur;
   },
 };

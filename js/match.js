@@ -57,6 +57,20 @@ const Match = {
       <div class="op-pl" data-pid="${p.id}">${G.face(p, 'pl-ph')}<div>${G.ovr(p)}<b>${UI.esc(p.name)}</b>${G.pos(p.role)}</div>
         <div class="ms-chips">${Mastery.pool(p.id).slice(0, 4).map(e => Mastery.chip(e)).join('') || '<span class="ms-none">기록 없음</span>'}</div></div>`).join('')}</div>`;
   },
+  // 다른 팀 스쿼드: 1군은 챔피언 폭까지, 2군 · 아카데미는 유망주를 훑어보는 표 (베타 건의)
+  oppSq: 'first',
+  squadBlock(t) {
+    if (this.oppSq === 'first') return this.rosterBlock(t) + (t.players.some(p => p.sub) ? this.sqTable(t.players.filter(p => p.sub), '후보') : '');
+    const list = (this.oppSq === 'cl' ? t.cl : t.academy) || [];
+    return list.length ? this.sqTable(list) : `<p class="ms-none">${this.oppSq === 'cl' ? '2군' : '아카데미'} 선수가 없습니다.</p>`;
+  },
+  sqTable(list, cap) {
+    const sl = Player.shortlist(), order = r => G.ROLES.indexOf(r);
+    return `${cap ? `<h4 class="op-cap">${cap}</h4>` : ''}<div class="rs-table-wrap"><table class="rs-table op-sqt"><thead><tr><th></th><th>선수</th><th>포지션</th><th class="num">나이</th><th class="num">OVR</th><th>잠재력</th><th>계약</th></tr></thead><tbody>
+      ${[...list].sort((a, b) => order(a.role) - order(b.role) || (b.ovr || 0) - (a.ovr || 0)).map(p => `<tr data-pid="${p.id}"><td><button class="op-star ${sl.includes(p.id) ? 'on' : ''}" data-id="${p.id}" title="관심 목록">${sl.includes(p.id) ? '★' : '☆'}</button></td>
+        <td><b>${UI.esc(p.name)}</b>${p.gen ? ' <small class="cr-dim">가상</small>' : ''}</td><td>${G.pos(p.role)}</td><td class="num">${p.age || '-'}</td><td class="num">${p.ovr || '-'}</td>
+        <td>${p.pa != null ? `<small>${Squad.potRange(p, true)}</small>` : '-'}</td><td><small>${p.contractEnd ? p.contractEnd.slice(0, 4) : '-'}</small></td></tr>`).join('')}</tbody></table></div>`;
+  },
   bindPlayers(el) { el.addEventListener('click', e => { const r = e.target.closest('[data-pid]'); if (r) Player.open(r.dataset.pid); }); },
 
   // ---------- 다음 경기 ----------
@@ -145,9 +159,12 @@ const Match = {
             <div class="op-champs">${this.teamChamps(o, 10).map(x => { const c = Champions.byId[x.c]; return `<div>${SoloQ.ic(x.c)}<b>${UI.esc(c.name)}</b><span>${x.g}판</span>${x.sig ? `<i class="ms-sig static">SIG</i><small>${x.by.map(UI.esc).join(', ')}</small>` : ''}</div>`; }).join('')}</div>
           </div>
         </div>
-        <div class="card"><div class="card-head"><h3>주전 로스터와 챔피언 폭</h3></div>${this.rosterBlock(o)}</div>
+        <div class="card"><div class="card-head"><h3>스쿼드</h3><div class="seg op-sq">${[['first', `1군 ${o.players.length}`], ['cl', `2군 ${(o.cl || []).length}`], ['academy', `아카데미 ${(o.academy || []).length}`]].map(([k, l]) => `<button class="${this.oppSq === k ? 'on' : ''}" data-k="${k}">${l}</button>`).join('')}</div></div>
+          <div class="op-sq-body">${this.squadBlock(o)}</div></div>
       </div>`;
     $('.op-sel', el).onchange = e => { this.oppId = e.target.value; this.opponent(el); };
+    $('.op-sq', el).onclick = e => { const b = e.target.closest('button'); if (!b) return; this.oppSq = b.dataset.k; $$('.op-sq button', el).forEach(x => x.classList.toggle('on', x === b)); $('.op-sq-body', el).innerHTML = this.squadBlock(o); };
+    $('.op-sq-body', el).addEventListener('click', e => { const s = e.target.closest('.op-star'); if (!s) return; e.stopPropagation(); Player.toggleShortlist(s.dataset.id); s.classList.toggle('on'); s.textContent = s.classList.contains('on') ? '★' : '☆'; }, true);
     this.bindPlayers(el);
   },
 
@@ -173,10 +190,11 @@ const Match = {
         ${Object.entries(byEv).map(([id, ms]) => {
           const w = ms.filter(m => Results.won(m, t.id)).length;
           return `<div class="card mh-card"><div class="card-head"><h3>${UI.esc(Results.ev(id).name)} <small>${w}승 ${ms.length - w}패</small></h3></div>
-            ${ms.map(m => { const o = this.oppOf(m, t.id), win = Results.won(m, t.id); return `<div class="mh-row ${win ? 'w' : 'l'}"><span class="num">${m.kst.slice(5, 10).replace('-', '.')}</span><span class="fx-team">${o.logo ? G.team(o, 'xs') : ''}<b>${UI.esc(o.short || o.name || '?')}</b></span><span class="mh-tab">${UI.esc(G.tab(m.tab))}</span><b class="mh-score">${this.score(m, t.id)}</b><i>${win ? '승' : '패'}</i></div>`; }).join('')}</div>`;
+            ${ms.map(m => { const o = this.oppOf(m, t.id), win = Results.won(m, t.id); return `<div class="mh-row ${win ? 'w' : 'l'} ${m.id ? 'cr-row played' : ''}" ${m.id ? `data-mid="${m.id}"` : ''}><span class="num">${m.kst.slice(5, 10).replace('-', '.')}</span><span class="fx-team">${o.logo ? G.team(o, 'xs') : ''}<b>${UI.esc(o.short || o.name || '?')}</b></span><span class="mh-tab">${UI.esc(G.tab(m.tab))}</span><b class="mh-score">${this.score(m, t.id)}</b><i>${win ? '승' : '패'}</i></div>`; }).join('')}</div>`;
         }).join('') || '<div class="card fx-empty"><b>기록이 없습니다</b></div>'}
       </div>`;
     const hs = el.querySelector('.mh-season'); if (hs) hs.onclick = e => { const b = e.target.closest('button'); if (!b) return; this.hSeason = b.dataset.s; this.history(el); };
+    el.onclick = e => { const r = e.target.closest('[data-mid]'); if (r && typeof CompResults !== 'undefined') CompResults.report(r.dataset.mid); };   // 경기를 누르면 세트별 리포트 (베타 건의)
   },
 
   // ---------- 메타·패치 노트 ----------
