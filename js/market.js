@@ -15,6 +15,23 @@ const Market = {
     const lim = Club.CAP.LCK.cap * ({ 5: 3.75, 4: 2, 3: 1.35, 2: 1.1, 1: 1 }[Math.max(t.fin || 2, (t.rep || 2) - 1)] || 1.1);   // 명성 높은 구단은 재정 등급보다 한 단계 더 쓴다
     return Club.tax(t, { pid: p.id, salary }).used <= lim;
   },
+  // 스토브: 주전보다 OVR이 4 이상 높은 FA가 감당되는 값이면 제안 (육성형은 21세 이하 유망주를 더 반긴다). 한 포지션 2명까지
+  upgrade(t, sty, today) {
+    if (this.rnd(t.id, today, 'upg') > (sty === 'contend' ? .35 : .25)) return false;
+    const F = this.fa(), free = App.db.free.players;
+    for (const role of G.ROLES) {
+      if (t.players.filter(x => x.role === role).length >= 2) continue;
+      const st = t.players.filter(x => x.role === role).sort((a, b) => (b.ovr || 0) - (a.ovr || 0))[0]; if (!st) continue;
+      const c = free.filter(p => p.role === role && (p.ovr || 0) >= (st.ovr || 0) + (sty === 'develop' && (p.age || 30) <= 21 ? 2 : 4) && !this.resting(p.id, today) && !(F[p.id] || []).some(o => o.team === t.id)
+        && (t.league !== 'LCK' || p.nation === 'South Korea') && !Persona.refuses(p, t, today) && this.affords(t, p, Contract.pay(p, Contract.score(p, t), t.league)))
+        .sort((a, b) => (b.ovr || 0) + Persona.likes(b, t) * 6 - (a.ovr || 0) - Persona.likes(a, t) * 6)[0];
+      if (!c) continue;
+      (F[c.id] ||= []).push({ team: t.id, mult: 1.02 + this.rnd(c.id, t.id, 'm') * .2, until: Store.addDays(today, 2 + Math.floor(this.rnd(c.id, 'u') * 3)) });
+      this.deadline(c, today); this.buzz(c, t, today);
+      return true;
+    }
+    return false;
+  },
   // ---------- 구단 성향 ----------
   style(t) {
     if (Club.wageRoom(t) < -Club.budget(t) * .15 && (t.fin || 2) <= 3) return 'austerity';
@@ -75,14 +92,16 @@ const Market = {
         const mult = one ? P.cut : 1 + this.rnd(p.id, 'r') * .15, offer = this.deal(p, t, mult);
         const afford = cl || one || this.affords(t, p, offer.salary);
         const keep = afford && (one || (cl ? (p.ovr || 0) >= 70 || this.rnd(p.id, 'k') < .45 : top ? this.rnd(p.id, 'k') < .8 : this.rnd(p.id, 'k') < .35));
-        const stay = Persona.stays(p, t, c.end);   // 우리 팀 표준 조건 제안과 같은 기준 (js/persona.js)
+        const blocked = cl && (p.ovr || 0) >= 76 && t.players.some(x => x.role === p.role && !x.sub && (x.ovr || 0) - (p.ovr || 0) >= 8);   // 1군 주전이 훨씬 강해 올라갈 길이 막힌 유망주
+        const stay = Persona.stays(p, t, c.end) && !(blocked && this.rnd(p.id, c.end, 'blk') < .75 + Persona.of(p).w.play * .2);   // 우리 팀 표준 조건 제안과 같은 기준 (js/persona.js) · 막힌 유망주는 대체로 1군 기회를 찾아 떠난다 (예전에는 클라우드가 T1 2군과 재계약)
         if (!afford && !cl && s >= 75) p._capOut = t.id;                         // 재정 때문에 놓아준 선수 (뉴스 문구)
         if (keep && stay) {
           this.write(p, t, offer);
           if (s >= 75) this.post(`[오피셜] ${t.short}, ${Sim.josa(p.name, '과', '와')} 재계약`, `${Sim.josa(t.name, '이', '가')} ${G.ROLE_KO[p.role] || ''} ${Sim.josa(p.name, '과', '와')} 재계약했습니다. 계약은 ${Contract.label(Contract.st().contracts[p.id])}까지입니다.`, p.id);
         } else {
           this.free(p); if (!cl) Lapse.add(p, t);
-          if (s >= 65 || (cl && (p.ovr || 0) >= 74)) this.post(`[FA] ${p.name}, ${Sim.josa(t.short, '과', '와')} 계약 만료 — FA 시장으로`, `${t.name}의 ${G.ROLE_KO[p.role] || ''} ${p.name}(${p.age || '-'}세)이(가) ${p._capOut === t.id ? '구단의 연봉 여력이 부족해 재계약하지 못하고' : '재계약하지 않고'} FA 시장에 나왔습니다.`, p.id);
+          if (blocked) this.post(`[FA] 유망주 ${p.name}, 1군 기회 찾아 FA 시장으로`, `${t.name} 2군의 ${G.ROLE_KO[p.role] || ''} ${p.name}(${p.age || '-'}세 · OVR ${p.ovr})이 1군 자리를 찾아 FA 시장에 나왔습니다. 여러 팀이 관심을 보일 것으로 보입니다.`, p.id);
+          else if (s >= 65 || (cl && (p.ovr || 0) >= 74)) this.post(`[FA] ${p.name}, ${Sim.josa(t.short, '과', '와')} 계약 만료 — FA 시장으로`, `${t.name}의 ${G.ROLE_KO[p.role] || ''} ${p.name}(${p.age || '-'}세)이(가) ${p._capOut === t.id ? '구단의 연봉 여력이 부족해 재계약하지 못하고' : '재계약하지 않고'} FA 시장에 나왔습니다.`, p.id);
         }
       });
     });
@@ -99,6 +118,7 @@ const Market = {
       // 구단 성향 (베타 건의: 한화생명급 팀이 주전이 나가도 2군 콜업으로 시즌을 치렀다): 우승 도전 · 안정 · 육성 · 긴축
       const sty = this.style(t), lv = this.level(t), slack = { contend: 5, stable: 7, develop: 10, austerity: 12 }[sty];
       const gaps = G.ROLES.filter(r => n(r) < 2 && !asked(r)).map(role => ({ role, cur: this.best(t, role) })).map(g => ({ ...g, weak: g.cur > 0 && g.cur < lv - slack })).sort((a, b) => a.cur - b.cur);
+      if (stove && this.upgrade(t, sty, today)) { changed = true; return; }
       const g = gaps[0]; if (!g) return;
       const empty = !g.cur;
       // 빈자리는 매일 찾는다. 주전이 팀 수준보다 크게 처지면(2군 콜업 등) 스토브 동안 적극적으로 보강. 그 밖에는 1군은 주전 5명 + 후보 1명까지
@@ -172,7 +192,7 @@ const Market = {
       if (!o) return;
       // 높은 오버롤 선수에게 약팀 제안만 왔다면 계약 대신 휴식을 택하기도 한다
       const best = App.db.teams.find(x => x.id === o.team);
-      if ((p.ovr || 0) >= 80 && (best.rep || 2) <= 2 && this.rnd(pid, today, 'rest') < .55) {
+      if ((p.ovr || 0) >= 80 && (best.rep || 2) <= 2 && (p.age || 25) >= 23 && Persona.of(p).w.play < .6 && this.rnd(pid, today, 'rest') < .55) {   // 출전이 급한 어린 유망주는 쉬지 않는다 (클라우드가 휴식을 선언했다)
         const st = Schedule.events.find(e => e.kind === 'stove' && e.start > today), until = stove ? (st ? st.start : Store.addDays(today, 300)) : Store.addDays(today, 90);
         (Contract.st().rest ||= {})[pid] = until;
         this.post(`[FA] ${p.name}, 휴식 선언`, `FA ${Sim.josa(p.name, '이', '가')} ${ok.length}개 팀의 제안을 받았지만 원하는 조건이 아니라며 당분간 휴식하기로 했습니다. ${Fmt.dayLabel(until)}까지 다른 구단의 제안을 받지 않을 전망입니다.`, pid);

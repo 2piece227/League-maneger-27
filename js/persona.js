@@ -17,6 +17,7 @@ const Persona = {
     siwoo: { tag: 'career', release: { by: 'dplus-kia', on: '2026-11-17' }, w: { money: .3, play: .5, win: .6, home: .3, loyal: 0 } },
     'lucid-choi-yong-hyeok': { tag: 'career', release: { by: 'dplus-kia', on: '2026-11-17' }, w: { money: .3, play: .5, win: .6, home: .3, loyal: 0 } },
     zeus: { tag: 'homecoming', fav: ['t1'], w: { money: .15, play: .3, win: .65, home: .5, loyal: .1 } },
+    'cloud-moon-hyeon-ho': { tag: 'play', fav: ['hanwha-life-esports'], w: { money: .15, play: .85, win: .35, home: .5, loyal: .05 } },   // 클라우드 — T1 아카데미에서 1군 기회를 찾아 한화생명 주전으로 (2027)
     'doran-choi-hyeon-jun': { tag: 'coach', favCoach: ['cvmax'], w: { money: .15, play: .45, win: .35, home: .5, loyal: .1 } },
   },
   LABEL: { oneclub: '원클럽맨', loyal: '의리파', career: '커리어 우선', homecoming: '친정팀 선호', coach: '감독을 따라가는 선수', money: '연봉 우선', win: '우승 우선', play: '출전 우선', abroad: '해외 진출 의향', stay: '익숙한 리그 선호' },
