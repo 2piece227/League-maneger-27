@@ -20,6 +20,7 @@ const Music = {
       { sc: 'gods', title: 'GODS', artist: 'NewJeans', year: 2023 },
       { sc: 'awaken-ft-valerie-broussard-ray-chen', title: 'Awaken', artist: 'Valerie Broussard, Ray Chen', year: 2019 },
     ] },
+    victory: { name: '승리', tracks: [] },   // assets/music/victory/ (비어 있으면 승리 음악 없음)
     draft: { name: '밴픽', tracks: [
       { sc: 'worlds-2020-orchestral-theme', title: 'Worlds 2020 Orchestral Theme', artist: 'League of Legends', year: 2020 },
       { sc: 'rise-ft-the-glitch-mob-mako', title: 'RISE (Instrumental)', artist: 'The Glitch Mob', year: 2018 },
@@ -74,7 +75,7 @@ const Music = {
       got = {};
       const gh = location.hostname.match(/^([^.]+)\.github\.io$/), repo = location.pathname.split('/')[1];
       if (gh && repo) {
-        for (const k of ['worlds', 'draft']) {
+        for (const k of ['worlds', 'draft', 'victory']) {
           try {
             const r = await fetch(`https://api.github.com/repos/${gh[1]}/${repo}/contents/assets/music/${k}`);
             if (r.ok) got[k] = (await r.json()).filter(f => f.type === 'file' && this.EXT.test(f.name)).map(f => f.name);
@@ -86,7 +87,7 @@ const Music = {
       }
       try { localStorage.setItem(KEY, JSON.stringify({ t: now, d: got })); } catch (e) {}
     }
-    for (const k of ['worlds', 'draft']) {
+    for (const k of ['worlds', 'draft', 'victory']) {
       const names = (got[k] || []).filter(n => this.EXT.test(n));
       if (names.length) this.LISTS[k].tracks = names.map(n => this.parse(n, `assets/music/${k}/`));
     }
@@ -178,6 +179,18 @@ const Music = {
     this.idx = 0; const t = this.track(); this.paint();
     if (t.src) { const a = this.mkAudio(); a.src = t.src; a.load(); this.cued = true; }
     else this.withSC(() => { this.cued = true; this.applyVol(); this.w.getCurrentSound(s => { if (s && s.artwork_url) { this.art[this.url(t)] = s.artwork_url.replace('-large', '-t300x300'); this.paint(); } }); });
+  },
+  // 승리 음악: 세트 승리는 앞 25초(끝에서 서서히 줄임), 매치 승리는 최대 90초. 그동안 원래 음악은 멈췄다가 끝나면 이어서
+  victory(kind = 'set') {
+    const L = this.LISTS.victory.tracks; if (!L.length || !this.pref.on || this.pref.hide || this.held || !this.unlocked) return;
+    const t = L[Math.floor(Math.random() * L.length)], was = this.playing;
+    if (this.vAudio) { this.vAudio.pause(); clearInterval(this._vf); }
+    if (was) this.pause();
+    const a = this.vAudio = new Audio(t.src), vol = (this.pref.vol / 100) * .9, lim = kind === 'match' ? 90 : 25;
+    a.volume = vol; a.play().catch(() => {});
+    const done = () => { clearInterval(this._vf); a.pause(); if (this.vAudio === a) this.vAudio = null; if (was && !this.held) this.play(); };
+    a.onended = done;
+    this._vf = setInterval(() => { const left = lim - a.currentTime; if (left <= 3) a.volume = Math.max(0, vol * left / 3); if (left <= 0) done(); }, 200);
   },
   setHidden(h) {
     this.pref.hide = h; this.save(); if (this.el) this.el.style.display = h ? 'none' : '';

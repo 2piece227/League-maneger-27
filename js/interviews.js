@@ -100,6 +100,37 @@ const Talk = {
     }
     // 후보 약속: 그 선수가 뛰었으면 지킨 것
     if (S.promise && series.games.some(x => x.result && x.result.stats && x.result.stats.some(s => s[0] === S.promise.pid))) { const hit = Player.find(S.promise.pid); if (hit) World.apply({ morale: 2, squad: 1 }, { pid: hit.p.id, player: hit.p.name, why: '출전 약속 지킴' }); S.promise = null; }
+    // ---------- 경기 후 감독 한마디 (FM 팀 토크): 공식 매치마다, 이겼는지 · 졌는지에 따라 선택지가 다르다 ----------
+    const ids = new Set(t.players.map(p => p.id)), pog = {}, rat = {};
+    series.games.forEach(x => { const r = x.result; if (!r) return; if (r.mvp && ids.has(r.mvp)) pog[r.mvp] = (pog[r.mvp] || 0) + 1; (r.stats || []).forEach(([pid, , k, d, a]) => { if (ids.has(pid)) (rat[pid] ||= []).push(Season.rating(k, d, a, r.win === t.id, r.mvp === pid)); }); });
+    const avg = pid => (rat[pid] || []).reduce((a, b) => a + b, 0) / ((rat[pid] || []).length || 1);
+    const best = Object.keys(pog).sort((a, b) => pog[b] - pog[a] || avg(b) - avg(a))[0] || Object.keys(rat).sort((a, b) => avg(b) - avg(a))[0];
+    const worst = Object.keys(rat).sort((a, b) => avg(a) - avg(b))[0];
+    const nm = id => (Player.find(id) || { p: { name: '' } }).p.name, sw = (sc[t.id] || 0), sl = (sc[o.id] || 0), clean = won ? sl === 0 : sw === 0;
+    if (Engine.once('talk:team:' + m.id)) this.push({ from: { name: '라커룸', role: 'coach' }, subject: `${o.short}전 ${won ? '승리' : '패배'} — 선수단에게 한마디`, priority: 'normal', ctx: { best, worst, won, clean },
+      body: `${o.name}전 ${sw}:${sl} ${won ? '승리' : '패배'}. 선수들이 라커룸에 모였습니다. 감독님의 한마디를 기다리고 있습니다.${best ? `\n\n이번 경기 가장 좋았던 선수: ${nm(best)}` : ''}`,
+      choices: won ? [
+        { label: '"잘했다. 오늘은 마음껏 즐겨라"', act: 'teamTalk', arg: 'enjoy', reply: '선수들이 환하게 웃습니다.' },
+        { label: '"좋았지만 만족하지 마라. 다음 경기가 더 중요하다"', act: 'teamTalk', arg: 'focus', reply: '선수들이 고개를 끄덕입니다. 들뜬 분위기가 가라앉았습니다.' },
+        ...(best ? [{ label: `"${nm(best)}, 오늘 정말 잘했다"`, act: 'teamTalk', arg: 'praise', reply: `${nm(best)}의 표정이 밝아졌습니다.` }] : []),
+        { label: '"이겼어도 실수가 많았다. 반성하자"', act: 'teamTalk', arg: 'harsh', reply: clean ? '완승이었던 만큼 몇몇은 서운한 눈치입니다.' : '선수들이 진지하게 받아들였습니다.' },
+      ] : [
+        { label: '"괜찮다. 고개 들어라, 다음에 갚아 주자"', act: 'teamTalk', arg: 'lift', reply: '선수들이 조금 기운을 차렸습니다.' },
+        { label: '"내 밴픽 탓이다. 너희는 잘 싸웠다"', act: 'teamTalk', arg: 'blameMe', reply: '선수들이 감독을 믿는 눈치입니다.' },
+        { label: '"준비한 걸 하나도 못 보여 줬다. 실망스럽다"', act: 'teamTalk', arg: 'angry', reply: clean ? '완패라 선수들도 받아들입니다. 분위기는 무겁습니다.' : '접전이었는데 너무 몰아붙였다는 표정입니다.' },
+        ...(worst ? [{ label: `"${nm(worst)}, 오늘은 많이 아쉬웠다"`, act: 'teamTalk', arg: 'single', reply: `${Sim.josa(nm(worst), '이', '가')} 고개를 숙입니다.` }] : []),
+      ] });
+    // 승리 기자회견: 중요한 경기 · 3연승 이상일 때, 일주일에 한 번까지
+    const wstreak = Results.forTeam(t.id).slice(-3).length === 3 && Results.forTeam(t.id).slice(-3).every(x => Results.won(x, t.id));
+    const wpress = won && (this.big(m) || wstreak) && !(S.wpress && Fmt.daysBetween(S.wpress, Clock.today()) < 7);
+    if (wpress && Engine.once('talk:win:' + m.id)) { S.wpress = Clock.today(); this.push({ from: { name: '경기 후 기자회견', role: 'media' }, subject: `${o.short}전 승리 — 소감을 묻습니다`, ctx: {},
+      body: `${o.name}${Sim.josa(o.name, '을', '를').slice(o.name.length)} ${sw}:${Sim.josa(sl, '으로', '로')} 꺾었습니다. ${wstreak ? '연승 행진에 기자들이 비결을 묻습니다.' : '중요한 경기를 잡자 기자들이 소감을 묻습니다.'}`,
+      choices: [
+        { label: '"선수들이 정말 잘해 줬습니다. 선수들 덕분입니다"', fx: { squad: 2, fans: 1 }, reply: '선수들이 기사를 보고 뿌듯해합니다.' },
+        { label: '"준비한 대로 됐습니다. 이대로 우승까지 갑니다"', fx: { fans: 3, media: 1, board: 1 }, reply: '팬들이 들끓습니다. 기대가 커진 만큼 부담도 생겼습니다.' },
+        { label: '"상대도 강했습니다. 운이 조금 따랐습니다"', fx: { media: 2 }, reply: '겸손한 소감이 좋게 받아들여졌습니다.' },
+        { label: '"아직 보완할 점이 많습니다"', fx: { board: 2, squad: -1 }, reply: '이사회는 냉정한 평가를 반겼지만 선수들은 조금 김이 샜습니다.' },
+      ] }); }
     // 패배 소감
     // 패배 기자회견: 중요한 경기이거나 연패가 시작될 때만, 일주일에 한 번까지 (매 패배마다 똑같은 질문이 오지 않게)
     const streak = Results.forTeam(t.id).slice(-2).every(x => !Results.won(x, t.id));
@@ -122,3 +153,16 @@ Engine.ACTS.subPromise = (m, pid) => { Talk.st().promise = { pid, due: Store.add
 Engine.ACTS.condDelta = (m, v) => { const S = Cond.st(), hit = Player.find(m.ctx.pid); if (hit) S.f[m.ctx.pid] = Math.max(-Cond.amp(hit.p), Math.min(Cond.amp(hit.p), (S.f[m.ctx.pid] || 0) + v)); };
 Engine.ACTS.condAll = (m, v) => { const S = Cond.st(); Roster.team().players.forEach(p => { S.f[p.id] = Math.max(-Cond.amp(p), Math.min(Cond.amp(p), (S.f[p.id] || 0) + v)); }); };
 Engine.on(today => { if (App.state.teamId && !App.state.unemployed && Schedule.events && Results.list) Talk.daily(today); });
+// 경기 후 감독 한마디: 선수단 사기 · 관계 (MVP · 부진 선수 개별)
+Engine.ACTS.teamTalk = (m, arg) => {
+  const c = m.ctx || {}, P = id => Player.find(id), all = (v, why) => { const t = Roster.team(); if (!t) return; const mo = World.morale(); t.players.forEach(p => { mo[p.id] = (mo[p.id] || 0) + v; }); };
+  const one = (id, v, why) => { const h = P(id); if (!h) return; const mo = World.morale(); mo[id] = (mo[id] || 0) + v; if (typeof Rel !== 'undefined') Rel.add(id, v > 0 ? 3 : -3, why); };
+  if (arg === 'enjoy') { all(2); World.apply({ squad: 1 }, {}); }
+  else if (arg === 'focus') { all(1); World.apply({ board: 1 }, {}); }
+  else if (arg === 'praise') { one(c.best, 3, '경기 후 칭찬'); all(1); }
+  else if (arg === 'harsh') { all(c.clean ? -2 : -1); World.apply({ board: 1, squad: c.clean ? -2 : 0 }, {}); }
+  else if (arg === 'lift') { all(1); }
+  else if (arg === 'blameMe') { all(1); World.apply({ squad: 2, board: -1 }, {}); }
+  else if (arg === 'angry') { all(c.clean ? -1 : -2); World.apply({ board: 1, squad: c.clean ? 0 : -2 }, {}); }
+  else if (arg === 'single') { one(c.worst, -2, '경기 후 공개 지적'); World.apply({ board: 1 }, {}); }
+};

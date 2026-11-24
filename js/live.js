@@ -570,6 +570,7 @@ const Live = {
     const plan = (App.state.plans || {})[S.series.key]; if (plan) plan.series = S.series;
     const my = App.state.teamId, sc = this.score(S), over = Season.seriesOver(S.series);
     if (over && S.official) Season.recordSeries(S.series.key, S.series);
+    if (S.us && g.over.win === S.us && typeof Music !== 'undefined') Music.victory(over ? 'match' : 'set');   // 승리 음악 (세트 · 매치)
     if (over && S.scrim) Scrim.finish(S.scrim, S.series);
     // 시리즈가 안 끝났으면 라커룸을 바로 준비해 둔다 (새로고침해도 라커룸으로 이어진다)
     if (!over) Locker.prepare(S, g);
