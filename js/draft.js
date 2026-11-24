@@ -491,7 +491,7 @@ const Draft = {
         <div class="dr-top">
           <div class="dr-team blue ${actK === 'B' ? 'act' : ''}">${G.team(B, 'lg')}<div><b>${UI.esc(B.name)}</b><small>블루 진영${S.us === 'B' ? ' · 우리 팀' : ''}</small></div></div>
           <div class="dr-center">
-            <small>${S.series.bo > 1 ? `Bo${S.series.bo} · ${S.game}세트${S.fearless.length ? ` · 피어리스 ${S.fearless.length}개 사용 불가` : ''}` : '단판'}</small>
+            <small>${S.series.bo > 1 ? `${Season.tag(S.series, S.game)}${S.fearless.length ? ` · 피어리스 ${S.fearless.length}개 사용 불가` : ''}` : '단판'}</small>
             <b>${this.PHASE(S.step)}</b>
             <span class="dr-turn ${actK === 'B' ? 'blue' : 'red'}">${UI.esc(actT.short)} ${step[1] === 'ban' ? '밴' : '픽'}${S.mode === 'delegate' && actK === S.us ? ' (코치 위임)' : ''}</span>
             <em class="dr-timer ${mine && this.timerOn ? '' : 'off'}">${mine && this.timerOn ? this.left : ''}</em>
@@ -599,7 +599,7 @@ const Draft = {
     const adv = this.advice(S, us);
     el.innerHTML = `
       <div class="cr-page dr-tac">
-        ${Career.head(`전술 <small>${S.series.bo > 1 ? `Bo${S.series.bo} · ${S.game}세트 · 매치 스코어 ${UI.esc(my.short)} ${Season.seriesScore(S.series)[my.id] || 0} : ${Season.seriesScore(S.series)[ot.id] || 0} ${UI.esc(ot.short)}` : '단판'}</small>`, played ? `${S.game}세트는 ${UI.esc(Schedule.team(played.win).short)} 승리로 끝났습니다 (${Sim.clock(played.t)} · 킬 ${played.kills.B}:${played.kills.R}).` : '전술은 경기 중 판단 기준입니다. 조합과 맞지 않는 지시는 경기에서 불리한 싸움으로 돌아옵니다. ★는 코치 추천.')}
+        ${Career.head(`전술 <small>${S.series.bo > 1 ? `${Season.tag(S.series, S.game)} · ${S.series.fixed ? '스크림' : '매치'} 스코어 ${UI.esc(my.short)} ${Season.seriesScore(S.series)[my.id] || 0} : ${Season.seriesScore(S.series)[ot.id] || 0} ${UI.esc(ot.short)}` : '단판'}</small>`, played ? `${S.game}세트는 ${UI.esc(Schedule.team(played.win).short)} 승리로 끝났습니다 (${Sim.clock(played.t)} · 킬 ${played.kills.B}:${played.kills.R}).` : '전술은 경기 중 판단 기준입니다. 조합과 맞지 않는 지시는 경기에서 불리한 싸움으로 돌아옵니다. ★는 코치 추천.')}
         <div class="dr-tac-top">
           <div class="card"><div class="card-head"><h3>${G.team(my, 'xs')} ${UI.esc(my.short)} 조합 <small>${!ready && !played ? '챔피언 둘을 눌러 서로 바꿀 수 있습니다' : '우리 팀'}</small></h3></div>${champRow(us)}${this.bars(S, us)}</div>
           <div class="card dr-advice"><div class="card-head"><h3>코치 의견</h3><small>${UI.esc(this.coach(my).name)}</small></div>${adv.map(([t, x]) => `<p class="adv ${t}">${UI.esc(x)}</p>`).join('')}${ready ? '<em class="dr-saved">전술 확정됨</em>' : ''}</div>
@@ -613,11 +613,11 @@ const Draft = {
             <div class="dr-rt-row"><div class="dr-rt-who">${x ? SoloQ.ic(x.c) : ''}<div>${G.pos(r)} <b>${p ? UI.esc(p.name) : '공석'}</b><small>${x ? UI.esc(Champions.byId[x.c].name) : ''}</small></div></div>
               <div class="dr-rt-opts">${this.ROLE_TAC[r].map(([id, n]) => `<button class="dr-opt sm ${T.roles[r] === id ? 'on' : ''}" data-role="${r}" data-v="${id}" ${ready ? 'disabled' : ''}><b>${n}${star(S.rec.roles[r] === id)}</b></button>`).join('')}</div></div>`; }).join('')}</div>
         </div>
-        <div class="dr-tac-foot"><span class="dr-series">${S.series.bo > 1 ? `Bo${S.series.bo} · ${S.game}세트 · ${UI.esc(my.short)} ${Season.seriesScore(S.series)[my.id] || 0} : ${Season.seriesScore(S.series)[ot.id] || 0} ${UI.esc(ot.short)}` : '단판'} · ★ 코치 추천</span>
+        <div class="dr-tac-foot"><span class="dr-series">${S.series.bo > 1 ? `${Season.tag(S.series, S.game)} · ${UI.esc(my.short)} ${Season.seriesScore(S.series)[my.id] || 0} : ${Season.seriesScore(S.series)[ot.id] || 0} ${UI.esc(ot.short)}` : '단판'} · ★ 코치 추천</span>
           ${ready ? (() => {
             const over = played && Season.seriesOver(S.series), real = S.official || S.scrim;
             if (over) return `<span class="cr-dim">경기가 끝났습니다.</span><button class="btn-primary dr-done">${real ? '계속' : '밴픽 마치기'}</button>`;
-            if (played) return `<span class="cr-dim">${S.game}세트가 끝났습니다.</span><button class="btn-primary dr-nextset">${S.game + 1}세트 밴픽 →</button>`;
+            if (played) return `<span class="cr-dim">${S.game}${S.series.fixed ? '판이' : '세트가'} 끝났습니다.</span><button class="btn-primary dr-nextset">${S.game + 1}${S.series.fixed ? '판' : '세트'} 밴픽 →</button>`;
             return `<span class="cr-dim">밴픽·전술이 저장됐습니다.</span><button class="btn-primary dr-watch">${S.game}세트 경기 시작</button>${MatchLock.on() ? '' : '<button class="btn-ghost dr-done">밴픽 마치기</button>'}`;
           })()
           : `<button class="btn-ghost dr-rec">코치 추천대로</button><button class="btn-primary dr-ok">전술 확정 · 경기 시작 ▶</button>`}

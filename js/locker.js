@@ -73,7 +73,7 @@ const Locker = {
       reasons.push([1, `한타에서 앞라인이 먼저 무너졌습니다.`]);
     }
     reasons.sort((a, b) => b[0] - a[0]);
-    say.push(['coach', `${L.game}세트 ${L.won ? '가져왔습니다' : '내줬습니다'}. 킬은 ${L.kills.us} 대 ${Sim.josa(String(L.kills.them), '이었고요', '였고요')}. ${reasons[0][1]}`]);
+    say.push(['coach', `${L.game}${L.scrim ? '판' : '세트'} ${L.won ? '가져왔습니다' : '내줬습니다'}. 킬은 ${L.kills.us} 대 ${Sim.josa(String(L.kills.them), '이었고요', '였고요')}. ${reasons[0][1]}`]);
     if (reasons[1] && reasons[1][0] > 1) say.push(['coach', reasons[1][1]]);
     if (L.nemesis && L.nemesis.n >= 4) say.push(['coach', `상대 ${nameOf(L.nemesis.id)}에게만 ${L.nemesis.n}번 잡혔습니다. 저 ${Sim.josa(cn((L.pl.find(x => x.id === L.nemesis.id) || {}).c), '을', '를')} 막을 방법이 필요해요.`]);
     else if (gl && gl[1] >= 2) say.push(['coach', `상대 정글이 초반에 ${this.laneKo[gl[0]]} 쪽만 ${gl[1]}번 왔습니다. 동선을 읽고 대비해야 합니다.`]);
@@ -195,8 +195,8 @@ const Locker = {
   },
   end() {
     const L = this.st();
-    this.push('coach', `좋습니다. ${L.game + 1}세트 밴픽 들어가겠습니다.`);
-    this.opts.innerHTML = `<button class="btn-primary lk-go">${L.game + 1}세트 밴픽으로 →</button>`;
+    this.push('coach', `좋습니다. ${L.game + 1}${L.scrim ? '판' : '세트'} 밴픽 들어가겠습니다.`);
+    this.opts.innerHTML = `<button class="btn-primary lk-go">${L.game + 1}${L.scrim ? '판' : '세트'} 밴픽으로 →</button>`;
     $('.lk-go', this.opts).onclick = () => this.finish(false);
   },
   // 다음 세트로: 선택을 시리즈에 남기고 밴픽 시작

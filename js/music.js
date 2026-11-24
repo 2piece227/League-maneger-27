@@ -229,6 +229,7 @@ const Music = {
     this.duck = r === 'match-live' ? .35 : 1; this.applyVol();
     if (!this.pref.on || !this.unlocked) return;
     if (this.endShot && this.shotKind === 'decider' && r !== 'match-draft') this.endShot();
+    if (this.endShot && this.shotKind === 'victory' && !/^match-(live|locker|draft)$/.test(r)) this.endShot();   // 승리 음악이 메인 화면까지 따라오지 않게
     const w = this.want(r); if (w !== this.list) this.fade(() => this.use(w));
   },
   async use(name) {

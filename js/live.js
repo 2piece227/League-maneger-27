@@ -34,7 +34,7 @@ const Live = {
   // 정글 펫 아이템: 자란 단계(●●○)와 강타 강화 표시
   inventory(p) { const pet = it => p.role === 'JGL' && p.build.start && it.n === p.build.start.n && p.pet; return [...p.inv.map(it => pet(it) ? `<span class="it-pet s${p.pet}" title="정글 펫 · ${JunglePet.NAME[p.pet - 1]}${p.pet === 3 ? ' (강타 강화)' : ''}">${Stats.icon(it)}<b>${'●'.repeat(p.pet)}${'○'.repeat(3 - p.pet)}</b></span>` : Stats.icon(it)), p.wards ? `<span class="it-w">${Stats.icon(p.build.ward)}<b>${p.wards}</b></span>` : '', p.trinket ? `<span class="it-t">${Stats.icon(p.trinket)}</span>` : '', p.smite2 && p.petItem ? `<span class="it-smite" title="강타 강화 (정글 펫 완전 성장)">${Stats.icon(p.petItem)}</span>` : ''].join(''); },
   // 시리즈 스코어 (이 세트 전까지 + 끝났으면 이 세트 포함)
-  score(S) { const sc = Season.seriesScore(S.series); return { B: sc[S.teams.B] || 0, R: sc[S.teams.R] || 0, need: Math.ceil((S.series.bo || 1) / 2) }; },
+  score(S) { const sc = Season.seriesScore(S.series); return { B: sc[S.teams.B] || 0, R: sc[S.teams.R] || 0, need: S.series.fixed || Math.ceil((S.series.bo || 1) / 2) }; },   // 스크림: 정한 판수만큼 칸
   pips(n, need, cls) { return `<span class="lv-pips ${cls}">${Array.from({ length: need }, (_, i) => `<i class="${i < n ? 'on' : ''}"></i>`).join('')}</span>`; },
 
   async render(el) {
@@ -83,7 +83,7 @@ const Live = {
           </div>
           <div class="seg lv-mode" title="하이라이트: 평소에는 빠르게 넘기고, 교전 · 오브젝트 · 순간이동 때는 느리게 보여 주며 한타는 확대합니다">${[['hl', '하이라이트'], ['full', '전체 보기']].map(([m, n]) => `<button class="${this.mode === m ? 'on' : ''}" data-m="${m}">${n}</button>`).join('')}</div>
           <div class="lv-visrow"><div class="seg lv-vis" title="시야 보기: 와드와 시야가 닿는 곳. 한 팀을 고르면 그 팀이 못 보는 곳은 어둡게, 안 보이는 상대는 숨깁니다">${[['off', '시야 끄기'], ['all', '양 팀'], ['B', B.short], ['R', R.short]].map(([m, n]) => `<button class="${this.vmode === m ? 'on' : ''}" data-v="${m}">${UI.esc(n)}</button>`).join('')}</div><span class="lv-vispct"></span></div>
-          <div class="lv-info">${S.series.bo > 1 ? `Bo${S.series.bo} · ${S.game}세트` : '단판'} · ${S.official ? '공식 경기' : '연습 경기'}</div>
+          <div class="lv-info">${S.series.bo > 1 ? `${Season.tag(S.series, S.game)}세트` : '단판'} · ${S.official ? '공식 경기' : '연습 경기'}</div>
           <div class="lv-graph" title="골드 차이 흐름 (위 = 블루 우세, 아래 = 레드 우세) · 점: 드래곤 · 바론 · 큰 한타"></div>
           <div class="lv-evs"></div>
           <div class="lv-comm"></div>
@@ -93,7 +93,7 @@ const Live = {
     $('.lv-mode', el).onclick = e => { const b = e.target.closest('button'); if (!b) return; this.mode = b.dataset.m; try { localStorage.setItem('lm27.lvmode', this.mode); } catch (x) {} $$('.lv-mode button', el).forEach(x => x.classList.toggle('on', x === b)); };
     $('.lv-vis', el).onclick = e => { const b = e.target.closest('button'); if (!b) return; this.vmode = b.dataset.v; try { localStorage.setItem('lm27.lvvis', this.vmode); } catch (x) {} $$('.lv-vis button', el).forEach(x => x.classList.toggle('on', x === b)); };
     $('.lv-pause', el).onclick = e => { if (g.over) return; this.playing = !this.playing; e.target.textContent = this.playing ? '일시정지' : '계속'; };
-    $('.lv-skip', el).onclick = () => { this.playing = false; while (!g.over) Sim.step(g); this.feedSeen = g.feed.length; this.banners = []; this.capQ = []; this.capSeen = g.comm.length; this.acc = 1e9; this.draw(); this.finish(); };
+    $('.lv-skip', el).onclick = () => { this.playing = false; g.skipped = true; while (!g.over) Sim.step(g); this.feedSeen = g.feed.length; this.banners = []; this.capQ = []; this.capSeen = g.comm.length; this.acc = 1e9; this.draw(); this.finish(); };
     const ex = $('.lv-exit', el); if (ex) ex.onclick = () => { this.playing = false; Router.go('match-draft'); };
     this.feedSeen = Math.max(this.feedSeen, g.feed.length); this.banners = []; this.bannerOn = false;
     this.fit(); this._fit ||= (() => { if (this.el && document.body.contains(this.el)) this.fit(); }); window.removeEventListener('resize', this._fit); window.addEventListener('resize', this._fit);
@@ -570,7 +570,7 @@ const Live = {
     const plan = (App.state.plans || {})[S.series.key]; if (plan) plan.series = S.series;
     const my = App.state.teamId, sc = this.score(S), over = Season.seriesOver(S.series);
     if (over && S.official) Season.recordSeries(S.series.key, S.series);
-    if (S.us && g.over.win === S.us && typeof Music !== 'undefined') Music.victory(over ? 'match' : 'set');   // 승리 음악 (세트 · 매치)
+    if (S.us && g.over.win === S.us && !g.skipped && typeof Music !== 'undefined') Music.victory(over && !S.scrim ? 'match' : 'set');   /* 결과로 건너뛴 경기는 승리 음악 없음 */   // 승리 음악 (세트 · 매치)
     if (over && S.scrim) Scrim.finish(S.scrim, S.series);
     // 시리즈가 안 끝났으면 라커룸을 바로 준비해 둔다 (새로고침해도 라커룸으로 이어진다)
     if (!over) Locker.prepare(S, g);
@@ -578,8 +578,8 @@ const Live = {
     $('.lv-ms.b', el).textContent = sc.B; $('.lv-ms.r', el).textContent = sc.R;
     $('.lv-tm.blue .lv-pips', el).outerHTML = this.pips(sc.B, sc.need, 'b'); $('.lv-tm.red .lv-pips', el).outerHTML = this.pips(sc.R, sc.need, 'r');
     const mine = w.t.id === my, us = S.teams.B === my ? 'B' : 'R', them = us === 'B' ? 'R' : 'B';
-    $('.lv-over', el).innerHTML = `<div class="lv-res ${mine ? 'win' : 'lose'}"><small>${Sim.clock(g.t)}${S.series.bo > 1 ? ` · ${S.game}세트` : ''}</small><b>${mine ? 'VICTORY' : 'DEFEAT'}</b><span>${G.team(w.t, 'sm')} ${UI.esc(w.t.name)} 승리 · 킬 ${g.side.B.kills} : ${g.side.R.kills}</span>
-      ${S.series.bo > 1 ? `<span class="lv-series">매치 스코어 ${UI.esc(g.side[us].t.short)} ${sc[us]} : ${sc[them]} ${UI.esc(g.side[them].t.short)}${over ? ' · 경기 종료' : ''}</span>` : ''}
+    $('.lv-over', el).innerHTML = `<div class="lv-res ${mine ? 'win' : 'lose'}"><small>${Sim.clock(g.t)}${S.series.bo > 1 ? ` · ${S.game}${S.series.fixed ? '판' : '세트'}` : ''}</small><b>${mine ? 'VICTORY' : 'DEFEAT'}</b><span>${G.team(w.t, 'sm')} ${UI.esc(w.t.name)} 승리 · 킬 ${g.side.B.kills} : ${g.side.R.kills}</span>
+      ${S.series.fixed ? `<span class="lv-series">스크림 ${S.game}/${S.series.fixed}판 · ${UI.esc(g.side[us].t.short)} ${sc[us]}승 ${sc[them]}패${over ? ` · 스크림 종료 — ${sc[us] > sc[them] ? '우세' : sc[us] < sc[them] ? '열세' : '동률'}` : ''}</span>` : S.series.bo > 1 ? `<span class="lv-series">매치 스코어 ${UI.esc(g.side[us].t.short)} ${sc[us]} : ${sc[them]} ${UI.esc(g.side[them].t.short)}${over ? ' · 경기 종료' : ''}</span>` : ''}
       <div class="lv-mvp">${SoloQ.ic(g.over.mvp.c)}<div><small>POG</small><b>${UI.esc(g.over.mvp.name)}</b><span>${g.over.mvp.k}/${g.over.mvp.d}/${g.over.mvp.a}</span></div></div>
       <div class="lv-res-btn">${!over ? `<button class="btn-primary lv-next">라커룸으로 → <small class="lv-cd"></small></button>` : `<button class="btn-primary lv-back">${S.official || S.scrim ? '계속' : '닫기'}</button>`}${!over ? '<button class="btn-ghost lv-stay">결과 더 보기</button>' : ''}</div></div>`;
     clearInterval(this._cd);

@@ -8,6 +8,8 @@ const Season = {
     return { win: g.side[g.over.win].t.id, side: g.over.win, t: g.t, kills: { B: g.side.B.kills, R: g.side.R.kills }, mvp: g.over.mvp.p.id,
       teams: { B: g.side.B.t.id, R: g.side.R.t.id }, stats: g.pl.map(p => [p.p.id, p.c, p.k, p.d, p.a, Math.round(p.cs), p.p.name]) };   // 이름: 나중에 팀을 떠나도 경기 리포트에 남게
   },
+  // 표기: 스크림은 승패와 상관없이 정한 판수를 다 치르므로 'Bo3 · 2세트'가 아니라 '스크림 3판 · 2판째'
+  tag(series, game) { return series.fixed ? `스크림 ${series.fixed}판 · ${game}판째` : `Bo${series.bo} · ${game}세트`; },
   seriesScore(series) { const sc = {}; series.games.forEach(x => { if (x.result) sc[x.result.win] = (sc[x.result.win] || 0) + 1; }); return sc; },
   seriesOver(series) { if (series.fixed) return series.games.filter(x => x.result).length >= series.fixed; const need = Math.ceil((series.bo || 1) / 2); return Object.values(this.seriesScore(series)).some(v => v >= need); },
   // 시리즈를 끝까지 자동으로 (이미 치른 세트는 그대로 두고 이어서)
