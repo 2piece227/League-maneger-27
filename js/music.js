@@ -5,7 +5,7 @@
    (광고 없음 · 저장소에 음원 파일을 올리지 않는다). 곡을 바꾸려면 LISTS만 고치면 된다.
    음원 파일: assets/music/worlds/ · draft/ · victory/ · decider/(Bo5 5세트 입장) 폴더에 mp3를 넣으면 그 폴더 곡이 플레이리스트가 된다
    (GitHub 웹에서 올리기만 하면 됨, 코드 수정 없음). 파일 이름은 "가수 - 제목 (연도).mp3".
-   폴더 목록은 GitHub API로 읽고, 안 되면 assets/music/playlist.json을 읽는다. 폴더가 비어 있으면 사운드클라우드 곡을 쓴다.
+   폴더 목록은 GitHub API로 읽고, 안 되면 assets/music/playlist.json을 읽는다. 폴더 곡과 아래 사운드클라우드 곡을 함께 튼다.
    화면: 오른쪽 아래 떠 있는 재생기. 접으면 음표 버튼 하나. 밴픽 · 중계 화면에서는 자동으로 접힌다. */
 const Music = {
   SC: 'https://soundcloud.com/leagueoflegends/',
@@ -91,7 +91,9 @@ const Music = {
     }
     for (const k of ['worlds', 'draft', 'victory', 'decider']) {
       const names = (got[k] || []).filter(n => this.EXT.test(n));
-      if (names.length) this.LISTS[k].tracks = names.map(n => this.parse(n, `assets/music/${k}/`));
+      // 올린 파일 + 원래 사운드클라우드 곡을 함께 (예전에는 파일을 올리면 사운드클라우드 곡이 목록에서 빠졌다). 같은 제목은 파일 쪽을 쓴다
+      this._sc ||= Object.fromEntries(Object.entries(this.LISTS).map(([x, L]) => [x, L.tracks.filter(t => t.sc)]));
+      if (names.length) { const files = names.map(n => this.parse(n, `assets/music/${k}/`)), low = t => t.title.toLowerCase(); this.LISTS[k].tracks = [...files, ...(this._sc[k] || []).filter(t => !files.some(f => low(f) === low(t)))]; }
       // 표지: 곡과 같은 이름의 이미지(예: "가수 - 제목 (2024).jpg"), 없으면 폴더의 cover.jpg
       const imgs = (got[k] || []).filter(n => this.IMG.test(n)), base = n => n.replace(this.EXT, '').replace(this.IMG, '');
       const cover = imgs.find(n => /^cover\./i.test(n));
