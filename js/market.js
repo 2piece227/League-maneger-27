@@ -11,8 +11,38 @@ const Market = {
   //   재정 5 → 상한의 3.75배(150억)까지 · 4 → 2배(80억) · 3 → 1.35배(54억) · 2 → 1.1배 · 1 → 상한까지 (LCK 상한 40억). T1 · HLE만 부담금을 크게 감수한다
   affords(t, p, salary) {
     if (t.league !== 'LCK') return Club.wageRoom(t) + Player.salary(p, t) - salary > -Club.budget(t) * .05;
-    const lim = Club.CAP.LCK.cap * ({ 5: 3.75, 4: 2, 3: 1.35, 2: 1.1, 1: 1 }[t.fin || 2] || 1.1);
+    if (salary <= 3) return true;   // 최저 연봉급 선수는 언제든 (예전에는 한도를 넘긴 GEN이 0.6억 정글도 못 데려와 2군으로 시즌을 치렀다)
+    const lim = Club.CAP.LCK.cap * ({ 5: 3.75, 4: 2, 3: 1.35, 2: 1.1, 1: 1 }[Math.max(t.fin || 2, (t.rep || 2) - 1)] || 1.1);   // 명성 높은 구단은 재정 등급보다 한 단계 더 쓴다
     return Club.tax(t, { pid: p.id, salary }).used <= lim;
+  },
+  // ---------- 구단 성향 ----------
+  style(t) {
+    if (Club.wageRoom(t) < -Club.budget(t) * .15 && (t.fin || 2) <= 3) return 'austerity';
+    if ((t.fin || 2) >= 4 || (t.rep || 2) >= 4) return 'contend';
+    if ((t.rep || 2) <= 2 && (t.fin || 2) <= 2) return 'develop';
+    return 'stable';
+  },
+  STYLE_KO: { contend: '우승 도전', stable: '안정', develop: '육성', austerity: '긴축' },
+  // 팀 수준: 포지션별 최고 선수 점수의 평균 (빈 포지션 제외)
+  level(t) { const v = G.ROLES.map(r => this.best(t, r)).filter(Boolean); return v.length ? v.reduce((a, b) => a + b, 0) / v.length : 70; },
+  order(sty, t) {
+    if (sty === 'develop') return (a, b) => (b.s + ((b.p.age || 25) <= 21 ? ((b.p.pa || 0) - (b.p.ca || 0)) * 6 : 0)) - (a.s + ((a.p.age || 25) <= 21 ? ((a.p.pa || 0) - (a.p.ca || 0)) * 6 : 0));
+    if (sty === 'austerity') return (a, b) => b.s / Math.max(.3, Contract.pay(b.p, b.s, t.league)) - a.s / Math.max(.3, Contract.pay(a.p, a.s, t.league));
+    return (a, b) => b.s - a.s;
+  },
+  // 우승 도전 팀: FA에 쓸 만한 선수가 없으면 명성이 낮은 다른 AI 팀 주전을 이적료로 데려온다 (팔린 팀은 다시 FA · 2군으로 채운다)
+  poach(t, g, today) {
+    if (this.rnd(t.id, today, 'poach') > .3) return false;
+    const my = App.state.teamId, M = Contract.st();
+    const cands = App.db.teams.filter(x => x.id !== t.id && x.id !== my && (x.rep || 2) < (t.rep || 2) && (x.league === t.league || ['LCK', 'LPL'].includes(t.league)))
+      .flatMap(x => x.players.filter(p => p.role === g.role && !p.free && !(M.contracts[p.id] && M.contracts[p.id].signed > Store.addDays(today, -90))).map(p => ({ p, x, s: Contract.score(p, t) })))
+      .filter(({ p, x, s }) => s > g.cur + 6 && (p.nation === 'South Korea' || t.league !== 'LCK' || this.rnd(p.id, t.id, 'imp') < .15) && this.affords(t, p, Contract.pay(p, s, t.league) * 1.1))
+      .sort((a, b) => b.s - a.s);
+    const c = cands[0]; if (!c) return false;
+    const fee = typeof Transfer !== 'undefined' && Transfer.price ? Transfer.price(c.p, c.x).v : 5;
+    this.write(c.p, t, this.deal(c.p, t, 1.1));
+    this.post(`[오피셜] ${c.p.name}, ${c.x.short} → ${t.short} 이적 (이적료 ${Player.money(fee)})`, `${Sim.josa(t.name, '이', '가')} ${c.x.name}의 ${G.ROLE_KO[g.role]} ${Sim.josa(c.p.name, '을', '를')} 이적료 ${Player.money(fee)} 원에 영입했습니다. ${t.short}의 ${G.ROLE_KO[g.role]} 공백을 메우기 위한 선택입니다.`, c.p.id);
+    return true;
   },
   best(t, role, except) { return t.players.filter(x => x.role === role && x !== except).reduce((b, x) => Math.max(b, Contract.score(x, t)), 0); },
   stove(today) { return Schedule.events.some(e => e.kind === 'stove' && e.start <= today && today <= e.end); },
@@ -66,10 +96,13 @@ const Market = {
     this.ai().forEach(t => {
       // 포지션별 인원 (이미 제안을 넣어 둔 포지션은 그 FA까지 센다): 빈 포지션 우선, 한 포지션 2명까지
       const n = r => t.players.filter(x => x.role === r).length, asked = r => Object.entries(F).some(([pid, os]) => os.some(o => o.team === t.id) && (Player.find(pid) || { p: {} }).p.role === r);
-      const gaps = G.ROLES.filter(r => n(r) < 2 && !asked(r)).map(role => ({ role, cur: this.best(t, role) })).sort((a, b) => a.cur - b.cur);
+      // 구단 성향 (베타 건의: 한화생명급 팀이 주전이 나가도 2군 콜업으로 시즌을 치렀다): 우승 도전 · 안정 · 육성 · 긴축
+      const sty = this.style(t), lv = this.level(t), slack = { contend: 5, stable: 7, develop: 10, austerity: 12 }[sty];
+      const gaps = G.ROLES.filter(r => n(r) < 2 && !asked(r)).map(role => ({ role, cur: this.best(t, role) })).map(g => ({ ...g, weak: g.cur > 0 && g.cur < lv - slack })).sort((a, b) => a.cur - b.cur);
       const g = gaps[0]; if (!g) return;
       const empty = !g.cur;
-      if (!empty && (t.players.length >= 6 || this.rnd(t.id, today, 'shop') > (stove ? .35 : .08))) return;   // 빈자리는 매일 찾는다. 1군은 주전 5명 + 후보 1명까지 (LoL 팀은 후보를 거의 두지 않는다)
+      // 빈자리는 매일 찾는다. 주전이 팀 수준보다 크게 처지면(2군 콜업 등) 스토브 동안 적극적으로 보강. 그 밖에는 1군은 주전 5명 + 후보 1명까지
+      if (!empty && !(g.weak && stove && t.players.length < 7 && this.rnd(t.id, today, 'shopw') < (sty === 'contend' ? .8 : sty === 'stable' ? .5 : .25)) && (t.players.length >= 6 || this.rnd(t.id, today, 'shop') > (stove ? .35 : .08))) return;
       if (!stove && !empty) return;
       let room = Club.wageRoom(t) + (empty ? 3 : 0);
       const cands = free.filter(p => p.role === g.role && !this.resting(p.id, today) && !(F[p.id] || []).some(o => o.team === t.id)).map(p => ({ p, s: Contract.score(p, t) }))
@@ -78,12 +111,13 @@ const Market = {
           && (p.nation !== 'South Korea' || t.league === 'LCK' || this.rnd(p.id, t.id, 'ko') < .35 + (s >= 80 ? .2 : 0))
           && (t.league !== 'LCK' || p.nation === 'South Korea' || this.rnd(p.id, t.id, 'imp') < .15)
           && Contract.pay(p, s, t.league) <= room && this.affords(t, p, Contract.pay(p, s, t.league)))   // 샐러리캡 기준으로도 감당되는 선수만
-        .sort((a, b) => b.s - a.s);
+        .sort(this.order(sty, t));
       const st = Schedule.events.find(e => e.kind === 'stove' && e.start <= today && today <= e.end);
-      const late = !st || Fmt.daysBetween(st.start, today) >= 7;                      // 스토브 1주가 지나도 빈자리면 2군에서 올린다
-      const pick = empty && late && (t.cl || []).some(p => p.role === g.role) ? null : cands[0];
+      const late = !st || Fmt.daysBetween(st.start, today) >= { contend: 21, stable: 10, develop: 4, austerity: 6 }[sty];   // 이만큼 지나도 빈자리면 2군에서 올린다 (우승 도전 팀은 3주까지 영입을 노린다)
+      if (!cands.some(x => !Persona.refuses(x.p, t, today)) && stove && (empty || g.weak) && sty === 'contend' && this.poach(t, g, today)) { changed = true; return; }   // FA에 없으면 다른 팀 선수를 이적료로
+      // 이 팀과 이야기하지 않는 선수(친정 거부 등)는 건너뛰고 다음 후보 (예전에는 1순위가 거절하면 그날은 포기해, Zeus를 놓친 HLE가 Kiin도 안 보고 2군을 올렸다)
+      const pick = empty && late && (t.cl || []).some(p => p.role === g.role) ? null : cands.find(x => !Persona.refuses(x.p, t, today));
       if (pick) {
-        if (Persona.refuses(pick.p, t, today)) return;                                   // 선수가 이 팀과는 이야기하지 않는다 (같은 기준으로 우리 팀도)
         (F[pick.p.id] ||= []).push({ team: t.id, mult: 1.02 + this.rnd(pick.p.id, t.id, 'm') * .2, until: Store.addDays(today, 2 + Math.floor(this.rnd(pick.p.id, 'u') * 3)) });
         this.deadline(pick.p, today); this.buzz(pick.p, t, today);
         return;
