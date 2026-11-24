@@ -95,7 +95,7 @@ const CompResults = {
   // 오른쪽: 이 대회 순위(정규 단계) · 이변 · 최다 POG
   side(all, done) {
     const ev = Schedule.byEvent[this.eventId]; if (!ev) return '';
-    let html = `<h3 class="fx-side-h">${UI.esc(ev.label)}</h3>`;
+    let html = `<h3 class="fx-side-h ev-link" data-ev="${ev.id}" title="대회 페이지 (순위 · 대진표)">${UI.esc(ev.label)} ›</h3>`;
     if (ev.kind === 'regular' && ev.league !== 'INTL') {
       const rows = Results.table(ev.league, [ev.id]).slice(0, 10), my = App.state.teamId;
       html += rows.length ? `<h4>순위</h4><table class="rs-table cr-mini"><tbody>${rows.map((r, i) => `<tr class="${r.t.id === my ? 'mine' : ''}"><td class="num">${i + 1}</td><td><span class="fx-team">${G.team(r.t, 'xs')}<b>${UI.esc(r.t.short)}</b></span></td><td class="num">${r.w}-${r.l}</td><td class="num ${r.sw - r.sl > 0 ? 'good' : r.sw - r.sl < 0 ? 'bad' : ''}">${r.sw - r.sl > 0 ? '+' : ''}${r.sw - r.sl}</td></tr>`).join('')}</tbody></table>` : '';
@@ -151,7 +151,7 @@ const CompResults = {
       </div>`;
     }).join('');
     UI.modal({
-      title: `<div class="cr-mh"><b>${UI.esc(t1.name)}</b><span class="num">${r.s1} : ${r.s2}</span><b>${UI.esc(t2.name)}</b></div><small class="cr-msub">${UI.esc(ev ? ev.label : '')} · ${UI.esc(G.tab(m.tab))} · ${m.t.slice(0, 10).replace(/-/g, '.')} · Bo${m.bo}${this.upset(m) ? ' · <em class="cr-upset">이변</em>' : ''}</small>`,
+      title: `<div class="cr-mh"><b>${UI.esc(t1.name)}</b><span class="num">${r.s1} : ${r.s2}</span><b>${UI.esc(t2.name)}</b></div><small class="cr-msub">${ev ? `<span class="ev-link" data-ev="${ev.id}">${UI.esc(ev.label)}</span>` : ''}} · ${UI.esc(G.tab(m.tab))} · ${m.t.slice(0, 10).replace(/-/g, '.')} · Bo${m.bo}${this.upset(m) ? ' · <em class="cr-upset">이변</em>' : ''}</small>`,
       body: `<div class="cr-report">${sets || '<p class="ms-none">세트 기록이 없습니다.</p>'}</div>`,
     });
   },

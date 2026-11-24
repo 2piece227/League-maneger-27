@@ -171,3 +171,27 @@
   .cr-list .fx-time, .cr-list .cr-tab, .cr-list .fx-bo { display: none; }
   .cr-set-b { grid-template-columns: 1fr; }
 }
+
+/* 대회 페이지 */
+.ev-link { cursor: pointer; }
+.ev-link:hover { text-decoration: underline; text-underline-offset: 3px; }
+.ev-st { font-size: 12px; padding: 2px 8px; border-radius: 10px; background: #1f2a44; color: var(--muted); vertical-align: middle; }
+.ev-st.on { background: rgba(63, 191, 127, .18); color: #4fd690; }
+.ev-mine { font-style: normal; color: #7fc0ff; }
+.ev-teams { display: flex; flex-wrap: wrap; gap: 6px 14px; margin-top: 10px; }
+.ev-bracket { display: flex; gap: 14px; overflow-x: auto; padding-bottom: 8px; align-items: flex-start; }
+.ev-col { min-width: 190px; display: flex; flex-direction: column; gap: 10px; }
+.ev-col h4 { margin: 0; font-size: 12px; color: var(--gold-2); text-align: center; }
+.ev-match { background: var(--panel); border: 1px solid var(--line); border-radius: 8px; padding: 6px 8px; display: grid; gap: 3px; }
+.ev-match small { color: var(--muted); font-size: 11px; }
+.ev-bt { display: flex; justify-content: space-between; align-items: center; padding: 2px 4px; border-radius: 4px; }
+.ev-bt.w { background: rgba(58, 160, 255, .12); }
+.ev-bt.l { opacity: .55; }
+.ev-bt.mine { box-shadow: inset 2px 0 0 #3aa0ff; }
+.ev-swiss { display: grid; grid-template-columns: repeat(auto-fill, minmax(180px, 1fr)); gap: 10px; }
+.ev-sw.up { border-color: rgba(63, 191, 127, .5); }
+.ev-sw.out { opacity: .6; }
+.ev-swr { padding: 3px 0; }
+.ev-swr.mine b { color: #7fc0ff; }
+.ev-tops { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 10px; }
+.ev-body a, .cr-page p a { color: var(--gold-2); }

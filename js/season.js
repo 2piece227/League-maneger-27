@@ -47,7 +47,7 @@ const Season = {
   // 빠른 시뮬 세트의 선수 기록 [pid, 챔피언, K, D, A, CS, 이름, 피해량] — 킬은 포지션 · OVR 가중으로 나누고, 데스는 상대 킬만큼, 어시스트는 킬마다 팀원 확률로
   //   챔피언은 그 선수의 주력 챔피언에서 (같은 세트 · 같은 매치에서 겹치지 않게)
   FK: { k: { TOP: 1, JGL: 1.1, MID: 1.35, BOT: 1.55, SUP: .3 }, d: { TOP: 1.1, JGL: 1, MID: .9, BOT: 1, SUP: 1.15 }, a: { TOP: .42, JGL: .62, MID: .55, BOT: .5, SUP: .78 },
-    cs: { TOP: 8.2, JGL: 6.1, MID: 8.7, BOT: 9.5, SUP: 1.3 }, dpm: { TOP: 520, JGL: 390, MID: 640, BOT: 720, SUP: 240 } },
+    cs: { TOP: 8.2, JGL: 6.1, MID: 8.7, BOT: 9.5, SUP: 1.3 }, dpm: { TOP: 480, JGL: 400, MID: 580, BOT: 640, SUP: 210 } },   // 정밀 엔진 평균(탑 470 · 정글 420 · 미드 570 · 원딜 670 · 서폿 200)에 맞춤
   fakeStats(res, t1, t2, r, prev = []) {
     const L = [Draft.lineup(t1), Draft.lineup(t2)]; if (L.some(l => l.filter(Boolean).length < 5)) return [];
     const used = new Set(prev.flatMap(x => [...(x.picks.B || []), ...(x.picks.R || [])].map(p => p.c))), F = this.FK, min = res.t / 60;
@@ -61,7 +61,7 @@ const Season = {
         const mains = typeof Mastery !== 'undefined' && Mastery.mains ? Mastery.mains(p).filter(e => !used.has(e[0])) : [];
         const c = mains.length ? Mastery.wpick(mains, r()) : null; if (c) used.add(c);
         const q = .9 + ((p.ovr || 70) - 70) / 150, wf = won ? 1.05 : .95, n = () => .85 + r() * .3;
-        out.push([p.id, c, kk[j], dd[j], aa[j], Math.round(F.cs[p.role] * min * q * wf * n()), 0, Math.round(F.dpm[p.role] * min * q * wf * n() * (1 + (kk[j] - 2) * .04))]);
+        out.push([p.id, c, kk[j], dd[j], aa[j], Math.round(F.cs[p.role] * min * q * wf * n()), 0, Math.round(F.dpm[p.role] * min * q * wf * n() * (1 + (kk[j] - 2) * .02))]);
       });
     });
     return out;

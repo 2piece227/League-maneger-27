@@ -17,7 +17,7 @@ const Fixtures = {
   ord(m) { const o = Schedule.orderLabel(m); return o ? `<span class="fx-ord">${o}</span>` : ''; },
   evBadge(ev) {
     const [, cls] = Schedule.KIND[ev.kind];
-    return `<span class="fx-ev ${cls}">${UI.esc(ev.short)}</span>`;
+    return `<span class="fx-ev ${cls} ev-link" data-ev="${ev.id}" title="대회 페이지">${UI.esc(ev.short)}</span>`;
   },
   time(m) { return m.t.slice(11, 16); },
 
@@ -125,7 +125,7 @@ const Fixtures = {
           <div class="fx-tl-row ${state}">
             <i class="fx-dot ${cls}"></i>
             <div>
-              <b>${UI.esc(e.label)}</b>
+              <b class="ev-link" data-ev="${e.id}">${UI.esc(e.label)}</b>
               <span>${e.start.slice(5).replace('-', '.')} – ${e.end.slice(5).replace('-', '.')} · ${kind}${state === 'now' ? ' · <em>진행 중</em>' : ''}</span>
               ${Schedule.releaseText(e) ? `<small class="${Schedule.released(e) ? 'rel' : 'unrel'}">${Schedule.releaseText(e)}</small>` : ''}
             </div>
