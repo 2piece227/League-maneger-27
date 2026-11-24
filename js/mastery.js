@@ -10,7 +10,7 @@ const Mastery = {
       this._p = Promise.all([
         Champions.load(),
         fetch('data/champion-pools.json').then(r => r.ok ? r.json() : { pools: {}, meta: {} }).catch(() => ({ pools: {}, meta: {} })),
-      ]).then(([, d]) => { this.pools = d.pools; this.meta = d.meta; this.recalc(); });
+      ]).then(([, d]) => { this.base = d.pools || {}; this.meta = d.meta; this.merge(); this.recalc(); });
     }
     return this._p;
   },
@@ -37,6 +37,54 @@ const Mastery = {
   progress(e) {
     if (e.m >= MasteryModel.MAX) return '<div class="ms-next max"><i style="width:100%"></i></div>';
     return `<div class="ms-next" title="다음 단계(${e.m + 1})까지 ${Math.round(e.next * 100)}% · 대회 약 ${Math.max(1, Math.ceil(e.need / MasteryModel.PRO_XP))}판 필요"><i style="width:${Math.round(e.next * 100)}%"></i></div>`;
+  },
+
+  // ---------- 게임 안에서 쌓이는 기록 (공식전 · 솔랭) ----------
+  //   원본(data/champion-pools.json, 2024년 이후 실제 기록)은 그대로 두고, 게임에서 쌓인 판수를 App.state.mx에 따로 모아 합친다.
+  //   예전에는 숙련도가 처음 계산된 뒤로 공식전 · 솔랭을 아무리 해도 그대로였다 (베타 제보)
+  extra() { return (App.state.mx ||= {}); },
+  slot(pid, c) { return ((this.extra()[pid] ||= {})[c] ||= { g: 0, w: 0, k: 0, d: 0, a: 0, s: 0 }); },
+  addPro(pid, c, win, k = 0, d = 0, a = 0) { if (!pid || !c) return; const x = this.slot(pid, c); x.g++; if (win) x.w++; x.k += k; x.d += d; x.a += a; this.dirty = true; },
+  addSolo(pid, c, n = 1) { if (!pid || !c) return; this.slot(pid, c).s += n; this.dirty = true; },
+  merge() {
+    const base = this.base || {}, X = this.extra(), out = {};
+    for (const [pid, list] of Object.entries(base)) out[pid] = list.map(e => ({ ...e }));
+    for (const [pid, cs] of Object.entries(X)) {
+      const L = out[pid] ||= [];
+      for (const [c, x] of Object.entries(cs)) {
+        let e = L.find(y => y.c === c);
+        if (!e) { e = { c, g: 0, w: 0, k: 0, d: 0, a: 0, g26: 0 }; L.push(e); }
+        const g0 = e.g; e.g += x.g; e.w += x.w; e.k += x.k; e.d += x.d; e.a += x.a; e.g26 = (e.g26 || 0) + x.g;
+        e.solo = (g0 ? MasteryModel.estSoloGames(g0) : 0) + x.s;   // 원본 기록이 있으면 그만큼 추정한 솔랭 + 게임 안 솔랭
+      }
+    }
+    this.pools = out;
+  },
+  refresh() { if (!this.dirty || !this.base) return; this.dirty = false; this.merge(); this.recalc(); if (typeof Contract !== 'undefined') App.db && App.db.teams.forEach(t => t.players.forEach(p => { delete p._sc; })); },
+  // 주력 챔피언 (기록이 없는 선수는 포지션 챔피언 6개를 시드로 고정)
+  mains(p) {
+    const L = this.pool(p.id); if (L.length) return L.map(e => [e.c, e.g + (e.g26 || 0) * 2 + (e.solo || 0) * .05 + 1]);
+    const cs = Champions.list.filter(c => (c.positions || []).includes(p.role)); if (!cs.length) return [];
+    const r = k => G.rand(p.id, 'mx' + k), pick = []; for (let i = 0; pick.length < Math.min(6, cs.length) && i < 40; i++) { const c = cs[Math.floor(r(i) * cs.length)].id; if (!pick.includes(c)) pick.push(c); }
+    return pick.map((c, i) => [c, 6 - i]);
+  },
+  wpick(list, x) { const tot = list.reduce((s, e) => s + e[1], 0); let v = x * tot; for (const e of list) { v -= e[1]; if (v <= 0) return e[0]; } return list.length ? list[0][0] : null; },
+  // 공식전 한 시리즈: 우리 경기(정밀 엔진)는 실제로 쓴 챔피언, 다른 팀끼리의 간이 경기는 주력 챔피언 중에서
+  fromSeries(series, m) {
+    (series.games || []).forEach((x, gi) => {
+      const res = x.result; if (!res) return;
+      if (res.stats && res.stats.length) res.stats.forEach(([pid, c, k, d, a]) => { const h = Player.find(pid); this.addPro(pid, c, !!h && h.t.id === res.win, k, d, a); });
+      else [m.t1, m.t2].forEach(tid => { const t = Schedule.team(tid); if (!t) return; Draft.lineup(t).forEach(p => { if (!p) return; const c = this.wpick(this.mains(p), G.rand(p.id + m.id + gi, 'mxp')); this.addPro(p.id, c, tid === res.win); }); });
+    });
+  },
+  // 솔랭: 1군 · 2군 선수가 매일 (시즌 중 3판 · 스토브 6판). 연습 지시를 내린 챔피언은 45%
+  soloDay(today) {
+    const stove = typeof Market !== 'undefined' && Market.stove(today), n = stove ? 6 : 3;
+    App.db.teams.forEach(t => [...t.players, ...(t.cl || [])].forEach(p => {
+      if (p.role === 'COACH' || p.free) return;
+      const pc = typeof SoloQ !== 'undefined' && SoloQ.pracOn ? SoloQ.pracOn(p.id, today) : null, mains = this.mains(p);
+      for (let i = 0; i < n; i++) { const x = G.rand(p.id + today, 'mxs' + i); this.addSolo(p.id, pc && x < .45 ? pc : this.wpick(mains, G.rand(p.id + today, 'mxw' + i)), 1); }
+    }));
   },
 
   // 다른 화면(프로필·밴픽)에서도 쓰는 조회 함수
@@ -151,3 +199,5 @@ const Mastery = {
 };
 
 Views['roster-mastery'] = el => Mastery.render(el);
+// 매일: 솔랭 숙련도 · 그날 쌓인 기록 반영
+document.addEventListener('DOMContentLoaded', () => Engine.on(today => { if (!App.state.teamId || !Mastery.base) return; Mastery.soloDay(today); Mastery.refresh(); }));   // engine.js가 뒤에 읽힌다
