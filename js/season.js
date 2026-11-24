@@ -95,6 +95,17 @@ const Season = {
       const series = mine ? this.autoSeries(m, plan ? plan.series : null) : this.lightSeries(m);
       this.recordSeries(m.id, series);
     }
+    // 같은 날 앞 경기 결과로 그날 다음 대진이 정해지는 대회(EWC · 퍼스트 스탠드 조별, KeSPA컵, MSI 플레이인 등):
+    //   오늘 경기 중 '우리 경기 또는 아직 대진이 비어 있는 경기'보다 앞 시간의 다른 팀 경기는 오늘 미리 처리한다.
+    //   예전에는 다음 날에야 처리돼 우리 대진이 그날이 지난 뒤 정해지고, 다음 날 코치가 대신 치러 버렸다 (베타 제보: 일부 대회가 멈추지 않고 즉시 계산)
+    if (!App.state.unemployed) for (let guard = 0; guard < 60; guard++) {
+      this.resolve();
+      const todays = Schedule.all.filter(m => m.t.slice(0, 10) === today && !m.dead && !this.st()[m.id]);
+      const gate = todays.filter(m => !m.t1 || !m.t2 || m.t1 === my || m.t2 === my).reduce((t, m) => (!t || m.t < t ? m.t : t), null);
+      if (!gate) break;
+      const m = todays.filter(m => m.t1 && m.t2 && m.t1 !== my && m.t2 !== my && m.t < gate).sort((a, b) => a.t.localeCompare(b.t))[0]; if (!m) break;
+      this.recordSeries(m.id, this.lightSeries(m));
+    }
   },
 
   // ---------- 대진 채우기 ----------
