@@ -240,6 +240,7 @@ const Draft = {
     App.state.draft = this.make({ series, teams: us === 'B' ? { B: my.id, R: opp.id } : { B: opp.id, R: my.id }, us, mode: o.mode, official: !!o.key });
     if (scrim) App.state.draft.scrim = scrim;
     this.sel = null; this.selRole = null; this.left = this.TIME;
+    if (typeof Music !== 'undefined') Music.decider(App.state.draft);   // Bo5 5세트: 입장 음악
   },
   // 드래프트 상태 만들기 (us: 우리 진영, 없으면 AI 대 AI)
   make({ series, teams, us = null, mode = 'delegate', official = false }) {

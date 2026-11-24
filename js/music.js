@@ -3,7 +3,7 @@
    경기 중계(match-live)에서는 같은 곡을 작게 깔아 둔다.
    음원은 라이엇 공식 사운드클라우드(soundcloud.com/leagueoflegends)를 사운드클라우드 퍼가기 재생기로 튼다
    (광고 없음 · 저장소에 음원 파일을 올리지 않는다). 곡을 바꾸려면 LISTS만 고치면 된다.
-   음원 파일: assets/music/worlds/ 와 assets/music/draft/ 폴더에 mp3를 넣으면 그 폴더 곡이 플레이리스트가 된다
+   음원 파일: assets/music/worlds/ · draft/ · victory/ · decider/(Bo5 5세트 입장) 폴더에 mp3를 넣으면 그 폴더 곡이 플레이리스트가 된다
    (GitHub 웹에서 올리기만 하면 됨, 코드 수정 없음). 파일 이름은 "가수 - 제목 (연도).mp3".
    폴더 목록은 GitHub API로 읽고, 안 되면 assets/music/playlist.json을 읽는다. 폴더가 비어 있으면 사운드클라우드 곡을 쓴다.
    화면: 오른쪽 아래 떠 있는 재생기. 접으면 음표 버튼 하나. 밴픽 · 중계 화면에서는 자동으로 접힌다. */
@@ -20,7 +20,8 @@ const Music = {
       { sc: 'gods', title: 'GODS', artist: 'NewJeans', year: 2023 },
       { sc: 'awaken-ft-valerie-broussard-ray-chen', title: 'Awaken', artist: 'Valerie Broussard, Ray Chen', year: 2019 },
     ] },
-    victory: { name: '승리', tracks: [] },   // assets/music/victory/ (비어 있으면 승리 음악 없음)
+    victory: { name: '승리', tracks: [] },
+    decider: { name: '마지막 세트', tracks: [] },   // assets/music/decider/ : Bo5 5세트 밴픽 들어가기 전에 잠깐 (비어 있으면 없음)   // assets/music/victory/ (비어 있으면 승리 음악 없음)
     draft: { name: '밴픽', tracks: [
       { sc: 'worlds-2020-orchestral-theme', title: 'Worlds 2020 Orchestral Theme', artist: 'League of Legends', year: 2020 },
       { sc: 'rise-ft-the-glitch-mob-mako', title: 'RISE (Instrumental)', artist: 'The Glitch Mob', year: 2018 },
@@ -75,7 +76,7 @@ const Music = {
       got = {};
       const gh = location.hostname.match(/^([^.]+)\.github\.io$/), repo = location.pathname.split('/')[1];
       if (gh && repo) {
-        for (const k of ['worlds', 'draft', 'victory']) {
+        for (const k of ['worlds', 'draft', 'victory', 'decider']) {
           try {
             const r = await fetch(`https://api.github.com/repos/${gh[1]}/${repo}/contents/assets/music/${k}`);
             if (r.ok) got[k] = (await r.json()).filter(f => f.type === 'file' && this.EXT.test(f.name)).map(f => f.name);
@@ -87,7 +88,7 @@ const Music = {
       }
       try { localStorage.setItem(KEY, JSON.stringify({ t: now, d: got })); } catch (e) {}
     }
-    for (const k of ['worlds', 'draft', 'victory']) {
+    for (const k of ['worlds', 'draft', 'victory', 'decider']) {
       const names = (got[k] || []).filter(n => this.EXT.test(n));
       if (names.length) this.LISTS[k].tracks = names.map(n => this.parse(n, `assets/music/${k}/`));
     }
@@ -181,14 +182,22 @@ const Music = {
     else this.withSC(() => { this.cued = true; this.applyVol(); this.w.getCurrentSound(s => { if (s && s.artwork_url) { this.art[this.url(t)] = s.artwork_url.replace('-large', '-t300x300'); this.paint(); } }); });
   },
   // 승리 음악: 세트 승리는 앞 25초(끝에서 서서히 줄임), 매치 승리는 최대 90초. 그동안 원래 음악은 멈췄다가 끝나면 이어서
-  victory(kind = 'set') {
-    const L = this.LISTS.victory.tracks; if (!L.length || !this.pref.on || this.pref.hide || this.held || !this.unlocked) return;
+  victory(kind = 'set') { this.shot('victory', kind === 'match' ? 90 : 25); },
+  // Bo5 마지막(5)세트: 밴픽 들어가기 전에 입장 음악을 잠깐 (밴픽이 시작되거나 중계로 넘어가면 줄어들며 끝난다)
+  decider(S) {
+    if (!S || S.series.bo !== 5 || S.game !== 5 || S.series._dec) return;
+    S.series._dec = 1; this.shot('decider', 60);
+  },
+  shot(list, lim) {
+    const L = this.LISTS[list].tracks; if (!L.length || !this.pref.on || this.pref.hide || this.held || !this.unlocked) return;
     const t = L[Math.floor(Math.random() * L.length)], was = this.playing;
     if (this.vAudio) { this.vAudio.pause(); clearInterval(this._vf); }
     if (was) this.pause();
-    const a = this.vAudio = new Audio(t.src), vol = (this.pref.vol / 100) * .9, lim = kind === 'match' ? 90 : 25;
+    this._resume = false; this.shotKind = list;
+    const a = this.vAudio = new Audio(t.src), vol = (this.pref.vol / 100) * .9;
     a.volume = vol; a.play().catch(() => {});
-    const done = () => { clearInterval(this._vf); a.pause(); if (this.vAudio === a) this.vAudio = null; if (was && !this.held) this.play(); };
+    const done = () => { clearInterval(this._vf); a.pause(); if (this.vAudio !== a) return; this.vAudio = null; this.endShot = null; if ((was || this._resume) && !this.held) this.play(); };
+    this.endShot = () => { lim = Math.min(lim, a.currentTime + 3); };   // 3초에 걸쳐 줄이고 끝
     a.onended = done;
     this._vf = setInterval(() => { const left = lim - a.currentTime; if (left <= 3) a.volume = Math.max(0, vol * left / 3); if (left <= 0) done(); }, 200);
   },
@@ -212,6 +221,7 @@ const Music = {
     this._userOpen = false; this.layout(r);
     this.duck = r === 'match-live' ? .35 : 1; this.applyVol();
     if (!this.pref.on || !this.unlocked) return;
+    if (this.endShot && this.shotKind === 'decider' && r !== 'match-draft') this.endShot();
     const w = this.want(r); if (w !== this.list) this.fade(() => this.use(w));
   },
   async use(name) {
@@ -229,6 +239,7 @@ const Music = {
   },
   load(play) {
     const t = this.track(); if (!t) return;
+    if (play && this.vAudio) { this._resume = true; play = false; }   // 승리 · 입장 음악이 끝나면 이어서 튼다
     this.paint();
     if (t.src) {
       if (this.w && this.ready) this.w.pause();
