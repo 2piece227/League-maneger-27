@@ -23,7 +23,9 @@ Object.assign(Sim, {
     ['B', 'R'].forEach(k => { g.side[k].plate = { top: 5, mid: 5, bot: 5 }; });
   },
   busySet(g) { if (g.busyT === g.t) return g.busy; const b = new Set(); g.fights.forEach(f => f.mem.forEach(p => b.add(p))); g.busy = b; g.busyT = g.t; return b; },
-  buffed(g, k) { return g.side[k].baronUntil > g.t; },
+  // 바론 버프: 바론을 잡을 때 살아 있던 선수만(p.baronUntil), 죽으면 사라진다. 미니언은 버프 가진 선수 근처(12)에 있을 때만 강해진다 (예전에는 팀 전체 상시 — 베타 제보)
+  baronOn(g, p) { return !p.dead && (p.baronUntil || 0) > g.t; },
+  buffed(g, k, at) { return g.pl.some(p => p.side === k && this.baronOn(g, p) && (!at || this.dist(p.pos, at) <= 12)); },
   frontW(g, lane, k) { const W = g.wv[lane][k]; let b = null; for (const w of W) if (w.n > .05 && (!b || (k === 'B' ? w.s > b.s : w.s < b.s))) b = w; return b; },
   // 그 자리 근처에 있는 side 팀 미니언 무리
   minNear(g, side, pos, r) { const out = []; for (const l of this.LANES3) for (const w of g.wv[l][side]) if (w.n > .05 && this.dist(w.p, pos) <= r) out.push(w); return out; },
@@ -71,7 +73,7 @@ Object.assign(Sim, {
             st.tg = null; st.heat = 0;
           } else if (!(v.dive > g.t) || v.hp < .35) { v.dive = 0; v.noDive = g.t + 15; v.shotT = g.t; v.recall = 0; if (!v.hold || this.danger(g, o, v.hold.to)) this.retreat(g, v, 10); }   // 다이브가 아니면 맞는 즉시 빠진다
         } else {
-          const w = mins.sort((x, y) => this.dist(x.p, tw.pos) - this.dist(y.p, tw.pos))[0], dn = Math.min(w.n, this.TW_MIN / (this.buffed(g, o) ? 2 : 1) / (w.sup ? 1.5 : 1));
+          const w = mins.sort((x, y) => this.dist(x.p, tw.pos) - this.dist(y.p, tw.pos))[0], dn = Math.min(w.n, this.TW_MIN / (this.buffed(g, o, w.p) ? 2 : 1) / (w.sup ? 1.5 : 1));
           w.n -= dn; st.heat = 0; st.to = w; this.csGive(g, k, w.p, dn, m, true);
         }
       });
@@ -120,7 +122,7 @@ Object.assign(Sim, {
     if (atk.length < 3) return false;
     const deep = /nexus/.test(st.kind) || st.kind === 'inhib' || st.i >= 2;   // 본진 · 억제기 포탑
     const go = (deep && this.lead(g, k) >= 3000 && atk.length >= def.length && atk.length >= 3)   // 상대 본진 · 억제기 앞: 크게 앞서면 들어간다 (앞에서 가만히 서 있다 미니언이 끝내던 문제)
-      || (atk.length - def.length >= 2 && (m >= 22 || deep)) || (!def.length && atk.length >= (deep ? 3 : 4)) || (g.side[k].baronUntil > g.t && atk.length >= def.length);
+      || (atk.length - def.length >= 2 && (m >= 22 || deep)) || (!def.length && atk.length >= (deep ? 3 : 4)) || (atk.filter(p => this.baronOn(g, p)).length >= 2 && atk.length >= def.length);   // 바론 버프가 남은 선수가 둘 이상
     if (!go) return false;
     const front = ['tank', 'bruiser', 'dive'];
     atk.forEach(p => { const lead = front.includes(p.kind); const d = this.dist(p.pos, st.pos) || 1, r = lead ? 2.2 : 4.6;   // 앞라인은 포탑 가까이, 딜러는 사거리 끝에서
@@ -200,10 +202,10 @@ Object.assign(Sim, {
       ['B', 'R'].forEach(k => { const f = this.frontW(g, lane, k); if (!f) return; W[k] = W[k].filter(w => { if (w === f || Math.abs(w.s - f.s) > .9 / L) return true; f.n += w.n; f.sup = f.sup || w.sup; return false; }); });
       W.B.forEach(w => { w.p = Rift.lane(lane, w.s); }); W.R.forEach(w => { w.p = Rift.lane(lane, w.s); });
       const a = this.frontW(g, lane, 'B'), b = this.frontW(g, lane, 'R'), met = a && b && b.s - a.s <= gap * 1.05;
-      const pow = (w, k) => w.n * (w.sup ? 1.4 : 1) * (this.buffed(g, k) ? 1.5 : 1), loss = { B: 0, R: 0 };
-      if (met) { loss.R += pow(a, 'B') * this.MIN_D / (this.buffed(g, 'R') ? 2 : 1); loss.B += pow(b, 'R') * this.MIN_D / (this.buffed(g, 'B') ? 2 : 1); }
+      const pow = (w, k) => w.n * (w.sup ? 1.4 : 1) * (this.buffed(g, k, w.p) ? 1.5 : 1), loss = { B: 0, R: 0 };
+      if (met) { loss.R += pow(a, 'B') * this.MIN_D / (this.buffed(g, 'R', b.p) ? 2 : 1); loss.B += pow(b, 'R') * this.MIN_D / (this.buffed(g, 'B', a.p) ? 2 : 1); }
       // 챔피언의 라인 정리 (상대 맨 앞 무리 근처에 있을 때)
-      [['B', b], ['R', a]].forEach(([k, w]) => { if (!w) return; let c = 0; this.alive(g, k).forEach(p => { if (ok(p) && this.dist(p.pos, w.p) <= 9) c += this.pushRate(g, p, m); }); loss[this.other(k)] += c / (w.sup ? 1.5 : 1) / (this.buffed(g, this.other(k)) ? 2 : 1); });   // 슈퍼 미니언 · 바론 미니언은 잘 안 죽는다
+      [['B', b], ['R', a]].forEach(([k, w]) => { if (!w) return; let c = 0; this.alive(g, k).forEach(p => { if (ok(p) && this.dist(p.pos, w.p) <= 9) c += this.pushRate(g, p, m); }); loss[this.other(k)] += c / (w.sup ? 1.5 : 1) / (this.buffed(g, this.other(k), w.p) ? 2 : 1); });   // 슈퍼 미니언 · 바론 미니언은 잘 안 죽는다
       [['B', a], ['R', b]].forEach(([k, w]) => { if (!w || !loss[k]) return; const dn = Math.min(w.n, loss[k]); w.n -= dn; this.csGive(g, this.other(k), w.p, dn, m, false); });
       // 막는 웨이브가 없으면 구조물을 친다
       if (!met) [['B', a], ['R', b]].forEach(([k, w]) => {

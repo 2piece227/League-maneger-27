@@ -341,7 +341,7 @@ const Sim = {
     v += m < 14 ? (c.early - .4) * 10 : m < 26 ? ((c.fight + c.engage) / 2 - .4) * 9 : (c.late - .4) * 10;
     v += (s.coach - 10) * .15;   // 전술 적합도 보너스는 없다: 전술은 경기 중 판단(교전·오브젝트·운영·목표·시야)으로만 결과에 닿는다
     v += Math.max(-this.SNOW_MAX, Math.min(this.SNOW_MAX, this.lead(g, k) / 1000 * this.SNOW));   // 스노우볼 (실제: 이긴 팀 골드 +1만, 킬 2배)
-    if (s.baronUntil > g.t) v += 6;
+    v += 6 * ps.filter(p => this.baronOn(g, p)).length / ps.length;   // 바론 버프는 가진 선수만큼
     v += this.dragPow(s);
     if (s.elderUntil > g.t) v += 8;
     return v;
@@ -472,6 +472,7 @@ const Sim = {
     if (victim.dead) return;
     if (this.audit && !far && this.dist(killer.pos, victim.pos) > 22) this.audit.push(`${this.clock(g.t)} 먼 거리 처치 ${killer.name}(${killer.pos.map(Math.round)}) → ${victim.name}(${victim.pos.map(Math.round)})`);
     const first = !g.kills.length;
+    victim.baronUntil = 0;   // 죽으면 바론 버프가 사라진다
     victim.dead = g.t + Math.round(8 + this.min(g) * 1.3); victim.d++; victim.hp = 0; victim.recall = 0; victim.jq = []; victim.tpCh = null; victim.hold = null; victim.fled = 0;
     // 처치 골드 (실제 규칙): 300 + 현상금(2킬 이상 앞서 있던 상대부터, 최대 700) + 첫 킬 100. 어시스트는 150을 나눠 갖는다 (예전에는 한 명당 120이라 초반 골드가 실제의 약 2배로 벌어졌다 — 베타 피드백)
     killer.k++; killer.gold += 300 + Math.min(700, Math.max(0, victim.k - victim.d - 1) * 100) + (first ? 100 : 0);
@@ -932,7 +933,7 @@ const Sim = {
       }
       else if (o === 'herald') { s.herald++; s.heraldReady = g.t + 150; this.mark(g, wk, 'herald', 'riftherald', '전령 처치'); ob.at = null; s.push = { lane: g.r() < .5 ? 'top' : 'mid', until: g.t + 60 }; this.line(g, 'herald', { t: s.t.short, lane: this.laneKo(s.push.lane) }); }
       else {
-        s.baron++; s.baronUntil = g.t + 180; this.mark(g, wk, 'baron', 'baron', '바론 처치'); ob.at = g.t + 420; this.objGo(g, ob);
+        s.baron++; s.baronUntil = g.t + 180; g.pl.forEach(p => { if (p.side === wk && !p.dead) p.baronUntil = g.t + 180; });   // 살아 있던 선수만 (죽으면 사라진다) this.mark(g, wk, 'baron', 'baron', '바론 처치'); ob.at = g.t + 420; this.objGo(g, ob);
         // 사람을 잃어 가며 먹은 바론이면 '상처뿐인 바론'
         const hurt = g.pl.filter(p => p.side === wk && p.dead).length >= 2;
         (this.line(g, hurt ? 'baronHurt' : 'baron', { t: s.t.short }), !hurt && g.r() < .5 && this.line(g, 'baronWhy', { l: g.side[this.other(wk)].t.short }));
@@ -1101,7 +1102,7 @@ const Sim = {
       const reset = g.t - s.reset < 25 && g.t - p.lastBack > 60;
       const oom = p.mpMax && p.mpCur < p.mpMax * .15 && m >= 3;   // 마나가 바닥나면 귀환
       if (p.hp < .25 || rush || (oom && !busy) || (!busy && (reset || (money && g.r() < .35)))) {
-        const ch = g.side[p.side].baronUntil > g.t ? Math.ceil(this.RECALL_CH / 2) : this.RECALL_CH;   // 바론 버프: 강화 귀환 (절반)
+        const ch = this.baronOn(g, p) ? Math.ceil(this.RECALL_CH / 2) : this.RECALL_CH;   // 바론 버프: 강화 귀환 (절반, 버프 가진 선수만)
         p.recall = g.t + ch; p.jq = []; p.hold = null;
         g.fx.push({ type: 'recall', side: p.side, at: [...p.pos], t: g.t, dur: ch, empowered: ch < this.RECALL_CH });
       }

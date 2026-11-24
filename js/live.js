@@ -245,7 +245,7 @@ const Live = {
     // 미니언 웨이브: 무리마다 남은 수만큼 작은 점 (슈퍼 미니언이 낀 무리는 큰 점 하나 더). 틱 사이는 걸어온 만큼 이어 그린다
     if (g.wv) for (const l of Sim.LANES3) for (const k of ['B', 'R']) for (const w of g.wv[l][k]) {
       const a = w.pp || w.p, px = a[0] + (w.p[0] - a[0]) * (g.over ? 1 : f), py = a[1] + (w.p[1] - a[1]) * (g.over ? 1 : f), n = Math.min(8, Math.ceil(w.n)), r = Math.max(1.6, R * .17);
-      c.fillStyle = Sim.buffed(g, k) ? (k === 'B' ? '#a98bff' : '#c77dff') : k === 'B' ? '#7db8ff' : '#ff8d9b'; c.strokeStyle = 'rgba(5,8,14,.9)'; c.lineWidth = 1;   // 바론 버프 미니언은 보라색
+      c.fillStyle = Sim.buffed(g, k, w.p) ? (k === 'B' ? '#a98bff' : '#c77dff') : k === 'B' ? '#7db8ff' : '#ff8d9b'; c.strokeStyle = 'rgba(5,8,14,.9)'; c.lineWidth = 1;   // 바론 버프 미니언은 보라색
       for (let i = 0; i < n; i++) { const o = this.MOFF[i]; c.beginPath(); c.arc(X(px + o[0]), Y(py + o[1]), i === 0 && w.sup ? r * 1.9 : r, 0, TAU); c.fill(); c.stroke(); }
     }
     // 시야 보기: 한 팀을 고르면 그 팀 시야 밖은 어둡게, 안 보이는 상대는 숨긴다. 양 팀은 각 팀 시야를 옅은 색으로
