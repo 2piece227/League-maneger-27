@@ -12,6 +12,7 @@ const Awards = {
   // ---------- 시즌 기록 ----------
   add(pid, m, v, won, pog) {
     if (!pid || !m) return;
+    (App.state.lp ||= {})[pid] = Clock.today(); App.state.lpAny = Clock.today();   // 최근 공식전 출전 (성장 출전 보너스: js/squad.js playMul)
     const Y = this.yr(m), P = (this.st().ps[Y] ||= {});
     [m.league || 'INTL', 'ALL'].forEach(k => { const r = ((P[k] ||= {})[pid] ||= [0, 0, 0, 0]); r[0]++; r[1] += won ? 1 : 0; r[2] += pog ? 1 : 0; r[3] = Math.round((r[3] + Math.max(3, Math.min(10, v))) * 10) / 10; });   // 정밀 엔진 경기(우리 팀)도 경량 시뮬과 같은 1~10 척도
   },

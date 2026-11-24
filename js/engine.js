@@ -178,7 +178,7 @@ const Engine = {
     App.state.applications = {};
     App.state.rel = null; World.rel();
     App.state.morale = {};
-    App.state.squad = {}; App.state.dev = {}; App.state.clTable = null; // 하부 선수단은 옛 구단에 남는다 (생성 유스는 소속(org)이 있어 그대로 둔다 — 비우면 리그 전체 아카데미가 사라졌다)
+    App.state.squad = {}; App.state.clTable = null;   // 성장 기록(App.state.dev)은 리그 전체 선수 것이라 지우지 않는다 // 하부 선수단은 옛 구단에 남는다 (생성 유스는 소속(org)이 있어 그대로 둔다 — 비우면 리그 전체 아카데미가 사라졌다)
     Squad.apply();
     Contract.grace(t);   // 부임하자마자 계약이 끝나는 선수는 열흘 유예
     Inbox.push({ from: { name: `${t.short} 사무국장`, role: 'board' }, subject: `${t.name} 감독 부임을 환영합니다`, priority: 'urgent', stop: true,

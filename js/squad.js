@@ -220,6 +220,7 @@ const Squad = {
     // 다른 팀은 포지션별로 가치가 높은 선수가 주전
     App.db.teams.filter(t => t.id !== App.state.teamId).forEach(t => { t.players.sort((a, b) => Contract.score(b, t) - Contract.score(a, t)); MOCK.markSubs(t.players); });
     // 모든 팀 선수: 현재 기량은 능력치에서, 잠재력은 없으면 나이 · 아카데미 수준으로 (1군 선수는 보통 수준 50)
+    { const dev = this.dev(); App.db.teams.forEach(x => [...x.players, ...(x.cl || [])].forEach(p => { if (dev[p.id] && !p.gen) Object.assign(p, dev[p.id]); })); }   // 성장 · 노쇠 기록 (모든 팀)
     App.db.teams.forEach(x => { x.players.forEach(p => this.rate(p)); (x.cl || []).forEach(p => this.rate(p, this.q(x.id))); });
     const t = this.team(); if (!t) return;
     this.migrate();
@@ -383,7 +384,7 @@ const Squad = {
   // ---------- 성장 ----------
   grow(p, lv, mult = 1) {
     if (p.ca == null || p.pa == null || !p.attributes) return;
-    const ageMul = (p.age || 20) <= 18 ? 1.25 : (p.age || 20) <= 21 ? 1 : (p.age || 20) <= 24 ? .6 : .3;
+    const ageMul = (p.age || 20) <= 18 ? 1.25 : (p.age || 20) <= 21 ? 1 : (p.age || 20) <= 24 ? .6 : (p.age || 20) <= 26 ? .3 : 0;
     const d = Math.max(0, p.pa - p.ca) * (mult === 1 ? this.GROW[lv] * (.5 + G.rand(p.id + Clock.today(), 'grow')) : mult) * ageMul;
     if (d <= 0) return;
     p.ca = Math.min(p.pa, p.ca + d);
@@ -394,10 +395,37 @@ const Squad = {
     if (!p.gen) this.dev()[p.id] = { ca: p.ca, attributes: p.attributes, evalCa: p.evalCa };
   },
 
+  // ---------- 실제 선수 성장 · 노쇠 (모든 팀 1군 · 2군) ----------
+  //   예전에는 생성 유스만 자라서 실제 유망주(클라우드 등)를 1군 주전으로 1년 써도 그대로였다 (베타 제보)
+  //   성장: 잠재력까지 남은 차이 × 하루 비율 × 나이 × 출전(최근 2주 공식전 1.5배 · 평점, 1군 벤치 0.5배, 비시즌은 보통)
+  //   노쇠: 27세부터 피지컬 · 라인전 · 반응이 해마다 조금씩 줄고(30세 이후 최대 연 1.2), 운영 능력은 24~31세에 조금씩 는다
+  GROW_REAL: { first: .0016, cl: .0013 },
+  playMul(p, lv, today) {
+    const lp = (App.state.lp || {})[p.id], any = App.state.lpAny;
+    if (!any || Fmt.daysBetween(any, today) > 14) return 1;                                   // 비시즌
+    if (lp && Fmt.daysBetween(lp, today) <= 14) { const r = (App.state.ratings || {})[p.id] || [], avg = r.length ? r.reduce((a, b) => a + b, 0) / r.length : 6.3; return 1.5 * Math.max(.7, Math.min(1.3, 1 + (avg - 6.3) / 2.5)); }
+    return lv === 'first' ? .5 : 1;                                                             // 1군 벤치는 느리다 (2군은 2군 경기로)
+  },
+  ageReal(p, age) {
+    const down = Math.min(1.2, (age - 26) * .3) / 365, up = age <= 31 ? .25 / 365 : 0;
+    Attributes.AGE_DOWN.forEach(k => { if (p.attributes.physical && k in p.attributes.physical) p.attributes.physical[k] = Math.max(1, p.attributes.physical[k] - down); });
+    if (up) Attributes.AGE_UP.forEach(k => { if (p.attributes.macro && k in p.attributes.macro) p.attributes.macro[k] = Math.min(20, p.attributes.macro[k] + up); });
+    p.ovr = Attributes.overall(p.attributes, p.role); p.ca = this.round(Attributes.raw(p.attributes, p.role));
+    this.dev()[p.id] = { ...(this.dev()[p.id] || {}), ca: p.ca, attributes: p.attributes };
+  },
+  growReal(today) {
+    App.db.teams.forEach(t => [...t.players.map(p => [p, 'first']), ...(t.cl || []).map(p => [p, 'cl'])].forEach(([p, lv]) => {
+      if (p.gen || p.made || p.role === 'COACH' || !p.attributes || p.free) return;
+      const age = p.age || 22;
+      if (age >= 27) return this.ageReal(p, age);
+      this.grow(p, lv, this.GROW_REAL[lv] * (.5 + G.rand(p.id + today, 'gr')) * this.playMul(p, lv, today));
+    }));
+  },
+
   // ---------- 내부 평가: 3·6·9·12월 1일, 선수별 보고서 ----------
   evalDay(today) {
     if (!['03-01', '06-01', '09-01', '12-01'].includes(today.slice(5))) return;
-    const me = this.team(), list = [...me.cl.map(p => [p, 'cl']), ...me.academy.map(p => [p, 'academy'])];
+    const me = this.team(), list = [...me.players.filter(p => (p.age || 30) <= 22 && p.pa != null && p.pa - p.ca > .3).map(p => [p, 'first']), ...me.cl.map(p => [p, 'cl']), ...me.academy.map(p => [p, 'academy'])];   // 1군 유망주(22세 이하)도
     if (!list.length) return;
     const lab = Object.assign({}, ...Object.values(Attributes.groups).map(g => g.keys), Attributes.role[''] || {}, ...Object.values(Attributes.role));
     const rep = list.map(([p, lv]) => {
@@ -406,13 +434,14 @@ const Squad = {
       const up = p.evalCa == null ? null : p.ca - p.evalCa;
       const ov = p.ovr || this.toOvr(p.ca, p.role), left = p.pa - p.ca;
       const opinion = lv === 'academy' ? (ov >= 62 ? '챌린저스 콜업을 추천합니다.' : left < .4 && ov < 55 ? '성장이 멈췄습니다. 방출을 고려해 볼 만합니다.' : '지금처럼 아카데미에서 키우는 게 좋겠습니다.')
+        : lv === 'first' ? (left < .4 ? '정점에 가까워졌습니다.' : p.sub ? '벤치에서는 성장이 느립니다. 출전 기회를 주거나 2군에서 뛰게 하는 것도 방법입니다.' : '주전 경험을 쌓으며 꾸준히 크고 있습니다.')
         : (ov >= 78 ? '1군 콜업을 검토해 볼 만합니다.' : left < .4 && ov < 70 ? '더 오르기는 어려워 보입니다. 거취를 고민해야 합니다.' : '챌린저스에서 경험을 더 쌓아야 합니다.');
       p.evalCa = p.ca;
       if (!p.gen) this.dev()[p.id] = { ...(this.dev()[p.id] || {}), evalCa: p.ca };
       return `■ ${p.name} (${this.LV[lv]} · ${G.ROLE_KO[p.role]} · ${p.age || '-'}세)\n  현재 기량 ${Attributes.starText(p.ca)} (OVR ${ov})  잠재력 ${Attributes.starText(p.pa)} (최고 OVR ${this.potRange(p)} 예상)\n  강점: ${lab[vals[0][0]]}, ${lab[vals[1][0]]} / 약점: ${lab[vals.at(-1)[0]]}\n  지난 평가 이후: ${up == null ? '첫 평가' : up >= .5 ? '크게 성장' : up >= .15 ? '꾸준히 성장' : '정체'}\n  의견: ${opinion}`;
     });
-    Inbox.push({ from: { name: `${this.coach()} 코치`, role: 'coach' }, subject: `하부 선수단 내부 평가 보고서 (${+today.slice(5, 7)}월)`, priority: 'todo', link: 'roster-challengers',
-      body: `챌린저스와 아카데미 선수 ${list.length}명의 내부 평가 결과입니다.\n\n${rep.join('\n\n')}` });
+    Inbox.push({ from: { name: `${this.coach()} 코치`, role: 'coach' }, subject: `유망주 내부 평가 보고서 (${+today.slice(5, 7)}월)`, priority: 'todo', link: 'roster-challengers',
+      body: `1군 유망주 · 챌린저스 · 아카데미 선수 ${list.length}명의 내부 평가 결과입니다.\n\n${rep.join('\n\n')}` });
   },
 };
 
@@ -421,7 +450,8 @@ Engine.on(today => {
   me.academy.forEach(p => Squad.grow(p, 'academy'));
   App.db.teams.forEach(x => { if (x !== me) (x.academy || []).forEach(p => Squad.grow(p, 'academy')); });   // 다른 팀 유스도 같은 속도로 자란다
   Squad.ageGen(today); Squad.intake(today);
-  me.cl.forEach(p => Squad.grow(p, 'cl'));
+  me.cl.filter(p => p.gen).forEach(p => Squad.grow(p, 'cl'));
+  Squad.growReal(today);   // 모든 팀 실제 선수 성장 · 노쇠
   me.players.filter(p => p.gen).forEach(p => Squad.grow(p, 'first'));
   Squad.clDay(today);
   Squad.academyDay(today);
