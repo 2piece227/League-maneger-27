@@ -59,7 +59,7 @@ Object.assign(Sim, {
         if (st.tg && !foes.includes(st.tg)) { st.tg = null; st.heat = 0; }
         // 어그로: 사거리 안에서 아군 챔피언을 때린 적 (포탑에 가까운 쪽부터)
         if (!st.tg) { const ag = foes.filter(p => p.hitAt === g.t && p.hitTo && p.hitTo.side === k && this.dist(p.hitTo.pos, tw.pos) <= this.TW_R + 4); if (ag.length) st.tg = ag.sort((x, y) => this.dist(x.pos, tw.pos) - this.dist(y.pos, tw.pos))[0]; }
-        if (!st.tg && !mins.length) st.tg = foes.sort((x, y) => this.dist(x.pos, tw.pos) - this.dist(y.pos, tw.pos))[0];
+        if (!st.tg && !mins.length) st.tg = foes.sort((x, y) => (['tank', 'bruiser'].includes(y.kind) ? 1 : 0) - (['tank', 'bruiser'].includes(x.kind) ? 1 : 0) || this.dist(x.pos, tw.pos) - this.dist(y.pos, tw.pos))[0];   // 탱킹 공성: 앞라인이 먼저 맞는다
         st.at = g.t;
         if (st.tg) {
           const v = st.tg; st.to = v; g.twShots++;
@@ -107,14 +107,35 @@ Object.assign(Sim, {
   // 챔피언 한 명이 1초에 구조물에 주는 피해
   ctOf(p, m) { return (m < 14 ? .009 + .0006 * m : .016 + (m - 14) * .0008) * ({ adc: 1.35, mage: .95, arti: .95, bruiser: 1, dive: 1, tank: .75, ench: .5 })[p.kind]; },
   // 공성 (매초): 구조물 옆에 붙은 챔피언이 친다. 미니언 없이 치면 포탑이 단단하다 (백도어 방지)
+  // 포탑 탱킹 공성: 우리 미니언이 없어도 (18분 이후) 인원이 2명 이상 많거나 · 지키는 상대가 없거나 · 바론 버프가 있으면 들어가서 친다.
+  //   탱커 · 브루저가 앞장서고(포탑이 먼저 노린다) 체력이 빠지면 물러난다. 예전에는 미니언이 없으면 사거리에 아예 안 들어가서
+  //   쌍둥이 포탑 앞에서 미니언만 기다리다 역다이브를 맞았다 (베타 피드백)
+  siegeGo(g, m, k, st) {
+    if (this.SIEGE_GO === false) return false;
+    if (m < 20 || !(st.kind === 'tower' || st.kind === 'nexusT' || st.kind === 'inhib' || st.kind === 'nexus')) return false;
+    if (this.objUp(g, 'baron') && this.baronCall(g, k) && !/nexus/.test(st.kind)) return false;   // 바론을 칠 수 있으면 바론 먼저 (본진 앞이 아니면)
+    const o = this.other(k), atk = this.alive(g, k).filter(p => !p.recall && !p.tpCh && this.dist(p.pos, st.pos) <= 14 && p.hp > .35), def = this.alive(g, o).filter(p => !p.recall && this.dist(p.pos, st.pos) <= 16);
+    if (atk.length < 3) return false;
+    const deep = /nexus/.test(st.kind) || st.kind === 'inhib' || st.i >= 2;   // 본진 · 억제기 포탑
+    const go = (atk.length - def.length >= 2 && (m >= 22 || deep)) || (!def.length && atk.length >= (deep ? 3 : 4)) || (g.side[k].baronUntil > g.t && atk.length >= def.length);
+    if (!go) return false;
+    const front = ['tank', 'bruiser', 'dive'];
+    atk.forEach(p => { const lead = front.includes(p.kind); const d = this.dist(p.pos, st.pos) || 1, r = lead ? 2.2 : 4.6;   // 앞라인은 포탑 가까이, 딜러는 사거리 끝에서
+      const to = [st.pos[0] + (p.pos[0] - st.pos[0]) / d * r, st.pos[1] + (p.pos[1] - st.pos[1]) / d * r];
+      p.dive = g.t + 2; p.hold = { to: this.clampP(to), until: g.t + 2 }; });
+    if (!g.siegeSaid || g.t - g.siegeSaid > 60) { g.siegeSaid = g.t; if (g.r() < .6) this.line(g, 'siegeDive', { t: g.side[k].t.short }); }
+    return true;
+  },
   siegeTick(g, m) {
     const busy = this.busySet(g), seen = new Set();
     const order = ['B', 'R'].flatMap(k => this.LANES3.map(lane => [k, lane, this.structOf(g, this.other(k), lane)])).sort((x, y) => (/nexus/.test(y[2].kind) ? 1 : 0) - (/nexus/.test(x[2].kind) ? 1 : 0));
     for (const [k, lane, st] of order) {
       if (g.over) return;
       const key = k + st.kind + (st.i ?? '') + (/nexus/.test(st.kind) ? '' : lane); if (seen.has(key)) continue; seen.add(key);
+      const shoot = st.kind === 'tower' || st.kind === 'nexusT', bare0 = shoot && !this.minNear(g, k, st.pos, this.TW_R + .5).length;
+      const forced = bare0 && this.siegeGo(g, m, k, st);
       const atk = this.alive(g, k).filter(p => !p.recall && !p.tpCh && !busy.has(p) && this.dist(p.pos, st.pos) <= 6.5); if (!atk.length) continue;
-      const shoot = st.kind === 'tower' || st.kind === 'nexusT', bare = shoot && !this.minNear(g, k, st.pos, this.TW_R + .5).length;
+      const bare = bare0 && !forced;   // 탱킹 공성 중이면 미니언 없이도 제대로 친다
       const dmg = atk.reduce((a, p) => a + this.ctOf(p, m), 0) * (st.kind === 'nexus' ? 1.4 : 1) * (bare ? .4 : 1) * this.gate(st, m) * this.TW_K * (1 + Math.max(0, Math.min(1, (this.lead(g, k) - 6000) / 8000)) * this.CLOSE);
       if (dmg > 0) { atk.forEach(p => { p.hitTw = g.t; p.hitTwAt = st.pos; }); this.hit(g, k, lane, st, dmg); }
     }

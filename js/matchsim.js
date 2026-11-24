@@ -850,7 +850,7 @@ const Sim = {
     if (!this.objUp(g, 'baron')) return false;
     const deadO = g.pl.filter(p => p.side !== k && p.dead).length, deadK = g.pl.filter(p => p.side === k && p.dead).length;
     const m = this.min(g), lead = this.lead(g, k);
-    const mine = lead > 7000 || (deadO - deadK >= 3 && lead > -2000) || (m >= 24 && (lead > 3000 || deadO - deadK >= 2)) || (m >= 30 && lead > 1500) || m >= 38;
+    const mine = lead > 7000 || (deadO - deadK >= 3 && lead > -2000) || (m >= 24 && (lead > 3000 || deadO - deadK >= 2)) || (m >= 30 && lead > 0) || m >= 35;   // 팽팽한 경기도 30분 이후 조금이라도 앞서면, 35분 이후면 바론을 노린다
     const contest = this.near(g, this.other(k), Rift.pos('BAR'), 18).length >= 3 && this.lead(g, k) > -6000;
     return mine || contest;
   },
@@ -1154,6 +1154,7 @@ const Sim = {
     this.waves(g, m); this.towers(g, m); this.siegeTick(g, m); if (g.over) return;
     if (!g.over) this.objectives(g, m);   // 오브젝트는 매초 깎인다 (예전에는 10초마다 한 번에 깎여 체력이 갑자기 0이 됐다)
     if (g.t % 2 === 0 && !g.over) this.encounter(g, m);
+    if (g.t % 4 === 0 && !g.over) this.pickOff(g, m);
     if (dec && !g.over) this.decide(g, m);
     g.fx = g.fx.filter(f => g.t - f.t <= (f.dur || 2));
     if (prev) g.pl.forEach((p, i) => {
@@ -1230,6 +1231,27 @@ const Sim = {
     }
   },
   // 마주침: 적과 가까이(5.5) 마주치면 그냥 지나치지 않는다 — 불리한 쪽은 물러나고, 아니면 싸운다 (2초마다 본다)
+  // 끊기: 아군 없이 혼자 있는 상대(와드 · 사이드 운영)를 근처 우리 선수 2~3명이 노리러 간다 (8분 이후, 상대 포탑 밖).
+  //   교전 성향(신중 · 보통 · 적극)에 따라 빈도가 다르고, 실제로 붙으면 encounter가 싸움을 연다. 예전에는 혼자 와드 박는 서폿을 보고만 있었다 (베타 피드백)
+  PICK: { safe: .05, norm: .1, aggr: .17 },
+  pickOff(g, m) {
+    if (this.PICK_ON === false) return;
+    if (m < 10) return;
+    if (['baron', 'drag'].some(o => { const ob = g.obj[o]; return ob && ob.at && (!ob.until || g.t < ob.until) && ob.at - g.t <= 45; })) return;   // 오브젝트가 나와 있거나 곧 나오면 끊으러 가지 않는다 (준비가 흐트러져 바론이 줄었다)
+    const busy = new Set(); g.fights.forEach(f => f.mem.forEach(p => busy.add(p)));
+    for (const k of (g.r() < .5 ? ['B', 'R'] : ['R', 'B'])) {
+      const o = this.other(k);
+      const lone = this.alive(g, o).filter(v => !v.recall && !v.tpCh && !busy.has(v) && !this.danger(g, k, v.pos, 2) && !this.alive(g, o).some(q => q !== v && this.dist(q.pos, v.pos) < 12));
+      for (const v of lone) {
+        const hunt = this.alive(g, k).filter(p => !p.recall && !p.tpCh && !busy.has(p) && p.hp > .5 && !(p.hold && p.hold.until > g.t) && this.dist(p.pos, v.pos) < 18 && Rift.los(p.pos, v.pos)).sort((a, b) => this.dist(a.pos, v.pos) - this.dist(b.pos, v.pos)).slice(0, 3);
+        if (hunt.length < 2 || g.r() > this.PICK[g.side[k].ins.aggr || 'norm']) continue;
+        if ((v.pickT || 0) > g.t) continue; v.pickT = g.t + 60;   // 같은 상대를 계속 쫓지 않는다
+        hunt.forEach(p => { p.hold = { to: [...v.pos], until: g.t + 5 }; });
+        if (g.r() < .5) this.line(g, 'pickGo', { t: g.side[k].t.short, v: v.name });
+        return;
+      }
+    }
+  },
   encounter(g, m) {
     if (g.over || g.t < 100) return;
     const busy = new Set(); g.fights.forEach(f => f.mem.forEach(p => busy.add(p)));
