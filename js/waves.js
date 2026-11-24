@@ -96,6 +96,7 @@ Object.assign(Sim, {
     const local = st.kind === 'nexusT' ? 0 : [250, 300, 250][st.i], ps = this.alive(g, k).filter(p => this.dist(p.pos, st.pos) <= 16);
     ps.forEach(p => { p.gold += local / ps.length; });
     g.pl.forEach(p => { if (p.side === k) p.gold += 50; });
+    this.bounty(g, k, 'tower');   // 뒤진 팀이 포탑을 깨면 오브젝트 현상금
   },
   // 구조물에 들어가는 피해의 시간대 보정 (실제 경기에서 이 시간 전에는 안쪽 구조물이 거의 안 깨진다)
   gate(st, m) {

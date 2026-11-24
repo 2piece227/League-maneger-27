@@ -192,7 +192,7 @@ const Sim = {
   ICON: { baron: 'baron', herald: 'riftherald', grubs: 'grub', tower: 'tower', inhib: 'inhibitor', nexusT: 'tower', nexus: 'nexus' },
   SPEED: 24,   // 10초 동안 걷는 거리 (맵 %). 1초에 SPEED / 10
   TP_CH: 4, RECALL_CH: 8,
-  TRADE: .04,
+  TRADE: .03,   // 라인 딜교환이 열리는 빈도 (10분 킬이 실제보다 많아 .04 → .03)
   // 교전 성향: 두 팀 평균 (적극적인 팀이 있으면 싸움이 잦다)
   agr(g) { const f = { safe: .7, norm: 1, aggr: 1.35 }; return (f[g.side.B.ins.aggr] + f[g.side.R.ins.aggr]) / 2; },   // 라인 맞상대가 붙어 있을 때 10초마다 딜교환이 시작될 확률
   CLOSE: 3,   // CLOSE: 골드 6천~1만4천 앞설수록 공성이 최대 (1 + CLOSE)배 빨라진다   // 1초 이동으로 바꾸면서 공성 위치 도착이 늦어진 만큼 (검증표의 경기 시간에 맞춘 값)   // 텔레포트 · 귀환 정신집중 (초)
@@ -388,7 +388,16 @@ const Sim = {
     return w + (jong && !(ro && rieul) ? a : b);
   },
   // 오브젝트 · 구조물 기록: 기록 목록(ev)과 화면 알림(feed)에 함께 남긴다
-  mark(g, side, kind, icon, txt) { const e = { t: g.t, side, kind, icon, txt, obj: true }; g.ev.push(e); g.feed.push(e); if (this.OBJ_XP[kind]) this.objXp(g, side, kind); },
+  mark(g, side, kind, icon, txt) { const e = { t: g.t, side, kind, icon, txt, obj: true }; g.ev.push(e); g.feed.push(e); if (this.OBJ_XP[kind]) this.objXp(g, side, kind); if (this.OBJ_XP[kind]) this.bounty(g, side, kind); },
+  // 오브젝트 현상금 (실제 역전 장치): 14분 이후 골드가 1000 이상 뒤진 팀이 오브젝트 · 포탑을 잡으면 격차에 비례한 골드를 팀 전체가 나눠 받는다 (최대 팀 합계 1500)
+  //   예전에는 없어서 초반에 조금만 앞서도 그대로 이기는 경기가 많았다 (10분에 앞선 팀 승률 86% — 실제 약 70%) — 베타 피드백
+  BOUNTY: { drag: .25, herald: .2, baron: .35, grubs: .06, tower: .15 },
+  bounty(g, side, kind) {
+    if (this.min(g) < 14) return; const lag = -this.lead(g, side); if (lag < 1000) return;
+    const v = Math.min(1500, lag * (this.BOUNTY[kind] || 0)); if (v < 100) return;
+    const ps = this.alive(g, side); ps.forEach(p => { p.gold += v / Math.max(1, ps.length); });
+    if (v >= 400 && g.r() < .6) this.line(g, 'bounty', { t: g.side[side].t.short, v: Math.round(v / 10) * 10 });
+  },
   // ---------- 경험치 (레벨) ----------
   // 레벨은 경험치로만 오른다: 근처에서 죽은 미니언 · 정글 캠프 · 킬과 어시스트 · 오브젝트. 가만히 서 있거나 본진에 있으면 오르지 않는다
   //   (예전에는 경기 시간으로 레벨을 정해서 멈춰 있어도 올랐다 — 베타 제보). 실제 레벨별 누적 경험치
@@ -458,8 +467,9 @@ const Sim = {
     if (this.audit && !far && this.dist(killer.pos, victim.pos) > 22) this.audit.push(`${this.clock(g.t)} 먼 거리 처치 ${killer.name}(${killer.pos.map(Math.round)}) → ${victim.name}(${victim.pos.map(Math.round)})`);
     const first = !g.kills.length;
     victim.dead = g.t + Math.round(8 + this.min(g) * 1.3); victim.d++; victim.hp = 0; victim.recall = 0; victim.jq = []; victim.tpCh = null; victim.hold = null; victim.fled = 0;
-    killer.k++; killer.gold += 300 + Math.min(700, Math.max(0, victim.k - victim.d) * 100) + (first ? 100 : 0);
-    assists.filter(a => a !== killer && !a.dead).forEach(a => { a.a++; a.gold += 120; });
+    // 처치 골드 (실제 규칙): 300 + 현상금(2킬 이상 앞서 있던 상대부터, 최대 700) + 첫 킬 100. 어시스트는 150을 나눠 갖는다 (예전에는 한 명당 120이라 초반 골드가 실제의 약 2배로 벌어졌다 — 베타 피드백)
+    killer.k++; killer.gold += 300 + Math.min(700, Math.max(0, victim.k - victim.d - 1) * 100) + (first ? 100 : 0);
+    { const as = assists.filter(a => a !== killer && !a.dead); as.forEach(a => { a.a++; a.gold += Math.max(50, 150 / as.length); }); }
     { const kx = 90 + victim.lvl * 28 + Math.max(0, victim.lvl - killer.lvl) * 35, as = assists.filter(a => a !== killer && !a.dead); this.gainXp(killer, kx); as.forEach(a => this.gainXp(a, kx * .55 / Math.max(1, as.length) + 25)); }   // 처치 경험치 (레벨이 높은 상대일수록)
     g.side[killer.side].kills++;
     g.kills.push({ t: g.t, k: killer, v: victim, at: [...victim.pos] });
