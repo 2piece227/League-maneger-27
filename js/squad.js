@@ -14,7 +14,7 @@ const Squad = {
   AGE_ROOM: { 17: 4.2, 18: 3.6, 19: 2.9, 20: 2.2, 21: 1.6, 22: 1.1, 23: .7, 24: .35 },
   // 실제 정보로 따로 맞춘 선수: [지금 OVR, 잠재력 OVR]
   SPECIAL: { 'cloud-moon-hyeon-ho': [80, 95],   // 클라우드: 2027 HLE 주전급 유망주 (최고 OVR 95)
-    haetae: [78, 86] },
+    haetae: [78, 86], 'calix-syun-hyun-bin': [78, 89] },   // 칼릭스: 2007년생 · 최고 OVR 89 (자동 계산은 96~99로 너무 높았다)
   q(tid) { return this.ACADEMY_Q[tid] ?? 40; },
   ref(role) { return Attributes.REF[role] || 19.5; },
   toOvr(v, role) { return Math.round(v / this.ref(role) * 99); },
@@ -235,7 +235,7 @@ const Squad = {
       if (lv === 'out') return;
       if (dev[p.id]) Object.assign(p, dev[p.id]);
       if (p.attributes && p.role !== 'COACH') { p.attributes = Attributes.fix(p.attributes, p.role); p.ovr = Attributes.overall(p.attributes, p.role); this.rate(p, this.q(t.id)); } // 예전 세이브 능력치 → 새 구성 · 현재 기량 다시 읽기
-      const sp = this.SPECIAL[p.id]; if (sp && p.attributes) { if ((p.ovr || 0) < sp[0]) this.scaleTo(p, sp[0]); p.pa = Math.max(p.pa || 0, this.round(Attributes.caFor(sp[1], p.role))); this.rate(p); }   // 저장된 능력치 · 잠재력이 맞춘 값보다 낮으면 올린다
+      const sp = this.SPECIAL[p.id]; if (sp && p.attributes) { if ((p.ovr || 0) < sp[0]) this.scaleTo(p, sp[0]); p.pa = Math.max(p.ca || 0, this.round(Attributes.caFor(sp[1], p.role))); this.rate(p); }   // 지정한 최고치로 맞춘다 (낮으면 올리고 높으면 내린다)
       p.level = lv;
       ({ first: t.players, cl: t.cl, academy: t.academy })[lv].push(p);
     });

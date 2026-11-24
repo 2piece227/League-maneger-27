@@ -955,6 +955,19 @@
       "sourcePage": "Scout"
     },
     {
+      "id": "calix-syun-hyun-bin",
+      "team": "nongshim-redforce",
+      "name": "Calix",
+      "realName": "Syun Hyun-bin",
+      "nativeName": "선현빈",
+      "role": "MID",
+      "nation": "South Korea",
+      "birthdate": "2007-03-22",
+      "contractEnd": "2026-11-16",
+      "photo": "https://static.wikia.nocookie.net/lolesports_gamepedia_en/images/9/95/NS_Calix_2026_Split_1.png/revision/latest?cb=20260124035657",
+      "sourcePage": "Calix (Syun Hyun-bin)"
+    },
+    {
       "id": "sponge",
       "team": "nongshim-redforce",
       "name": "Sponge",
