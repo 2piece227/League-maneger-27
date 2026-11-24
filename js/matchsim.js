@@ -145,6 +145,24 @@ const Rift = {
     while (i < pts.length) { let j = Math.min(pts.length - 1, i + 10); while (j > i && !this.los(cur, pts[j])) j--; out.push(pts[j]); cur = pts[j]; i = j + 1; }
     return out;
   },
+  // 피해야 할 곳(bad: 상대 포탑 사거리)을 지나지 않는 길. 그물 점 중 bad인 곳은 건너뛰고, 질러갈 때도 중간 점을 확인한다. 없으면 null
+  safePath(start, to, bad) {
+    const a = this.nodeNear(start), b = this.nodeNear(to); if (a < 0 || b < 0) return null;
+    const P = this.P, n = P.length, gs = new Float32Array(n).fill(1e9), prev = new Int32Array(n).fill(-1), done = new Uint8Array(n), h = i => Math.hypot(P[i][0] - P[b][0], P[i][1] - P[b][1]);
+    const ok = i => i === a || i === b || !bad(P[i]), open = [[h(a), a]]; gs[a] = 0;
+    while (open.length) {
+      let bi = 0; for (let i = 1; i < open.length; i++) if (open[i][0] < open[bi][0]) bi = i;
+      const [, u] = open.splice(bi, 1)[0]; if (done[u]) continue; done[u] = 1; if (u === b) break;
+      for (const [v, w] of this.padj[u]) { if (!ok(v)) continue; const g2 = gs[u] + w; if (g2 < gs[v]) { gs[v] = g2; prev[v] = u; open.push([g2 + h(v), v]); } }
+    }
+    // 끝까지 가는 안전한 길이 없으면 목적지에 가장 가까운 안전한 점까지 (포탑 사거리 가장자리에서 기다린다)
+    let end = b; if (!done[b]) { let best = 1e9; end = -1; for (let i = 0; i < n; i++) if (done[i] && h(i) < best) { best = h(i); end = i; } if (end < 0 || end === a) return null; }
+    const pts = []; for (let c = end; c >= 0; c = prev[c]) pts.unshift(P[c]); if (end === b && this.los(P[b], to) && !bad(to)) pts.push(to);
+    const clear = (x, y) => { if (!this.los(x, y)) return false; const d = Math.hypot(y[0] - x[0], y[1] - x[1]); for (let f = 1; f < d; f += 1) if (bad([x[0] + (y[0] - x[0]) * f / d, x[1] + (y[1] - x[1]) * f / d])) return false; return true; };
+    const out = []; let cur = start, i = 0;
+    while (i < pts.length) { let j = Math.min(pts.length - 1, i + 10); while (j > i && !clear(cur, pts[j])) j--; out.push(pts[j]); cur = pts[j]; i = j + 1; }
+    return out;
+  },
   // 걸어서 가는 거리
   wdist(a, b) { if (this.los(a, b)) return Math.hypot(a[0] - b[0], a[1] - b[1]); let d = 0, c = a; for (const q of this.path(a, b)) { d += Math.hypot(q[0] - c[0], q[1] - c[1]); c = q; } return d; },
 };
@@ -1079,7 +1097,8 @@ const Sim = {
         const e = g.pl.filter(q => q.side !== p.side && !q.dead && !q.recall && !g.fights.some(f => f.mem.has(q)) && this.dist(q.pos, p.pos) < 4).sort((a, b) => this.dist(a.pos, p.pos) - this.dist(b.pos, p.pos))[0];
         const d = e && (this.dist(e.pos, p.pos) || .1), face = e && this.laneMate(p, e);
         // 라인에서 마주 선 상대: 사거리만큼 떨어져 선다 (같은 자리에 겹쳐 서지 않는다) — 모자란 만큼만 한 발 물러난다
-        if (e && face) { if (d < 3.6) to = this.clampP([p.pos[0] + (p.pos[0] - e.pos[0]) / d * (3.8 - d), p.pos[1] + (p.pos[1] - e.pos[1]) / d * (3.8 - d)]); }
+        //   라인을 지키고 있을 때만 (목적지가 가까울 때). 다른 곳으로 가는 중이면 아래처럼 비켜 간다 — 둘이 마주 선 채 벽 쪽으로 밀려 몇 분씩 멈추던 원인
+        if (e && face && this.dist(to, p.pos) < 6) { if (d < 3.6) to = this.clampP([p.pos[0] + (p.pos[0] - e.pos[0]) / d * (3.8 - d), p.pos[1] + (p.pos[1] - e.pos[1]) / d * (3.8 - d)]); }
         else if (e && d < 3.2) {
           // 비켜 가기: 튕겨 나갔다 돌아오지 않고, 가려던 쪽으로 상대를 끼고 돈다. 목적지가 상대 바로 옆이면 그 자리에 선다 (너무 붙었으면 한 발만 뗀다)
           const ax = (p.pos[0] - e.pos[0]) / d, ay = (p.pos[1] - e.pos[1]) / d, tx = to[0] - p.pos[0], ty = to[1] - p.pos[1], tl = Math.hypot(tx, ty) || 1;
@@ -1089,7 +1108,15 @@ const Sim = {
       }
       const dv = (p.dash >= g.t && p.hold ? v * this.KIND[p.kind].dash : v) * (p.msF || 1); p.budget = dv;
       const was = p.pos; this.walk(p, to, dv);
-      if (!(p.dive > g.t) && !this.danger(g, p.side, was, 0) && this.danger(g, p.side, p.pos, 0)) { p.pos = was; p.trail = [was]; p.rt = null; }   // 지나가는 길이라도 포탑 사거리는 밟지 않는다
+      // 지나가는 길이라도 포탑 사거리는 밟지 않는다. 막히면 사거리를 피해 돌아가는 길로 (예전에는 매초 되돌리기만 해서 몇 분씩 제자리에 서 있었다 — 베타 제보)
+      //   두 포탑 사거리 사이에 갇혀 피해 갈 길이 없으면 3초 뒤에는 사거리 가장자리를 스치며 빠져나간다 (4초)
+      const blocked = () => !(p.dive > g.t) && !(p.pass > g.t) && !this.danger(g, p.side, was, 0) && this.danger(g, p.side, p.pos, 0);
+      if (blocked()) {
+        p.pos = was; p.trail = [was]; p.rt = null;
+        const sp = Rift.safePath(was, to, q => this.danger(g, p.side, q, 0));
+        if (sp && sp.length) { p.rt = { to, pts: sp, safe: true }; p.budget = dv; this.walk(p, to, dv); if (blocked()) { p.pos = was; p.trail = [was]; p.rt = null; } }
+        if (this.dist(p.pos, was) < .05 && (p.blk = (p.blk || 0) + 1) >= 3) { p.pass = g.t + 4; p.blk = 0; }
+      } else p.blk = 0;
     });
     this.fightTick(g);
     this.waves(g, m); this.towers(g, m); this.siegeTick(g, m); if (g.over) return;
@@ -1289,7 +1316,8 @@ const Sim = {
     const trail = p.trail && p.trail.length ? p.trail.slice() : [p.pos];
     const n0 = p.rt ? p.rt.pts.length : 0;
     // 바로 보이면 곧장 간다 (예전 길의 꺾이는 점을 따라가다 목적지를 지나치지 않게). 아니면 목적지가 바뀌었을 때만 길을 다시 찾는다
-    if (Rift.los(p.pos, to)) p.rt = { to, pts: [to] };
+    if (p.rt && p.rt.safe && n0 && this.dist(p.rt.to, to) <= 2.5) { /* 포탑 사거리를 피해 돌아가는 중 */ }
+    else if (Rift.los(p.pos, to)) p.rt = { to, pts: [to] };
     else if (!p.rt || this.dist(p.rt.to, to) > 1.5 || !n0) p.rt = { to, pts: Rift.path(p.pos, to) };
     let left = maxD, cur = p.pos;
     while (left > 0 && p.rt.pts.length) {
