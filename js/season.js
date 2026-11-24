@@ -37,7 +37,7 @@ const Season = {
     let guard = 0;
     while (!this.seriesOver(series) && guard++ < 7) {
       const w1 = r() < 1 / (1 + Math.exp(-(p1 - p2 + (r() - .5) * 4) / 8)), win = w1 ? m.t1 : m.t2, wt = w1 ? t1 : t2;
-      const kw = 10 + Math.floor(r() * 14), kl = Math.floor(r() * kw * .8), mvp = Draft.lineup(wt).filter(Boolean)[Math.floor(r() * 5)] || {};
+      const kw = 14 + Math.floor(r() * 12), kl = Math.floor(kw * (.4 + r() * .45)),   /* 정밀 엔진 평균(이긴 팀 약 20 · 진 팀 약 13킬)에 맞춤 — 예전에는 빠른 시뮬 킬이 적어 우리 팀(정밀 엔진) 선수만 통계 상위에 몰렸다 */ mvp = Draft.lineup(wt).filter(Boolean)[Math.floor(r() * 5)] || {};
       const res = { win, side: w1 ? 'B' : 'R', t: 1500 + Math.floor(r() * 900), kills: { B: w1 ? kw : kl, R: w1 ? kl : kw }, mvp: mvp.id || null, teams: { B: m.t1, R: m.t2 }, stats: [] };
       res.stats = this.fakeStats(res, t1, t2, r, series.games); if (res.stats.length) res.mvp = this.fakeMvp(res);
       series.games.push({ game: series.games.length + 1, picks: { B: res.stats.slice(0, 5).map(x => ({ c: x[1], pid: x[0] })), R: res.stats.slice(5).map(x => ({ c: x[1], pid: x[0] })) }, result: res });
@@ -46,7 +46,7 @@ const Season = {
   },
   // 빠른 시뮬 세트의 선수 기록 [pid, 챔피언, K, D, A, CS, 이름, 피해량] — 킬은 포지션 · OVR 가중으로 나누고, 데스는 상대 킬만큼, 어시스트는 킬마다 팀원 확률로
   //   챔피언은 그 선수의 주력 챔피언에서 (같은 세트 · 같은 매치에서 겹치지 않게)
-  FK: { k: { TOP: 1, JGL: 1.1, MID: 1.35, BOT: 1.55, SUP: .3 }, d: { TOP: 1.1, JGL: 1, MID: .9, BOT: 1, SUP: 1.15 }, a: { TOP: .42, JGL: .62, MID: .55, BOT: .5, SUP: .78 },
+  FK: { k: { TOP: 1, JGL: .85, MID: 1.1, BOT: 1.7, SUP: .35 }, d: { TOP: .9, JGL: 1.3, MID: 1, BOT: .9, SUP: .8 }, a: { TOP: .42, JGL: .62, MID: .55, BOT: .5, SUP: .78 },   // 정밀 엔진 비중에 맞춤 (킬: 원딜 약 35% · 미드 22% · 탑 20% · 정글 16% · 서폿 8%)
     cs: { TOP: 8.2, JGL: 6.1, MID: 8.7, BOT: 9.5, SUP: 1.3 }, dpm: { TOP: 480, JGL: 400, MID: 580, BOT: 640, SUP: 210 } },   // 정밀 엔진 평균(탑 470 · 정글 420 · 미드 570 · 원딜 670 · 서폿 200)에 맞춤
   fakeStats(res, t1, t2, r, prev = []) {
     const L = [Draft.lineup(t1), Draft.lineup(t2)]; if (L.some(l => l.filter(Boolean).length < 5)) return [];

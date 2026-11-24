@@ -142,7 +142,8 @@ Object.assign(Sim, {
       if (!H[k] && sd.heraldReady > g.t) {
         const ps = this.alive(g, k).filter(p => !p.recall && !p.tpCh);
         let pick = null;
-        for (const p of ps) for (const l of this.LANES3) { const st = this.structOf(g, o, l); if (st.kind === 'tower' && this.dist(p.pos, st.pos) < 26 && this.distLane(p.pos, l) < 7 && (!pick || this.dist(p.pos, st.pos) < pick.d)) pick = { p, l, d: this.dist(p.pos, st.pos) }; }
+        const lanes = sd.heraldLane && sd.heraldReady - g.t > 100 ? [sd.heraldLane] : this.LANES3;   // 처음 50초는 해설이 말한 그 라인에 깐다
+        for (const p of ps) for (const l of lanes) { const st = this.structOf(g, o, l); if (st.kind === 'tower' && this.dist(p.pos, st.pos) < 26 && this.distLane(p.pos, l) < 7 && (!pick || this.dist(p.pos, st.pos) < pick.d)) pick = { p, l, d: this.dist(p.pos, st.pos) }; }
         if (!pick && sd.heraldReady - g.t < 15 && ps.length) { const p = ps[0], l = this.LANES3.slice().sort((a, b) => this.distLane(p.pos, a) - this.distLane(p.pos, b))[0]; pick = { p, l }; }
         if (pick) {
           sd.heraldReady = 0;

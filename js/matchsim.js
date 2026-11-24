@@ -400,7 +400,7 @@ const Sim = {
   BOUNTY: { drag: .25, herald: .2, baron: .35, grubs: .06, tower: .15 },
   // 맵 장악 (14분 이후): 킬 · 골드로 크게 앞선 팀은 상대 정글 캠프와 사이드 웨이브를 가져가고, 밀리는 팀은 자기 정글도 마음 놓고 못 먹는다.
   //   예전에는 앞선 팀이 뭉쳐 공성하는 동안 밀리는 팀이 포탑 밑에서 CS를 더 먹어, 20킬 이상 앞서도 골드 차이가 적었다 (베타 제보)
-  CTL_K: .5, CTL_MAX: .9,
+  CTL_K: .5, CTL_MAX: .6,
   ctl(g, k) {
     const o = this.other(k), kd = g.side[k].kills - g.side[o].kills, gl = this.lead(g, k) / 1000;
     const x = Math.max(-1, Math.min(1, (kd / 12 + gl / 8) / 2));   // 킬 12 · 골드 8천 차이면 최대
@@ -547,7 +547,7 @@ const Sim = {
   },
   // 교전 1초: 사거리(7) 안의 상대를 친다. 팀 힘(조합·골드·버프·코치·전술·컨디션: tpow)은 피해 배율로, 개인 실력은 개인 배율로.
   // 체력이 낮고 밀리면 빠진다(뒤쫓기면 맞으면서). 체력이 0이 되면 마지막에 때린 선수가 처치, 피해를 준 선수는 어시스트.
-  OFFWAVE: .5, MEET: .09, DEF: 1, BASE_DIVE: .22, FIGHT_K: .16, FIGHT_S: 26, RANGE: 7, SNOW: .25, SNOW_MAX: 4,   // SNOW: 골드 1천 차이당 전투력
+  OFFWAVE: .5, MEET: .09, DEF: 1, BASE_DIVE: .22, FIGHT_K: .135, FIGHT_S: 26, RANGE: 7, SNOW: .25, SNOW_MAX: 4,   // SNOW: 골드 1천 차이당 전투력
   TANK: { TOP: .8, JGL: .85, MID: 1.08, BOT: 1.18, SUP: .9 },
   // 챔피언 유형별 한타 행동: 사거리(맵 %) · 주는 피해 · 받는 피해 · 붙는 속도(돌진기)
   //   tank 앞라인·이니시(먼저 들어가 가까운 적과 부딪힌다) / bruiser 브루저(앞라인 뒤를 따라 붙는다) / dive 암살·돌진(옆으로 돌아 딜러를 문다)
@@ -657,7 +657,7 @@ const Sim = {
           * (mem.some(q => q.side === a.side && (q.fx || {}).teamDmg) ? 1.03 : 1);
         const guard = mem.some(q => q.side === v.side && q !== v && q.kind === 'ench' && !q.dead && this.dist(q.pos, v.pos) < 6) ? .9 : 1;   // 보호형 서폿 곁에서는 덜 아프다
         const sh = typeof CStats !== 'undefined' ? CStats.hit(a, v) : null, base = sh != null ? sh * this.STAT_K : KA.deal * early * this.KIND[v.kind].take;   // 챔피언 스탯 피해 (없으면 유형 배율)
-        const dmg = tfx * peel * guard * this.FIGHT_K * base * mult[a.side] * (1 + (this.ppow(a, m) - av[a.side]) / 40) * (.75 + g.r() * .5) * (v.fled ? .55 : 1) * (typeof Kits !== 'undefined' ? Kits.mul(g, a, v) : 1);
+        const dmg = tfx * peel * guard * this.FIGHT_K * base * mult[a.side] * (1 + (this.ppow(a, m) - av[a.side]) / 40) * (.75 + g.r() * .5) * (v.fled ? .55 : 1) * (v.role === 'JGL' ? this.JGL_TAKE : 1) * (typeof Kits !== 'undefined' ? Kits.mul(g, a, v) : 1);
         hits.push([a, v, dmg]); a.hitTo = v; a.hitAt = g.t;   // 중계 화면의 공격선
       });
       hits.forEach(([a, v, dmg]) => {
@@ -671,6 +671,8 @@ const Sim = {
         if (typeof Kits !== 'undefined') Kits.vamp(g, a, v, dmg);        // 총공세 크산테 모든 피해 흡혈 20%
         const ctb = f.dmg.get(v) || new Map(); ctb.set(a, (ctb.get(a) || 0) + dmg); f.dmg.set(v, ctb); v.lastHit = a; v.lastHitT = g.t;
         if (v.hp <= 0) {
+          // 킬 주인: 그 싸움에서 이 상대에게 준 피해(스킬 포함) 비중대로 (예전에는 막타만 봐서 꾸준히 때리는 원딜이 킬을 42%나 가져가고, 스킬로 터뜨린 미드는 16%였다)
+          { const L = [...ctb.entries()].filter(([x]) => !x.dead && x.side === a.side), w = ([x, d]) => Math.pow(d, 1.2) * (this.KILL_CR[x.kind] || 1), tot = L.reduce((s, e) => s + w(e), 0); if (tot > 0) { let r = g.r() * tot; for (const e of L) { r -= w(e); if (r <= 0) { a = e[0]; break; } } } }   // 암살자 · 메이지는 마무리를 잘 가져가고 원딜 · 탱커는 덜 (실제 킬 비중: 원딜 약 33% · 미드 약 25%)
           const helpers = [...ctb.keys()].filter(x => x !== a && !x.dead);
           this.kill(g, a, v, helpers); f.kills[a.side]++; (f.kb ||= new Map()).set(a, (f.kb.get(a) || 0) + 1);
           if (f.size >= 5 && f.kills.B + f.kills.R === 1 && this.isCarry(v) && v.role !== 'SUP' && g.t - (g.cutT || -999) > 240 && (g.cutT = g.t)) this.line(g, 'cutFirst', { p: v.name });
@@ -874,6 +876,8 @@ const Sim = {
     return mine || contest;
   },
   OBJ_SETUP: 75,
+  JGL_TAKE: 1,   // 정글이 받는 교전 피해 배율 (데스 비중 33%로 실제 약 20%보다 높다 — .82로 낮춰도 그대로라 원인이 다른 곳: 보류)
+  KILL_CR: { mage: 1.45, dive: 1.45, arti: 1.15, bruiser: 1.05, adc: .75, tank: .75, ench: .55 },
   MID_DIVE: .5,   // 14~30분(바론 버프 없을 때) 미드 포탑 앞 이니시 배율 (예전에는 한타 절반이 미드 포탑 앞이었다)   // 오브젝트 생성 몇 초 전부터 자리를 잡나 (예전 60)
   objFor(g, p, m) {
     for (const o of ['drag', 'grubs', 'herald', 'baron']) {
@@ -897,7 +901,7 @@ const Sim = {
       if (!this.objUp(g, o) || g.over) continue;
       const ob = g.obj[o], pit = Rift.pos(this.PIT[o]), ready = k => g.t >= ((ob.go && ob.go[k]) || ob.at);
       // 리셋: 치던 팀이 둥지 근처를 모두 떠나 8초가 지나면 체력이 다시 다 찬다 (실제 게임의 어그로 풀림)
-      for (const k of ['B', 'R']) { const hp = ob.prog[k] || 0; if (this.near(g, k, pit, 16).length) (ob.hitT ||= {})[k] = g.t; if (hp > 0 && g.t - ((ob.hitT || {})[k] ?? g.t) > 8) { ob.prog[k] = 0; if (hp >= this.objNeed(g, o) * .4) this.line(g, 'objReset', { o: this.OBJ[o], t: g.side[k].t.short }); } }
+      for (const k of ['B', 'R']) { const hp = ob.prog[k] || 0; if (this.near(g, k, pit, 16).length) (ob.hitT ||= {})[k] = g.t; if (hp > 0 && g.t - ((ob.hitT || {})[k] ?? g.t) > 8) { ob.prog[k] = 0; if (hp >= this.objNeed(g, o) * .4 && g.r() < .5) this.line(g, 'objReset', { o: this.OBJ[o], t: g.side[k].t.short }); } }
       const door = Rift.MOUTH[this.PIT[o]] || pit, inPit = k => this.near(g, k, pit, 16).filter(p => this.reach(p.pos, door, 7));   // 둥지 안이나 입구 앞까지 온 선수만 (벽 건너편은 아직 안 온 것)
       const nb = ready('B') ? inPit('B') : [], nr = ready('R') ? inPit('R') : [];
       const hitters = ps => ps.filter(p => Rift.los(p.pos, pit) ? this.dist(p.pos, pit) <= 12 : Rift.wdist(p.pos, pit) <= 12);   // 실제로 몬스터를 치는 선수: 둥지 안 · 벽에 가리지 않은 곳
@@ -946,7 +950,7 @@ const Sim = {
         if (o2.grubs) this.line(g, 'grubs', { a: s.t.short, an: s.grubs, b: o2.t.short, bn: o2.grubs });
         ob.at = null;
       }
-      else if (o === 'herald') { s.herald++; s.heraldReady = g.t + 150; this.mark(g, wk, 'herald', 'riftherald', '전령 처치'); ob.at = null; s.push = { lane: g.r() < .5 ? 'top' : 'mid', until: g.t + 60 }; this.line(g, 'herald', { t: s.t.short, lane: this.laneKo(s.push.lane) }); }
+      else if (o === 'herald') { s.herald++; s.heraldReady = g.t + 150; this.mark(g, wk, 'herald', 'riftherald', '전령 처치'); ob.at = null; s.push = { lane: g.r() < .5 ? 'top' : 'mid', until: g.t + 60 }; s.heraldLane = s.push.lane; this.line(g, 'herald', { t: s.t.short, lane: this.laneKo(s.push.lane) }); }
       else {
         s.baron++; s.baronUntil = g.t + 180; g.pl.forEach(p => { if (p.side === wk && !p.dead) p.baronUntil = g.t + 180; });   // 살아 있던 선수만 (죽으면 사라진다) this.mark(g, wk, 'baron', 'baron', '바론 처치'); ob.at = g.t + 420; this.objGo(g, ob);
         // 사람을 잃어 가며 먹은 바론이면 '상처뿐인 바론'

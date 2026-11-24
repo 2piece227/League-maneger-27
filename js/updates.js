@@ -4,6 +4,33 @@ const Updates = {
   KEY: 'lm27.updSeen',
   LIST: [
     {
+      v: '0.10.2', date: '2026.11.25', title: '경기 흐름 개선 — 오브젝트 싸움 · 전령 · 유동적인 운영',
+      intro: '베타 피드백(미드 한타만 반복 · 오브젝트 싸움이 적다 · 131/151/5인 뭉치기에 매몰 · 적과 겹쳐도 아무 일 없음)을 실제 경기 흐름과 비교해 고쳤습니다.',
+      sections: [
+        { h: '⚔️ 한타 · 운영', items: [
+          '한타 위치: 미드 라인 51% → 약 42%, 오브젝트(용 · 바론) 둥지 39% → 약 50% (20경기 측정)',
+          '오브젝트 생성 75초 전부터 자리를 잡고(예전 60초), 불리해도 쉽게 내주지 않습니다',
+          '오브젝트로 이동하다 미드 포탑 근처를 지나는 선수는 공성 인원으로 세지 않아, 미드 포탑 앞 다이브가 줄었습니다. 30분 전 미드 다이브는 더 신중하게 (바론 버프가 있으면 예외)',
+          '밀 라인을 고를 때 사이드를 더 선호합니다 (사이드 공성 · 1-3-1 압박)',
+          '<b>빈 라인 받기</b>: 상대 웨이브가 우리 포탑으로 밀려오는데 아무도 없으면 가장 가까운 라이너가 받으러 갑니다 — 5인 뭉치기 · 131 · 151 고정에서 벗어나 유동적으로',
+          '[버그] 적과 바로 붙어 겹쳐 있는데 아무 일도 없던 현상 — 2초 넘게 겹치면 그 자리에서 싸움이 납니다',
+          '킬 주인: 막타만 보지 않고 그 싸움에서 준 피해(스킬 포함) 비중대로 — 원딜 킬 비중 42% → 약 35%, 미드 16% → 약 22% (실제 LCK와 비슷)',
+          '교전 피해 · 마주침 확률을 조금 낮춰 경기당 킬이 실제 수준(약 30)에 가깝게',
+        ] },
+        { h: '🐉 오브젝트', items: [
+          '<b>리셋</b>: 치던 팀이 둥지 근처를 모두 떠나 8초가 지나면 오브젝트 체력이 다시 다 찹니다 (해설: 리셋!)',
+          '<b>협곡의 전령</b>: 잡은 팀이 상대 포탑 근처 라인에서 전령을 <b>깔고</b>(해설), 전령이 라인을 따라 걸어가 포탑에 돌진합니다 (바깥 · 2차 포탑 체력 35%). 지키는 선수가 붙으면 쓰러질 수 있습니다. 중계 맵에 전령이 보입니다',
+        ] },
+        { h: '📊 기록', items: [
+          '다른 팀끼리 경기(빠른 시뮬)의 킬 수 · 포지션별 분배를 정밀 엔진에 맞춰, 우리 팀 선수만 통계 상위에 몰리던 쏠림을 줄였습니다',
+        ] },
+        { h: '🎵 · 기타', items: [
+          '밴픽 음악은 밴픽 연주곡만 (사운드클라우드 곡은 메뉴 음악에만 함께)',
+          '타이틀에서 불러오기 등 다른 창을 열어 둔 사이 업데이트 노트가 덮어 뜨던 문제',
+        ] },
+      ],
+    },
+    {
       v: '0.10.1', date: '2026.11.25', title: '상호 계약 해지 · 유망주 FA 개선',
       sections: [
         { h: '🤝 상호 계약 해지', items: [
@@ -176,7 +203,7 @@ const Updates = {
     if (btn && this.isNew() && !btn.querySelector('.upd-new')) btn.querySelector('b').insertAdjacentHTML('beforeend', ' <em class="upd-new">NEW</em>');
     const ver = document.querySelector('#screen-title .version');
     if (ver) { ver.textContent = `v${this.latest().v} · 베타 · 업데이트 노트`; ver.onclick = () => this.open(); }
-    if (this.isNew() && !this._shown && this.returning()) { this._shown = true; setTimeout(() => this.open(), 1200); }
+    if (this.isNew() && !this._shown && this.returning()) { this._shown = true; setTimeout(() => { if (!document.querySelector('.modal-back') && document.querySelector('#screen-title.active, #screen-title.play')) this.open(); }, 1200); }   // 그사이 불러오기 등 다른 창을 열었으면 띄우지 않는다 (NEW 표시는 남는다)
   },
 };
 Views['career-updates'] = el => Updates.view(el);
