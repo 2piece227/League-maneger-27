@@ -114,7 +114,9 @@ Screens.title = {
               <option value="slow">느리게</option><option value="normal">보통</option><option value="fast">빠르게</option>
             </select></div>
           <div class="set-row"><div>효과음 볼륨</div>
-            <input type="range" id="set-vol" min="0" max="100" value="${s.volume}"></div>`,
+            <input type="range" id="set-vol" min="0" max="100" value="${s.volume}"></div>
+          <div class="set-row"><div>음악 재생기 숨기기<small>화면 아래 음악 버튼과 재생기를 아예 없앱니다 (음악도 꺼집니다)</small></div>
+            <input type="checkbox" id="set-muhide" ${typeof Music !== 'undefined' && Music.pref.hide ? 'checked' : ''}></div>`,
         actions: [
           { label: '취소' },
           {
@@ -123,6 +125,7 @@ Screens.title = {
               s.skipIntro = $('#set-skip', m).checked;
               s.simSpeed = $('#set-speed', m).value;
               s.volume = +$('#set-vol', m).value;
+              if (typeof Music !== 'undefined') { const h = $('#set-muhide', m).checked; if (h !== !!Music.pref.hide) Music.setHidden(h); }
               Settings.save(s);
             },
           },

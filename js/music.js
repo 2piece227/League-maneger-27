@@ -28,7 +28,7 @@ const Music = {
     ] },
   },
   KEY: 'lm27.music',
-  pref: { on: true, vol: 50, open: true },
+  pref: { on: true, vol: 50, open: true, hide: false },   // hide: 재생기 자체를 숨긴다 (휴대폰에서 화면을 가린다 — 베타 건의). 숨기면 음악도 끈다
   list: null, idx: 0, order: [], w: null, audio: null, ready: false, playing: false, unlocked: false, duck: 1, bad: new Set(), art: {},
 
   init() {
@@ -127,7 +127,7 @@ const Music = {
       <button class="mu-fab" aria-label="음악 플레이어">${this.ic('note')}</button>
       <div class="mu-sc" aria-hidden="true"></div>`;
     document.body.appendChild(el);
-    this.el = el;
+    this.el = el; el.style.display = this.pref.hide ? 'none' : '';
     $('.mu-play', el).onclick = () => this.toggle();
     $('.mu-next', el).onclick = () => this.step(1);
     $('.mu-prev', el).onclick = () => this.step(-1);
@@ -178,6 +178,10 @@ const Music = {
     this.idx = 0; const t = this.track(); this.paint();
     if (t.src) { const a = this.mkAudio(); a.src = t.src; a.load(); this.cued = true; }
     else this.withSC(() => { this.cued = true; this.applyVol(); this.w.getCurrentSound(s => { if (s && s.artwork_url) { this.art[this.url(t)] = s.artwork_url.replace('-large', '-t300x300'); this.paint(); } }); });
+  },
+  setHidden(h) {
+    this.pref.hide = h; this.save(); if (this.el) this.el.style.display = h ? 'none' : '';
+    if (h) this.setOn(false); else if (!this.pref.on) this.setOn(true);
   },
   setOn(on) {
     this.pref.on = on; this.save(); $('#mu-on', this.el).checked = on;
