@@ -83,7 +83,7 @@ const Career = {
     el.innerHTML = `
       <div class="cr-page">
         <div class="card cr-id">
-          <div class="cr-av">${Avatar.render(m.avatar)}</div>
+          <div class="cr-av" title="눌러서 사진 바꾸기">${Faces.manager(m)}<button class="cr-av-edit">사진 바꾸기</button></div>
           <div class="cr-id-main">
             <h2>${UI.esc(m.displayName || m.name)}</h2>
             ${m.nick && m.display === 'name' ? `<span class="cr-nick">'${UI.esc(m.nick)}'</span>` : ''}
@@ -116,7 +116,7 @@ const Career = {
           <div class="card">
             <div class="card-head"><h3>경력 배경</h3></div>
             <p class="cr-bg"><b>${bg.label}</b> — ${bg.desc}</p>
-            ${m.background.type === 'ex-pro' ? `<p class="cr-bg">선수 시절 ${G.ROLE_KO[m.background.role]} · ${m.background.years}년 · ${Manager.PRO_PEAK[m.background.peak][0]}${m.background.formerTeam ? ' · ' + UI.esc((Schedule.team(m.background.formerTeam) || {}).name || '') : ''}</p>` : ''}
+            ${m.background.type === 'ex-pro' ? `<p class="cr-bg">선수 시절 ${G.ROLE_KO[m.background.role]} · ${m.background.years}년 · ${(Manager.PRO_PEAK[m.background.peak] || ['선수 출신'])[0]}${m.background.formerTeam ? ' · ' + UI.esc((Schedule.team(m.background.formerTeam) || {}).name || '') : ''}</p>` : ''}
             <p class="cr-bg">지도자 경력 ${m.coachYears ? m.coachYears + '년' : '없음'}</p>
             ${tac ? `<p class="cr-bg">즐겨 쓰는 전술: <b>${UI.esc((Draft.TEAM_TAC[tac[0]] || {}).n || tac[0])}</b> (${tac[1]}경기)</p>` : ''}
           </div>
@@ -138,6 +138,7 @@ const Career = {
           </div>
         </div>
       </div>`;
+    const av = el.querySelector('.cr-av'); if (av && typeof Faces !== 'undefined' && App.state.manager) av.onclick = () => Faces.pick('감독 사진', App.state.manager.photo || '', url => { if (url) App.state.manager.photo = url; else delete App.state.manager.photo; this.profile(el); });   // 감독 사진 바꾸기
   },
 
   // ---------- 평판 ----------
@@ -149,7 +150,7 @@ const Career = {
     const next = lv.find(([min]) => min > m.reputation);
     // 평판 변화 기록. TODO: 기능 연결 — 경기 결과·우승·인터뷰·이적 등으로 쌓기
     const log = [[m.createdAt || Clock.START, `${t.name} 감독 부임`, +2]];
-    if (m.background.type === 'ex-pro') log.push(['경력', `선수 시절 ${Manager.PRO_PEAK[m.background.peak][0]}`, Manager.PRO_PEAK[m.background.peak][1]]);
+    if (m.background.type === 'ex-pro') log.push(['경력', `선수 시절 ${(Manager.PRO_PEAK[m.background.peak] || ['선수 출신'])[0]}`, Manager.PRO_PEAK[m.background.peak][1]]);
     if (m.coachYears) log.push(['경력', `지도자 경력 ${m.coachYears}년`, Math.min(10, m.coachYears * 2)]);
     log.push(['경력', Manager.BACKGROUNDS[m.background.type].label, Manager.BACKGROUNDS[m.background.type].rep]);
 
@@ -341,7 +342,7 @@ const Career = {
       title: `${t.name} — 이력서 보내기`,
       body: `
         <div class="ot-cv">
-          <div class="ot-cv-head"><div class="mini-av">${Avatar.render(m.avatar)}</div><div><b>${UI.esc(m.displayName || m.name)}</b><small>${G.nationName(m.nation)} · ${Manager.age(m, this.today())}세 · ${Manager.BACKGROUNDS[m.background.type].label} · 평판 ${Manager.repLabel(m.reputation)}</small></div></div>
+          <div class="ot-cv-head"><div class="mini-av">${Faces.manager(m)}</div><div><b>${UI.esc(m.displayName || m.name)}</b><small>${G.nationName(m.nation)} · ${Manager.age(m, this.today())}세 · ${Manager.BACKGROUNDS[m.background.type].label} · 평판 ${Manager.repLabel(m.reputation)}</small></div></div>
           <label class="field"><span>지원 동기</span>
             <select id="cv-motive"><option>우승에 도전하고 싶습니다</option><option>팀을 재건할 자신이 있습니다</option><option>유망주를 키워 강팀으로 만들겠습니다</option><option>이 리그에서 새로운 도전을 하고 싶습니다</option></select>
           </label>

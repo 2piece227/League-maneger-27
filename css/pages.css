@@ -631,3 +631,14 @@ button.nw-card { width: 100%; text-align: left; font: inherit; cursor: pointer; 
 .lk { cursor: pointer; text-decoration: underline; text-decoration-color: rgba(232,196,106,.45); text-underline-offset: 3px; }
 .lk:hover { color: var(--gold-2, #e8c46a); text-decoration-color: currentColor; }
 .fx-team > b, .fx-team b { cursor: pointer; }
+/* 사진 바꾸기 (js/faces.js) */
+.pp-photo-wrap { position: relative; }
+.pp-photo-edit, .cr-av-edit { position: absolute; left: 50%; bottom: 4px; transform: translateX(-50%); padding: 2px 8px; border-radius: 6px; border: 0; background: rgba(5,8,14,.75); color: #e6ecf8; font-size: 11px; cursor: pointer; opacity: 0; transition: opacity .15s; white-space: nowrap; }
+.pp-photo-wrap:hover .pp-photo-edit, .cr-av:hover .cr-av-edit, .pp-photo-wrap .pp-photo-edit:focus { opacity: 1; }
+@media (hover: none) { .pp-photo-edit, .cr-av-edit { opacity: .85; } }
+.cr-av { position: relative; cursor: pointer; }
+.fc-man { width: 100%; height: 100%; object-fit: cover; border-radius: inherit; display: block; }
+.fc-pick { display: grid; gap: 10px; }
+.fc-prev { width: 120px; height: 120px; border-radius: 12px; overflow: hidden; background: #1d2740; display: grid; place-items: center; color: #9fb0cc; font-size: 12px; margin: 0 auto; }
+.fc-prev img { width: 100%; height: 100%; object-fit: cover; }
+.fc-file { justify-self: start; cursor: pointer; }

@@ -144,7 +144,7 @@ const Locker = {
     this.run();
   },
   face(who) {
-    if (who === 'me') { const m = App.state.manager || {}; return `<div class="lk-av me">${typeof Avatar !== 'undefined' && m.avatar ? Avatar.render(m.avatar) : '감'}</div>`; }
+    if (who === 'me') { const m = App.state.manager || {}; return `<div class="lk-av me">${(m.avatar || m.photo) && typeof Faces !== 'undefined' ? Faces.manager(m) : '감'}</div>`; }
     if (who === 'coach') { const c = this.coach(); return c.photo ? G.face(c, 'lk-av') : '<div class="lk-av">코</div>'; }
     const hit = Player.find(who); return hit ? G.face(hit.p, 'lk-av') : '<div class="lk-av">?</div>';
   },

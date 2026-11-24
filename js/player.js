@@ -44,7 +44,7 @@ const Player = {
       <div class="pp" role="dialog" aria-modal="true">
         <button class="pp-x" aria-label="닫기">×</button>
         <div class="pp-head" style="--c:${t.color || '#555'}">
-          ${G.face(p, 'pp-photo')}
+          <div class="pp-photo-wrap">${G.face(p, 'pp-photo')}${p.role !== 'COACH' ? '<button class="pp-photo-edit" title="사진 바꾸기 (이미지 주소 · 파일)">사진 바꾸기</button>' : ''}</div>
           <div class="pp-id">
             <div class="pp-team">${G.team(p.level === 'cl' && t.clTeam ? { ...t.clTeam, color: t.color } : t, 'xs')}<span>${UI.esc(p.level === 'cl' && t.clTeam ? t.clTeam.name : p.level === 'academy' ? t.name + ' 아카데미' : t.name)}</span>${p.sub ? '<i class="sub-tag">후보</i>' : ''}</div>
             <h2>${G.ovr(p, 'xl')}${UI.esc(p.name)}</h2>
@@ -105,6 +105,7 @@ const Player = {
     const trd = $('.pp-trade', back); if (trd) trd.onclick = () => { close(); Trade.propose(p.id); };
     const mt = $('.pp-meet', back); if (mt) mt.onclick = () => { close(); Meet.open(p.id); };
     const pc = $('.pp-poach', back); if (pc) pc.onclick = () => { close(); Squad.poach(p.id); };
+    const pe = $('.pp-photo-edit', back); if (pe && typeof Faces !== 'undefined') pe.onclick = e => { e.stopPropagation(); Faces.pick(`${p.name} 사진`, (Faces.st()[p.id]) || '', url => { Faces.set(p.id, url); close(); this.open(p.id); }); };
   },
 
   toggleShortlist(id) {

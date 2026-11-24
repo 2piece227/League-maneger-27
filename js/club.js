@@ -99,7 +99,7 @@ const Club = {
       <div class="cr-page">
         ${Career.head('코칭스태프', `${UI.esc(t.name)} 스태프 · 실제 코칭스태프 명단 기준`)}
         <div class="sf-grid">
-          <div class="card sf-card me"><div class="sf-av">${Avatar.render(m.avatar)}</div><b>${UI.esc(m.displayName || m.name)}</b><span>감독 (나)</span><small>${Career.contract(m, t).from.replace(/-/g, '.')} 부임</small></div>
+          <div class="card sf-card me"><div class="sf-av">${Faces.manager(m)}</div><b>${UI.esc(m.displayName || m.name)}</b><span>감독 (나)</span><small>${Career.contract(m, t).from.replace(/-/g, '.')} 부임</small></div>
           ${(t.staff || []).map(s => { const [cs, cc] = Player.contractState(s); return `
             <div class="card sf-card" data-pid="${s.id}">${G.face(s, 'sf-photo')}<b>${UI.esc(s.name)}</b><span>코치${Draft.coach(t).p === s ? ' · 밴픽 담당' : ''}</span>
               <span class="sf-draft">밴픽 역량 <b>${Draft.coachRating(s, t)}</b>/20 · ${Draft.grade(Draft.coachRating(s, t))}</span>
