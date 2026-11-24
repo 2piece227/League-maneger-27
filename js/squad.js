@@ -415,7 +415,7 @@ const Squad = {
   },
   growReal(today) {
     App.db.teams.forEach(t => [...t.players.map(p => [p, 'first']), ...(t.cl || []).map(p => [p, 'cl'])].forEach(([p, lv]) => {
-      if (p.gen || p.made || p.role === 'COACH' || !p.attributes || p.free) return;
+      if (p.gen || p.role === 'COACH' || !p.attributes || p.free) return;
       const age = p.age || 22;
       if (age >= 27) return this.ageReal(p, age);
       this.grow(p, lv, this.GROW_REAL[lv] * (.5 + G.rand(p.id + today, 'gr')) * this.playMul(p, lv, today));
