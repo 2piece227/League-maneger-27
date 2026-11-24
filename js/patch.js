@@ -12,7 +12,7 @@ const Patch = {
   // 이번 시즌 프로권 존재감 (게임 안 픽 + 시즌 메타)
   presence() {
     const Y = String(Schedule.season()), cnt = {}; let games = 0;
-    Object.entries(Season.st()).forEach(([id, r]) => { if (!id.startsWith(Y) || !r.games) return; r.games.forEach(g => { games++; [...(g.picks.B || []), ...(g.picks.R || [])].forEach(c => { cnt[c] = (cnt[c] || 0) + 1; }); }); });
+    Object.entries(Season.st()).forEach(([id, r]) => { if (!id.startsWith(Y) || !r.games) return; r.games.forEach(g => { games++; (g.picks ? [...(g.picks.B || []), ...(g.picks.R || [])] : (g.s || []).map(x => x[1]).filter(Boolean)).forEach(c => { cnt[c] = (cnt[c] || 0) + 1; }); }); });
     const out = {};
     Champions.list.forEach(ch => { const meta = (Draft.M ? Draft.blend(ch.nameEn) : 0) * Math.exp(this.adj(ch.id) * .3), ing = games >= 30 ? (cnt[ch.id] || 0) / games : null; out[ch.id] = ing == null ? meta : ing * .6 + meta * .4; });
     return out;

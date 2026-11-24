@@ -406,6 +406,9 @@ const Sim = {
     const x = Math.max(-1, Math.min(1, (kd / 12 + gl / 8) / 2));   // 킬 12 · 골드 8천 차이면 최대
     return Math.max(.35, 1 + x * (x > 0 ? this.CTL_MAX : this.CTL_K * 1.3));
   },
+  // 피해량 집계용 대략적 최대 체력 (레벨에 따라). DMG_K: 실제 프로 경기 DPM 눈금에 맞춘 배율
+  DMG_K: 1,
+  hpOf(v) { return (1150 + (v.lvl || 1) * 105) * this.DMG_K; },
   bounty(g, side, kind) {
     if (this.min(g) < 14) return; const lag = -this.lead(g, side); if (lag < 1000) return;
     const v = Math.min(1500, lag * (this.BOUNTY[kind] || 0)); if (v < 100) return;
@@ -661,7 +664,7 @@ const Sim = {
         if (v.dead) return;
         // 보호막이 먼저 받는다
         if (v.sh && v.sh.until > g.t && v.sh.v > 0) { const ab = Math.min(v.sh.v, dmg); v.sh.v -= ab; dmg -= ab; if (dmg <= 0) return; }
-        v.hp -= dmg;
+        v.hp -= dmg; a.dmg = (a.dmg || 0) + dmg * this.hpOf(v);   // 챔피언에게 준 피해 (DPM)
         if (v.hp > 0 && v.hp < .2 && g.side[a.side].elderUntil > g.t) { v.hp = 0; if (!g.elderSaid || g.t - g.elderSaid > 20) { g.elderSaid = g.t; this.line(g, 'elderExec', { p: v.name }); } }   // 장로: 체력 20% 아래는 처형
         // 큰 싸움에서 우리 딜러가 죽기 직전: 실제 중계처럼 이름을 반복해서 외친다 (한 싸움에 한 번)
         if (!f.dang && f.size >= 6 && v.hp > 0 && v.hp < .25 && this.isCarry(v) && v.role !== 'SUP' && v.fled !== f.id) { f.dang = v; this.line(g, 'danger', { p: v.name }); }

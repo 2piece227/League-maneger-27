@@ -271,7 +271,7 @@ const Kits = {
     if (floor) dmg = Math.min(dmg, Math.max(0, v.hp - floor));
     if (v.sh && v.sh.until > g.t && v.sh.v > 0) { const ab = Math.min(v.sh.v, dmg); v.sh.v -= ab; dmg -= ab; }
     if (dmg <= 0) return 0;
-    v.hp -= dmg; this.vamp(g, a, v, dmg);
+    v.hp -= dmg; this.vamp(g, a, v, dmg); a.dmg = (a.dmg || 0) + dmg * Sim.hpOf(v);
     f ||= g.fights.find(x => x.mem.has(v));
     if (f) { const ctb = f.dmg.get(v) || new Map(); ctb.set(a, (ctb.get(a) || 0) + dmg); f.dmg.set(v, ctb); }
     v.lastHit = a; v.lastHitT = g.t;

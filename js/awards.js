@@ -10,11 +10,11 @@ const Awards = {
   yr(m) { return String(m.event || '').slice(0, 4) || Clock.today().slice(0, 4); },
 
   // ---------- 시즌 기록 ----------
-  add(pid, m, v, won, pog) {
+  add(pid, m, v, won, pog, kda) {
     if (!pid || !m) return;
     (App.state.lp ||= {})[pid] = Clock.today(); App.state.lpAny = Clock.today();   // 최근 공식전 출전 (성장 출전 보너스: js/squad.js playMul)
     const Y = this.yr(m), P = (this.st().ps[Y] ||= {});
-    [m.league || 'INTL', 'ALL'].forEach(k => { const r = ((P[k] ||= {})[pid] ||= [0, 0, 0, 0]); r[0]++; r[1] += won ? 1 : 0; r[2] += pog ? 1 : 0; r[3] = Math.round((r[3] + Math.max(3, Math.min(10, v))) * 10) / 10; });   // 정밀 엔진 경기(우리 팀)도 경량 시뮬과 같은 1~10 척도
+    [m.league || 'INTL', 'ALL'].forEach(k => { const r = ((P[k] ||= {})[pid] ||= [0, 0, 0, 0]); r[0]++; r[1] += won ? 1 : 0; r[2] += pog ? 1 : 0; r[3] = Math.round((r[3] + Math.max(3, Math.min(10, v))) * 10) / 10; if (kda) { r[4] = (r[4] || 0) + kda[0]; r[5] = (r[5] || 0) + kda[1]; r[6] = (r[6] || 0) + kda[2]; } });   // 정밀 엔진 경기(우리 팀)도 경량 시뮬과 같은 1~10 척도
   },
   // 커리어 시작 때 이미 1군이던 선수 (신인상 대상이 아니다)
   vets() { const s = this.st(); if (!s.vets && App.db && App.db.teams) s.vets = [...App.db.teams.flatMap(t => t.players.map(p => p.id)), ...((App.db.free || {}).players || []).map(p => p.id)]; /* FA였던 베테랑도 */ return s.vets || []; },
@@ -23,7 +23,8 @@ const Awards = {
     return !Object.entries(this.st().ps).some(([y, P]) => +y < +Y && Object.entries(P).some(([lg, L]) => lg !== 'ALL' && L[pid]));
   },
   // 시즌 점수: 평균 평점 + POG 비율 + 승률 + 기량 조금
-  score(r, ovr) { const g = r[0] || 1; return r[3] / g + r[2] / g * 1.2 + r[1] / g * .8 + ((ovr || 75) - 80) * .025; },
+  score(r, ovr) { const g = r[0] || 1, kda = r[5] != null ? Math.min(8, ((r[4] || 0) + (r[6] || 0)) / Math.max(1, r[5])) : 3; return r[3] / g + r[2] / g * 1.2 + r[1] / g * .8 + kda * .08 + ((ovr || 75) - 80) * .02; },
+  why(pid, Y, lg = 'LCK') { const r = ((this.st().ps[Y] || {})[lg] || {})[pid]; if (!r) return ''; const g = r[0] || 1; return `평점 ${(r[3] / g).toFixed(1)}${r[5] != null ? ` · KDA ${(((r[4] || 0) + (r[6] || 0)) / Math.max(1, r[5])).toFixed(1)}` : ''} · POG ${r[2]}`; },
   ranked(Y, lg, minFrac = .4, hw = 1) {
     const L = (this.st().ps[Y] || {})[lg] || {}, mx = Math.max(0, ...Object.values(L).map(r => r[0]));
     return Object.entries(L).filter(([, r]) => r[0] >= mx * minFrac).map(([pid, r]) => {
@@ -90,7 +91,7 @@ const Awards = {
     G.ROLES.forEach(role => R.filter(x => x.p.role === role).slice(0, 3).forEach((x, i) => teams[i].push(x.pid)));
     s.allpro[Y] = { teams, date: Clock.today() };
     teams.forEach((ids, i) => ids.forEach(pid => this.give(pid, Y, 'ap' + (i + 1), `${Y} LCK 올프로 ${i + 1}${['st', 'nd', 'rd'][i]} 팀`)));
-    const nm = pid => { const h = Player.find(pid); return h ? `${h.p.name}(${h.t.short})` : pid; };
+    const nm = pid => { const h = Player.find(pid); return h ? `${h.p.name}(${h.t.short} · ${this.why(pid, Y)})` : pid; };
     const list = teams.map((ids, i) => `${i + 1}${['st', 'nd', 'rd'][i]} 팀: ${ids.map(nm).join(' · ')}`).join('\n');
     Market.post(`[올프로] ${Y} LCK 올프로 발표 — 1st 팀 ${teams[0].map(id => (Player.find(id) || { p: { name: id } }).p.name).join(' · ')}`, `${Y} 시즌 LCK 올프로가 발표됐습니다. 월드 챔피언십을 앞두고 포지션별로 한 해 최고의 활약을 펼친 선수들입니다.\n\n${list}`, teams[0][0]);
     const mine = teams.flatMap((ids, i) => ids.map(pid => ({ pid, i }))).filter(x => { const h = Player.find(x.pid); return h && h.t.id === App.state.teamId; });
@@ -122,7 +123,7 @@ const Awards = {
     this.give(poy, Y, 'mvp', `${Y} LCK 올해의 선수`); if (roty) this.give(roty, Y, 'roty', `${Y} LCK 신인상`);
     const h = id => Player.find(id), nm = id => { const x = h(id); return x ? `${x.p.name}(${x.t.short})` : '-'; };
     const ap = (s.allpro[Y] || {}).teams, fms = Object.entries(s.fmvp).filter(([id]) => id.startsWith(Y + ':'));
-    const body = [`${Y} LCK 어워드가 열렸습니다.`, '', `올해의 선수: ${nm(poy)}`, `신인상: ${roty ? nm(roty) : '수상자 없음'}`, `올해의 감독: ${coach} (${coy.short})`,
+    const body = [`${Y} LCK 어워드가 열렸습니다.`, '', `올해의 선수: ${nm(poy)} — ${this.why(poy, Y)}`, `신인상: ${roty ? `${nm(roty)} — ${this.why(roty, Y)}` : '수상자 없음'}`, `올해의 감독: ${coach} (${coy.short})`,
       ap ? `올프로 1st 팀: ${ap[0].map(nm).join(' · ')}` : '', fms.length ? `\n올해의 파이널 MVP\n${fms.map(([id, pid]) => `${(Schedule.byEvent[id] || { label: id }).label} — ${nm(pid)}`).join('\n')}` : ''].filter(x => x !== null).join('\n');
     Market.post(`[LCK 어워드] ${Y} 올해의 선수 ${(h(poy) || { p: { name: '-' } }).p.name}`, body, poy);
     if (App.state.unemployed) return;
@@ -168,7 +169,7 @@ const Awards = {
     rate(series, m);
     series.games.forEach((x, gi) => {
       const res = x.result; if (!res) return;
-      if (res.stats && res.stats.length) res.stats.forEach(([pid, , k, d, a]) => { const h = Player.find(pid), won = !!h && h.t.id === res.win; Awards.add(pid, m, 6.5 + (Season.rating(k, d, a, won, res.mvp === pid) - 6.5) * .7, won, res.mvp === pid); });   // 정밀 엔진(우리 경기)은 KDA로 평점이 더 벌어져 경량 시뮬 폭에 맞춘다
+      if (res.stats && res.stats.length) res.stats.forEach(([pid, , k, d, a], i) => { const won = res.stats.length === 10 && res.teams ? res.teams[i < 5 ? 'B' : 'R'] === res.win : (Player.find(pid) || { t: {} }).t.id === res.win; Awards.add(pid, m, 6.5 + (Season.rating(k, d, a, won, res.mvp === pid) - 6.5) * .7, won, res.mvp === pid, [k, d, a]); });   // 정밀 엔진(우리 경기)은 KDA로 평점이 더 벌어져 경량 시뮬 폭에 맞춘다
       else [m.t1, m.t2].forEach(tid => { const t = Schedule.team(tid); if (!t) return; Draft.lineup(t).forEach(p => { if (!p) return; const won = tid === res.win; Awards.add(p.id, m, 6.3 + (won ? .6 : -.5) + (G.rand(p.id + m.id + gi, 'rt') - .5) * 2 + (res.mvp === p.id ? .9 : 0), won, res.mvp === p.id); }); });
     });
   };

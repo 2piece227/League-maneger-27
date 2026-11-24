@@ -116,6 +116,7 @@ const CompResults = {
     if (typeof Draft === 'undefined') return;
     const prev = [];
     r.games.forEach((g, i) => {
+      if ((!g.picks || !g.picks.B.length) && g.s && g.s.length === 10 && g.s.every(x => x[1])) { g.picks = { B: g.s.slice(0, 5).map(x => x[1]), R: g.s.slice(5).map(x => x[1]) }; }
       if (!g.picks || !g.picks.B.length) {
         try {
           const series = { key: 'view:' + m.id, bo: m.bo || 1, games: prev.map(x => ({ game: x.game, picks: x.picks, result: {} })) };
@@ -138,7 +139,7 @@ const CompResults = {
       const stats = g.s && g.s.length ? g.s : null;
       const lane = s => (g.picks && g.picks[s] || []).map((c, j) => {
         const st = stats && stats.find(x => x[1] === c), pid = !st && g.pp && g.pp[s][j];
-        return `<div class="cr-pk">${SoloQ.ic(c)}<span>${st ? `<b>${UI.esc(Player.find(st[0]) ? nm(st[0]) : st[6] || '?')}</b><small class="num">${st[2]}/${st[3]}/${st[4]} · CS ${st[5]} · ${UI.esc((Champions.byId[c] || {}).name || '')}</small>` : `${pid ? `<b>${UI.esc(nm(pid))}</b>` : ''}<small>${UI.esc((Champions.byId[c] || {}).name || '')}</small>`}</span></div>`;
+        return `<div class="cr-pk">${SoloQ.ic(c)}<span>${st ? `<b>${UI.esc(Player.find(st[0]) ? nm(st[0]) : st[6] || '?')}</b><small class="num">${st[2]}/${st[3]}/${st[4]} · CS ${st[5]}${st[7] ? ` · DPM ${Math.round(st[7] / Math.max(1, (g.t || 1800) / 60))}` : ''} · ${UI.esc((Champions.byId[c] || {}).name || '')}</small>` : `${pid ? `<b>${UI.esc(nm(pid))}</b>` : ''}<small>${UI.esc((Champions.byId[c] || {}).name || '')}</small>`}</span></div>`;
       }).join('');
       return `<div class="cr-set">
         <div class="cr-set-h"><b>${i + 1}세트</b><span class="num">${Sim.clock(g.t || 0)}</span><span>POG <b>${UI.esc(g.mvp ? nm(g.mvp) : '-')}</b></span></div>

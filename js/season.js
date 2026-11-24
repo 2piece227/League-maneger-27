@@ -6,7 +6,7 @@ const Season = {
   st() { return (App.state.season ||= {}); },
   gameResult(g) {
     return { win: g.side[g.over.win].t.id, side: g.over.win, t: g.t, kills: { B: g.side.B.kills, R: g.side.R.kills }, mvp: g.over.mvp.p.id,
-      teams: { B: g.side.B.t.id, R: g.side.R.t.id }, stats: g.pl.map(p => [p.p.id, p.c, p.k, p.d, p.a, Math.round(p.cs), p.p.name]) };   // 이름: 나중에 팀을 떠나도 경기 리포트에 남게
+      teams: { B: g.side.B.t.id, R: g.side.R.t.id }, stats: g.pl.map(p => [p.p.id, p.c, p.k, p.d, p.a, Math.round(p.cs), p.p.name, Math.round(p.dmg || 0)]) };   // 이름: 나중에 팀을 떠나도 경기 리포트에 남게
   },
   // 표기: 스크림은 승패와 상관없이 정한 판수를 다 치르므로 'Bo3 · 2세트'가 아니라 '스크림 3판 · 2판째'
   tag(series, game) { return series.fixed ? `스크림 ${series.fixed}판 · ${game}판째` : `Bo${series.bo} · ${game}세트`; },
@@ -38,9 +38,37 @@ const Season = {
     while (!this.seriesOver(series) && guard++ < 7) {
       const w1 = r() < 1 / (1 + Math.exp(-(p1 - p2 + (r() - .5) * 4) / 8)), win = w1 ? m.t1 : m.t2, wt = w1 ? t1 : t2;
       const kw = 10 + Math.floor(r() * 14), kl = Math.floor(r() * kw * .8), mvp = Draft.lineup(wt).filter(Boolean)[Math.floor(r() * 5)] || {};
-      series.games.push({ game: series.games.length + 1, picks: { B: [], R: [] }, result: { win, side: w1 ? 'B' : 'R', t: 1500 + Math.floor(r() * 900), kills: { B: w1 ? kw : kl, R: w1 ? kl : kw }, mvp: mvp.id || null, teams: { B: m.t1, R: m.t2 }, stats: [] } });
+      const res = { win, side: w1 ? 'B' : 'R', t: 1500 + Math.floor(r() * 900), kills: { B: w1 ? kw : kl, R: w1 ? kl : kw }, mvp: mvp.id || null, teams: { B: m.t1, R: m.t2 }, stats: [] };
+      res.stats = this.fakeStats(res, t1, t2, r, series.games); if (res.stats.length) res.mvp = this.fakeMvp(res);
+      series.games.push({ game: series.games.length + 1, picks: { B: res.stats.slice(0, 5).map(x => ({ c: x[1], pid: x[0] })), R: res.stats.slice(5).map(x => ({ c: x[1], pid: x[0] })) }, result: res });
     }
     return series;
+  },
+  // 빠른 시뮬 세트의 선수 기록 [pid, 챔피언, K, D, A, CS, 이름, 피해량] — 킬은 포지션 · OVR 가중으로 나누고, 데스는 상대 킬만큼, 어시스트는 킬마다 팀원 확률로
+  //   챔피언은 그 선수의 주력 챔피언에서 (같은 세트 · 같은 매치에서 겹치지 않게)
+  FK: { k: { TOP: 1, JGL: 1.1, MID: 1.35, BOT: 1.55, SUP: .3 }, d: { TOP: 1.1, JGL: 1, MID: .9, BOT: 1, SUP: 1.15 }, a: { TOP: .42, JGL: .62, MID: .55, BOT: .5, SUP: .78 },
+    cs: { TOP: 8.2, JGL: 6.1, MID: 8.7, BOT: 9.5, SUP: 1.3 }, dpm: { TOP: 520, JGL: 390, MID: 640, BOT: 720, SUP: 240 } },
+  fakeStats(res, t1, t2, r, prev = []) {
+    const L = [Draft.lineup(t1), Draft.lineup(t2)]; if (L.some(l => l.filter(Boolean).length < 5)) return [];
+    const used = new Set(prev.flatMap(x => [...(x.picks.B || []), ...(x.picks.R || [])].map(p => p.c))), F = this.FK, min = res.t / 60;
+    const pickW = (ps, key) => { const w = ps.map(p => F[key][p.role] * Math.pow((p.ovr || 70) / 80, key === 'd' ? -2 : 2)); let x = r() * w.reduce((a, b) => a + b, 0); for (let i = 0; i < ps.length; i++) { x -= w[i]; if (x <= 0) return i; } return ps.length - 1; };
+    const out = [];
+    [['B', L[0]], ['R', L[1]]].forEach(([k, ps]) => {
+      const o = k === 'B' ? 'R' : 'B', won = res.win === (k === 'B' ? t1.id : t2.id), kk = Array(5).fill(0), dd = Array(5).fill(0), aa = Array(5).fill(0);
+      for (let i = 0; i < res.kills[k]; i++) { const j = pickW(ps, 'k'); kk[j]++; ps.forEach((p, q) => { if (q !== j && r() < F.a[p.role]) aa[q]++; }); }
+      for (let i = 0; i < res.kills[o]; i++) dd[pickW(ps, 'd')]++;
+      ps.forEach((p, j) => {
+        const mains = typeof Mastery !== 'undefined' && Mastery.mains ? Mastery.mains(p).filter(e => !used.has(e[0])) : [];
+        const c = mains.length ? Mastery.wpick(mains, r()) : null; if (c) used.add(c);
+        const q = .9 + ((p.ovr || 70) - 70) / 150, wf = won ? 1.05 : .95, n = () => .85 + r() * .3;
+        out.push([p.id, c, kk[j], dd[j], aa[j], Math.round(F.cs[p.role] * min * q * wf * n()), 0, Math.round(F.dpm[p.role] * min * q * wf * n() * (1 + (kk[j] - 2) * .04))]);
+      });
+    });
+    return out;
+  },
+  fakeMvp(res) {
+    const wk = res.side === 'B' ? res.stats.slice(0, 5) : res.stats.slice(5);
+    return wk.map(x => [x[0], (x[2] * 3 + x[4] * 1.5 - x[3] * 2) + x[7] / 4000]).sort((a, b) => b[1] - a[1])[0][0];
   },
   // 오늘 아직 치르지 않은 우리 경기
   today() { const my = App.state.teamId, d = Clock.today(); return Schedule.matches.find(m => (m.t1 === my || m.t2 === my) && m.t1 && m.t2 && m.t.slice(0, 10) === d && !this.st()[m.id]) || null; },
@@ -55,7 +83,7 @@ const Season = {
   recordSeries(id, series) {
     const m = Schedule.all.find(x => x.id === id); if (!m || this.st()[id]) return;
     const sc = this.seriesScore(series), s1 = sc[m.t1] || 0, s2 = sc[m.t2] || 0;
-    this.st()[id] = { t1: m.t1, t2: m.t2, s1, s2, w: s1 > s2 ? 1 : 2, games: series.games.filter(x => x.result).map(x => ({ win: x.result.win, t: x.result.t, k: x.result.kills, mvp: x.result.mvp, teams: x.result.teams, ...(x.result.stats && x.result.stats.length ? { s: x.result.stats } : {}), picks: { B: (x.picks.B || []).map(p => p.c), R: (x.picks.R || []).map(p => p.c) } })) };
+    this.st()[id] = { t1: m.t1, t2: m.t2, s1, s2, w: s1 > s2 ? 1 : 2, games: series.games.filter(x => x.result).map(x => ({ win: x.result.win, t: x.result.t, k: x.result.kills, mvp: x.result.mvp, teams: x.result.teams, ...(x.result.stats && x.result.stats.length ? { s: x.result.stats } : { picks: { B: (x.picks.B || []).map(p => p.c), R: (x.picks.R || []).map(p => p.c) } }) })) };
     this.rate(series, m);
     if (typeof Mastery !== 'undefined' && Mastery.base) Mastery.fromSeries(series, m);   // 공식전 숙련도
     if (typeof Cond !== 'undefined') Cond.after(m, series);

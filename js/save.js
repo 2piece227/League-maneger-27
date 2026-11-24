@@ -1,7 +1,9 @@
 // 저장: 브라우저 localStorage에 슬롯 3개 + 자동 저장 1개. 설정은 따로 저장.
 const Store = {
-  get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch { return null; } },
-  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch (e) { console.warn('[save] 저장 실패', e); return false; } },
+  // 세이브 슬롯은 압축해서 둔다 (localStorage는 사이트당 약 5MB: 슬롯 3개 + 자동 저장이 시즌이 길어지면 넘칠 수 있었다)
+  LZ: 'LZ1:',
+  get(k) { try { let s = localStorage.getItem(k); if (s && s.startsWith(this.LZ)) s = LZString.decompressFromUTF16(s.slice(this.LZ.length)); return JSON.parse(s); } catch { return null; } },
+  set(k, v) { try { let s = JSON.stringify(v); if (k.startsWith('lm27.save.') && typeof LZString !== 'undefined') s = this.LZ + LZString.compressToUTF16(s); localStorage.setItem(k, s); return true; } catch (e) { console.warn('[save] 저장 실패', e); if (typeof UI !== 'undefined' && UI.toast) UI.toast('저장 공간이 부족해 저장하지 못했습니다. 안 쓰는 슬롯을 지워 주세요.', 5000); return false; } },
   del(k) { try { localStorage.removeItem(k); } catch {} },
   ageOn(birth, date) {
     const b = new Date(birth), d = new Date(date);

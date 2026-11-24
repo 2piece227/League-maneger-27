@@ -654,3 +654,10 @@ button.nw-card { width: 100%; text-align: left; font: inherit; cursor: pointer; 
 .gr-spark { display: inline-flex; align-items: center; gap: 6px; color: var(--gold-2); }
 .gr-spark svg { width: 90px; height: 22px; }
 .gr-spark small { color: var(--muted); }
+
+/* 선수 통계 */
+.ps-table th.ps-h { cursor: pointer; user-select: none; white-space: nowrap; }
+.ps-table th.ps-h.on, .ps-table td.ps-on { color: var(--gold-2); }
+.ps-table tr[data-pid] { cursor: pointer; }
+.ps-table tr.mine { background: rgba(58, 160, 255, .08); }
+.ps-pl { display: inline-flex; gap: 6px; align-items: center; }
