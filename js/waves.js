@@ -138,6 +138,7 @@ Object.assign(Sim, {
   // 미니언이 죽으면 근처(10) 챔피언이 막타를 친다. 서폿은 다른 아군이 없을 때만. 자기 포탑 밑에서는 놓치는 게 늘고, 주도권을 내주면 견제 때문에 놓친다
   csGive(g, k, at, dn, m, tower) {
     if (dn <= 0) return;
+    this.minionXp(g, k, at, dn, m);   // 경험치는 막타와 상관없이 근처에 있으면 (싸우는 중이어도)
     const busy = this.busySet(g), ps = this.alive(g, k).filter(p => !p.recall && !p.tpCh && !busy.has(p) && this.dist(p.pos, at) <= 10); if (!ps.length) return;
     const main = ps.filter(p => p.role !== 'SUP'), L = main.length ? main : ps, gold = this.MIN_G + m * .25;
     L.forEach(p => {

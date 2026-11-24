@@ -388,7 +388,22 @@ const Sim = {
     return w + (jong && !(ro && rieul) ? a : b);
   },
   // 오브젝트 · 구조물 기록: 기록 목록(ev)과 화면 알림(feed)에 함께 남긴다
-  mark(g, side, kind, icon, txt) { const e = { t: g.t, side, kind, icon, txt, obj: true }; g.ev.push(e); g.feed.push(e); },
+  mark(g, side, kind, icon, txt) { const e = { t: g.t, side, kind, icon, txt, obj: true }; g.ev.push(e); g.feed.push(e); if (this.OBJ_XP[kind]) this.objXp(g, side, kind); },
+  // ---------- 경험치 (레벨) ----------
+  // 레벨은 경험치로만 오른다: 근처에서 죽은 미니언 · 정글 캠프 · 킬과 어시스트 · 오브젝트. 가만히 서 있거나 본진에 있으면 오르지 않는다
+  //   (예전에는 경기 시간으로 레벨을 정해서 멈춰 있어도 올랐다 — 베타 제보). 실제 레벨별 누적 경험치
+  XP: [0, 280, 660, 1140, 1720, 2400, 3180, 4060, 5040, 6120, 7300, 8580, 9960, 11440, 13020, 14700, 16480, 18360],
+  XP_K: 1,
+  levelOf(xp) { let l = 1; while (l < 18 && xp >= this.XP[l]) l++; return l; },
+  gainXp(p, v) { if (!p || p.dead || !(v > 0)) return; if (p.xp == null) p.xp = this.XP[(p.lvl || 1) - 1]; p.xp += v * this.XP_K; const l = this.levelOf(p.xp); if (l > p.lvl) { p.lvl = l; this.refresh && this.refresh(p); } },
+  // 미니언 경험치: 근처(10)에 있는 그 팀 챔피언끼리 나눈다 (둘이면 1.3배를 반씩 — 실제처럼 함께 있으면 조금 손해). 귀환 중 · 본진에 있으면 못 받는다
+  minionXp(g, k, at, dn, m) {
+    const ps = g.pl.filter(p => p.side === k && !p.dead && !p.recall && !p.tpCh && this.dist(p.pos, at) <= 10); if (!ps.length) return;
+    const tot = dn * (49 + m * .45) * (ps.length === 1 ? 1 : ps.length === 2 ? 1.3 : 1.5);
+    ps.forEach(p => this.gainXp(p, tot / ps.length));
+  },
+  OBJ_XP: { drag: 220, grubs: 60, herald: 320, baron: 450 },
+  objXp(g, side, kind) { const at = Rift.pos(this.PIT[kind]); g.pl.filter(p => p.side === side && !p.dead && this.dist(p.pos, at) <= 25).forEach(p => this.gainXp(p, this.OBJ_XP[kind] + this.min(g) * 6)); },
 
   // ---------- 상점: 재료부터 사서 완성한다 · 와드 · 장신구 ----------
   free(p) { return p.gold - p.spent; },
@@ -445,6 +460,7 @@ const Sim = {
     victim.dead = g.t + Math.round(8 + this.min(g) * 1.3); victim.d++; victim.hp = 0; victim.recall = 0; victim.jq = []; victim.tpCh = null; victim.hold = null; victim.fled = 0;
     killer.k++; killer.gold += 300 + Math.min(700, Math.max(0, victim.k - victim.d) * 100) + (first ? 100 : 0);
     assists.filter(a => a !== killer && !a.dead).forEach(a => { a.a++; a.gold += 120; });
+    { const kx = 90 + victim.lvl * 28 + Math.max(0, victim.lvl - killer.lvl) * 35, as = assists.filter(a => a !== killer && !a.dead); this.gainXp(killer, kx); as.forEach(a => this.gainXp(a, kx * .55 / Math.max(1, as.length) + 25)); }   // 처치 경험치 (레벨이 높은 상대일수록)
     g.side[killer.side].kills++;
     g.kills.push({ t: g.t, k: killer, v: victim, at: [...victim.pos] });
     g.feed.push({ t: g.t, killer, victim, first });
@@ -956,7 +972,7 @@ const Sim = {
     if (this.dist(p.pos, head.pos) < 3) {
       head.wait -= 10;
       if (head.wait <= 0) p.jq.shift();
-      if (!head.until) { p.cs += head.kind ? (head.kind === 'crab' ? 1 : 0) : 3.6; p.gold += head.kind === 'setup' ? 0 : head.kind ? 40 : 45; }   // 캠프 하나 약 7 CS (실제 10분 정글 CS 약 60)
+      if (!head.until) { p.cs += head.kind ? (head.kind === 'crab' ? 1 : 0) : 3.6; p.gold += head.kind === 'setup' ? 0 : head.kind ? 40 : 45; if (head.kind !== 'setup') this.gainXp(p, (head.kind === 'crab' ? 150 : 165) * (1 + m * .025)); }   // 캠프 하나 약 7 CS (실제 10분 정글 CS 약 60) · 경험치는 그 자리에서 캠프를 잡을 때만
     }
     return head.pos;
   },
@@ -1142,9 +1158,11 @@ const Sim = {
       // 라이너의 CS는 실제 미니언에서 나온다 (js/waves.js csGive). 중후반에 웨이브 곁에 없으면 정글 캠프 · 지나가는 웨이브를 조금 챙긴다
       const cs = p.role === 'SUP' ? .15 : p.role === 'JGL' ? (m < 14 ? 0 : 1) : m >= 14 && !this.minNear(g, this.other(p.side), p.pos, 12).length ? this.OFFWAVE : 0;
       const c = cs * (.85 + g.r() * .3) * ((p.fx || {}).cs || 1); p.cs += c; p.gold += 23 + c * 22;
+      if (c > 0 && this.dist(p.pos, this.fountain(p.side)) > 20) this.gainXp(p, c * 55);   // 중후반 정글 캠프 · 지나가는 웨이브 (본진에 있으면 없음)
       if (m < 14 && inLane) p.gold += Math.max(0, p.mu.gd) / 6;             // 라인전 매치업 이득 (실제 분당 골드 차이)
       // 포지션별 경험치 속도(실제 30분 기준 탑·미드 16, 원딜·정글 15, 서폿 13 안팎) + 킬·어시 − 데스. 예전에는 30분이면 모두 18이 됐다
-      p.lvl = Math.max(1, Math.min(18, Math.floor(1 + m * ({ TOP: .52, MID: .52, BOT: .48, JGL: .48, SUP: .41 })[p.role] + p.k * .15 + p.a * .05 - p.d * .08)));
+      if (p.xp == null) p.xp = this.XP[(p.lvl || 1) - 1];
+      p.lvl = Math.max(p.lvl || 1, this.levelOf(p.xp));   // 경험치로만 (js 위 XP)
       { const cap = typeof Kits !== 'undefined' ? Kits.hpCap(p, g) : 1; if (this.dist(p.pos, this.fountain(p.side)) < 14) p.hp = cap; else p.hp = Math.min(cap, p.hp + .02); }   // 크산테 총공세: 체력 상한 65%
       this.refresh(p);
       // 라인전 견제로 마나를 쓴다 (맞상대가 근처에 있으면 10초에 Q 소모의 0.4배, 1분 40초부터)
