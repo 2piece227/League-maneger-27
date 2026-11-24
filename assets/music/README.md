@@ -16,5 +16,5 @@
 예: `Imagine Dragons - Warriors (2014).mp3`, `Linkin Park - Heavy Is The Crown (2024).mp3`
 
 - mp3 · m4a · ogg · wav · flac 가능. 한 파일 25MB 이하 (GitHub 웹 업로드 제한)
-- 올린 곡과 League of Legends 공식 사운드클라우드 곡(월즈 주제가 · 밴픽 연주곡)을 함께 튼다
+- 메뉴 음악은 올린 곡과 League of Legends 공식 사운드클라우드 월즈 주제가를 함께 튼다 (다른 폴더는 올린 곡만, 비어 있으면 사운드클라우드 곡)
 - 로컬에서 실행할 때는 폴더 목록을 못 읽으므로 `playlist.json` 에 파일 이름을 적는다

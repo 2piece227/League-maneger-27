@@ -547,7 +547,7 @@ const Sim = {
   },
   // 교전 1초: 사거리(7) 안의 상대를 친다. 팀 힘(조합·골드·버프·코치·전술·컨디션: tpow)은 피해 배율로, 개인 실력은 개인 배율로.
   // 체력이 낮고 밀리면 빠진다(뒤쫓기면 맞으면서). 체력이 0이 되면 마지막에 때린 선수가 처치, 피해를 준 선수는 어시스트.
-  OFFWAVE: .5, MEET: .11, DEF: 1, BASE_DIVE: .22, FIGHT_K: .16, FIGHT_S: 26, RANGE: 7, SNOW: .25, SNOW_MAX: 4,   // SNOW: 골드 1천 차이당 전투력
+  OFFWAVE: .5, MEET: .09, DEF: 1, BASE_DIVE: .22, FIGHT_K: .16, FIGHT_S: 26, RANGE: 7, SNOW: .25, SNOW_MAX: 4,   // SNOW: 골드 1천 차이당 전투력
   TANK: { TOP: .8, JGL: .85, MID: 1.08, BOT: 1.18, SUP: .9 },
   // 챔피언 유형별 한타 행동: 사거리(맵 %) · 주는 피해 · 받는 피해 · 붙는 속도(돌진기)
   //   tank 앞라인·이니시(먼저 들어가 가까운 적과 부딪힌다) / bruiser 브루저(앞라인 뒤를 따라 붙는다) / dive 암살·돌진(옆으로 돌아 딜러를 문다)
@@ -869,21 +869,23 @@ const Sim = {
     if (!this.objUp(g, 'baron')) return false;
     const deadO = g.pl.filter(p => p.side !== k && p.dead).length, deadK = g.pl.filter(p => p.side === k && p.dead).length;
     const m = this.min(g), lead = this.lead(g, k);
-    const mine = lead > 7000 || (deadO - deadK >= 3 && lead > -2000) || (m >= 24 && (lead > 3000 || deadO - deadK >= 2)) || (m >= 26 && lead > 1500) || (m >= 30 && lead > -1500) || m >= 34;   // 팽팽한 경기도 26분 이후 앞서면 · 30분 이후 크게 뒤지지 않으면 · 34분 이후면 바론을 노린다
+    const mine = lead > 7000 || (deadO - deadK >= 3 && lead > -2000) || (m >= 24 && (lead > 3000 || deadO - deadK >= 2)) || (m >= 26 && lead > 2500) || (m >= 31 && lead > -1000) || m >= 35;   // 팽팽한 경기도 26분 이후 앞서면 · 30분 이후 크게 뒤지지 않으면 · 34분 이후면 바론을 노린다
     const contest = this.near(g, this.other(k), Rift.pos('BAR'), 18).length >= 3 && this.lead(g, k) > -6000;
     return mine || contest;
   },
+  OBJ_SETUP: 75,
+  MID_DIVE: .5,   // 14~30분(바론 버프 없을 때) 미드 포탑 앞 이니시 배율 (예전에는 한타 절반이 미드 포탑 앞이었다)   // 오브젝트 생성 몇 초 전부터 자리를 잡나 (예전 60)
   objFor(g, p, m) {
     for (const o of ['drag', 'grubs', 'herald', 'baron']) {
       const ob = g.obj[o]; if (!ob.at || (ob.until && g.t >= ob.until)) continue;
       const pri = this.objPri(g, p.side, o), vis = { deep: 20, norm: 0, home: -20 }[g.side[p.side].ins.vision];
       const go = (ob.go && ob.go[p.side]) || ob.at, early = ((p.role === 'JGL' && p.tac === 'obj') || (p.role === 'MID' && p.tac === 'join') ? 40 : 0) + pri * 30 + vis;   // 우선 오브젝트·깊은 시야는 먼저 자리 잡는다
-      if (o === 'baron' ? !this.baronCall(g, p.side) || g.t < go - 30 - early : go - g.t > 60 + early) continue;
+      if (o === 'baron' ? !this.baronCall(g, p.side) || g.t < go - 30 - early : go - g.t > this.OBJ_SETUP + early) continue;
       const roles = m >= 20 && o === 'drag' ? ['JGL', 'MID', 'BOT', 'SUP', p.tac === 'split' ? '' : 'TOP'] : this.OBJ_ROLES[o];
       if (!roles.includes(p.role)) continue;
       // 많이 밀리거나 2명 이상 죽었으면 내준다
       const k = p.side, deadK = g.pl.filter(q => q.side === k && q.dead).length, deadO = g.pl.filter(q => q.side !== k && q.dead).length;
-      if (o !== 'baron' && (deadK - deadO >= 2 + (pri > 0 ? 1 : 0) || (1 / (1 + Math.exp(-(this.tpow(g, k) - this.tpow(g, this.other(k))) / 13)) < (pri > 0 ? .2 : pri < 0 ? .5 : .33)))) continue;   // 우선 오브젝트는 끝까지, 나머지는 쉽게 내준다
+      if (o !== 'baron' && (deadK - deadO >= 2 + (pri > 0 ? 1 : 0) || (1 / (1 + Math.exp(-(this.tpow(g, k) - this.tpow(g, this.other(k))) / 13)) < (pri > 0 ? .17 : pri < 0 ? .36 : .24)))) continue;   // 우선 오브젝트는 끝까지, 나머지는 쉽게 내준다
       const pit = Rift.pos(this.PIT[o]), spot = [pit[0] + p.off[0], pit[1] + p.off[1]];
       const door = Rift.MOUTH[this.PIT[o]] || pit;
       return g.t >= go ? spot : this.objWait(o, p.side, p.off);             // 준비가 끝나기 전에는 둥지 입구 앞 강가에서 대기 (둥지 뒤 정글 벽 너머가 아니라)
@@ -894,6 +896,8 @@ const Sim = {
     for (const o of ['drag', 'grubs', 'herald', 'baron']) {
       if (!this.objUp(g, o) || g.over) continue;
       const ob = g.obj[o], pit = Rift.pos(this.PIT[o]), ready = k => g.t >= ((ob.go && ob.go[k]) || ob.at);
+      // 리셋: 치던 팀이 둥지 근처를 모두 떠나 8초가 지나면 체력이 다시 다 찬다 (실제 게임의 어그로 풀림)
+      for (const k of ['B', 'R']) { const hp = ob.prog[k] || 0; if (this.near(g, k, pit, 16).length) (ob.hitT ||= {})[k] = g.t; if (hp > 0 && g.t - ((ob.hitT || {})[k] ?? g.t) > 8) { ob.prog[k] = 0; if (hp >= this.objNeed(g, o) * .4) this.line(g, 'objReset', { o: this.OBJ[o], t: g.side[k].t.short }); } }
       const door = Rift.MOUTH[this.PIT[o]] || pit, inPit = k => this.near(g, k, pit, 16).filter(p => this.reach(p.pos, door, 7));   // 둥지 안이나 입구 앞까지 온 선수만 (벽 건너편은 아직 안 온 것)
       const nb = ready('B') ? inPit('B') : [], nr = ready('R') ? inPit('R') : [];
       const hitters = ps => ps.filter(p => Rift.los(p.pos, pit) ? this.dist(p.pos, pit) <= 12 : Rift.wdist(p.pos, pit) <= 12);   // 실제로 몬스터를 치는 선수: 둥지 안 · 벽에 가리지 않은 곳
@@ -906,10 +910,10 @@ const Sim = {
       } else if (nb.length && nr.length) {
         const db = this.tpow(g, 'B', nb) + nb.length * 6 - this.tpow(g, 'R', nr) - nr.length * 6, k = db > 0 || (db === 0 && g.r() < .5) ? 'B' : 'R';
         this.near(g, this.other(k), pit, 20).forEach(p => this.retreat(g, p, 16));
-        ob.prog[k] = (ob.prog[k] || 0) + this.objHit(g, o, hitters(k === 'B' ? nb : nr)); if (ob.prog[k] >= this.objNeed(g, o)) wk = k;
+        ob.prog[k] = (ob.prog[k] || 0) + this.objHit(g, o, hitters(k === 'B' ? nb : nr)); (ob.hitT ||= {})[k] = g.t; if (ob.prog[k] >= this.objNeed(g, o)) wk = k;
       } else for (const [k, ps] of [['B', nb], ['R', nr]]) {
         const hs = hitters(ps); if (!hs.length) continue;
-        ob.prog[k] = (ob.prog[k] || 0) + this.objHit(g, o, hs);
+        ob.prog[k] = (ob.prog[k] || 0) + this.objHit(g, o, hs); (ob.hitT ||= {})[k] = g.t;
         if (ob.prog[k] >= this.objNeed(g, o)) { wk = k; if (g.r() < .5 && !(o === 'grubs' && (ob.left ?? 3) > 1)) this.line(g, 'objFree', { w: g.side[k].t.short, l: g.side[this.other(k)].t.short, o: this.OBJ[o] }); }
       }
       if (!wk) continue;
@@ -917,7 +921,7 @@ const Sim = {
       const thief = this.near(g, this.other(wk), pit, 12).find(p => Rift.los(p.pos, pit) && (p.fx || {}).steal && g.r() < p.fx.steal);
       if (thief) { (this.line(g, 'steal', { p: thief.name, o: this.OBJ[o] }), this.line(g, 'stealHype', { p: thief.name })); wk = thief.side; }
       const s = g.side[wk];
-      ob.prog = {}; if (o !== 'grubs' || (ob.left ?? 3) <= 1) ob.fought = false;
+      ob.prog = {}; ob.hitT = {}; if (o !== 'grubs' || (ob.left ?? 3) <= 1) ob.fought = false;
       if (o === 'drag') {
         if (this.elder(g)) {
           // 영혼이 나온 뒤에는 장로 드래곤: 2분 30초 동안 강력한 버프
@@ -1036,9 +1040,25 @@ const Sim = {
   },
   // 뭉쳐서 밀 라인: 이미 많이 밀어 둔 라인 → 상대 포탑 체력이 낮은 라인 → 바텀(드래곤 쪽) · 탑 · 미드 순. 30초는 유지한다
   //   예전에는 항상 미드라 사이드에서 이겨도 미드부터 밀었다 (24경기 중 20경기, 2차 포탑까지 먼저 밀린 라인이 미드 — 베타 피드백)
+  // 빈 라인 받기: 라인마다 상대 맨 앞 웨이브가 우리 가장 바깥 건물 22 안으로 들어왔는데 우리 편이 그 근처(18)에 없으면, 그 웨이브에 가장 가까운 라이너 한 명이 간다 (10초마다 다시 본다)
+  //   예전에는 중후반에 모두 미드 · 5인 뭉치기에 묶여 사이드 웨이브가 그대로 포탑을 때렸다 (베타 피드백: 131 · 151 · 5인 뭉치기에 매몰)
+  catchLane(g, p) {
+    const s = g.side[p.side], o = this.other(p.side);
+    if (s.catchT !== g.t) {
+      s.catchT = g.t; s.catch = {};
+      for (const l of this.LANES3) {
+        const w = this.frontW && this.frontW(g, l, o); if (!w || w.n < 2) continue;
+        const st = this.structOf(g, p.side, l); if (!st || st.kind === 'nexus' || this.dist(w.p, st.pos) > 22) continue;
+        if (this.alive(g, p.side).some(q => this.dist(q.pos, w.p) < 18)) continue;
+        const cand = this.alive(g, p.side).filter(q => !['JGL', 'SUP'].includes(q.role) && !q.recall && !q.tpCh && !Object.values(s.catch).includes(q.p.id) && this.dist(q.pos, w.p) < 70).sort((a, b) => this.dist(a.pos, w.p) - this.dist(b.pos, w.p))[0];
+        if (cand) s.catch[l] = cand.p.id;
+      }
+    }
+    return Object.entries(s.catch || {}).find(([, id]) => id === p.p.id)?.[0] || null;
+  },
   pushLane(g, k) {
     const s = g.side[k]; if (s.grp && s.grp.until > g.t) return s.grp.lane;
-    const o = g.side[this.other(k)], pref = { bot: 0, top: .05, mid: .1 };
+    const o = g.side[this.other(k)], pref = { bot: 0, top: .05, mid: .35 };   // 미드는 덜 (미드 포탑 앞 한타만 반복되던 문제 — 사이드 공성 · 1-3-1 압박이 실제로 더 많다)
     const lane = ['bot', 'top', 'mid'].map(l => ({ l, v: o.towers[l] + (o.thp[l][3 - o.towers[l]] ?? 1) * .9 + pref[l] + (o.ihp[l] <= 0 ? -5 : 0) })).sort((a, b) => a.v - b.v)[0].l;
     s.grp = { lane, until: g.t + 30 }; return lane;
   },
@@ -1085,6 +1105,7 @@ const Sim = {
       return this.laneSpot(g, p, m, this.LANE_OF[p.role]);
     }
     if (p.role === 'SUP' && p.tac === 'protect') { const ad = g.pl.find(q => q.side === p.side && q.role === 'BOT' && !q.dead && !q.recall); if (ad && ad.goal) return this.clampP([ad.goal[0] + p.off[0] * .6, ad.goal[1] + p.off[1] * .6]); }   // 원딜 곁을 떠나지 않는다
+    if (m >= 14 && !['JGL', 'SUP'].includes(p.role)) { const cl = this.catchLane(g, p); if (cl) return this.laneSpot(g, p, m, cl); }
     // 중후반: 실제 경기처럼 흩어져 있다 (같이 다니는 인원 20분 약 3명, 30분 약 3.4명 — 솔랭 타임라인). 모이는 건 오브젝트·공성·한타 호출 때만
     // 운영 구도 지시: 5인 뭉치기(18분부터 다 같이) / 1-4(탑이 사이드) / 1-3-1(탑·원딜이 양 사이드)
     const lead = this.lead(g, p.side), call = Math.abs(lead) > 4000 || m >= 30, setup = s.ins.setup;
@@ -1179,7 +1200,7 @@ const Sim = {
       } else p.blk = 0;
     });
     this.fightTick(g);
-    this.waves(g, m); this.towers(g, m); this.siegeTick(g, m); if (g.over) return;
+    this.waves(g, m); this.towers(g, m); this.heraldTick(g, m); this.siegeTick(g, m); if (g.over) return;
     if (!g.over) this.objectives(g, m);   // 오브젝트는 매초 깎인다 (예전에는 10초마다 한 번에 깎여 체력이 갑자기 0이 됐다)
     if (g.t % 2 === 0 && !g.over) this.encounter(g, m);
     if (g.t % 4 === 0 && !g.over) this.pickOff(g, m);
@@ -1246,11 +1267,11 @@ const Sim = {
     if (m >= 14) for (const k of (g.r() < .5 ? ['B', 'R'] : ['R', 'B'])) {   // 매번 어느 쪽부터 볼지 섞는다 (늘 블루부터면 블루만 먼저 다이브했다)
       const o = this.other(k);
       for (const lane of (g.r() < .4 ? ['bot', 'top', 'mid'] : g.r() < .5 ? ['top', 'bot', 'mid'] : ['mid', 'bot', 'top'])) {   // 늘 미드부터 보던 순서를 섞는다
-        const st = this.structOf(g, o, lane), atk = this.near(g, k, st.pos, 20), def = this.near(g, o, st.pos, 15);
+        const st = this.structOf(g, o, lane), atk = this.near(g, k, st.pos, 20).filter(q => !q.goal || this.dist(q.goal, st.pos) < 24), def = this.near(g, o, st.pos, 15);   // 그 라인을 실제로 밀러 온 선수만 (오브젝트로 가다 미드 포탑 근처를 지나는 선수는 빼고)
         if (atk.length < 3 || def.length < 1) continue;
         // 본진(억제기 안쪽) 대치는 오래 끌지 않는다: 비슷하면 공격 쪽이 한타를 연다
         const deepS = /nexus/.test(st.kind), d = this.tpow(g, k, atk) - this.tpow(g, o, def) + (atk.length - def.length) * 6 - (deepS ? 0 : 6), p = 1 / (1 + Math.exp(-d / 13));
-        if (g.r() < Math.max(0, p - { safe: .55, norm: .47, aggr: .4 }[g.side[k].ins.aggr] + (deepS ? this.BASE_DIVE : 0)) * (deepS ? 1 : this.min(g) >= 28 ? .8 : .5)) {
+        if (g.r() < Math.max(0, p - { safe: .55, norm: .47, aggr: .4 }[g.side[k].ins.aggr] + (deepS ? this.BASE_DIVE : 0)) * (deepS ? 1 : this.min(g) >= 28 ? .8 : .5) * (lane === 'mid' && !deepS && this.min(g) < 30 && !atk.some(q => this.baronOn(g, q)) ? this.MID_DIVE : 1)) {
           const at = [def.reduce((a, q) => a + q.pos[0], 0) / def.length, def.reduce((a, q) => a + q.pos[1], 0) / def.length];
           this.fightAt(g, at, 18, { where: `${this.laneKo(lane)} 포탑 앞`, dive: k });
           return;
@@ -1284,6 +1305,10 @@ const Sim = {
     if (g.over || g.t < 100) return;
     const busy = new Set(); g.fights.forEach(f => f.mem.forEach(p => busy.add(p)));
     const ok = p => !p.recall && !p.tpCh && !p.fled && !busy.has(p);
+    if (this.OVL_ON !== false) { const O = (g.ovl ||= {}), now = {};
+      this.alive(g, 'B').forEach(a => { if (ok(a)) this.alive(g, 'R').forEach(b => { if (!ok(b) || this.dist(a.pos, b.pos) > 1.6) return; const key = a.p.id + '|' + b.p.id; now[key] = (O[key] || 0) + 1;
+        if (now[key] >= 2 && this.fightAt(g, [(a.pos[0] + b.pos[0]) / 2, (a.pos[1] + b.pos[1]) / 2], 8, { where: '' })) now[key] = 0; }); });
+      g.ovl = now; }
     let best = null;
     this.alive(g, 'B').forEach(a => { if (ok(a)) this.alive(g, 'R').forEach(b => {
       if (!ok(b)) return;

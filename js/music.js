@@ -91,9 +91,9 @@ const Music = {
     }
     for (const k of ['worlds', 'draft', 'victory', 'decider']) {
       const names = (got[k] || []).filter(n => this.EXT.test(n));
-      // 올린 파일 + 원래 사운드클라우드 곡을 함께 (예전에는 파일을 올리면 사운드클라우드 곡이 목록에서 빠졌다). 같은 제목은 파일 쪽을 쓴다
+      // 메뉴(worlds)만: 올린 파일 + 원래 사운드클라우드 월즈 주제가를 함께 (밴픽은 올린 연주곡만 — 사운드클라우드 곡은 폴더가 비었을 때만). 예전에는 파일을 올리면 사운드클라우드 곡이 목록에서 빠졌다). 같은 제목은 파일 쪽을 쓴다
       this._sc ||= Object.fromEntries(Object.entries(this.LISTS).map(([x, L]) => [x, L.tracks.filter(t => t.sc)]));
-      if (names.length) { const files = names.map(n => this.parse(n, `assets/music/${k}/`)), low = t => t.title.toLowerCase(); this.LISTS[k].tracks = [...files, ...(this._sc[k] || []).filter(t => !files.some(f => low(f) === low(t)))]; }
+      if (names.length) { const files = names.map(n => this.parse(n, `assets/music/${k}/`)), low = t => t.title.toLowerCase(); this.LISTS[k].tracks = [...files, ...(k === 'worlds' ? this._sc[k] || [] : []).filter(t => !files.some(f => low(f) === low(t)))]; }
       // 표지: 곡과 같은 이름의 이미지(예: "가수 - 제목 (2024).jpg"), 없으면 폴더의 cover.jpg
       const imgs = (got[k] || []).filter(n => this.IMG.test(n)), base = n => n.replace(this.EXT, '').replace(this.IMG, '');
       const cover = imgs.find(n => /^cover\./i.test(n));

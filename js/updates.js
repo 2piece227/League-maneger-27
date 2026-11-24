@@ -12,7 +12,7 @@ const Updates = {
           '출전 기회가 없는 후보 · 2군 선수가 <b>먼저 해지를 요청</b>해 오기도 합니다 — 수락 · 설득해서 남기기 · 이적 시장에 내놓기',
         ] },
         { h: '🎵 음악', items: [
-          '[버그] 새 곡을 넣으면서 원래 있던 월즈 주제가(Worlds Collide · Legends Never Die · RISE · Phoenix · Take Over · Burn It All Down · GODS · Awaken)와 밴픽 연주곡이 목록에서 빠지던 문제 — 이제 새 곡과 함께 나옵니다 (메뉴 11곡 · 밴픽 8곡)',
+          '[버그] 새 곡을 넣으면서 원래 있던 월즈 주제가(Worlds Collide · Legends Never Die · RISE · Phoenix · Take Over · Burn It All Down · GODS · Awaken)와 밴픽 연주곡이 목록에서 빠지던 문제 — 메뉴 음악에서 새 곡과 함께 나옵니다 (메뉴 11곡). 밴픽은 밴픽 연주곡 4곡만',
         ] },
         { h: '🏅 POG', items: [
           '[버그] 평점 1위 선수 대신 다른 선수가 POG를 받던 문제 — POG가 킬 위주(데스를 거의 안 봄)로 뽑혀 평점과 기준이 달랐습니다. 이제 평점과 같은 기준이고, 비슷하면 피해량이 많은 선수가 받습니다',

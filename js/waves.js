@@ -131,6 +131,45 @@ Object.assign(Sim, {
     if (!g.siegeSaid || g.t - g.siegeSaid > 60) { g.siegeSaid = g.t; if (g.r() < .6) this.line(g, 'siegeDive', { t: g.side[k].t.short }); }
     return true;
   },
+  // ---------- 협곡의 전령 ----------
+  // 잡은 팀이 상대 포탑 근처 라인에 가면 전령을 깐다(해설: 깔았다) → 라인을 따라 걸어가 포탑에 돌진 (바깥 · 2차 포탑 체력 35%, 그 안쪽 20%).
+  //   지키는 선수가 붙으면 전령이 깎이다 쓰러질 수 있다. 들고만 있다가 시간이 다 돼 가면 가까운 라인에 깐다
+  HU_SPD: 1.1,
+  heraldTick(g, m) {
+    const H = (g.hu ||= {});
+    for (const k of ['B', 'R']) {
+      const sd = g.side[k], o = this.other(k);
+      if (!H[k] && sd.heraldReady > g.t) {
+        const ps = this.alive(g, k).filter(p => !p.recall && !p.tpCh);
+        let pick = null;
+        for (const p of ps) for (const l of this.LANES3) { const st = this.structOf(g, o, l); if (st.kind === 'tower' && this.dist(p.pos, st.pos) < 26 && this.distLane(p.pos, l) < 7 && (!pick || this.dist(p.pos, st.pos) < pick.d)) pick = { p, l, d: this.dist(p.pos, st.pos) }; }
+        if (!pick && sd.heraldReady - g.t < 15 && ps.length) { const p = ps[0], l = this.LANES3.slice().sort((a, b) => this.distLane(p.pos, a) - this.distLane(p.pos, b))[0]; pick = { p, l }; }
+        if (pick) {
+          sd.heraldReady = 0;
+          H[k] = { lane: pick.l, pos: [...pick.p.pos], hp: 1, t0: g.t };
+          this.line(g, 'heraldDrop', { t: sd.t.short, p: pick.p.name, lane: this.laneKo(pick.l) });
+          g.fx.push({ type: 'herald', side: k, at: [...pick.p.pos], t: g.t, dur: 3 });
+        }
+        continue;
+      }
+      const h = H[k]; if (!h) continue;
+      const st = this.structOf(g, o, h.lane);
+      if (!st || st.kind === 'nexus' || g.t - h.t0 > 90) { delete H[k]; continue; }
+      const d = this.dist(h.pos, st.pos);
+      // 지키는 선수가 붙으면 깎인다
+      const def = this.near(g, o, h.pos, 7).filter(p => !p.recall); h.hp -= def.length * .05;
+      if (h.hp <= 0) { delete H[k]; this.line(g, 'heraldDown', { t: g.side[o].t.short, lane: this.laneKo(h.lane) }); continue; }
+      if (d <= 3.5) {
+        delete H[k];
+        this.hit(g, k, h.lane, st, st.kind === 'tower' && st.i <= 1 ? .35 : .2);
+        this.line(g, 'heraldCharge', { t: sd.t.short, lane: this.laneKo(h.lane) });
+        g.fx.push({ type: 'fight', side: k, at: [...st.pos], t: g.t, dur: 2 });
+        continue;
+      }
+      const step = Math.min(d - 3, this.HU_SPD), q = Rift.path ? null : null;
+      h.pos = [h.pos[0] + (st.pos[0] - h.pos[0]) / d * step, h.pos[1] + (st.pos[1] - h.pos[1]) / d * step];
+    }
+  },
   siegeTick(g, m) {
     const busy = this.busySet(g), seen = new Set();
     const order = ['B', 'R'].flatMap(k => this.LANES3.map(lane => [k, lane, this.structOf(g, this.other(k), lane)])).sort((x, y) => (/nexus/.test(y[2].kind) ? 1 : 0) - (/nexus/.test(x[2].kind) ? 1 : 0));
@@ -147,7 +186,6 @@ Object.assign(Sim, {
       const sd = g.side[k], grub = st.kind === 'tower' ? 1 + Math.min(3, sd.grubs || 0) * .05 : 1;
       // 20분 전 라인별 포탑 피해: 바텀 듀오 압박 1.2 · 탑 1 · 미드 0.75 (미드는 라인이 짧아 미니언이 포탑에 먼저 닿아, 첫 포탑 대부분이 미드였다 — 실제는 바텀이 가장 많다)
       const laneK = this.laneK(st, lane, m);
-      if (sd.heraldReady > g.t && st.kind === 'tower' && st.i <= 1) { sd.heraldReady = 0; this.hit(g, k, lane, st, .3); this.line(g, 'heraldCharge', { t: sd.t.short, lane: this.laneKo(lane) }); }
       if (dmg > 0) { atk.forEach(p => { p.hitTw = g.t; p.hitTwAt = st.pos; }); this.hit(g, k, lane, st, dmg * grub * laneK); }
     }
   },

@@ -248,6 +248,11 @@ const Live = {
       c.fillStyle = Sim.buffed(g, k, w.p) ? (k === 'B' ? '#a98bff' : '#c77dff') : k === 'B' ? '#7db8ff' : '#ff8d9b'; c.strokeStyle = 'rgba(5,8,14,.9)'; c.lineWidth = 1;   // 바론 버프 미니언은 보라색
       for (let i = 0; i < n; i++) { const o = this.MOFF[i]; c.beginPath(); c.arc(X(px + o[0]), Y(py + o[1]), i === 0 && w.sup ? r * 1.9 : r, 0, TAU); c.fill(); c.stroke(); }
     }
+    // 협곡의 전령 (깔린 뒤 포탑으로 걸어간다)
+    if (g.hu) for (const k of ['B', 'R']) { const h = g.hu[k]; if (!h) continue; const x = X(h.pos[0]), y = Y(h.pos[1]), r = Math.max(5, R * .55);
+      c.fillStyle = k === 'B' ? '#8f6bff' : '#c25dff'; c.strokeStyle = '#fff'; c.lineWidth = 1.5; c.beginPath(); c.moveTo(x, y - r); c.lineTo(x + r, y); c.lineTo(x, y + r); c.lineTo(x - r, y); c.closePath(); c.fill(); c.stroke();
+      c.fillStyle = '#fff'; c.font = `700 ${Math.round(r * 1.1)}px sans-serif`; c.textAlign = 'center'; c.textBaseline = 'middle'; c.fillText('전', x, y + .5);
+      c.fillStyle = 'rgba(0,0,0,.5)'; c.fillRect(x - r, y - r - 6, r * 2, 3); c.fillStyle = '#d9b3ff'; c.fillRect(x - r, y - r - 6, r * 2 * Math.max(0, h.hp), 3); }
     // 시야 보기: 한 팀을 고르면 그 팀 시야 밖은 어둡게, 안 보이는 상대는 숨긴다. 양 팀은 각 팀 시야를 옅은 색으로
     const vm = this.vmode, srcOf = k => typeof Vision !== 'undefined' ? Vision.sources(g, k) : [];
     if (vm === 'B' || vm === 'R') {
