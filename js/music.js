@@ -96,10 +96,11 @@ const Music = {
   },
   // "가수 - 제목 (2024).mp3" → { artist, title, year }. 하이픈이 없으면 파일 이름이 제목
   parse(n, dir) {
-    let b = n.replace(this.EXT, '').replace(/_/g, ' ').trim(), year = null;
+    let b = n.replace(this.EXT, '').replace(/_/g, ' ').trim(), year = null, start = 0;
+    const st = b.match(/\s*\[(\d+)s\]/); if (st) { start = +st[1]; b = b.replace(st[0], '').trim(); }   // "[55s]": 55초부터 (하이라이트가 뒤에 있는 곡)
     const y = b.match(/[\(\[]\s*((?:19|20)\d\d)\s*[\)\]]/); if (y) { year = +y[1]; b = b.replace(y[0], '').trim(); }
     const i = b.indexOf(' - ');
-    return { src: dir + encodeURIComponent(n), title: i > 0 ? b.slice(i + 3).trim() : b, artist: i > 0 ? b.slice(0, i).trim() : 'League of Legends', year };
+    return { src: dir + encodeURIComponent(n), title: i > 0 ? b.slice(i + 3).trim() : b, artist: i > 0 ? b.slice(0, i).trim() : 'League of Legends', year, start };
   },
   track() { const L = this.LISTS[this.list]; return L && L.tracks[this.order[this.idx]]; },
   url(t) { return t.sc ? this.SC + t.sc : t.src; },
@@ -195,11 +196,12 @@ const Music = {
     if (was) this.pause();
     this._resume = false; this.shotKind = list;
     const a = this.vAudio = new Audio(t.src), vol = (this.pref.vol / 100) * .9;
-    a.volume = vol; a.play().catch(() => {});
+    const t0 = t.start || 0;
+    a.volume = vol; if (t0) { a.currentTime = t0; a.addEventListener('loadedmetadata', () => { if (a.currentTime < t0) a.currentTime = t0; }, { once: true }); } a.play().catch(() => {});
     const done = () => { clearInterval(this._vf); a.pause(); if (this.vAudio !== a) return; this.vAudio = null; this.endShot = null; if ((was || this._resume) && !this.held) this.play(); };
-    this.endShot = () => { lim = Math.min(lim, a.currentTime + 3); };   // 3초에 걸쳐 줄이고 끝
+    this.endShot = () => { lim = Math.min(lim, a.currentTime - t0 + 3); };   // 3초에 걸쳐 줄이고 끝
     a.onended = done;
-    this._vf = setInterval(() => { const left = lim - a.currentTime; if (left <= 3) a.volume = Math.max(0, vol * left / 3); if (left <= 0) done(); }, 200);
+    this._vf = setInterval(() => { const left = lim - (a.currentTime - t0); if (left <= 3) a.volume = Math.max(0, vol * left / 3); if (left <= 0) done(); }, 200);
   },
   setHidden(h) {
     this.pref.hide = h; this.save(); if (this.el) this.el.style.display = h ? 'none' : '';
@@ -244,7 +246,7 @@ const Music = {
     if (t.src) {
       if (this.w && this.ready) this.w.pause();
       this.mkAudio();
-      this.audio.src = t.src; this.applyVol(); if (play) this.audio.play().catch(() => this.set(false));
+      this.audio.src = t.src; if (t.start) this.audio.addEventListener('loadedmetadata', () => { this.audio.currentTime = t.start; }, { once: true }); this.applyVol(); if (play) this.audio.play().catch(() => this.set(false));
       return;
     }
     if (this.audio) this.audio.pause();
