@@ -248,7 +248,7 @@ const Portal = {
           </div>
         </div>
         ${m.done ? '<div class="md-badge done">처리함</div>' : m.priority !== 'normal' ? `<div class="md-badge">${m.priority === 'urgent' ? '긴급' : '할 일'}</div>` : ''}
-        <div class="md-body">${UI.esc(m.body).split('\n\n').map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`).join('')}</div>
+        <div class="md-body">${Links.text(m.body).split('\n\n').map(p => `<p>${p.replace(/\n/g, '<br>')}</p>`).join('')}</div>
         ${this.detailActions(m)}
       </div>`;
     $$('.md-choice', panel).forEach(b => b.onclick = () => { Inbox.answer(m.id, +b.dataset.i); this.renderMessages(); });

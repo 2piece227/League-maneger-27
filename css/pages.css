@@ -627,3 +627,7 @@ button.nw-card { width: 100%; text-align: left; font: inherit; cursor: pointer; 
   .aw-five { grid-template-columns: repeat(3, 1fr); } .aw-five .pl-ph { width: 44px; height: 44px; }
 }
 .pp-made { padding: 1px 6px; border-radius: 4px; background: #2a2f45; color: #9fb0cc; font-size: 11px; font-weight: 600; }
+/* 글 속 이름 링크 (js/gameui.js Links.text) */
+.lk { cursor: pointer; text-decoration: underline; text-decoration-color: rgba(232,196,106,.45); text-underline-offset: 3px; }
+.lk:hover { color: var(--gold-2, #e8c46a); text-decoration-color: currentColor; }
+.fx-team > b, .fx-team b { cursor: pointer; }

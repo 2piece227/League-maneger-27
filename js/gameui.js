@@ -79,6 +79,23 @@ const G = {
 // 게임 화면 어디서든 선수 사진 · OVR 배지 · 이름(배지 바로 뒤) → 선수 프로필, 팀 로고 → 상대 분석(우리 팀은 1군 로스터).
 // 캡처 단계에서 먼저 받아서, 행 전체에 걸린 다른 동작(솔랭 상세 등)보다 프로필이 우선한다. 입력·버튼·대화상자 안은 건드리지 않는다.
 const Links = {
+  // 글 속 이름을 링크로 (FM처럼 어디서든 이름을 누르면 프로필 · 팀으로): 선수 이름 → data-pp, 팀 이름 · 약칭 → data-tt. 베타 피드백
+  //   영문 이름은 앞뒤가 영문 · 숫자가 아닐 때만 (조사가 붙은 'Zeus가'는 된다). 긴 이름부터 맞춘다
+  _ix: null, _ixN: -1,
+  index() {
+    const teams = (App.db && App.db.teams) || [], n = teams.reduce((s, t) => s + t.players.length + (t.cl || []).length, 0) + ((App.db && App.db.free && App.db.free.players.length) || 0);
+    if (this._ix && this._ixN === n) return this._ix;
+    const map = new Map(), add = (k, v) => { if (k && k.length >= 2 && !map.has(k)) map.set(k, v); };
+    teams.forEach(t => { add(t.name, ['tt', t.id]); add(t.short, ['tt', t.id]); });
+    [...teams.flatMap(t => [...t.players, ...(t.cl || [])]), ...((App.db.free || {}).players || [])].forEach(p => { if (p.role !== 'COACH' && !p.made) add(p.name, ['pp', p.id]); });
+    const keys = [...map.keys()].sort((a, b) => b.length - a.length).map(k => k.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+    this._ix = { map, re: keys.length ? new RegExp(`(?<![A-Za-z0-9])(${keys.join('|')})(?![A-Za-z0-9])`, 'g') : null }; this._ixN = n;
+    return this._ix;
+  },
+  text(s) {
+    const e = UI.esc(s == null ? '' : String(s)), ix = this.index(); if (!ix.re) return e;
+    return e.replace(ix.re, m => { const v = ix.map.get(m); return v ? `<span class="lk" data-${v[0]}="${v[1]}">${m}</span>` : m; });
+  },
   player(target) {
     const hit = target.closest('[data-pp]');
     if (hit) return hit.dataset.pp;
@@ -96,7 +113,8 @@ const Links = {
       if (t.closest('input, select, textarea, button, a, label, .modal, .modal-back, [role="dialog"], .pp-modal')) return;
       const pid = this.player(t);
       if (pid && Player.find(pid)) { e.stopPropagation(); e.preventDefault(); Player.open(pid); return; }
-      const tl = t.closest('[data-tt]');
+      let tl = t.closest('[data-tt]');
+      if (!tl) { const nm = t.closest('b, span.fx-team > b, .fx-team b'); const prev = nm && nm.previousElementSibling; if (prev && prev.matches('[data-tt]')) tl = prev; else if (prev && prev.querySelector && prev.querySelector('[data-tt]')) tl = prev.querySelector('[data-tt]'); }   // 로고 바로 뒤 팀 이름
       if (tl && !tl.closest('tr[data-tid], .nav, .topbar, header')) {
         e.stopPropagation(); e.preventDefault();
         const id = tl.dataset.tt, my = App.state.teamId;

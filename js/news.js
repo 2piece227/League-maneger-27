@@ -125,10 +125,10 @@ const News = {
         <div class="nw-read-grid">
           <article class="card nw-art">
             <div class="nw-art-meta"><span class="nw-tag ${x.cat}">${this.CATS[x.cat]}</span><small>${Fmt.dayLabel(x.date)} · ${UI.esc(A.by)}</small>${A.rv ? Rivalry.badge(A.rv) : ''}</div>
-            <h1>${UI.esc(x.title)}</h1>
+            <h1>${Links.text(x.title)}</h1>
             <div class="nw-art-hero">${A.teams.length >= 2 && !A.p ? A.teams.map(t => this.teamPic(t, 'nw-big')).join('<b class="nw-vs">VS</b>') : this.visual(x, 'nw-big')}</div>
-            ${A.paras.map(t => `<p>${UI.esc(t)}</p>`).join('')}
-            ${A.facts.length ? `<dl class="nw-facts">${A.facts.map(([k, v]) => `<dt>${UI.esc(String(k))}</dt><dd>${typeof v === 'string' && v.includes('<em') ? v : UI.esc(String(v))}</dd>`).join('')}</dl>` : ''}
+            ${A.paras.map(t => `<p>${Links.text(t)}</p>`).join('')}
+            ${A.facts.length ? `<dl class="nw-facts">${A.facts.map(([k, v]) => `<dt>${UI.esc(String(k))}</dt><dd>${typeof v === 'string' && v.includes('<em') ? v : Links.text(String(v))}</dd>`).join('')}</dl>` : ''}
             <div class="nw-rel">
               ${A.p ? `<button class="btn-ghost nw-go" data-pp-open="${A.p.id}">${UI.esc(A.p.name)} 프로필</button>` : ''}
               ${A.teams.map(t => `<button class="btn-ghost nw-go" data-team="${t.id}">${UI.esc(t.short)} ${t.id === my ? '로스터' : '분석'}</button>`).join('')}

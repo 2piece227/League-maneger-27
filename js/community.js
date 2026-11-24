@@ -208,7 +208,7 @@ const Community = {
   },
   count(list) { return (list || []).reduce((s, c) => s + 1 + (c.replies || []).length, 0); },
   html(list) {
-    return `<div class="cm-list">${list.map(c => `<div class="cm-row"><div class="cm-top"><span class="cm-site ${c.cls}">${UI.esc(c.site)}</span><b>${UI.esc(c.nick)}</b><small>${c.ago || ''}</small><em>▲ ${c.up}</em></div><p>${UI.esc(c.text)}</p>
-      ${(c.replies || []).map(r => `<div class="cm-reply"><span>ㄴ</span><b>${UI.esc(r.nick)}</b><p>${UI.esc(r.text)}</p><em>▲ ${r.up}</em></div>`).join('')}</div>`).join('')}</div>`;
+    return `<div class="cm-list">${list.map(c => `<div class="cm-row"><div class="cm-top"><span class="cm-site ${c.cls}">${UI.esc(c.site)}</span><b>${UI.esc(c.nick)}</b><small>${c.ago || ''}</small><em>▲ ${c.up}</em></div><p>${Links.text(c.text)}</p>
+      ${(c.replies || []).map(r => `<div class="cm-reply"><span>ㄴ</span><b>${UI.esc(r.nick)}</b><p>${Links.text(r.text)}</p><em>▲ ${r.up}</em></div>`).join('')}</div>`).join('')}</div>`;
   },
 };
