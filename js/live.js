@@ -1,7 +1,9 @@
 // 경기 관전: 옵저버 중계 화면 (엔진은 js/matchsim.js)
 // 화면 전체를 덮는 오버레이로 띄우고, 창 크기에 맞춰 맵 크기를 정한다 (태블릿에서도 스크롤 없이 한 화면).
 const Live = {
-  g: null, speed: 1, timer: null, raf: null, tickAt: 0, feedSeen: 0, banners: [], bannerOn: false,
+  g: null, speed: 1,
+  // 마지막으로 고른 배속 (다음 경기에도 유지 — 베타 피드백: 매 경기 2배속을 다시 눌러야 했다)
+  prefSpeed() { try { const v = +localStorage.getItem('lm27.lvspeed'); return this.SPEEDS && this.SPEEDS.includes(v) ? v : 1; } catch (e) { return 1; } }, timer: null, raf: null, tickAt: 0, feedSeen: 0, banners: [], bannerOn: false,
   SPEEDS: [1, 2, 4, 8],
   vmode: (() => { try { return localStorage.getItem('lm27.lvvis') || 'off'; } catch (e) { return 'off'; } })(),   // 시야 보기: off · all(양 팀) · B · R
   mode: (() => { try { return localStorage.getItem('lm27.lvmode') || 'hl'; } catch (e) { return 'hl'; } })(),   // hl 하이라이트 · full 전체 보기
@@ -26,7 +28,7 @@ const Live = {
     if (f) { this.zHold = { at: f.at, until: now + 1300 }; return f.at; }
     return this.zHold && this.zHold.until > now ? this.zHold.at : null;
   },
-  start(S) { Draft.useTac(S); this.g = Sim.create(S, S.game); this.speed = 1; this.feedSeen = 0; this.banners = []; Router.go('match-live'); },
+  start(S) { Draft.useTac(S); this.g = Sim.create(S, S.game); this.speed = this.prefSpeed(); this.feedSeen = 0; this.banners = []; Router.go('match-live'); },
   ico(n, cls = '') { return `<img class="ob-ic ${cls}" src="assets/obj/${n}.png" alt="">`; },
   // 인벤토리: 아이템 6칸(제어 와드 포함) + 장신구
   // 정글 펫 아이템: 자란 단계(●●○)와 강타 강화 표시
@@ -87,7 +89,7 @@ const Live = {
           <div class="lv-comm"></div>
         </div>
       </div></div>`;
-    $('.lv-speed', el).onclick = e => { const b = e.target.closest('button'); if (!b) return; this.acc = this.acc * this.speed / +b.dataset.s; this.speed = +b.dataset.s; $$('.lv-speed button', el).forEach(x => x.classList.toggle('on', x === b)); };
+    $('.lv-speed', el).onclick = e => { const b = e.target.closest('button'); if (!b) return; this.acc = this.acc * this.speed / +b.dataset.s; this.speed = +b.dataset.s; try { localStorage.setItem('lm27.lvspeed', String(this.speed)); } catch (x) {} $$('.lv-speed button', el).forEach(x => x.classList.toggle('on', x === b)); };
     $('.lv-mode', el).onclick = e => { const b = e.target.closest('button'); if (!b) return; this.mode = b.dataset.m; try { localStorage.setItem('lm27.lvmode', this.mode); } catch (x) {} $$('.lv-mode button', el).forEach(x => x.classList.toggle('on', x === b)); };
     $('.lv-vis', el).onclick = e => { const b = e.target.closest('button'); if (!b) return; this.vmode = b.dataset.v; try { localStorage.setItem('lm27.lvvis', this.vmode); } catch (x) {} $$('.lv-vis button', el).forEach(x => x.classList.toggle('on', x === b)); };
     $('.lv-pause', el).onclick = e => { if (g.over) return; this.playing = !this.playing; e.target.textContent = this.playing ? '일시정지' : '계속'; };
@@ -598,12 +600,12 @@ const Live = {
     el.innerHTML = `<div class="cr-page">${Career.head('경기 관전', '밴픽과 전술을 확정하면 경기를 옵저버 화면으로 볼 수 있습니다.')}
       <div class="card fx-empty"><b>${ready ? `${UI.esc(Draft.side(S, 'B').short)} vs ${UI.esc(Draft.side(S, 'R').short)} ${S.game}세트 준비 완료` : '관전할 경기가 없습니다'}</b><span>${ready ? '밴픽과 전술이 확정돼 있습니다.' : '경기날에는 계속 버튼이 경기로 바뀝니다. 연습으로 한 판 보려면 아래 버튼을 누르세요.'}</span>
       <div style="display:flex;gap:10px;justify-content:center;margin-top:12px;flex-wrap:wrap">${ready ? '<button class="btn-primary lv-go">경기 시작</button>' : ''}<button class="${ready ? 'btn-ghost' : 'btn-primary'} lv-quick">빠른 연습 경기 (양 팀 코치 밴픽)</button></div></div></div>`;
-    const go = $('.lv-go', el); if (go) go.onclick = () => { this.g = Sim.create(S, S.game); this.speed = 1; this.feedSeen = 0; this.render(el); };
+    const go = $('.lv-go', el); if (go) go.onclick = () => { this.g = Sim.create(S, S.game); this.speed = this.prefSpeed(); this.feedSeen = 0; this.render(el); };
     $('.lv-quick', el).onclick = () => {
       const my = Roster.team(), nm = Schedule.next(my.id, Clock.today()), opp = (nm && Schedule.opponent(nm, my.id)) || App.db.teams.find(t => t.league === my.league && t.id !== my.id);
       Draft.start({ opp: opp.id, side: 'B', mode: 'delegate', bo: 1 });
       const D = Draft.st(); while (!D.done) Draft.aiAct(D); Draft.confirm(D);
-      this.g = Sim.create(D, D.game); this.speed = 1; this.feedSeen = 0; this.render(el);
+      this.g = Sim.create(D, D.game); this.speed = this.prefSpeed(); this.feedSeen = 0; this.render(el);
     };
   },
 };

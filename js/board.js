@@ -106,12 +106,17 @@ const Trade = {
     // 그 팀이 약한 포지션의 우리 선수를 노린다
     const weak = G.ROLES.map(r => [r, Math.max(0, ...t.players.filter(x => x.role === r).map(x => x.ovr || 0))]).sort((a, b) => a[1] - b[1])[0][0];
     const want = my.players.filter(x => x.role === weak && x.role !== 'COACH').sort((a, b) => (b.ovr || 0) - (a.ovr || 0))[0]; if (!want) return;
-    const V = Contract.value(want, t), give = t.players.filter(x => x.role !== 'COACH' && x !== want && this.roleOk(t, x, want) && this.roleOk(my, want, x) && this.val(x, t) <= V * 1.1 && !Transfer.price(x, t).locked)
-      .map(x => [x, Math.abs(this.val(x, t) - V)]).sort((a, b) => a[1] - b[1])[0];   // 받는 선수보다 비싸거나 핵심 선수는 내주지 않는다. 가치가 가장 비슷한 선수를 낸다 (주석이 줄 중간에 있어 이 정렬이 통째로 빠져 있었다)
+    // 맞교환 상대: 받는 선수보다 비싸거나 핵심 선수는 내주지 않는다. 가치가 가장 비슷한 선수를 낸다
+    //   하한: 가치 55% 이상 · OVR 8 이내. 가치 80% 이상 · OVR 5 이내면 1:1, 그보다 모자라면 모자란 만큼 이적료를 얹는다. 그것도 안 되면 제안하지 않는다
+    //   (예전에는 하한이 없어 그 팀에 비슷한 선수가 없으면 OVR 60~70대 선수와 우리 핵심 선수의 1:1을 제안했다 — 베타 피드백)
+    const V = Contract.value(want, t), give = t.players.filter(x => x.role !== 'COACH' && x !== want && this.roleOk(t, x, want) && this.roleOk(my, want, x) && this.val(x, t) <= V * 1.1 && !Transfer.price(x, t).locked
+        && this.val(x, t) >= V * .55 && Math.abs((x.ovr || 0) - (want.ovr || 0)) <= 8)
+      .map(x => [x, Math.abs(this.val(x, t) - V)]).sort((a, b) => a[1] - b[1])[0];
     if (!give || !Engine.once('trade:' + t.id + ':' + want.id + ':' + today.slice(0, 7))) return;
-    const x = give[0];
-    Inbox.push({ from: { name: `${t.short} 단장`, role: 'board' }, subject: `${t.short} 트레이드 제안: ${x.name} ↔ ${want.name}`, priority: 'todo', ctx: { a: want.id, b: x.id },
-      body: `${t.name}입니다. 우리 ${G.ROLE_KO[x.role]} ${x.name}(OVR ${x.ovr || '-'})${Sim.josa(x.name, '과', '와').slice(x.name.length)} 귀 구단 ${G.ROLE_KO[want.role]} ${want.name}(OVR ${want.ovr || '-'})의 맞교환을 제안합니다.`,
+    const x = give[0], even = this.val(x, t) >= V * .8 && Math.abs((x.ovr || 0) - (want.ovr || 0)) <= 5;
+    const fee = even ? 0 : Math.max(.5, Math.round((V - this.val(x, t)) * 10) / 10);   // 억 원
+    Inbox.push({ from: { name: `${t.short} 단장`, role: 'board' }, subject: `${t.short} 트레이드 제안: ${x.name}${fee ? ` + ${Player.money(fee)} 원` : ''} ↔ ${want.name}`, priority: 'todo', ctx: { a: want.id, b: x.id, fee },
+      body: `${t.name}입니다. 우리 ${G.ROLE_KO[x.role]} ${x.name}(OVR ${x.ovr || '-'})${fee ? `에 이적료 ${Player.money(fee)} 원을 더해` : Sim.josa(x.name, '과', '와').slice(x.name.length)} 귀 구단 ${G.ROLE_KO[want.role]} ${want.name}(OVR ${want.ovr || '-'})${fee ? Sim.josa(want.name, '을', '를').slice(want.name.length) + ' 영입하고 싶습니다' : '의 맞교환을 제안합니다'}.`,
       choices: [{ label: '받아들인다', act: 'tradeYes', reply: '트레이드가 성사됐습니다.' }, { label: '거절한다', act: 'tradeNo', reply: '제안을 거절했습니다.' }] });
     if (G.rand(today + want.id, 'leak') < .4) this.rumor(want, t, false);   // 상대가 탐낸 것: 감독 탓이 아니다
   },
@@ -120,7 +125,8 @@ const Trade = {
 Engine.ACTS.tradeYes = m => {
   const a = Player.find(m.ctx.a), b = Player.find(m.ctx.b), my = Roster.team();
   const ok = a && b && a.t === my && b.t !== my && b.t.id !== 'free' && Trade.roleOk(my, a.p, b.p) && Trade.roleOk(b.t, b.p, a.p);
-  if (ok) Trade.swap(a.p, b.p); else m.choices[0].reply = '그사이 상황이 바뀌어 트레이드는 무산됐습니다.';
+  if (ok) { Trade.swap(a.p, b.p); if (m.ctx.fee) World.ledger().push({ date: Clock.today(), label: `${a.p.name} 트레이드 이적료`, amount: Math.round(m.ctx.fee * 1e8) }); }
+  else m.choices[0].reply = '그사이 상황이 바뀌어 트레이드는 무산됐습니다.';
 };
 Engine.ACTS.tradeNo = () => {};
 // 트레이드설에 대한 답 (선수 메시지)
