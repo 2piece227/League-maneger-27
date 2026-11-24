@@ -132,7 +132,7 @@ const Spells = {
   },
   // 묶는 궁(이니시 궁)이 준비됐나
   initUlt(g, p) {
-    if (typeof Kits !== 'undefined' && Kits.has(p.c)) return Kits.ready(g, p, 'R') && p.lvl >= 6 && ['KSante', 'Ambessa'].includes(p.c);
+    if (typeof Kits !== 'undefined' && Kits.custom(p.c)) return Kits.ready(g, p, 'R') && p.lvl >= 6 && ['KSante', 'Ambessa'].includes(p.c);
     const R = (typeof Skills !== 'undefined' ? Skills.of(p.c) : [])[3];
     return !!R && p.lvl >= 6 && g.t >= (p.rFx || 0) && (R.kind === 'init' || ['up', 'stun', 'pull', 'back'].includes(R.cc)) && !Sim.ULT_JOIN.includes(p.c);
   },

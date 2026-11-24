@@ -189,7 +189,7 @@ const Skills = {
     const D = Sim.dist, live = mem.filter(p => !p.dead), m = Sim.min(g);
     live.forEach(p => {
       if (p.recall || p.tpCh) return;
-      if (typeof Kits !== 'undefined' && Kits.has(p.c)) { Kits.cast(g, f, p, live); if (g.r() < .5) Kits.cast(g, f, p, live); return; }   // 사용자가 정한 키트 (js/kits.js)
+      if (typeof Kits !== 'undefined' && Kits.custom(p.c)) { Kits.cast(g, f, p, live); if (g.r() < .5) Kits.cast(g, f, p, live); return; }   // 사용자가 정한 키트 (js/kits.js)
       // 엔진 1초 ≈ 실제 2초: 한 번 쓰고, 절반 확률로 다른 스킬을 이어 쓴다 (콤보)
       const one = () => {
       const cd = (p.skc ||= {}), C = typeof CStats !== 'undefined', mana = s => !C || !p.mpMax || CStats.cost(p, s.key) <= p.mpCur;   // 마나가 모자라면 못 쓴다
@@ -214,7 +214,8 @@ const Skills = {
       const R = opts.find(x => x.key === 'R');
       if (R && f.size >= 4 && (R.kind === 'init' ? early || g.r() < .35 : g.t - f.t0 >= 2 && g.r() < .45)) s = R;
       if (FR) { s = FR; p.forceR = 0; }
-      else if (s.key === 'R' && f.size < 4) { s = opts.find(x => x.key !== 'R'); if (!s) return; }
+      // 작은 교전(1:1 · 2:2)에서도 궁: 피해 궁은 상대가 빈사일 때 마무리, 진입 궁은 가끔 (직접 설계 키트와 같은 기준)
+      else if (s.key === 'R' && f.size < 4) { const fin = this.SMALL_R !== false && R && C && (CStats.dmg[p.c] || {}).R && foes.some(q => q.hp < .25 && D(q.pos, p.pos) < 9), go = this.SMALL_R !== false && R && R.kind === 'init' && g.r() < .1; if (!(fin || go)) { s = opts.find(x => x.key !== 'R'); if (!s) return; } }
       const tg = s.kind === 'ally' ? us.filter(q => q !== p).sort((a, b) => a.hp - b.hp)[0] || p
         : p.hitTo && !p.hitTo.dead && foes.includes(p.hitTo) ? p.hitTo : foes.sort((a, b) => D(a.pos, p.pos) - D(b.pos, p.pos))[0];
       if (!tg && s.kind !== 'self' && s.kind !== 'esc') return;
@@ -227,7 +228,11 @@ const Skills = {
       // 맞은 적: 실제 수치로 (게임 단위 150 = 맵 1). 직선은 폭, 부채꼴은 각도 · 사거리, 원은 반경, 관통 못 하면 첫 대상만
       const seg = (a, b, q) => { const vx = b[0] - a[0], vy = b[1] - a[1], L = vx * vx + vy * vy || 1, u = Math.max(0, Math.min(1, ((q[0] - a[0]) * vx + (q[1] - a[1]) * vy) / L)); return D(q, [a[0] + vx * u, a[1] + vy * u]); };
       const fx = (form === 'mega' && s.fx2) || s.fx;
-      const dg = this.dodge(g, p, fx, this.hits(p, s, fx, to, tg, foes, seg)), hit = dg.hit;
+      const dg = this.dodge(g, p, fx, this.hits(p, s, fx, to, tg, foes, seg)); let hit = dg.hit;
+      // 평타 강화형 '본인' 스킬(가렌 Q · 잭스 W 등): 피해 데이터가 있으면 붙어 있는 상대에게 들어간다 (예전에는 피해가 없었다)
+      if (!hit.length && s.kind === 'self' && C && (CStats.dmg[p.c] || {})[s.key] && tg && D(tg.pos, p.pos) <= (p.rng || 2) + 1.2) hit = [tg];
+      // 스킬 뒤 평타 강화: 2초 동안 평타 피해 증가 (직접 설계 키트의 스킬 뒤 강화와 같은 눈금)
+      if (s.kind !== 'ally' && s.kind !== 'esc') p.km = { v: Math.max(p.km && p.km.until > g.t ? p.km.v : 1, s.kind === 'self' ? 1.15 : 1.05), until: g.t + 2 };
       // 스킬 피해: 맞은 적마다 data/skill-dmg.json 수치 그대로 (방어력 · 마저 · 보호막 · 킬 기록까지)
       const oh = C && (CStats.OH[p.c] || {})[s.key];
       if (oh) (p.oh ||= {})[s.key] = g.t + (oh.d || 3);                       // 평타 강화 · 병사: 지속 동안 평타마다 피해 (CStats.hit)

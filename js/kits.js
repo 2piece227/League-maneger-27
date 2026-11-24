@@ -36,7 +36,30 @@ const Kits = {
   // 챔피언별 라인 클리어 속도 (평타 · 스킬로 웨이브를 정리하는 빠르기, 1 = 보통). 스킬 하나의 클리어량은 각 스킬의 clr
   CLEAR: { Rumble: 1.2, Ambessa: 1, KSante: .7 },
   clearOf(c) { return this.CLEAR[c] ?? 1; },
-  has(c) { return !!this.K[c]; },
+  // 직접 설계한 키트 (고유 자원 · 연계 · 폼 체인지 · 한타 운용까지): 럼블 · 크산테 · 암베사
+  custom(c) { return !!this.K[c]; },
+  // 자동 키트: 직접 설계하지 않은 챔피언도 라인에서 스킬을 쓴다 (클리어 · 견제 · 포탑 밑 챙기기).
+  //   데이터(스킬 종류 · 모양 · 사거리 · 피해 유무 · 마나)로 정한다 — 피해가 있는 범위 스킬은 클리어, 사거리가 긴 피해 스킬은 견제, 돌진 · 진입기는 라인에서 아끼고, 본인 · 팀원 강화 · 도주기는 쓰지 않는다.
+  //   예전에는 직접 설계한 세 챔피언만 라인에서 스킬을 써서 킬이 다른 챔피언의 2~5배였다 (베타 점검). 한타 운용은 공통 Skills.cast
+  _auto: {},
+  auto(c) {
+    if (this._auto[c]) return this._auto[c];
+    const dm = (typeof CStats !== 'undefined' && CStats.dmg && CStats.dmg[c]) || {}, out = {};
+    Skills.of(c).forEach(s => {
+      const fx = s.fx || {}, dmg = !!dm[s.key] && !(typeof CStats !== 'undefined' && (CStats.OH[c] || {})[s.key]);
+      const shape = s.kind === 'self' || s.kind === 'ally' || s.kind === 'esc' ? 'self' : s.shape === 'global' ? 'line' : s.shape || 'target';
+      const aoe = ['circle', 'cone'].includes(shape) || fx.s === 'aura' || !!fx.z || (shape === 'line' && (fx.n > 1 || fx.w >= 180));
+      const range = fx.r || ({ line: 900, cone: 450, circle: 450, target: 550 })[shape] || 400;
+      let use = [];
+      if (s.key === 'R') use = ['tf'];
+      else if (dmg && s.kind === 'atk') use = ['clear', 'farm', ...(range >= 500 ? ['poke'] : [])];
+      else if (dmg && (s.kind === 'init' || s.kind === 'dash') && aoe) use = ['clear'];
+      out[s.key] = { shape, pierce: aoe, col: '210,214,230', range, clr: dmg ? (aoe ? .45 : .2) * (s.kind === 'atk' ? 1 : .6) : 0, use, auto: true };
+    });
+    return (this._auto[c] = out);
+  },
+  def(c) { return this.K[c] || (this.AUTO_LANE === false ? null : this.auto(c)); },
+  has(c) { return !!this.def(c); },
   D: () => Sim.dist,
   on(p) { return p.kit ||= { cd: {}, heat: 0, lastCast: -99, stack: 0, charges: 2, chT: 0, q: [] }; },
   // 재사용 대기: 실제 값(현재 랭크) × 0.8 (스킬 가속), 총공세 크산테 Q는 더 빠르다
@@ -51,7 +74,7 @@ const Kits = {
   hot(p) { return p.c === 'Rumble' && p.kit && p.kit.heat >= 50; },
   over(p, g) { return p.c === 'Rumble' && p.kit && (p.kit.over || 0) > g.t; },
   ready(g, p, key) {
-    const k = this.on(p), d = this.K[p.c][key]; if (!d) return false;
+    const k = this.on(p), d = this.def(p.c)[key]; if (!d) return false;
     if (this.over(p, g)) return false;                                     // 과열 중에는 스킬 봉인
     if (key === 'R' && (p.lvl < 6 || (p.kit.rAt || 0) > g.t)) return false;
     if (d.charges) return k.charges > 0 && g.t >= (k.cd[key] || 0);
@@ -64,7 +87,7 @@ const Kits = {
     Sim.T = g.t;
     for (const p of g.pl) {
       if (!this.has(p.c)) continue;
-      const k = this.on(p), d = this.K[p.c];
+      const k = this.on(p), d = this.def(p.c);
       if (p.dead || p.recall) { k.q = []; if (p.dead) { k.heat = 0; k.stack = 0; k.allout = 0; } continue; }
       // 럼블 열기: 3초 동안 스킬을 안 쓰면 초당 10씩 식는다. 과열이 끝나면 0
       if (d.res === 'heat') { if ((k.over || 0) > 0 && k.over <= g.t) { k.over = 0; k.heat = 0; } else if (!k.over && g.t - k.lastCast > 3) k.heat = Math.max(0, k.heat - 10); }
@@ -84,12 +107,12 @@ const Kits = {
     const myT = Sim.structOf(g, p.side, lane), behind = ew && D(ew.p, myT.pos) < 12;
     const ctxs = [];
     if (behind) ctxs.push('farm');
-    if (foe && p.hp > .45 && g.r() < .3) ctxs.push('poke');
+    if (foe && p.hp > .45 && g.r() < (this.custom(p.c) ? .3 : .15)) ctxs.push('poke');   // 자동 키트는 견제를 덜 (170명 모두가 견제하면 라인 킬이 너무 늘었다)
     if (ew && ew.n > 1.2) ctxs.push('clear');
     if (p.c === 'Rumble' && k.heat < 50 && (foe || ew) && g.r() < .5) ctxs.push('heat');   // 위험 상태 유지 (넘치지는 않게)
     for (const ctx of ctxs) {
       for (const key of ['Q', 'E', 'W']) {
-        const s = this.K[p.c][key];
+        const s = this.def(p.c)[key];
         if (!s || !s.use.includes(ctx) || !this.ready(g, p, key)) continue;
         if (p.c === 'Rumble' && ctx !== 'trade' && k.heat >= 80) continue;          // 라인에서는 과열까지 가지 않는다
         if (ctx === 'poke' && foe && D(foe.pos, p.pos) > this.R(s.range || 500)) continue;
@@ -142,7 +165,7 @@ const Kits = {
   },
   // ---------- 스킬 하나 쓰기: 재사용 · 자원 · 효과 · 연출 ----------
   fire(g, p, key, o) {
-    const k = this.on(p), s = this.K[p.c][key], D = Sim.dist, foesAll = o.foes || g.pl.filter(q => q.side !== p.side && !q.dead && !q.recall);
+    const k = this.on(p), s = this.def(p.c)[key], D = Sim.dist, foesAll = o.foes || g.pl.filter(q => q.side !== p.side && !q.dead && !q.recall);
     let shape = s.shape, name = null, col = s.col, cc = '', kfx = null;
     // 재사용 · 충전 · 마나
     if (o.follow) { shape = o.follow.shape || shape; name = o.follow.name || null; }
@@ -167,7 +190,7 @@ const Kits = {
     let miss = [];
     if (hit.length && shape !== 'target' && shape !== 'self') { const dg = Skills.dodge(g, p, fxD, hit); hit = dg.hit; miss = dg.miss; }
     // ----- 챔피언별 효과 -----
-    const mul = this.hot(p) && key !== 'R' ? 1.5 : 1;                     // 럼블 위험 상태: 스킬 50% 강화
+    const mul = this.hot(p) && key !== 'R' ? 1.3 : 1;                     // 럼블 위험 상태: 스킬 강화 (실제 50%, 다른 챔피언과 맞춰 30%)
     if (p.c === 'Rumble') {
       if (key !== 'R') { k.heat = Math.min(100, k.heat + 20); if (k.heat >= 100 && !k.over) { k.over = g.t + 2; p.km = { v: 1.35, until: g.t + 2 }; this.say(g, p, Sim.lt(g, 'heat', { p: p.name })); } }
       if (this.hot(p) && s.colHot) col = s.colHot;
@@ -219,7 +242,9 @@ const Kits = {
     // 스킬 피해 (data/skill-dmg.json 수치 그대로). 크산테 R은 위에서 따로 (벽 넘김 여부), 럼블 R은 장판이라 머무는 만큼 (절반)
     if (typeof CStats !== 'undefined' && !(p.c === 'KSante' && key === 'R')) {
       const zone = p.c === 'Rumble' && key === 'R' ? .5 : 1;
-      hit.forEach(v => this.deal(g, p, v, CStats.skillDmg(p, key, v), o.f, mul * zone, o.lane ? .15 : 0));   // 라인 견제로는 죽이지 않는다
+      // 직접 설계 키트의 추가 효과(연계 · 강화 · 고유 자원)가 많아 같은 눈금으로 맞춘다: 연계 추가타는 절반, 전체 CUSTOM_K (자동 키트 챔피언과 비교 측정으로)
+      const ck = this.custom(p.c) ? this.CUSTOM_K * (o.follow ? .5 : 1) : 1;
+      hit.forEach(v => this.deal(g, p, v, CStats.skillDmg(p, key, v), o.f, mul * zone * ck, o.lane ? .15 : 0));   // 라인 견제로는 죽이지 않는다
     }
     // 클리어 (한타 밖): 웨이브를 깎고 CS
     if (o.lane) {
@@ -236,7 +261,8 @@ const Kits = {
     return AO ? { arm: Math.max(0, ba / .15), mr: Math.max(0, bm / .15) } : { arm: Math.max(0, ba), mr: Math.max(0, bm) }; },   // 총공세 중에도 추가 방어 · 마저 계수는 그대로 (줄어든 건 기본 수치)
   // 스킬 한 방의 실제 피해 (물리는 방어력으로 줄고, 고정은 그대로). 엔진 1초 ≈ 실제 2초라 교전 피해와 같은 눈금(× FIGHT_K · STAT_K / 2)으로
   //  d = { p 물리, m 마법, t 고정 } (실제 수치). k: 추가 배율 (럼블 위험 상태 등). floor: 이 아래로는 안 깎는다 (라인 견제)
-  SKILL_K: 1,
+  SKILL_K: .9,   // 자동 키트 · 평타 강화형 스킬 피해가 더해져 전체 킬이 늘어 맞춘 눈금 (경기당 킬 30대 초반)
+  CUSTOM_K: .85,
   deal(g, a, v, d, f, k = 1, floor = 0) {
     if (!d || !v || v.dead || typeof CStats === 'undefined') return 0;
     const A = CStats.now(a), V = CStats.now(v); if (!A || !V) return 0;
@@ -265,7 +291,7 @@ const Kits = {
     else return;
     const to = Rift.snap(Sim.clampP([p.pos[0] + dir[0] * d, p.pos[1] + dir[1] * d]), 1);
     if (!Rift.los(p.pos, to)) return;
-    const from = [...p.pos]; p.pos = to; p.warp = g.t; p.km = { v: Math.max(p.km && p.km.until > g.t ? p.km.v : 1, 1.1), until: g.t + 1 };
+    const from = [...p.pos]; p.pos = to; p.warp = g.t; p.km = { v: Math.max(p.km && p.km.until > g.t ? p.km.v : 1, 1.05), until: g.t + 1 };
     (g.sk ||= []).push({ t: g.t, i: g.pl.indexOf(p), key: 'P', kind: 'dash', shape: '', cc: '', name: '도약', icon: null, from, to: [...to], hit: [], miss: [], ally: [], big: false, col: '255,190,110', kit: true, hop: true });
   },
   // 암베사 R: 대상 뒤로 (벽이면 가까운 길 위로)
