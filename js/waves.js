@@ -137,7 +137,10 @@ Object.assign(Sim, {
       const atk = this.alive(g, k).filter(p => !p.recall && !p.tpCh && !busy.has(p) && this.dist(p.pos, st.pos) <= 6.5); if (!atk.length) continue;
       const bare = bare0 && !forced;   // 탱킹 공성 중이면 미니언 없이도 제대로 친다
       const dmg = atk.reduce((a, p) => a + this.ctOf(p, m), 0) * (st.kind === 'nexus' ? 1.4 : 1) * (bare ? .4 : 1) * this.gate(st, m) * this.TW_K * (1 + Math.max(0, Math.min(1, (this.lead(g, k) - 6000) / 8000)) * this.CLOSE);
-      if (dmg > 0) { atk.forEach(p => { p.hitTw = g.t; p.hitTwAt = st.pos; }); this.hit(g, k, lane, st, dmg); }
+      // 공허 유충: 한 마리당 포탑 피해 +5% (최대 +15%), 전령: 잡은 뒤 처음 닿은 바깥 · 2차 포탑에 돌진 (포탑 체력 30%)
+      const sd = g.side[k], grub = st.kind === 'tower' ? 1 + Math.min(3, sd.grubs || 0) * .05 : 1;
+      if (sd.heraldReady > g.t && st.kind === 'tower' && st.i <= 1) { sd.heraldReady = 0; this.hit(g, k, lane, st, .3); this.line(g, 'heraldCharge', { t: sd.t.short, lane: this.laneKo(lane) }); }
+      if (dmg > 0) { atk.forEach(p => { p.hitTw = g.t; p.hitTwAt = st.pos; }); this.hit(g, k, lane, st, dmg * grub); }
     }
   },
 

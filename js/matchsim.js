@@ -250,6 +250,7 @@ const Sim = {
     g.pl.forEach(p => this.shop(g, p));
     // 드래곤: 첫 두 마리는 서로 다른 속성, 세 번째부터는 같은 속성(협곡 속성)
     const ds = this.DRAGONS.slice().sort(() => r() - .5); g.dragSeq = [ds[0], ds[1], ds[2]];
+    g.pl.forEach(p => Object.defineProperty(p, '_g', { value: g, enumerable: false, writable: true }));   // 선수 → 경기 (바람 영혼 이동 속도 등). 저장 · 복사에 끼지 않게 숨긴다
     g.obj = { drag: { at: 300, prog: {} }, grubs: { at: 360, prog: {}, until: 840 }, herald: { at: 900, prog: {}, until: 1185 }, baron: { at: 1200, prog: {} } };
     Object.values(g.obj).forEach(ob => this.objGo(g, ob));
     g.wph = { top: r() * 6.283, mid: r() * 6.283, bot: r() * 6.283 };
@@ -325,7 +326,7 @@ const Sim = {
   },
   // 선수 전투력: OVR + 숙련 + 메타 + 레벨 + 완성 아이템 + 시간대별 실제 승률
   // 챔피언 스탯 갱신 (레벨 · 아이템이 바뀌면): 이동 속도 배율 · 최대 마나
-  refresh(p) { const s = typeof CStats !== 'undefined' && CStats.now(p); p.msF = s ? Math.max(.85, Math.min(1.25, s.ms / 345)) : 1; p.mpMax = s ? s.mpMax : 0; if (p.mpCur == null || p.mpCur > p.mpMax) p.mpCur = p.mpMax; p.mp5 = s ? s.mp5 : 0; },
+  refresh(p) { const s = typeof CStats !== 'undefined' && CStats.now(p); p.msF = (s ? Math.max(.85, Math.min(1.25, s.ms / 345)) : 1) * (p._g && this.soul(p._g, p.side, '바람') ? 1.08 : 1); /* 바람 영혼: 이동 속도 */ p.mpMax = s ? s.mpMax : 0; if (p.mpCur == null || p.mpCur > p.mpMax) p.mpCur = p.mpMax; p.mp5 = s ? s.mp5 : 0; },
   STAT_K: 15,   // 스탯 피해(체력 비율/초) → 엔진 피해 배율. 예전 유형 배율(deal·take·초반 보정)의 평균과 맞춘 값
   ppow(p, m = 15) {
     const ph = m < 22 ? p.curve[0] : m < 30 ? p.curve[1] : p.curve[2], items = p.inv.filter(i => i.gold >= 2000).length;
@@ -341,10 +342,15 @@ const Sim = {
     v += (s.coach - 10) * .15;   // 전술 적합도 보너스는 없다: 전술은 경기 중 판단(교전·오브젝트·운영·목표·시야)으로만 결과에 닿는다
     v += Math.max(-this.SNOW_MAX, Math.min(this.SNOW_MAX, this.lead(g, k) / 1000 * this.SNOW));   // 스노우볼 (실제: 이긴 팀 골드 +1만, 킬 2배)
     if (s.baronUntil > g.t) v += 6;
-    if (s.drag.length >= 4) v += 4;
+    v += this.dragPow(s);
     if (s.elderUntil > g.t) v += 8;
     return v;
   },
+  // 드래곤: 한 마리마다 작은 보너스(종류별), 네 마리째 영혼은 종류에 따라 (화염 · 마공 피해, 대지 보호막 · 버티기, 바다 회복 — 회복은 decide, 바람 이동 속도 — refresh, 화공 버티기)
+  //   예전에는 드래곤 하나하나엔 효과가 없고 영혼도 종류와 상관없이 같은 +4였다
+  DRAG_FX: { 화염: [1, 5], 대지: [.8, 4], 바다: [.6, 3], 바람: [.6, 3], 마법공학: [.9, 4.5], 화학공학: [.8, 4] },
+  dragPow(s) { const fx = d => this.DRAG_FX[d[0]] || [.8, 4]; let v = s.drag.slice(0, 4).reduce((a, d) => a + fx(d)[0], 0); if (s.drag.length >= 4) v += fx(s.drag[3])[1]; return v; },
+  soul(g, k, name) { const s = g.side[k]; return s.drag.length >= 4 && s.drag[3][0] === name; },
   win(g, kA, a, b, bonus = 0) { const d = this.tpow(g, kA, a) - this.tpow(g, this.other(kA), b) + (a.length - b.length) * 6 + bonus; return g.r() < 1 / (1 + Math.exp(-d / 11.5)); },   // 11.5: 실제 강팀·약팀 승률 곡선에 맞춘 값 (tools/validate-engine.md 참고)
 
   // ---------- 해설 ----------
@@ -647,6 +653,7 @@ const Sim = {
         // 보호막이 먼저 받는다
         if (v.sh && v.sh.until > g.t && v.sh.v > 0) { const ab = Math.min(v.sh.v, dmg); v.sh.v -= ab; dmg -= ab; if (dmg <= 0) return; }
         v.hp -= dmg;
+        if (v.hp > 0 && v.hp < .2 && g.side[a.side].elderUntil > g.t) { v.hp = 0; if (!g.elderSaid || g.t - g.elderSaid > 20) { g.elderSaid = g.t; this.line(g, 'elderExec', { p: v.name }); } }   // 장로: 체력 20% 아래는 처형
         // 큰 싸움에서 우리 딜러가 죽기 직전: 실제 중계처럼 이름을 반복해서 외친다 (한 싸움에 한 번)
         if (!f.dang && f.size >= 6 && v.hp > 0 && v.hp < .25 && this.isCarry(v) && v.role !== 'SUP' && v.fled !== f.id) { f.dang = v; this.line(g, 'danger', { p: v.name }); }
         if (typeof Kits !== 'undefined') Kits.vamp(g, a, v, dmg);        // 총공세 크산테 모든 피해 흡혈 20%
@@ -923,7 +930,7 @@ const Sim = {
         if (o2.grubs) this.line(g, 'grubs', { a: s.t.short, an: s.grubs, b: o2.t.short, bn: o2.grubs });
         ob.at = null;
       }
-      else if (o === 'herald') { s.herald++; this.mark(g, wk, 'herald', 'riftherald', '전령 처치'); ob.at = null; s.push = { lane: g.r() < .5 ? 'top' : 'mid', until: g.t + 60 }; this.line(g, 'herald', { t: s.t.short, lane: this.laneKo(s.push.lane) }); }
+      else if (o === 'herald') { s.herald++; s.heraldReady = g.t + 150; this.mark(g, wk, 'herald', 'riftherald', '전령 처치'); ob.at = null; s.push = { lane: g.r() < .5 ? 'top' : 'mid', until: g.t + 60 }; this.line(g, 'herald', { t: s.t.short, lane: this.laneKo(s.push.lane) }); }
       else {
         s.baron++; s.baronUntil = g.t + 180; this.mark(g, wk, 'baron', 'baron', '바론 처치'); ob.at = g.t + 420; this.objGo(g, ob);
         // 사람을 잃어 가며 먹은 바론이면 '상처뿐인 바론'
@@ -1086,8 +1093,9 @@ const Sim = {
       const reset = g.t - s.reset < 25 && g.t - p.lastBack > 60;
       const oom = p.mpMax && p.mpCur < p.mpMax * .15 && m >= 3;   // 마나가 바닥나면 귀환
       if (p.hp < .25 || rush || (oom && !busy) || (!busy && (reset || (money && g.r() < .35)))) {
-        p.recall = g.t + this.RECALL_CH; p.jq = []; p.hold = null;
-        g.fx.push({ type: 'recall', side: p.side, at: [...p.pos], t: g.t, dur: this.RECALL_CH });
+        const ch = g.side[p.side].baronUntil > g.t ? Math.ceil(this.RECALL_CH / 2) : this.RECALL_CH;   // 바론 버프: 강화 귀환 (절반)
+        p.recall = g.t + ch; p.jq = []; p.hold = null;
+        g.fx.push({ type: 'recall', side: p.side, at: [...p.pos], t: g.t, dur: ch, empowered: ch < this.RECALL_CH });
       }
     });
   },
@@ -1180,7 +1188,7 @@ const Sim = {
       // 포지션별 경험치 속도(실제 30분 기준 탑·미드 16, 원딜·정글 15, 서폿 13 안팎) + 킬·어시 − 데스. 예전에는 30분이면 모두 18이 됐다
       if (p.xp == null) p.xp = this.XP[(p.lvl || 1) - 1];
       p.lvl = Math.max(p.lvl || 1, this.levelOf(p.xp));   // 경험치로만 (js 위 XP)
-      { const cap = typeof Kits !== 'undefined' ? Kits.hpCap(p, g) : 1; if (this.dist(p.pos, this.fountain(p.side)) < 14) p.hp = cap; else p.hp = Math.min(cap, p.hp + .02); }   // 크산테 총공세: 체력 상한 65%
+      { const cap = typeof Kits !== 'undefined' ? Kits.hpCap(p, g) : 1; if (this.dist(p.pos, this.fountain(p.side)) < 14) p.hp = cap; else p.hp = Math.min(cap, p.hp + .02 + (this.soul(g, p.side, '바다') ? .06 : 0) + g.side[p.side].drag.filter(d => d[0] === '바다').length * .01); }   // 바다 드래곤 · 영혼: 회복   // 크산테 총공세: 체력 상한 65%
       this.refresh(p);
       // 라인전 견제로 마나를 쓴다 (맞상대가 근처에 있으면 10초에 Q 소모의 0.4배, 1분 40초부터)
       if (p.mpMax && m < 14 && g.t >= 100 && inLane && this.near(g, this.other(p.side), p.pos, 10).length && typeof CStats !== 'undefined') p.mpCur = Math.max(0, p.mpCur - CStats.cost(p, 'Q') * .4);
