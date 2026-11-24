@@ -398,6 +398,14 @@ const Sim = {
   // 오브젝트 현상금 (실제 역전 장치): 14분 이후 골드가 1000 이상 뒤진 팀이 오브젝트 · 포탑을 잡으면 격차에 비례한 골드를 팀 전체가 나눠 받는다 (최대 팀 합계 1500)
   //   예전에는 없어서 초반에 조금만 앞서도 그대로 이기는 경기가 많았다 (10분에 앞선 팀 승률 86% — 실제 약 70%) — 베타 피드백
   BOUNTY: { drag: .25, herald: .2, baron: .35, grubs: .06, tower: .15 },
+  // 맵 장악 (14분 이후): 킬 · 골드로 크게 앞선 팀은 상대 정글 캠프와 사이드 웨이브를 가져가고, 밀리는 팀은 자기 정글도 마음 놓고 못 먹는다.
+  //   예전에는 앞선 팀이 뭉쳐 공성하는 동안 밀리는 팀이 포탑 밑에서 CS를 더 먹어, 20킬 이상 앞서도 골드 차이가 적었다 (베타 제보)
+  CTL_K: .5, CTL_MAX: .9,
+  ctl(g, k) {
+    const o = this.other(k), kd = g.side[k].kills - g.side[o].kills, gl = this.lead(g, k) / 1000;
+    const x = Math.max(-1, Math.min(1, (kd / 12 + gl / 8) / 2));   // 킬 12 · 골드 8천 차이면 최대
+    return Math.max(.35, 1 + x * (x > 0 ? this.CTL_MAX : this.CTL_K * 1.3));
+  },
   bounty(g, side, kind) {
     if (this.min(g) < 14) return; const lag = -this.lead(g, side); if (lag < 1000) return;
     const v = Math.min(1500, lag * (this.BOUNTY[kind] || 0)); if (v < 100) return;
@@ -1191,7 +1199,7 @@ const Sim = {
       if (p.role === 'SUP') p.gold += 7;
       // 라이너의 CS는 실제 미니언에서 나온다 (js/waves.js csGive). 중후반에 웨이브 곁에 없으면 정글 캠프 · 지나가는 웨이브를 조금 챙긴다
       const cs = p.role === 'SUP' ? .15 : p.role === 'JGL' ? (m < 14 ? 0 : 1) : m >= 14 && !this.minNear(g, this.other(p.side), p.pos, 12).length ? this.OFFWAVE : 0;
-      const c = cs * (.85 + g.r() * .3) * ((p.fx || {}).cs || 1); p.cs += c; p.gold += 23 + c * 22;
+      const c = cs * (.85 + g.r() * .3) * ((p.fx || {}).cs || 1) * (m >= 14 && p.role !== 'SUP' ? this.ctl(g, p.side) : 1); p.cs += c; p.gold += 23 + c * 22;
       if (c > 0 && this.dist(p.pos, this.fountain(p.side)) > 20) this.gainXp(p, c * 55);   // 중후반 정글 캠프 · 지나가는 웨이브 (본진에 있으면 없음)
       if (m < 14 && inLane) p.gold += Math.max(0, p.mu.gd) / 6;             // 라인전 매치업 이득 (실제 분당 골드 차이)
       // 포지션별 경험치 속도(실제 30분 기준 탑·미드 16, 원딜·정글 15, 서폿 13 안팎) + 킬·어시 − 데스. 예전에는 30분이면 모두 18이 됐다
