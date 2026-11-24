@@ -857,7 +857,7 @@ const Sim = {
     if (!this.objUp(g, 'baron')) return false;
     const deadO = g.pl.filter(p => p.side !== k && p.dead).length, deadK = g.pl.filter(p => p.side === k && p.dead).length;
     const m = this.min(g), lead = this.lead(g, k);
-    const mine = lead > 7000 || (deadO - deadK >= 3 && lead > -2000) || (m >= 24 && (lead > 3000 || deadO - deadK >= 2)) || (m >= 30 && lead > 0) || m >= 35;   // 팽팽한 경기도 30분 이후 조금이라도 앞서면, 35분 이후면 바론을 노린다
+    const mine = lead > 7000 || (deadO - deadK >= 3 && lead > -2000) || (m >= 24 && (lead > 3000 || deadO - deadK >= 2)) || (m >= 26 && lead > 1500) || (m >= 30 && lead > -1500) || m >= 34;   // 팽팽한 경기도 26분 이후 앞서면 · 30분 이후 크게 뒤지지 않으면 · 34분 이후면 바론을 노린다
     const contest = this.near(g, this.other(k), Rift.pos('BAR'), 18).length >= 3 && this.lead(g, k) > -6000;
     return mine || contest;
   },

@@ -137,9 +137,10 @@ Object.assign(Sim, {
       const key = k + st.kind + (st.i ?? '') + (/nexus/.test(st.kind) ? '' : lane); if (seen.has(key)) continue; seen.add(key);
       const shoot = st.kind === 'tower' || st.kind === 'nexusT', bare0 = shoot && !this.minNear(g, k, st.pos, this.TW_R + .5).length;
       const forced = bare0 && this.siegeGo(g, m, k, st);
-      const atk = this.alive(g, k).filter(p => !p.recall && !p.tpCh && !busy.has(p) && this.dist(p.pos, st.pos) <= 6.5); if (!atk.length) continue;
+      // 우리 미니언이 포탑을 받아 주고 있으면 사거리 안(8)에 선 챔피언도 같이 친다. 예전에는 6.5라 웨이브 뒤에 선 라이너가 경계 밖에서 구경만 했다 (미니언이 붙어 있고 2명 이상 근처일 때 67%가 안 쳤다 — 베타 피드백)
+      const atk = this.alive(g, k).filter(p => !p.recall && !p.tpCh && !busy.has(p) && this.dist(p.pos, st.pos) <= (shoot && !bare0 ? 8 : 6.5)); if (!atk.length) continue;
       const bare = bare0 && !forced;   // 탱킹 공성 중이면 미니언 없이도 제대로 친다
-      const dmg = atk.reduce((a, p) => a + this.ctOf(p, m), 0) * (st.kind === 'nexus' ? 1.4 : 1) * (bare ? .4 : 1) * this.gate(st, m) * this.TW_K * (1 + Math.max(0, Math.min(1, (this.lead(g, k) - 6000) / 8000)) * this.CLOSE);
+      const dmg = atk.reduce((a, p) => a + this.ctOf(p, m) * (this.dist(p.pos, st.pos) <= 6.5 ? 1 : .5), 0) * (st.kind === 'nexus' ? 1.4 : 1) * (bare ? .4 : 1) * this.gate(st, m) * this.TW_K * (1 + Math.max(0, Math.min(1, (this.lead(g, k) - 6000) / 8000)) * this.CLOSE);
       // 공허 유충: 한 마리당 포탑 피해 +5% (최대 +15%), 전령: 잡은 뒤 처음 닿은 바깥 · 2차 포탑에 돌진 (포탑 체력 30%)
       const sd = g.side[k], grub = st.kind === 'tower' ? 1 + Math.min(3, sd.grubs || 0) * .05 : 1;
       // 20분 전 라인별 포탑 피해: 바텀 듀오 압박 1.2 · 탑 1 · 미드 0.75 (미드는 라인이 짧아 미니언이 포탑에 먼저 닿아, 첫 포탑 대부분이 미드였다 — 실제는 바텀이 가장 많다)
