@@ -68,8 +68,9 @@ const Music = {
   },
   // ---------- 음원 폴더 ----------
   EXT: /\.(mp3|m4a|aac|ogg|opus|wav|flac)$/i,
+  IMG: /\.(jpe?g|png|webp)$/i,
   async scan() {
-    const KEY = 'lm27.music.files', now = Date.now();
+    const KEY = 'lm27.music.files2', now = Date.now();
     let got = null;
     try { const c = JSON.parse(localStorage.getItem(KEY) || 'null'); if (c && now - c.t < 30 * 60 * 1000) got = c.d; } catch (e) {}   // 30분 캐시 (GitHub API는 시간당 60번 제한)
     if (!got) {
@@ -79,7 +80,7 @@ const Music = {
         for (const k of ['worlds', 'draft', 'victory', 'decider']) {
           try {
             const r = await fetch(`https://api.github.com/repos/${gh[1]}/${repo}/contents/assets/music/${k}`);
-            if (r.ok) got[k] = (await r.json()).filter(f => f.type === 'file' && this.EXT.test(f.name)).map(f => f.name);
+            if (r.ok) got[k] = (await r.json()).filter(f => f.type === 'file' && (this.EXT.test(f.name) || this.IMG.test(f.name))).map(f => f.name);
           } catch (e) {}
         }
       }
@@ -91,6 +92,10 @@ const Music = {
     for (const k of ['worlds', 'draft', 'victory', 'decider']) {
       const names = (got[k] || []).filter(n => this.EXT.test(n));
       if (names.length) this.LISTS[k].tracks = names.map(n => this.parse(n, `assets/music/${k}/`));
+      // 표지: 곡과 같은 이름의 이미지(예: "가수 - 제목 (2024).jpg"), 없으면 폴더의 cover.jpg
+      const imgs = (got[k] || []).filter(n => this.IMG.test(n)), base = n => n.replace(this.EXT, '').replace(this.IMG, '');
+      const cover = imgs.find(n => /^cover\./i.test(n));
+      names.forEach((n, i) => { const im = imgs.find(x => base(x) === base(n)) || cover; if (im && this.LISTS[k].tracks[i]) this.art[this.LISTS[k].tracks[i].src] = `assets/music/${k}/` + encodeURIComponent(im); });
     }
     if (this.el) this.paint();
   },

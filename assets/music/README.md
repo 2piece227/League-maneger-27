@@ -12,6 +12,7 @@
 
 파일 이름은 `가수 - 제목 (연도).mp3` 로 하면 재생기에 가수 · 제목 · 연도가 나뉘어 보인다.
 이름 끝에 `[55s]` 를 붙이면 그 곡은 55초부터 튼다 (하이라이트가 뒤에 있는 승리 음악 등).
+같은 이름의 jpg · png · webp를 옆에 두면 그 곡의 표지가 된다 (예: `Imagine Dragons - Warriors (2014).jpg`). 폴더에 `cover.jpg` 를 두면 표지 없는 곡 모두에 쓰인다.
 예: `Imagine Dragons - Warriors (2014).mp3`, `Linkin Park - Heavy Is The Crown (2024).mp3`
 
 - mp3 · m4a · ogg · wav · flac 가능. 한 파일 25MB 이하 (GitHub 웹 업로드 제한)
