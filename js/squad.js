@@ -494,6 +494,7 @@ const SquadView = {
         </div>
         ${t.league !== 'LCK' ? `<div class="card ac-empty"><p class="ms-none">${ct.made ? '실제 2군 데이터가 없어 생성 선수로 꾸린 2군입니다.' : `최근 출전 대회: ${UI.esc(ct.circuit || '-')}`} 매월 2군 대회 순위가 메시지로 옵니다.</p>${(App.state.secResults || []).slice(-6).reverse().map(r => `<div class="sqv-res ${r.place <= 3 ? 'w' : ''}"><span>${r.d.slice(0, 7).replace('-', '.')}</span><b>${r.place}위</b><span>10팀 중</span></div>`).join('')}</div>` : ''}
         ${this.table(t.cl, '챌린저스 선수가 없습니다.')}
+        ${typeof Loan !== 'undefined' ? Loan.card() : ''}
         ${t.league === 'LCK' ? `<div class="sqv-two">
           <div class="card"><div class="card-head"><h3>LCK CL ${y} 순위</h3></div>
             <table class="rs-table"><thead><tr><th class="num">#</th><th>팀</th><th class="num">승</th><th class="num">패</th><th class="num">세트</th></tr></thead><tbody>

@@ -4,7 +4,8 @@ const Growth = {
   st() { return (App.state.growth ||= { snap: null, up: {}, hist: {} }); },
   mine() {
     const t = Roster.team(); if (!t) return [];
-    return [...t.players.map(p => [p, '1군']), ...(t.cl || []).map(p => [p, '2군']), ...(t.academy || []).map(p => [p, '아카데미'])].filter(([p]) => p.role !== 'COACH');
+    const loans = typeof Loan !== 'undefined' ? Object.keys(Loan.st()).map(id => Player.find(id)).filter(Boolean).map(h => [h.p, `임대 · ${h.t.short}`]) : [];
+    return [...t.players.map(p => [p, '1군']), ...(t.cl || []).map(p => [p, '2군']), ...(t.academy || []).map(p => [p, '아카데미']), ...loans].filter(([p]) => p.role !== 'COACH');
   },
   mOf(pid, c) { const e = Mastery.pool(pid).find(x => x.c === c); return e ? Math.round(e.m * 10) / 10 : 0; },
   snapshot(today) {

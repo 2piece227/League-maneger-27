@@ -661,3 +661,14 @@ button.nw-card { width: 100%; text-align: left; font: inherit; cursor: pointer; 
 .ps-table tr[data-pid] { cursor: pointer; }
 .ps-table tr.mine { background: rgba(58, 160, 255, .08); }
 .ps-pl { display: inline-flex; gap: 6px; align-items: center; }
+
+/* 임대 */
+.ln-list { display: grid; gap: 4px; margin-top: 10px; max-height: 46vh; overflow-y: auto; }
+.ln-row { display: flex; align-items: center; gap: 8px; padding: 6px 8px; border: 1px solid var(--line); border-radius: 6px; cursor: pointer; font-size: 13px; }
+.ln-row small { color: var(--muted); }
+.ln-c { margin-left: auto; font-style: normal; font-size: 11px; font-weight: 700; padding: 1px 6px; border-radius: 4px; }
+.ln-c.good { background: rgba(63, 191, 127, .18); color: #4fd690; }
+.ln-c.mid { background: rgba(200, 162, 74, .18); color: var(--gold-2); }
+.ln-c.bad { background: rgba(226, 87, 92, .15); color: #ff8a8e; }
+.ln-cur { display: flex; gap: 8px; align-items: center; padding: 6px 2px; cursor: pointer; font-size: 13px; }
+.ln-cur small { color: var(--muted); }
