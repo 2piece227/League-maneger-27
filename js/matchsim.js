@@ -1354,7 +1354,8 @@ const Sim = {
     // 복기: 한쪽이 크게 앞서다 뒤집힌 경기면 그 얘기를
     const hist = g.leadHist || [], sg = k === 'B' ? 1 : -1, worst = Math.min(0, ...hist.map(v => v * sg));
     if (worst < -4000) this.line(g, 'comeback', { l: g.side[this.other(k)].t.short, gk: (-worst / 1000).toFixed(0) });
-    const mvp = g.pl.filter(p => p.side === k).sort((a, b) => (b.k * 3 + b.a * 1.5 - b.d) - (a.k * 3 + a.a * 1.5 - a.d))[0];
+    const W = g.pl.filter(p => p.side === k), tot = W.reduce((s, p) => s + (p.dmg || 0), 0) || 1, pf = p => Season.perf(p.k, p.d, p.a, (p.dmg || 0) / tot);   // 평점과 같은 기준
+    const mvp = W.sort((a, b) => pf(b) - pf(a))[0];
     g.over.mvp = mvp;
     this.line(g, 'pog', { p: mvp.name, c: this.cn(mvp), kda: `${mvp.k}/${mvp.d}/${mvp.a}` });
   },

@@ -68,7 +68,8 @@ const Season = {
   },
   fakeMvp(res) {
     const wk = res.side === 'B' ? res.stats.slice(0, 5) : res.stats.slice(5);
-    return wk.map(x => [x[0], (x[2] * 3 + x[4] * 1.5 - x[3] * 2) + x[7] / 4000]).sort((a, b) => b[1] - a[1])[0][0];
+    const tot = wk.reduce((s, x) => s + (x[7] || 0), 0) || 1;
+    return wk.map(x => [x[0], this.perf(x[2], x[3], x[4], (x[7] || 0) / tot)]).sort((a, b) => b[1] - a[1])[0][0];
   },
   // 오늘 아직 치르지 않은 우리 경기
   today() { const my = App.state.teamId, d = Clock.today(); return Schedule.matches.find(m => (m.t1 === my || m.t2 === my) && m.t1 && m.t2 && m.t.slice(0, 10) === d && !this.st()[m.id]) || null; },
@@ -104,7 +105,9 @@ const Season = {
   },
   // 경기 평점 (1~10): 정식 엔진 경기는 KDA·승패·POG로, 경량 시뮬은 승패와 약간의 편차로. 선수마다 최근 5경기만 둔다
   // 한 경기 평점. 보통 승리 7점대 · 캐리 8~9 · 패배 4~5 (예전 식은 이긴 팀 대부분이 10점 상한에 걸렸다)
-  rating(k, d, a, won, mvp) { return 5.5 + (won ? .5 : -.4) + k * .22 + a * .09 - d * .3 + (mvp ? .7 : 0); },
+  rating(k, d, a, won, mvp) { return 5.5 + (won ? .5 : -.4) + this.perf(k, d, a) + (mvp ? .7 : 0); },
+  // 한 세트 활약 점수: 평점과 POG가 같은 기준을 쓴다 (예전에는 POG가 킬 위주라 데스가 많은 선수가 평점 1위 선수 대신 POG를 받았다 — 베타 제보). dmgShare: 팀 피해량 중 비율(동점 정리용)
+  perf(k, d, a, dmgShare = 0) { return k * .22 + a * .09 - d * .3 + dmgShare * .5; },
   rate(series, m) {
     const R = (App.state.ratings ||= {}), push = (id, v) => { if (!id) return; const l = R[id] ||= []; l.push(Math.round(Math.max(3, Math.min(10, v)) * 10) / 10); if (l.length > 5) l.shift(); };
     series.games.forEach((x, gi) => {

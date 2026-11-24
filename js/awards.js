@@ -54,8 +54,8 @@ const Awards = {
   finalsMvp(eid, tid) {
     const t = Schedule.team(tid); if (!t) return null;
     const m = Season.evMatches(eid).filter(x => Season.rec(x) && Season.winner(x) === tid).sort((a, b) => b.t.localeCompare(a.t))[0];
-    const cnt = {}; ((m && Season.rec(m).games) || []).forEach(g => { if (g.win === tid && g.mvp) cnt[g.mvp] = (cnt[g.mvp] || 0) + 1; });
-    return Draft.lineup(t).filter(Boolean).map(p => ({ p, c: cnt[p.id] || 0 })).sort((a, b) => b.c - a.c || (b.p.ovr || 0) - (a.p.ovr || 0))[0]?.p || null;
+    const cnt = {}, pf = {}; ((m && Season.rec(m).games) || []).forEach(g => { if (g.win === tid && g.mvp) cnt[g.mvp] = (cnt[g.mvp] || 0) + 1; (g.s || []).forEach(x => { pf[x[0]] = (pf[x[0]] || 0) + Season.perf(x[2], x[3], x[4]); }); });
+    return Draft.lineup(t).filter(Boolean).map(p => ({ p, c: cnt[p.id] || 0, f: pf[p.id] || 0 })).sort((a, b) => b.c - a.c || b.f - a.f || (b.p.ovr || 0) - (a.p.ovr || 0))[0]?.p || null;   // POG 횟수 → 결승 시리즈 활약 점수(평점과 같은 기준) → OVR
   },
   won(eid, tid) {
     const e = Schedule.byEvent && Schedule.byEvent[eid], t = Schedule.team(tid); if (!e || !t) return;
