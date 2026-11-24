@@ -1,0 +1,106 @@
+// 업데이트 노트: 타이틀 메뉴 · 커리어 > 업데이트 노트 · 새 버전이면 타이틀에서 한 번 띄운다.
+// 새 버전을 올릴 때는 LIST 맨 앞에 항목을 하나 더한다 (v · date · title · sections[{ h, items }]).
+const Updates = {
+  KEY: 'lm27.updSeen',
+  LIST: [
+    {
+      v: '0.9.1', date: '2026.11.24', title: '첫 업데이트 — 베타 피드백 반영 · 음향 개편',
+      intro: '베타 공개 후 보내주신 제보와 건의를 모아 반영했습니다. 피드백 주신 모든 분께 감사드립니다!',
+      sections: [
+        { h: '⚔️ 경기 엔진', items: [
+          '[버그] 챔피언이 포탑 근처에서 몇 분씩 제자리에 멈춰 있던 문제 — 포탑 사거리를 피해 돌아서 움직입니다',
+          '[버그] 가만히 있어도 레벨이 오르던 문제 — 미니언 · 처치 · 오브젝트 <b>경험치</b>로 레벨이 오릅니다',
+          '스노우볼 완화: 처치 골드 · 현상금(연속 처치에만) · 어시스트 골드 분배 · 라인전 체력 교환 폭 조정 (10분 골드 격차 평균 약 2300 → 1300)',
+          '후반 운영: 혼자 와드 박는 상대를 끊어먹고, 미니언만 기다리다 역다이브 당하지 않습니다',
+          '한타 · 공성: 밀 라인을 그때그때 고르고(사이드가 무너졌는데 미드부터 밀리던 문제), 골드가 크게 앞서면 깊게 들어가며, 아군 미니언이 포탑을 받아줄 때 같이 칩니다',
+          '바론 판단을 더 적극적으로',
+          '바론 버프: 잡을 때 살아 있던 선수만 받고 죽으면 사라집니다. 버프를 가진 선수 근처 미니언만 강화(보라색)',
+          '오브젝트 효과: 강화 귀환 · 드래곤 종류별 효과와 <b>용 영혼</b> · 장로 용 처형 · 전령 포탑 돌진 · 공허 유충 포탑 추가 피해',
+          '전술 \'초반 갱킹\' + 공략 라인: 정글이 그 라인 쪽 캠프를 돌고 3레벨 갱킹',
+          '모든 챔피언에 <b>자동 스킬 키트</b> — 라인전에서도 스킬을 쓰고 교전 스킬 운용 기준을 통일',
+        ] },
+        { h: '🎯 밴픽', items: [
+          '코치에게 맡긴 뒤에도 <b>\'직접 하기\'</b>로 되찾기',
+          '<b>픽창 스왑</b>: 밴픽 중에는 챔피언만 고르고, 끝난 뒤 우리 챔피언 둘을 눌러 서로 바꿉니다 (선수 이름 · 숙련도 · 라인 적합도 표시)',
+          '타이머 30 · 60 · 90초 · 끄기 (선택 유지)',
+          '<b>겸용 챔피언</b>: 프로 경기 기록과 잘 알려진 플렉스 픽을 여러 포지션에서 (예: 나피리 정글)',
+        ] },
+        { h: '🏆 대회 · 시상', items: [
+          '[버그] 토너먼트가 앞 라운드 승자끼리 맞붙지 않던 문제 (월즈 8강 승리 후 일정이 끝나던 문제)',
+          '[버그] 월즈 스위스 스테이지를 3승 진출 · 3패 탈락으로',
+          '[버그] 경기 날에 멈추지 않고 코치가 대신 치르던 문제',
+          '<b>파이널 MVP</b> · 월즈 전 <b>LCK 올프로</b> · 연말 <b>LCK 어워드</b>',
+          '우승 축하 화면 · 상금과 보상 · 수상 경력(선수 프로필 · 협상에 반영)',
+          '새 화면 <b>경기 → 대회 결과</b>: 다른 팀 경기까지 리그 · 대회 · 팀별로 모든 결과, 이변 · POG 순위 · 대회 순위, 경기를 누르면 세트별 리포트(진영 · 시간 · 킬 · POG · 밴픽 · 선수 KDA)',
+        ] },
+        { h: '🗣️ 감독 · 경기 후', items: [
+          '매치 승리 후 <b>감독 한마디</b> (선수 사기에 반영)',
+          '<b>승리 기자회견</b> 추가 (패배 기자회견은 그대로)',
+          '스크림 표기 \'Bo3\' → \'3판\': 정한 판수를 다 치르고 결과는 \'2승 1패 · 우세\'처럼',
+        ] },
+        { h: '👥 선수 · 데이터', items: [
+          '칼릭스(선현빈) 추가 — OVR 78 · 최고 89 / 두두 79 → 86 · 피터 86 → 80 / 클라우드 최고 잠재력 95',
+          '2군: AL · LNG · G2 · 바이탈리티 실제 아카데미 선수 추가, 데이터가 없어 만든 선수에 <b>\'가상 선수\'</b> 표시',
+          '챔피언 숙련도 데이터 213명 → <b>337명</b> (1군 · 2군 · 추가 FA)',
+          '숙련도가 게임 안에서 쌓입니다: 공식 경기 · 솔랭에서 쓴 챔피언, 연습 챔피언도 일부',
+          '[버그] 유망주를 주전으로 써도 성장하지 않던 문제 — 출전 시간이 성장에 반영, 27세부터 노화 · 가상 선수도 같은 규칙으로 성장',
+          '분기 리포트에 1군 유망주 현황',
+          '스카우트 검색에 2군(CL) · 아카데미 선수 포함 + 소속 필터',
+          '에이전트 협상은 1군 또는 OVR 75 이상 선수부터',
+          'AI 트레이드 제안 하한: 비슷한 수준끼리만 1:1, 차이가 나면 이적료를 얹습니다',
+        ] },
+        { h: '🖥️ 편의 기능', items: [
+          '<b>선수 · 감독 사진 직접 넣기</b> (이미지 주소나 파일) — 프로필 · 중계 · 뉴스 · 메시지 어디서나',
+          'FM처럼 이름을 누르면 이동: 뉴스 · 메시지 · 댓글 속 선수 이름 → 프로필, 팀 이름 → 팀',
+          '경기 배속을 다음 경기에도 유지',
+          '타이틀 메뉴 · 상단바에 디스코드 참여 버튼, 타이틀의 \'게임 종료\' 제거',
+          '게임 안 <b>업데이트 노트</b> (이 화면)',
+        ] },
+        { h: '🎵 음향 개편', items: [
+          '<b>메뉴 음악</b>: Linkin Park - Heavy Is The Crown (2024) · Imagine Dragons - Warriors (2014) · Lil Nas X - STAR WALKIN\' (2022)',
+          '<b>밴픽 음악</b> (월즈 로고 표지): Worlds 2026 Champ Select - Track 5 · Level Up (2024) · I\'m Alive (2023) · LCK - Prelude To Battle (The Trilogy)',
+          '<b>승리 음악</b> (신규): Worlds 2026 - Going 4 Gold (하이라이트부터) · Heavy Is The Crown (가사 없는 승리 버전) — 세트 승리는 짧게, 매치 승리는 길게. \'결과로\' 건너뛴 경기에는 없고, 경기 화면을 벗어나면 줄어듭니다',
+          '<b>마지막 세트 입장 음악</b> (신규): League of Legends - Silver Scrapes — Bo5에서 2:2, 운명의 5세트 밴픽에 들어갈 때',
+          '일시정지가 화면을 옮겨도 유지 · 설정에서 <b>음악 재생기 숨기기</b>',
+        ] },
+      ],
+    },
+    {
+      v: '0.9', date: '2026.11.23', title: '베타 공개',
+      sections: [{ h: '시작', items: ['LM 27 베타 공개 — 2027 시즌 감독 커리어 · 실제 선수 데이터 · 밴픽과 경기 중계 · 이적 시장 · 국제대회'] }],
+    },
+  ],
+  latest() { return this.LIST[0]; },
+  // 처음 온 사람에게는 자동으로 띄우지 않는다 (저장된 커리어가 있는 사람만)
+  returning() { try { return SaveSystem.list().some(Boolean) || !!SaveSystem.auto(); } catch (e) { return false; } },
+  seen() { try { return localStorage.getItem(this.KEY); } catch (e) { return null; } },
+  isNew() { return this.seen() !== this.latest().v; },
+  mark() { try { localStorage.setItem(this.KEY, this.latest().v); } catch (e) {} document.querySelectorAll('.upd-new').forEach(x => x.remove()); },
+
+  body(list = this.LIST) {
+    return list.map((u, i) => `
+      <article class="upd ${i ? 'old' : ''}">
+        <header><b>v${u.v}</b><span>${u.date}</span><h3>${u.title}</h3></header>
+        ${u.intro ? `<p class="upd-intro">${u.intro}</p>` : ''}
+        ${u.sections.map(s => `<section><h4>${s.h}</h4><ul>${s.items.map(x => `<li>${x.replace(/^\[버그\]\s*/, '<i class="upd-bug">버그 수정</i> ')}</li>`).join('')}</ul></section>`).join('')}
+      </article>`).join('');
+  },
+  open() {
+    UI.modal({ title: `업데이트 노트 <small class="upd-cur">현재 v${this.latest().v}</small>`, body: `<div class="upd-wrap">${this.body()}</div>`, actions: [{ label: '닫기', primary: true }] });
+    const m = document.querySelector('.modal-back:last-child .modal'); if (m) m.classList.add('upd-modal');
+    this.mark();
+  },
+  view(el) {
+    el.innerHTML = `<div class="cr-page"><div class="card rs-head"><div class="rs-title"><h2>업데이트 노트 <small>현재 v${this.latest().v}</small></h2><span>버그 제보 · 건의는 디스코드로 보내주세요</span></div></div><div class="card upd-wrap">${this.body()}</div></div>`;
+    this.mark();
+  },
+  // 타이틀: 메뉴 버튼에 NEW 표시, 버전 글자를 누르면 노트, 새 버전이면 처음 한 번 자동으로
+  title() {
+    const btn = document.querySelector('.main-menu [data-action="updates"]');
+    if (btn && this.isNew() && !btn.querySelector('.upd-new')) btn.querySelector('b').insertAdjacentHTML('beforeend', ' <em class="upd-new">NEW</em>');
+    const ver = document.querySelector('#screen-title .version');
+    if (ver) { ver.textContent = `v${this.latest().v} · 베타 · 업데이트 노트`; ver.onclick = () => this.open(); }
+    if (this.isNew() && !this._shown && this.returning()) { this._shown = true; setTimeout(() => this.open(), 1200); }
+  },
+};
+Views['career-updates'] = el => Updates.view(el);

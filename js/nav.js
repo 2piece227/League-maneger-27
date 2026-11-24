@@ -6,7 +6,7 @@ const NAV = [
   { id: 'match', label: '경기', tabs: [['next', '다음 경기'], ['draft', '밴픽', 'hidden'], ['live', '경기', 'hidden'], ['opponent', '상대 분석'], ['history', '경기 기록'], ['results', '대회 결과'], ['register', '국제대회 등록', 'hidden'], ['locker', '라커룸', 'hidden'], ['cupdraft', 'LCK컵 그룹', 'hidden'], ['meta', '메타'], ['champions', '챔피언'], ['standings', '순위표']] },
   { id: 'training', label: '훈련', tabs: [['schedule', '팀 훈련 일정'], ['individual', '개인 훈련'], ['soloq', '솔랭 순위'], ['scrims', '스크림']] },
   { id: 'club', label: '구단', tabs: [['finance', '재정'], ['salary-cap', '샐러리캡'], ['staff', '코칭스태프'], ['sponsors', '스폰서'], ['board', '이사회 기대치'], ['history', '구단 역사']] },
-  { id: 'career', label: '커리어', tabs: [['profile', '감독 프로필'], ['reputation', '평판'], ['record', '커리어 기록'], ['other-teams', '다른 팀 보기'], ['settings', '설정·저장']] },
+  { id: 'career', label: '커리어', tabs: [['profile', '감독 프로필'], ['reputation', '평판'], ['record', '커리어 기록'], ['other-teams', '다른 팀 보기'], ['settings', '설정·저장'], ['updates', '업데이트 노트']] },
 ];
 
 // 경기 중 잠금 (FM 방식): 경기로·스크림으로 들어가면 그 시리즈가 끝날 때까지 밴픽 · 경기 · 라커룸 화면만 쓴다.

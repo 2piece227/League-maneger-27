@@ -16,6 +16,7 @@ Screens.title = {
     if (this.played) this.el.classList.add('instant');
     this.played = true;
     this.startCeremony();
+    if (typeof Updates !== 'undefined') Updates.title();
   },
 
   leave() {
@@ -86,6 +87,7 @@ Screens.title = {
 
   actions: {
     discord() { window.open(G.DISCORD, '_blank', 'noopener'); },
+    updates() { Updates.open(); },
     new() {
       App.show('profile');
     },

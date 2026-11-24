@@ -623,3 +623,22 @@ input:focus, select:focus { outline: none; border-color: var(--gold); }
 /* ── 당겨서 새로고침 막기: 칸 맨 위에서 아래로 쓸어도 페이지가 새로고침되지 않게 (안드로이드 크롬 · 삼성 인터넷 · iPad 사파리 16+) ── */
 html, body { overscroll-behavior: none; }
 .game-body, .lv-wrap, .lv-comm, .team-list, .team-detail, .profile-form, .avatar-panel, .dr-grid, .mu-tracks, .modal, .pp, .ng, #modal-root * { overscroll-behavior: contain; }
+
+/* 업데이트 노트 */
+.modal.upd-modal { width: min(720px, 100%); }
+.upd-cur { font-size: 12px; color: var(--muted); font-weight: 400; margin-left: 6px; }
+.upd-wrap { display: grid; gap: 18px; }
+.upd header { display: flex; flex-wrap: wrap; align-items: baseline; gap: 8px; border-bottom: 1px solid var(--line); padding-bottom: 8px; margin-bottom: 8px; }
+.upd header b { font-family: var(--f-ui); color: var(--gold-2); font-size: 16px; }
+.upd header span { font-size: 12px; color: var(--muted); }
+.upd header h3 { width: 100%; margin: 2px 0 0; font-size: 16px; color: var(--text); }
+.upd-intro { margin: 0 0 6px; color: #c9d1e0; font-size: 13px; }
+.upd h4 { margin: 12px 0 4px; font-size: 14px; color: var(--text); }
+.upd ul { margin: 0; padding-left: 18px; }
+.upd li { font-size: 13px; line-height: 1.6; color: #b7c0d3; margin: 2px 0; }
+.upd li b { color: var(--text); }
+.upd.old { opacity: .7; }
+.upd-bug { font-style: normal; font-size: 10px; font-weight: 700; padding: 1px 5px; border-radius: 3px; background: rgba(226, 87, 92, .18); color: #ff8a8e; margin-right: 2px; }
+.upd-new { font-style: normal; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 4px; background: var(--gold); color: #1a1205; vertical-align: middle; }
+#screen-title .version { cursor: pointer; }
+#screen-title .version:hover { color: var(--gold-2); }
