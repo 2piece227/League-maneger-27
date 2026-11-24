@@ -672,3 +672,6 @@ button.nw-card { width: 100%; text-align: left; font: inherit; cursor: pointer; 
 .ln-c.bad { background: rgba(226, 87, 92, .15); color: #ff8a8e; }
 .ln-cur { display: flex; gap: 8px; align-items: center; padding: 6px 2px; cursor: pointer; font-size: 13px; }
 .ln-cur small { color: var(--muted); }
+
+/* 상호 해지 */
+.mu-info { display: flex; flex-wrap: wrap; gap: 6px 14px; margin: 8px 0 2px; font-size: 13px; color: var(--text); }

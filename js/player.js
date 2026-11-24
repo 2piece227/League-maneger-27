@@ -86,7 +86,7 @@ const Player = {
         ${p.attributes && p.role !== 'COACH' ? `<div class="pp-attrs"><h4>능력치 <small>OVR ${p.ovr} · 기술 40% 운영 30% 멘탈 10% 특화 20%</small></h4>${Attributes.table(p.attributes, p.role)}</div>` : ''}
         <div class="pp-foot">
           ${this.isMine(t) && p.role !== 'COACH' ? `<span class="pp-mv" data-pid="${p.id}">${Squad.buttons(p)}</span>` : ''}
-          ${this.isMine(t) && p.role !== 'COACH' ? '<button class="btn-ghost pp-meet">면담</button>' : ''}
+          ${this.isMine(t) && p.role !== 'COACH' ? '<button class="btn-ghost pp-meet">면담</button><button class="btn-ghost pp-mutual" title="양쪽이 모두 동의해야 해지됩니다">상호 해지</button>' : ''}
           <button class="btn-ghost pp-list">${listed ? '관심 목록에서 빼기' : '관심 목록에 추가'}</button>
           ${!this.isMine(t) && p.gen && p.level === 'academy' ? '<button class="btn-primary pp-poach">유망주 영입 제안</button>' : this.isMine(t) ? '<button class="btn-primary pp-talk">재계약 협상</button>' : (p.free || this.days(p) < 0 ? '<button class="btn-primary pp-ask">계약 협상</button>' : '<button class="btn-ghost pp-trade">트레이드 제안</button><button class="btn-primary pp-ask">영입 문의</button>')}
         </div>
@@ -98,6 +98,7 @@ const Player = {
     back.addEventListener('click', e => { if (e.target === back || e.target.closest('.pp-x') || e.target.closest('.pp-link')) close(); });
     Squad.bind(back, () => { close(); Router.go(Router.current()); });
     $('.pp-list', back).onclick = () => { this.toggleShortlist(p.id); close(); this.open(id); };
+    { const mu = $('.pp-mutual', back); if (mu) mu.onclick = () => { close(); Mutual.ask(p); }; }
     const talk = $('.pp-talk', back), ask = $('.pp-ask', back);
     // 협상 창을 열면 프로필은 닫는다 (사인 뒤 예전 정보가 뒤에 남지 않게)
     if (talk) talk.onclick = () => { close(); this.contractModal(p.id); };
