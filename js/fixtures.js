@@ -69,6 +69,7 @@ const Fixtures = {
       this.drawList(el);
     };
     $('.fx-ev-sel', el).onchange = e => { this.eventId = e.target.value; this.drawList(el); };
+    $('.fx-list', el).onclick = e => { const r = e.target.closest('[data-mid]'); if (r && typeof CompResults !== 'undefined') { e.stopPropagation(); CompResults.report(r.dataset.mid); } };
     this.drawList(el);
   },
 
@@ -88,7 +89,7 @@ const Fixtures = {
       lastMonth = ym; lastDay = day;
       const isMine = m.t1 === t.id || m.t2 === t.id;
       return `${head}
-        <div class="fx-row ${isMine ? 'mine' : ''} ${next && next.id === m.id ? 'next' : ''}">
+        <div class="fx-row ${isMine ? 'mine' : ''} ${next && next.id === m.id ? 'next' : ''} ${(App.state.season || {})[m.id] ? 'cr-row played' : ''}" ${(App.state.season || {})[m.id] ? `data-mid="${m.id}"` : ''}>
           ${dayCell}
           <span class="fx-time num">${this.time(m)}${this.ord(m)}</span>
           ${this.evBadge(ev)}
@@ -166,6 +167,7 @@ const Fixtures = {
       this.drawDay(el);
       if (matchMedia('(max-width: 1023px)').matches) $('.cal-side', el).scrollIntoView({ behavior: 'smooth', block: 'start' });
     };
+    $('.cal-side', el).onclick = e => { const r = e.target.closest('[data-mid]'); if (r && typeof CompResults !== 'undefined') { e.stopPropagation(); CompResults.report(r.dataset.mid); } };
     this.drawMonth(el);
     this.drawDay(el);
   },
@@ -221,7 +223,7 @@ const Fixtures = {
       ${(() => { const p = Schedule.eventsFor(t.league).filter(e => e.pub === day && e.kind !== 'stove' && !e.past); return p.length ? `<div class="cal-evs">${p.map(e => `<div>📢 <span>${UI.esc(e.label)} 대진·일정 발표</span></div>`).join('')}</div>` : ''; })()}
       <h4>경기 <small>${ms.length}</small></h4>
       ${ms.length ? ms.map(m => `
-        <div class="fx-row compact ${m.t1 === t.id || m.t2 === t.id ? 'mine' : ''}">
+        <div class="fx-row compact ${m.t1 === t.id || m.t2 === t.id ? 'mine' : ''} ${(App.state.season || {})[m.id] ? 'cr-row played' : ''}" ${(App.state.season || {})[m.id] ? `data-mid="${m.id}"` : ''}>
           <span class="fx-time num">${this.time(m)}${this.ord(m)}</span>
           <div class="fx-vs">${this.side(m.t1, 'l', m)}${(App.state.season || {})[m.id] ? `<b class="fx-score">${App.state.season[m.id].s1} : ${App.state.season[m.id].s2}</b>` : '<i>vs</i>'}${this.side(m.t2, 'r', m)}</div>
           <span class="fx-bo">Bo${m.bo}</span>

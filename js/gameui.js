@@ -110,7 +110,7 @@ const Links = {
     document.addEventListener('click', e => {
       const t = e.target;
       if (!(t instanceof Element) || !t.closest('#screen-game')) return;
-      if (t.closest('input, select, textarea, button, a, label, .modal, .modal-back, [role="dialog"], .pp-modal')) return;
+      if (t.closest('input, select, textarea, button, a, label, .modal, .modal-back, [role="dialog"], .pp-modal, .cr-row[data-mid]')) return;   /* 결과 행은 경기 리포트 */
       const pid = this.player(t);
       if (pid && Player.find(pid)) { e.stopPropagation(); e.preventDefault(); Player.open(pid); return; }
       let tl = t.closest('[data-tt]');

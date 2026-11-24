@@ -121,3 +121,53 @@
 @media (max-width: 767px) { .cal-pub { font-size: 0; } .cal-pub::first-letter { font-size: 12px; } }
 /* 태블릿 가로(1150px 이하): 우리 경기 칸은 로고 + 상대 약칭만 (시간은 오른쪽 날짜 패널에) */
 @media (max-width: 1150px) { .cal-my small { display: none; } .cal-my span { overflow: visible; } }
+
+/* 대회 결과 (경기 > 대회 결과) */
+.cr-row.played { cursor: pointer; }
+.cr-row.played:hover { background: #1a2440; }
+.cr-list .fx-row { grid-template-columns: 44px 46px 110px minmax(0, 1fr) 40px 96px; }
+.cr-tab { font-size: 11px; color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.cr-tag { display: flex; gap: 6px; justify-content: flex-end; align-items: center; }
+.cr-go { font-style: normal; font-size: 11px; color: var(--muted); }
+.cr-row.played:hover .cr-go { color: var(--gold-2); }
+.cr-upset { font-style: normal; font-size: 10px; font-weight: 700; padding: 1px 6px; border-radius: 4px; background: rgba(226, 87, 92, .18); color: #ff8a8e; }
+.fx-team.cr-win b { color: var(--text); }
+.fx-team.cr-lose { opacity: .55; }
+.cr-side h4 { margin: 14px 0 6px; font-size: 12px; color: var(--muted); }
+.cr-mini { width: 100%; font-size: 12px; }
+.cr-mini td { padding: 4px 6px; }
+.cr-mini tr.mine { background: rgba(58, 160, 255, .1); }
+.cr-champ { margin: 10px 0; padding: 8px 10px; border-radius: 8px; background: rgba(200, 162, 74, .12); display: flex; gap: 8px; align-items: center; font-size: 13px; color: var(--gold-2); }
+.cr-pog { display: flex; gap: 8px; align-items: center; padding: 4px 2px; font-size: 13px; cursor: pointer; }
+.cr-pog span { margin-left: auto; color: var(--muted); }
+.cr-side .fx-row.compact { grid-template-columns: 40px minmax(0, 1fr); }
+.cr-mh { display: flex; align-items: center; gap: 10px; font-family: var(--f-ui); font-size: 18px; }
+.cr-mh span { font-size: 22px; padding: 0 6px; }
+.cr-msub { display: block; margin-top: 4px; font-size: 12px; color: var(--muted); font-weight: 400; }
+.cr-report { display: grid; gap: 12px; max-height: 64vh; overflow-y: auto; }
+.cr-set { border: 1px solid var(--line); border-radius: 8px; padding: 10px; }
+.cr-set-h { display: flex; gap: 12px; align-items: center; font-size: 13px; margin-bottom: 8px; color: var(--muted); }
+.cr-set-h > b { color: var(--text); font-size: 14px; }
+.cr-set-h span b { color: var(--gold-2); }
+.cr-set-b { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.cr-side-col { padding: 8px; border-radius: 6px; background: rgba(255, 255, 255, .02); border-top: 3px solid transparent; }
+.cr-side-col.w { border-color: #3aa0ff; background: rgba(58, 160, 255, .06); }
+.cr-side-col.l { border-color: #e2575c55; }
+.cr-sh { display: flex; gap: 6px; align-items: center; font-size: 13px; margin-bottom: 6px; }
+.cr-sh em { font-style: normal; font-weight: 700; font-size: 12px; }
+.cr-side-col.w .cr-sh em { color: #7fc0ff; }
+.cr-side-col.l .cr-sh em { color: #ff8a8e; }
+.cr-sh .num { margin-left: auto; color: var(--muted); }
+.cr-blue, .cr-red { font-style: normal; font-size: 10px; font-weight: 700; padding: 1px 5px; border-radius: 3px; }
+.cr-blue { background: rgba(58, 160, 255, .2); color: #8cc8ff; }
+.cr-red { background: rgba(226, 87, 92, .2); color: #ff8a8e; }
+.cr-pk { display: flex; gap: 8px; align-items: center; padding: 2px 0; font-size: 12px; }
+.cr-pk .sq-ic { width: 26px; height: 26px; border-radius: 4px; }
+.cr-pk span { display: flex; flex-direction: column; line-height: 1.2; min-width: 0; }
+.cr-pk small { color: var(--muted); }
+.cr-note { display: block; margin-top: 6px; font-size: 11px; color: #5f6b84; }
+@media (max-width: 720px) {
+  .cr-list .fx-row { grid-template-columns: 34px minmax(0, 1fr) 70px; }
+  .cr-list .fx-time, .cr-list .cr-tab, .cr-list .fx-bo { display: none; }
+  .cr-set-b { grid-template-columns: 1fr; }
+}

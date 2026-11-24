@@ -6,7 +6,7 @@ const Season = {
   st() { return (App.state.season ||= {}); },
   gameResult(g) {
     return { win: g.side[g.over.win].t.id, side: g.over.win, t: g.t, kills: { B: g.side.B.kills, R: g.side.R.kills }, mvp: g.over.mvp.p.id,
-      teams: { B: g.side.B.t.id, R: g.side.R.t.id }, stats: g.pl.map(p => [p.p.id, p.c, p.k, p.d, p.a, Math.round(p.cs)]) };
+      teams: { B: g.side.B.t.id, R: g.side.R.t.id }, stats: g.pl.map(p => [p.p.id, p.c, p.k, p.d, p.a, Math.round(p.cs), p.p.name]) };   // 이름: 나중에 팀을 떠나도 경기 리포트에 남게
   },
   seriesScore(series) { const sc = {}; series.games.forEach(x => { if (x.result) sc[x.result.win] = (sc[x.result.win] || 0) + 1; }); return sc; },
   seriesOver(series) { if (series.fixed) return series.games.filter(x => x.result).length >= series.fixed; const need = Math.ceil((series.bo || 1) / 2); return Object.values(this.seriesScore(series)).some(v => v >= need); },
@@ -53,7 +53,7 @@ const Season = {
   recordSeries(id, series) {
     const m = Schedule.all.find(x => x.id === id); if (!m || this.st()[id]) return;
     const sc = this.seriesScore(series), s1 = sc[m.t1] || 0, s2 = sc[m.t2] || 0;
-    this.st()[id] = { t1: m.t1, t2: m.t2, s1, s2, w: s1 > s2 ? 1 : 2, games: series.games.filter(x => x.result).map(x => ({ win: x.result.win, t: x.result.t, k: x.result.kills, mvp: x.result.mvp, teams: x.result.teams, picks: { B: (x.picks.B || []).map(p => p.c), R: (x.picks.R || []).map(p => p.c) } })) };
+    this.st()[id] = { t1: m.t1, t2: m.t2, s1, s2, w: s1 > s2 ? 1 : 2, games: series.games.filter(x => x.result).map(x => ({ win: x.result.win, t: x.result.t, k: x.result.kills, mvp: x.result.mvp, teams: x.result.teams, ...(x.result.stats && x.result.stats.length ? { s: x.result.stats } : {}), picks: { B: (x.picks.B || []).map(p => p.c), R: (x.picks.R || []).map(p => p.c) } })) };
     this.rate(series, m);
     if (typeof Mastery !== 'undefined' && Mastery.base) Mastery.fromSeries(series, m);   // 공식전 숙련도
     if (typeof Cond !== 'undefined') Cond.after(m, series);
