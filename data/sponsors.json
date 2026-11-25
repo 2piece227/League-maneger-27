@@ -1,0 +1,950 @@
+{
+ "meta": {
+  "source": "Leaguepedia (lol.fandom.com) team infobox, CC BY-SA 3.0",
+  "scrapedAt": "2026-11-25",
+  "note": "Reference only, not used in game"
+ },
+ "teams": {
+  "bnk-fearx": {
+   "team": "BNK FEARX",
+   "league": "LCK",
+   "sponsors": [
+    {
+     "name": "BNK Financial Group",
+     "url": "https://www.bnkfg.com"
+    },
+    {
+     "name": "SOOP",
+     "url": "https://www.sooplive.co.kr"
+    },
+    {
+     "name": "4BY4",
+     "url": "https://www.4by4inc.co.kr/"
+    },
+    {
+     "name": "Zocbo",
+     "url": "https://www.zocbo.com/"
+    },
+    {
+     "name": "Corsair",
+     "url": "https://www.corsair.com/"
+    },
+    {
+     "name": "FCMM",
+     "url": "https://fcmm.kr/"
+    },
+    {
+     "name": "Air Busan",
+     "url": "http://www.airbusan.com/"
+    },
+    {
+     "name": "Busan Metropolitan City",
+     "url": "http://www.busan.go.kr"
+    },
+    {
+     "name": "LOLQ",
+     "url": "https://lolq.co.kr/"
+    },
+    {
+     "name": "BGN Eye Clinic",
+     "url": "https://bgneyeclinic.com/"
+    },
+    {
+     "name": "Jamiet",
+     "url": "https://m.jamietshop.co.kr/"
+    },
+    {
+     "name": "PanStar Miracle Cruise",
+     "url": "https://www.panstar.co.kr/business/cruise/miracle"
+    },
+    {
+     "name": "Lotte World Adventure Busan",
+     "url": "https://adventurebusan.lotteworld.com/"
+    },
+    {
+     "name": "D&C Media",
+     "url": "https://dncmedia.co.kr/"
+    }
+   ]
+  },
+  "dn-soopers": {
+   "team": "DN SOOPers",
+   "league": "LCK",
+   "sponsors": [
+    {
+     "name": "DN Solutions",
+     "url": "https://www.dn-solutions.com"
+    },
+    {
+     "name": "SOOP",
+     "url": "https://www.sooplive.co.kr"
+    },
+    {
+     "name": "Logitech G",
+     "url": "https://www.logitechg.com/"
+    },
+    {
+     "name": "DRIX",
+     "url": "https://drix.co.kr/"
+    }
+   ]
+  },
+  "dplus-kia": {
+   "team": "Dplus Kia",
+   "league": "LCK",
+   "sponsors": []
+  },
+  "gen-g": {
+   "team": "Gen.G",
+   "league": "LCK",
+   "sponsors": [
+    {
+     "name": "LG UltraGear",
+     "url": "https://www.lg.com/us/gaming-monitors"
+    },
+    {
+     "name": "SOOP",
+     "url": "https://www.sooplive.co.kr/index.html"
+    },
+    {
+     "name": "MONSTERENERGY",
+     "url": "https://www.monsterenergy.com"
+    },
+    {
+     "name": "Otoki",
+     "url": "https://www.otoki.com/en/main/"
+    },
+    {
+     "name": "GS Eye Clinic",
+     "url": "https://www.gseyecenter.com/"
+    },
+    {
+     "name": "Descente",
+     "url": "https://www.descente.com/"
+    },
+    {
+     "name": "YOUR.GG",
+     "url": "https://your.gg/"
+    }
+   ]
+  },
+  "hanjin-brion": {
+   "team": "HANJIN BRION",
+   "league": "LCK",
+   "sponsors": [
+    {
+     "name": "HANJIN",
+     "url": "https://www.hanjin.com"
+    },
+    {
+     "name": "DeEpo",
+     "url": "https://deepo.co.kr/"
+    },
+    {
+     "name": "CHZZK",
+     "url": "https://chzzk.naver.com/"
+    },
+    {
+     "name": "Logitech G",
+     "url": "https://www.logitechg.com/"
+    },
+    {
+     "name": "Narangd Cider",
+     "url": "https://www.instagram.com/narangdcider__official/"
+    },
+    {
+     "name": "bread&co.",
+     "url": "http://www.breadnco.kr"
+    },
+    {
+     "name": "Utransfer",
+     "url": "http://www.utransfer.com"
+    }
+   ]
+  },
+  "hanwha-life-esports": {
+   "team": "Hanwha Life Esports",
+   "league": "LCK",
+   "sponsors": [
+    {
+     "name": "Hanwha Life",
+     "url": "https://www.hanwhalife.com/"
+    },
+    {
+     "name": "MONSTERENERGY",
+     "url": "https://www.monsterenergy.com/"
+    },
+    {
+     "name": "WILLBE PLAY",
+     "url": "https://wb-play.co.kr/"
+    },
+    {
+     "name": "Team Razer",
+     "url": "https://www.razer.com/"
+    },
+    {
+     "name": "Brooks Brothers",
+     "url": "https://www.brooksbrothers.com/"
+    },
+    {
+     "name": "Rockport",
+     "url": "https://www.rockport.com/"
+    }
+   ]
+  },
+  "kiwoom-drx": {
+   "team": "Kiwoom DRX",
+   "league": "LCK",
+   "sponsors": []
+  },
+  "kt-rolster": {
+   "team": "KT Rolster",
+   "league": "LCK",
+   "sponsors": [
+    {
+     "name": "kt",
+     "url": "https://www.kt.com/"
+    },
+    {
+     "name": "SOOP",
+     "url": "https://www.sooplive.co.kr"
+    },
+    {
+     "name": "KT_Y",
+     "url": "https://www.yspotlight.co.kr/"
+    },
+    {
+     "name": "Kbank",
+     "url": "https://brand.kbanknow.com/"
+    },
+    {
+     "name": "Jaseng Hospital of Korean Medicine",
+     "url": "http://www.jaseng.net/"
+    },
+    {
+     "name": "Logitech G",
+     "url": "https://www.logitechg.com/en-us"
+    },
+    {
+     "name": "Whanin Pharmaceutical",
+     "url": "https://www.whanin.com/"
+    }
+   ]
+  },
+  "nongshim-redforce": {
+   "team": "Nongshim RedForce",
+   "league": "LCK",
+   "sponsors": [
+    {
+     "name": "nongshim",
+     "url": "http://www.nongshim.com/"
+    },
+    {
+     "name": "ESPORTS ACADEMY KOREA",
+     "url": "https://www.esports-academy.co.kr"
+    },
+    {
+     "name": "Nongshim Mall",
+     "url": "https://www.nongshimmall.com/"
+    },
+    {
+     "name": "Shin Ramyun",
+     "url": "http://www.shinramyun.com/main/index"
+    },
+    {
+     "name": "Baeksansoo",
+     "url": "https://www.baeksansoo.com/"
+    },
+    {
+     "name": "CHZZK",
+     "url": "https://chzzk.naver.com/"
+    },
+    {
+     "name": "Millet",
+     "url": "https://www.millet.co.kr/front/main"
+    },
+    {
+     "name": "Logitech G",
+     "url": "https://www.logitechg.com/"
+    },
+    {
+     "name": "Zowie",
+     "url": "https://zowie.benq.com/ko-kr/news.html"
+    },
+    {
+     "name": "SIZEOF",
+     "url": "https://sizeof.kr/"
+    }
+   ]
+  },
+  "t1": {
+   "team": "T1",
+   "league": "LCK",
+   "sponsors": [
+    {
+     "name": "Red Sea Global",
+     "url": "https://www.redseaglobal.com/en/careers/"
+    },
+    {
+     "name": "SK Telecom",
+     "url": "http://www.sktelecom.com/"
+    },
+    {
+     "name": "ABLY",
+     "url": "https://m.a-bly.com/"
+    },
+    {
+     "name": "SOOP",
+     "url": "https://www.sooplive.co.kr"
+    },
+    {
+     "name": "Woori Bank",
+     "url": "https://spot.wooribank.com/pot/Dream?withyou=en"
+    },
+    {
+     "name": "GOALSTUDIO",
+     "url": "https://en.goalstudio.com/"
+    },
+    {
+     "name": "Samsung Odyssey",
+     "url": "https://displaysolutions.samsung.com/monitor/odyssey"
+    },
+    {
+     "name": "Spotify",
+     "url": "https://www.spotify.com/us/premium/"
+    },
+    {
+     "name": "Red Bull",
+     "url": "https://www.redbull.com"
+    },
+    {
+     "name": "SteelSeries",
+     "url": "https://www.steelseries.com"
+    },
+    {
+     "name": "Klevv",
+     "url": "https://www.klevv.com/ken/main"
+    },
+    {
+     "name": "Inspire",
+     "url": "https://www.inspireresorts.com/en"
+    },
+    {
+     "name": "VIC-TEAM",
+     "url": "https://app.ksredu.com/"
+    },
+    {
+     "name": "T1 Esports Academy",
+     "url": "http://t1a.gg/"
+    },
+    {
+     "name": "SecretLab",
+     "url": "https://secretlab.co/"
+    },
+    {
+     "name": "대웅제약",
+     "url": "https://www.daewoong.co.kr/kr/main/index"
+    }
+   ]
+  },
+  "anyone-s-legend": {
+   "team": "Anyone's Legend",
+   "league": "LPL",
+   "sponsors": [
+    {
+     "name": "Ninebot",
+     "url": "https://www.ninebot.com"
+    },
+    {
+     "name": "Qiyou",
+     "url": "https://Qiyou.cn"
+    }
+   ]
+  },
+  "bilibili-gaming": {
+   "team": "Bilibili Gaming",
+   "league": "LPL",
+   "sponsors": [
+    {
+     "name": "DreamSmart Group",
+     "url": "https://www.xjmz.com/en"
+    },
+    {
+     "name": "Bilibili",
+     "url": "https://www.bilibili.com/"
+    }
+   ]
+  },
+  "edward-gaming": {
+   "team": "EDward Gaming",
+   "league": "LPL",
+   "sponsors": [
+    {
+     "name": "Hycan",
+     "url": "https://www.hycan.com.cn/usp-z03.html"
+    },
+    {
+     "name": "Huya",
+     "url": "https://www.huya.com"
+    },
+    {
+     "name": "Red Bull",
+     "url": "https://www.redbull.com"
+    },
+    {
+     "name": "Exxon Mobil Super",
+     "url": "https://corporate.exxonmobil.com/locations/china"
+    },
+    {
+     "name": "Intel",
+     "url": "https://www.intel.com"
+    },
+    {
+     "name": "Razer",
+     "url": "https://www.razer.com"
+    },
+    {
+     "name": "TCL",
+     "url": "https://www.tcl.com"
+    },
+    {
+     "name": "Bixin",
+     "url": "https://www.bxapp.cn"
+    },
+    {
+     "name": "iGame by Colorful",
+     "url": "https://en.colorful.cn/product.aspx?mid=84&category_id=3002"
+    },
+    {
+     "name": "iQOO",
+     "url": "https://www.iqoo.com"
+    },
+    {
+     "name": "luckin coffee",
+     "url": "https://lkcoffee.com"
+    },
+    {
+     "name": "Coca-Cola",
+     "url": "https://www.coca-cola.com"
+    },
+    {
+     "name": "Yu'e Bao by Alipay",
+     "url": "https://www.alipay.com"
+    },
+    {
+     "name": "yebaojiasu",
+     "url": "https://www.yebaojiasu.com"
+    },
+    {
+     "name": "DIOR",
+     "url": "https://www.dior.com"
+    },
+    {
+     "name": "Denglao Food",
+     "url": "https://denglao.cn"
+    }
+   ]
+  },
+  "invictus-gaming": {
+   "team": "Invictus Gaming",
+   "league": "LPL",
+   "sponsors": [
+    {
+     "name": "Huya",
+     "url": "https://www.huya.com"
+    },
+    {
+     "name": "Chevrolet",
+     "url": "https://www.chevrolet.com"
+    },
+    {
+     "name": "Bixin",
+     "url": "https://www.bxapp.cn"
+    },
+    {
+     "name": "W.Y.W.K",
+     "url": "http://www.wywk.cn"
+    },
+    {
+     "name": "Mirinda",
+     "url": "https://www.pepsico.com.cn"
+    },
+    {
+     "name": "Kuaishou",
+     "url": "https://www.kuaishou.com"
+    },
+    {
+     "name": "LABSERIES",
+     "url": "https://www.labseries.com"
+    },
+    {
+     "name": "Lilbetter",
+     "url": "https://www.lilbetter.cc"
+    }
+   ]
+  },
+  "jd-gaming": {
+   "team": "JD Gaming",
+   "league": "LPL",
+   "sponsors": [
+    {
+     "name": "[http://JD.com/ JD.com"
+    },
+    {
+     "name": "Inc.]"
+    },
+    {
+     "name": "Intel",
+     "url": "https://intel.com"
+    },
+    {
+     "name": "Douyu",
+     "url": "https://Douyu.com"
+    },
+    {
+     "name": "ASUS ROG",
+     "url": "https://rog.asus.com/"
+    },
+    {
+     "name": "MSI",
+     "url": "https://www.msi.com/index.php"
+    },
+    {
+     "name": "Redmi",
+     "url": "https://www.mi.com/global/"
+    },
+    {
+     "name": "Samsung",
+     "url": "https://www.samsung.com/"
+    }
+   ]
+  },
+  "lgd-gaming": {
+   "team": "LGD Gaming",
+   "league": "LPL",
+   "sponsors": [
+    {
+     "name": "HyperX",
+     "url": "http://www.kingston.com/cn/hyperx"
+    },
+    {
+     "name": "Razer",
+     "url": "http://www.razerzone.com/"
+    },
+    {
+     "name": "DouyuTV",
+     "url": "http://www.douyutv.com/"
+    },
+    {
+     "name": "ZOTAC",
+     "url": "https://www.zotac.com"
+    },
+    {
+     "name": "Anda Seat",
+     "url": "http://andaseat.com/"
+    }
+   ]
+  },
+  "lng-esports": {
+   "team": "LNG Esports",
+   "league": "LPL",
+   "sponsors": []
+  },
+  "ninjas-in-pyjamas-cn": {
+   "team": "Ninjas in Pyjamas",
+   "league": "LPL",
+   "sponsors": [
+    {
+     "name": "Betway",
+     "url": "http://sports.betway.com/en/sports/cat/esports/"
+    },
+    {
+     "name": "ASUS ROG",
+     "url": "http://rog.asus.com/"
+    },
+    {
+     "name": "Kinguin",
+     "url": "http://www.kinguin.net/"
+    },
+    {
+     "name": "Xtrfy",
+     "url": "http://www.xtrfy.com/"
+    },
+    {
+     "name": "DXRacer",
+     "url": "http://www.dxracer.com/"
+    },
+    {
+     "name": "NETGEAR",
+     "url": "http://www.netgear.com/"
+    },
+    {
+     "name": "Twitch",
+     "url": "http://www.twitch.tv/"
+    },
+    {
+     "name": "NOCCO",
+     "url": "http://www.nocco.com/"
+    }
+   ]
+  },
+  "team-we": {
+   "team": "Team WE",
+   "league": "LPL",
+   "sponsors": [
+    {
+     "name": "GIGABYTE",
+     "url": "http://www.gigabyte.cn/?f=g"
+    },
+    {
+     "name": "i-Rocks",
+     "url": "http://i-rocks.cn/index.php"
+    },
+    {
+     "name": "Douyu.tv",
+     "url": "http://www.douyu.tv/"
+    },
+    {
+     "name": "HyperX",
+     "url": "http://www.kingston.com/cn/hyperx"
+    },
+    {
+     "name": "Zhanqi tv",
+     "url": "http://www.zhanqi.tv/"
+    },
+    {
+     "name": "Niupu",
+     "url": "http://http://www.niupu.com/"
+    }
+   ]
+  },
+  "thundertalk-gaming": {
+   "team": "ThunderTalk Gaming",
+   "league": "LPL",
+   "sponsors": []
+  },
+  "top-esports": {
+   "team": "Top Esports",
+   "league": "LPL",
+   "sponsors": [
+    {
+     "name": "Audi",
+     "url": "https://www.audi.cn"
+    },
+    {
+     "name": "FAW Audi",
+     "url": "https://www.audichina.cn/cn/web/en.html"
+    },
+    {
+     "name": "Topsports",
+     "url": "http://www.topsports.com.cn/"
+    },
+    {
+     "name": "Logitech G",
+     "url": "https://www.logitechg.com.cn/zh-cn"
+    },
+    {
+     "name": "FOSS",
+     "url": "https://www.fossofficial.com"
+    },
+    {
+     "name": "TGIF",
+     "url": "https://shop.m.jd.com/shop/home?shopId=1000423413"
+    },
+    {
+     "name": "United Family Healthcare",
+     "url": "https://ufh.com.cn/en/"
+    }
+   ]
+  },
+  "weibo-gaming": {
+   "team": "Weibo Gaming",
+   "league": "LPL",
+   "sponsors": [
+    {
+     "name": "Weibo",
+     "url": "https://weibo.com/"
+    },
+    {
+     "name": "TapTap",
+     "url": "https://www.taptap.cn/"
+    }
+   ]
+  },
+  "fnatic": {
+   "team": "Fnatic",
+   "league": "LEC",
+   "sponsors": []
+  },
+  "g2-esports": {
+   "team": "G2 Esports",
+   "league": "LEC",
+   "sponsors": []
+  },
+  "giantx": {
+   "team": "GIANTX",
+   "league": "LEC",
+   "sponsors": []
+  },
+  "karmine-corp": {
+   "team": "Karmine Corp",
+   "league": "LEC",
+   "sponsors": [
+    {
+     "name": "Orange",
+     "url": "https://twitter.com/Orange_France"
+    },
+    {
+     "name": "RedBull",
+     "url": "https://www.redbull.com/fr-fr/athlete/kameto"
+    },
+    {
+     "name": "CIC",
+     "url": "https://www.cic.fr"
+    },
+    {
+     "name": "Razer",
+     "url": "https://www.razer.com/esports"
+    },
+    {
+     "name": "Charal",
+     "url": "https://www.charal.fr/notre-partenariat-esport/"
+    },
+    {
+     "name": "Fulllife",
+     "url": "https://full.life/"
+    },
+    {
+     "name": "Celio",
+     "url": "https://www.celio.com/fr-fr"
+    },
+    {
+     "name": "RhinoShield",
+     "url": "https://shop.rhinoshield.fr/design-studio/collections/karmine-corp"
+    }
+   ]
+  },
+  "movistar-koi": {
+   "team": "Movistar KOI",
+   "league": "LEC",
+   "sponsors": [
+    {
+     "name": "Movistar",
+     "url": "http://www.movistar.es"
+    },
+    {
+     "name": "CUPRA",
+     "url": "https://www.cupraofficial.es"
+    },
+    {
+     "name": "Team Razer",
+     "url": "https://www.razer.com/es-es"
+    },
+    {
+     "name": "Mahou",
+     "url": "https://www.mahou.es"
+    },
+    {
+     "name": "HyperX",
+     "url": "https://www.hyperx.com"
+    },
+    {
+     "name": "Médicos del Mundo",
+     "url": "https://www.medicosdelmundo.org"
+    },
+    {
+     "name": "Ecoembes",
+     "url": "https://www.ecoembes.com/es"
+    },
+    {
+     "name": "Ilusiona",
+     "url": "https://ilusiona.com"
+    },
+    {
+     "name": "Idealo",
+     "url": "https://www.idealo.es"
+    },
+    {
+     "name": "Philips OneBlade",
+     "url": "https://www.philips.es/c-m-pe/oneblade-recorta-perfila-y-afeita"
+    }
+   ]
+  },
+  "natus-vincere": {
+   "team": "Natus Vincere",
+   "league": "LEC",
+   "sponsors": [
+    {
+     "name": "GG.bet",
+     "url": "https://gg.bet"
+    },
+    {
+     "name": "Logitech G",
+     "url": "https://www.logitechg.com"
+    },
+    {
+     "name": "Red Bull",
+     "url": "https://www.redbull.com"
+    },
+    {
+     "name": "white.market",
+     "url": "https://white.market"
+    },
+    {
+     "name": "Abios",
+     "url": "https://abiosgaming.com"
+    },
+    {
+     "name": "bo3.gg",
+     "url": "https://bo3.gg"
+    },
+    {
+     "name": "BACKFORCE",
+     "url": "https://backforce.gg"
+    },
+    {
+     "name": "SAUCONY",
+     "url": "https://www.saucony.com"
+    },
+    {
+     "name": "Citadel Venture"
+    },
+    {
+     "name": "Happy Paw"
+    }
+   ]
+  },
+  "shifters": {
+   "team": "Shifters",
+   "league": "LEC",
+   "sponsors": []
+  },
+  "sk-gaming": {
+   "team": "SK Gaming",
+   "league": "LEC",
+   "sponsors": []
+  },
+  "team-heretics": {
+   "team": "Team Heretics",
+   "league": "LEC",
+   "sponsors": [
+    {
+     "name": "Logitech",
+     "url": "https://www.logitech.com/es-es"
+    },
+    {
+     "name": "ZOWIE",
+     "url": "https://zowie.benq.com/es-la/index.html"
+    },
+    {
+     "name": "Socios.com",
+     "url": "https://www.socios.com"
+    },
+    {
+     "name": "Movistar",
+     "url": "https://www.movistar.es"
+    },
+    {
+     "name": "Warner Music Spain",
+     "url": "https://www.warnermusic.es"
+    },
+    {
+     "name": "Red Bull",
+     "url": "https://www.redbull.com/int-en"
+    }
+   ]
+  },
+  "team-vitality": {
+   "team": "Team Vitality",
+   "league": "LEC",
+   "sponsors": [
+    {
+     "name": "Tradeit.gg",
+     "url": "https://tradeit.gg"
+    },
+    {
+     "name": "Credit Agricole",
+     "url": "https://www.credit-agricole.fr"
+    },
+    {
+     "name": "Aldi",
+     "url": "https://www.aldi.es"
+    },
+    {
+     "name": "EVNIA",
+     "url": "https://www.evnia.philips/fr-fr"
+    }
+   ]
+  },
+  "cloud9": {
+   "team": "Cloud9",
+   "league": "LCS",
+   "sponsors": []
+  },
+  "dignitas": {
+   "team": "Dignitas",
+   "league": "LCS",
+   "sponsors": []
+  },
+  "disguised": {
+   "team": "Disguised",
+   "league": "LCS",
+   "sponsors": []
+  },
+  "flyquest": {
+   "team": "FlyQuest",
+   "league": "LCS",
+   "sponsors": []
+  },
+  "lyon-2024-american-team": {
+   "team": "LYON",
+   "league": "LCS",
+   "sponsors": [
+    {
+     "name": "Cinemex",
+     "url": "https://cinemex.com"
+    },
+    {
+     "name": "Just Toys",
+     "url": "https://justtoysintl.com"
+    },
+    {
+     "name": "Logitech G",
+     "url": "https://www.logitechg.com"
+    }
+   ]
+  },
+  "sentinels": {
+   "team": "Sentinels",
+   "league": "LCS",
+   "sponsors": [
+    {
+     "name": "Razer",
+     "url": "https://www.razer.com"
+    },
+    {
+     "name": "ZOWIE",
+     "url": "https://zowie.benq.com"
+    },
+    {
+     "name": "Starforge Systems",
+     "url": "https://starforgesystems.com"
+    },
+    {
+     "name": "Red Bull",
+     "url": "https://www.redbull.com"
+    }
+   ]
+  },
+  "shopify-rebellion": {
+   "team": "Shopify Rebellion",
+   "league": "LCS",
+   "sponsors": []
+  },
+  "team-liquid": {
+   "team": "Team Liquid",
+   "league": "LCS",
+   "sponsors": []
+  }
+ }
+}
