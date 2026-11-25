@@ -11,7 +11,8 @@ const RECENT = '2026-01-01';
 // 1군(players.json) + 2군(cl.json) + 직접 추가한 FA(custom.json, sourcePage가 없으면 이름). 예전에는 1군만 받아 2군 · 추가 선수는 숙련도가 모두 0이었다
 const read = async f => { try { return JSON.parse(await readFile(path.join(OUT, f), 'utf8')); } catch { return {}; } };
 const players = [...(await read('players.json')).players || [], ...((await read('cl.json')).players || []), ...(((await read('custom.json')).freeAgents || []).map(p => ({ ...p, sourcePage: p.sourcePage || p.name })))]
-  .filter(p => p.role !== 'COACH' && p.sourcePage).filter((p, i, a) => a.findIndex(q => q.id === p.id) === i);
+  .filter(p => p.role !== 'COACH' && p.sourcePage).filter((p, i, a) => a.findIndex(q => q.id === p.id) === i)
+  .filter(p => !process.env.ONLY || process.env.ONLY.split(',').includes(p.id));   // ONLY=id,id: 그 선수만 받아 기존 파일에 합친다 (다른 선수 수치는 그대로)
 const champs = JSON.parse(await readFile(path.join(OUT, 'champions.json'), 'utf8')).champions;
 const norm = s => s.toLowerCase().replace(/[^a-z0-9]/g, '');
 const champId = Object.fromEntries(champs.flatMap(c => [[norm(c.nameEn), c.id], [norm(c.id), c.id]]));
@@ -65,6 +66,7 @@ Object.values(pools).forEach(l => l.sort((x, y) => y.g - x.g));
 if (unknown.size) console.warn('매칭 안 된 챔피언:', [...unknown].join(', '));
 
 const noData = players.filter(p => !pools[p.id]).map(p => p.name);
+if (process.env.ONLY) { const old = await read('champion-pools.json'); Object.assign(old.pools, pools); await writeFile(path.join(OUT, 'champion-pools.json'), JSON.stringify(old)); log(`합침: ${Object.keys(pools).join(', ')} · 기록 없음 ${noData.join(', ') || '-'}`); process.exit(0); }
 await writeFile(path.join(OUT, 'champion-pools.json'), JSON.stringify({
   meta: { source: 'Leaguepedia ScoreboardPlayers', from: FROM, recentFrom: RECENT, scrapedAt: new Date().toISOString(), players: Object.keys(pools).length },
   pools,

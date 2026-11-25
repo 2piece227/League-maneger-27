@@ -10,7 +10,9 @@ const TEST = process.env.TEST;
 const players = JSON.parse(await readFile(path.join(OUT, 'players.json'), 'utf8')).players.filter(p => p.role !== 'COACH' && p.sourcePage);
 let cl = [];
 try { cl = JSON.parse(await readFile(path.join(OUT, 'cl.json'), 'utf8')).players.filter(p => p.role !== 'COACH' && p.sourcePage); } catch {}
-const all = [...players, ...cl];
+let fa = [];
+try { fa = (JSON.parse(await readFile(path.join(OUT, 'custom.json'), 'utf8')).freeAgents || []).filter(p => p.sourcePage); } catch {}
+const all = [...players, ...cl, ...fa].filter(p => !process.env.ONLY || process.env.ONLY.split(',').includes(p.id));   // 직접 추가한 FA도 · ONLY=id,id 면 그 선수만 받아 기존 파일에 합친다
 const byLink = Object.fromEntries(all.map(p => [p.sourcePage, p.id]));
 const INTL = '(SG.Tournament LIKE "%Worlds%" OR SG.Tournament LIKE "%Mid-Season%" OR SG.Tournament LIKE "%MSI%" OR SG.Tournament LIKE "%First Stand%" OR SG.Tournament LIKE "%Esports World Cup%")';
 
@@ -50,5 +52,6 @@ log('국제전'); const intl = fold(await grouped(INTL));
 const out = {};
 for (const [pid, s] of Object.entries(tot)) out[pid] = { ...s, intl: intl[pid] || null };
 if (TEST) { console.log(JSON.stringify(out, null, 1)); process.exit(0); }
+if (process.env.ONLY) { const old = JSON.parse(await readFile(path.join(OUT, 'player-stats.json'), 'utf8')); Object.assign(old.players, out); await writeFile(path.join(OUT, 'player-stats.json'), JSON.stringify(old)); log(`합침: ${Object.keys(out).join(', ')}`); process.exit(0); }
 await writeFile(path.join(OUT, 'player-stats.json'), JSON.stringify({ meta: { source: 'Leaguepedia ScoreboardPlayers+ScoreboardGames', from: FROM, scrapedAt: new Date().toISOString(), players: Object.keys(out).length }, players: out }));
 log(`선수 ${Object.keys(out).length}명`);

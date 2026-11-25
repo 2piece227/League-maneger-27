@@ -10,6 +10,30 @@
       "nation": "South Korea",
       "birthdate": "1996-10-23",
       "photo": null
+    },
+    {
+      "id": "pyosik",
+      "name": "Pyosik",
+      "realName": "Hong Chang-hyeon",
+      "nativeName": "홍창현",
+      "role": "JGL",
+      "nation": "South Korea",
+      "birthdate": "2000-03-12",
+      "photo": null,
+      "sourcePage": "Pyosik",
+      "lastTeam": "dn-soopers"
+    },
+    {
+      "id": "daystar",
+      "name": "Daystar",
+      "realName": "Yoo Ji-myeong",
+      "nativeName": "유지명",
+      "role": "MID",
+      "nation": "South Korea",
+      "birthdate": "2003-09-23",
+      "photo": null,
+      "sourcePage": "Daystar",
+      "lastTeam": "bnk-fearx"
     }
   ],
   "military": {

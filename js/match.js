@@ -204,27 +204,29 @@ const Match = {
     await Stats.load();
     const sq = Stats.soloq, pro = (Draft.M && (Draft.M.meta_season || Draft.M.meta)) || {};
     const agg = {};
-    Champions.list.forEach(ch => { const nm = ch.nameEn, p = pro[nm] || 0, s = sq ? ((sq.champs[nm] || {}).presence || 0) : 0; agg[ch.id] = { c: ch.id, pro: p, sq: s, v: Draft.blend(nm), g: 0, sig: [] }; });
+    Champions.list.forEach(ch => { const nm = ch.nameEn, p = pro[nm] || 0, s = sq ? ((sq.champs[nm] || {}).presence || 0) : 0; agg[ch.id] = { c: ch.id, pro: p, sq: s, base: Draft.blend(nm), v: Draft.metaNow(ch.id), g: 0, sig: [] }; });   /* 밴픽 AI가 쓰는 지금 값 (패치 반영). 예전에는 시즌 기본값이라 시즌 내내 같았다 */
     Object.entries(Mastery.pools).forEach(([pid, l]) => l.forEach(e => { const x = agg[e.c]; if (!x) return; x.g += e.g26 || 0; if (e.sig) x.sig.push(pid); }));
     const ranked = Object.values(agg).filter(x => x.v > 0).sort((a, b) => b.v - a.v);
     const tier = i => i < ranked.length * .05 ? 'S' : i < ranked.length * .15 ? 'A' : i < ranked.length * .35 ? 'B' : 'C';
     const role = x => { const sh = Draft.share(x.c); return Object.entries(sh).sort((a, b) => b[1] - a[1])[0]?.[0]; };
     const byRole = r => ranked.filter(x => role(x) === r).slice(0, 6);
     const pc = v => Math.round(v * 100) + '%';
+    const mv = x => { const d = Math.round(x.v * 100) - Math.round(x.base * 100); return d ? `<small class="mt-mv ${d > 0 ? 'up' : 'dn'}" title="시즌 기본 ${pc(x.base)}">${d > 0 ? '▲' : '▼'}${Math.abs(d)}</small>` : ''; };
+    const pl = typeof Patch !== 'undefined' && Patch.st().list.slice(-1)[0];
     el.innerHTML = `
       <div class="cr-page">
         <div class="card rs-head">
-          <div class="rs-title"><h2>메타</h2><span>${sq ? `프로 경기 밴픽률(70%)과 한국 챌린저 · 그랜드마스터 솔로 랭크 ${sq.games}게임의 밴픽률(30%)을 합친 메타입니다` : '프로 경기 밴픽률로 정한 메타입니다'}</span></div>
+          <div class="rs-title"><h2>메타</h2><span>${sq ? `프로 경기 밴픽률(70%)과 한국 챌린저 · 그랜드마스터 솔로 랭크 ${sq.games}게임의 밴픽률(30%)을 합친 메타입니다` : '프로 경기 밴픽률로 정한 메타입니다'}${pl ? ` · 패치 ${UI.esc(pl.v || '')} 반영 (▲▼는 시즌 기본값과의 차이)` : ''}</span></div>
         </div>
         <div class="card"><div class="card-head"><h3>패치 노트</h3></div><div class="pt-notes">${typeof Patch !== 'undefined' ? Patch.notes() : ''}</div></div>
         <div class="mt-roles">${G.ROLES.map(r => `
           <div class="card"><div class="card-head"><h3>${G.pos(r, true)} ${G.ROLE_KO[r]}</h3></div>
-            ${byRole(r).map(x => { const c = Champions.byId[x.c], i = ranked.indexOf(x); return `<div class="mt-row">${SoloQ.ic(x.c)}<b>${UI.esc(c.name)}</b><i class="mt-tier t${tier(i)}">${tier(i)}</i><span class="num" title="프로 ${pc(x.pro)}${sq ? ' · 솔랭 ' + pc(x.sq) : ''}">${pc(x.v)}</span></div>`; }).join('') || '<p class="ms-none">데이터 없음</p>'}
+            ${byRole(r).map(x => { const c = Champions.byId[x.c], i = ranked.indexOf(x); return `<div class="mt-row">${SoloQ.ic(x.c)}<b>${UI.esc(c.name)}</b><i class="mt-tier t${tier(i)}">${tier(i)}</i><span class="num" title="시즌 기본 ${pc(x.base)} (프로 ${pc(x.pro)}${sq ? ' · 솔랭 ' + pc(x.sq) : ''})">${pc(x.v)}${mv(x)}</span></div>`; }).join('') || '<p class="ms-none">데이터 없음</p>'}
           </div>`).join('')}
         </div>
         <div class="card"><div class="card-head"><h3>전체 픽 순위 <small>상위 30</small></h3></div>
           <div class="rs-table-wrap"><table class="rs-table"><thead><tr><th class="num">#</th><th>챔피언</th><th>주 포지션</th><th>티어</th><th class="num">밴픽률</th><th>시그니처 선수</th></tr></thead>
-          <tbody>${ranked.slice(0, 30).map((x, i) => { const c = Champions.byId[x.c]; return `<tr><td class="num">${i + 1}</td><td><div class="ms-c">${SoloQ.ic(x.c)}${UI.esc(c.name)}</div></td><td>${(c.positions || []).map(p => G.pos(p)).join('')}</td><td><i class="mt-tier t${tier(i)}">${tier(i)}</i></td><td class="num">${pc(x.v)}</td><td class="mt-sig">${x.sig.map(id => (Player.find(id) || { p: { name: id } }).p.name).join(', ') || '-'}</td></tr>`; }).join('')}</tbody></table></div>
+          <tbody>${ranked.slice(0, 30).map((x, i) => { const c = Champions.byId[x.c]; return `<tr><td class="num">${i + 1}</td><td><div class="ms-c">${SoloQ.ic(x.c)}${UI.esc(c.name)}</div></td><td>${(c.positions || []).map(p => G.pos(p)).join('')}</td><td><i class="mt-tier t${tier(i)}">${tier(i)}</i></td><td class="num">${pc(x.v)}${mv(x)}</td><td class="mt-sig">${x.sig.map(id => (Player.find(id) || { p: { name: id } }).p.name).join(', ') || '-'}</td></tr>`; }).join('')}</tbody></table></div>
         </div>
       </div>`;
   },

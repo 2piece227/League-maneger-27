@@ -84,6 +84,7 @@ const Lines = {
     // ── 포탑 · 본진 ──
     towerFirst: { who: 'cast', all: ['{t:이} {lane} 첫 포탑을 깹니다!'] },
     towerTake: { who: 'anal', all: ['{t:이} {lane} {tw:을} 가져갑니다.'] },
+    inhibUp: { who: 'cast', jin: ['{t} {lane} 억제기가 다시 섰습니다.'], castle: ['{t} {lane} 억제기 재생성! 슈퍼 미니언 압박이 풀립니다!'] },
     inhib: { who: 'cast', jin: ['억제기! {t:이} 억제기를 깹니다!'], castle: ['{t}, 억제기까지 깹니다! 슈퍼 미니언 나와요!'] },
     nexusTower: { who: 'hype', all: ['비상!! {d} 쌍둥이 포탑 하나 깨졌어요! 넥서스가 보입니다!'] },
     baseOpenAce: { who: 'hype', all: ['비상!! {d} 본진에 아무도 없어요! 이대로 끝날 수 있습니다!'] },

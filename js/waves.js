@@ -121,7 +121,12 @@ Object.assign(Sim, {
     const o = this.other(k), atk = this.alive(g, k).filter(p => !p.recall && !p.tpCh && this.dist(p.pos, st.pos) <= 14 && p.hp > .35), def = this.alive(g, o).filter(p => !p.recall && this.dist(p.pos, st.pos) <= 16);
     if (atk.length < 3) return false;
     const deep = /nexus/.test(st.kind) || st.kind === 'inhib' || st.i >= 2;   // 본진 · 억제기 포탑
-    const go = (deep && this.lead(g, k) >= 3000 && atk.length >= def.length && atk.length >= 3)   // 상대 본진 · 억제기 앞: 크게 앞서면 들어간다 (앞에서 가만히 서 있다 미니언이 끝내던 문제)
+    // 본진 앞 결단: 쌍둥이 · 넥서스 앞에 3명 이상 모인 지 40초가 지나면, 인원이 밀리지 않는 한 들어간다 (장로 버프 · 1,500 이상 앞서면 바로)
+    //   예전에는 골드가 비슷하면 쌍둥이 포탑 앞에서 몇 분씩 서성이다 빠지고 미니언이 넥서스를 끝냈다 (베타 제보)
+    const nx = /nexus/.test(st.kind), W = (g.nxW ||= {});
+    if (nx) { if (!W[k] || g.t - W[k].last > 15) W[k] = { t0: g.t }; W[k].last = g.t; }
+    const commit = nx && atk.length >= def.length && ((g.side[k].elderUntil || 0) > g.t || this.lead(g, k) >= 1500 || g.t - W[k].t0 >= 40);
+    const go = commit || (deep && this.lead(g, k) >= 3000 && atk.length >= def.length && atk.length >= 3)   // 상대 본진 · 억제기 앞: 크게 앞서면 들어간다 (앞에서 가만히 서 있다 미니언이 끝내던 문제)
       || (atk.length - def.length >= 2 && (m >= 22 || deep)) || (!def.length && atk.length >= (deep ? 3 : 4)) || (atk.filter(p => this.baronOn(g, p)).length >= 2 && atk.length >= def.length);   // 바론 버프가 남은 선수가 둘 이상
     if (!go) return false;
     const front = ['tank', 'bruiser', 'dive'];
@@ -170,6 +175,20 @@ Object.assign(Sim, {
       const step = Math.min(d - 3, this.HU_SPD), q = Rift.path ? null : null;
       h.pos = [h.pos[0] + (st.pos[0] - h.pos[0]) / d * step, h.pos[1] + (st.pos[1] - h.pos[1]) / d * step];
     }
+  },
+  // 억제기 재생성: 깨진 뒤 5분이면 다시 선다 (실제 게임과 같다). 예전에는 다시 서지 않아 슈퍼 미니언이 끝까지 나왔고,
+  //   양 팀이 본진에 없어도 미니언이 넥서스를 끝내는 경기가 10~20%였다 (베타 제보)
+  INHIB_RE: 300,
+  inhibTick(g) {
+    if (g.t % 5) return;
+    ['B', 'R'].forEach(o => { const s = g.side[o]; s.ire ||= {};
+      this.LANES3.forEach(l => {
+        if (s.ihp[l] > 0) return;
+        s.ire[l] ??= g.t + this.INHIB_RE;
+        if (g.t < s.ire[l]) return;
+        s.ihp[l] = 1; s.inhib[l] = 1; delete s.ire[l];
+        if (g.r() < .5) this.line(g, 'inhibUp', { t: s.t.short, lane: this.laneKo(l) });
+      }); });
   },
   siegeTick(g, m) {
     const busy = this.busySet(g), seen = new Set();

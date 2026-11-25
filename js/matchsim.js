@@ -1082,6 +1082,7 @@ const Sim = {
     if (th) { const q = this.toward(th.st.pos, p.side, 4); return this.clampP([q[0] + p.off[0], q[1] + p.off[1]]); }
     const ex = this.threat(g, this.other(p.side));
     if (ex && m >= 20) return this.siegeSpot(g, p, ex.lane);
+    if (m >= 20) { const fin = this.finish(g, p.side); if (fin) return this.siegeSpot(g, p, fin); }   /* 끝낼 수 있으면 끝내러 간다 */
     if (s.push && s.push.until > g.t) {
       const st = this.structOf(g, this.other(p.side), s.push.lane), deep = st.kind !== 'tower' || st.i === 2;
       if (!(deep && m < 14)) return this.siegeSpot(g, p, s.push.lane);           // 14분 전에는 억제기 쪽까지 밀고 들어가지 않는다
@@ -1210,7 +1211,7 @@ const Sim = {
       } else p.blk = 0;
     });
     this.fightTick(g);
-    this.waves(g, m); this.towers(g, m); this.heraldTick(g, m); this.siegeTick(g, m); if (g.over) return;
+    this.waves(g, m); this.towers(g, m); this.heraldTick(g, m); this.inhibTick(g); this.siegeTick(g, m); if (g.over) return;
     if (!g.over) this.objectives(g, m);   // 오브젝트는 매초 깎인다 (예전에는 10초마다 한 번에 깎여 체력이 갑자기 0이 됐다)
     if (g.t % 2 === 0 && !g.over) this.encounter(g, m);
     if (g.t % 4 === 0 && !g.over) this.pickOff(g, m);
@@ -1406,6 +1407,14 @@ const Sim = {
       if (!best || n > best.n) best = { st, lane, n };
     });
     return (g.thr[k] = best);
+  },
+  // 끝낼 기회: 상대 본진이 드러난 라인이 있고, 한타에서 이겨 상대가 2명 이하(우리가 2명 이상 많음)이거나 쌍둥이 포탑이 다 깨졌는데 인원이 밀리지 않으면 그 라인.
+  //   예전에는 본진 근처에 이미 2명 이상 있어야만 다 같이 갔다. 한타를 이기고도 흩어져 미니언이 넥서스를 끝내는 경기가 많았다 (베타 제보)
+  finish(g, k) {
+    const c = (g.fin ||= {}); if (c.t !== g.t) { g.fin = { t: g.t }; } if (g.fin[k] !== undefined) return g.fin[k];
+    const o = this.other(k), lane = ['mid', 'bot', 'top'].find(l => /nexus/.test(this.structOf(g, o, l).kind));
+    const a = this.alive(g, k).length, d = this.alive(g, o).length;
+    return (g.fin[k] = lane && ((d <= 2 && a >= d + 2) || (g.side[o].nexusT === 0 && a >= d)) ? lane : null);
   },
   endGame(g, k) {
     if (g.over) return;
