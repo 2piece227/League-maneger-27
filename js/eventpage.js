@@ -4,6 +4,12 @@ const EventPage = {
   id: null, tab: 'over',
   ev() { return Schedule.byEvent && Schedule.byEvent[this.id]; },
   // 탭에서 바로 열면: 우리 팀이 나가는 진행 중 대회 → 다음 대회 → 마지막 대회 (예전에는 탭이 숨겨져 다른 화면을 거쳐야 했다 — 베타 제보)
+  // 대회 고르기 (베타 제보: 다른 화면에서 대회를 연 뒤에는 대회 탭에서 바꿀 방법이 없었다). 이번 · 지난 시즌, 리그별로
+  picker(cur) {
+    const Y = Schedule.season(), G = [['LCK', 'LCK'], ['INTL', '국제대회'], ['LPL', 'LPL'], ['LEC', 'LEC'], ['LCS', 'LCS']];
+    const evs = Schedule.events.filter(e => (e.year === Y || e.year === Y - 1) && e.kind !== 'stove' && Schedule.all.some(m => m.event === e.id)).sort((a, b) => b.year - a.year || a.start.localeCompare(b.start));
+    return `<select class="ch-sort ev-pick" aria-label="대회 선택">${[Y, Y - 1].map(y => G.map(([lg, nm]) => { const l = evs.filter(e => e.year === y && e.league === lg); return l.length ? `<optgroup label="${y} ${nm}">${l.map(e => `<option value="${e.id}" ${e.id === cur.id ? 'selected' : ''}>${UI.esc(e.label)}</option>`).join('')}</optgroup>` : ''; }).join('')).join('')}</select>`;
+  },
   pick() {
     const my = App.state.teamId, t = Roster.team(), today = Clock.today(), Y = Schedule.season();
     const mine = e => Schedule.all.some(m => m.event === e.id && (m.t1 === my || m.t2 === my)) || (e.league === (t && t.league));
@@ -46,9 +52,10 @@ const EventPage = {
           <div class="rs-title"><h2>${UI.esc(e.label)} <small class="ev-st ${state === '진행 중' ? 'on' : ''}">${state}</small></h2><span>${Schedule.KIND[e.kind][0]} · ${e.start.slice(5).replace('-', '.')} – ${e.end.slice(5).replace('-', '.')} · ${UI.esc(this.format(e, ms))}</span></div>
           <div class="rs-stats"><div><span class="k">치른 경기</span><b>${done.length} / ${ms.length}</b></div>${this.champion(e) ? `<div><span class="k">우승</span><b>${UI.esc(this.T(this.champion(e)).short)}</b></div>` : ''}</div>
         </div>
-        <div class="ch-bar"><div class="seg ev-tabs">${tabs.map(([k, l]) => `<button class="${this.tab === k ? 'on' : ''}" data-k="${k}">${l}</button>`).join('')}</div></div>
+        <div class="ch-bar"><div class="seg ev-tabs">${tabs.map(([k, l]) => `<button class="${this.tab === k ? 'on' : ''}" data-k="${k}">${l}</button>`).join('')}</div>${this.picker(e)}</div>
         <div class="ev-body">${this[this.tab](e, ms, { done, ko, grp, my })}</div>
       </div>`;
+    $('.ev-pick', el).onchange = x => { this.id = x.target.value; this.tab = 'over'; this.view(el); };
     $('.ev-tabs', el).onclick = x => { const b = x.target.closest('button'); if (!b) return; this.tab = b.dataset.k; this.view(el); };
     el.onclick = x => { const r = x.target.closest('[data-mid]'), p = x.target.closest('.ev-body [data-pid]'); if (r && this.rec(Schedule.all.find(m => m.id === r.dataset.mid))) CompResults.report(r.dataset.mid); else if (p) Player.open(p.dataset.pid); };
   },
@@ -142,4 +149,6 @@ const EventPage = {
 Views['match-event'] = el => EventPage.view(el);
 Engine.on(today => { try { EventPage.preview(today); } catch (e) { console.warn('[preview]', e); } });
 // 대회 이름(data-ev)을 누르면 대회 페이지
+// 탭 줄 · 메뉴의 '대회'를 누르면 우리 팀 진행 중 대회로 돌아간다 (다른 화면에서 연 대회가 계속 남아 있던 문제)
+document.addEventListener('click', e => { if (!e.target.closest('a[href="#match-event"]')) return; EventPage.id = null; EventPage.tab = 'over'; if (Router.current() === 'match-event') setTimeout(() => Nav.render('match-event')); }, true);   // 이미 대회 화면이면 주소가 같아 다시 그리지 않으므로 직접
 document.addEventListener('click', e => { const x = e.target.closest('[data-ev]'); if (x && Schedule.byEvent && Schedule.byEvent[x.dataset.ev]) { e.preventDefault(); e.stopPropagation(); const back = x.closest('.modal-back'); if (back) { const b = $('.modal-foot button', back); if (b) b.click(); } EventPage.open(x.dataset.ev); } }, true);   // 캡처: 경기 행(리포트 열기)보다 먼저
