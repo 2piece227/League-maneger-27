@@ -12,6 +12,8 @@ GAME = {t['id']: t['league'] for t in J('teams.json')['teams']}
 FEED = {'lck-po': 'lck-playin'}                              # 앞 플레이-인 → 본선
 SKIP = {'lpl-s1', 'worlds-playin'}                          # worlds-playin: 게임에서 치르지 않는다 (js/schedule.js DROP)
 # 리그별 출전 쿼터: 다른 지역 팀 · 플레이-인 자리 없이 4대 리그 팀으로 채운다
+# 디펜딩 챔피언 자리 (2026 실제 대회의 전년도 우승팀). 게임에서는 'DEF' = 전년도 이 대회 우승팀 (첫 해는 2026 실제 우승팀)
+DEFENDER = {'ewc': 'gen-g'}
 QUOTA = {'worlds': {'LCK': 4, 'LPL': 4, 'LEC': 4, 'LCS': 4}, 'msi': {'LCK': 2, 'LPL': 2, 'LEC': 2, 'LCS': 2}}
 DROPTAB = {'msi': 'Play-In'}                                # 대회 안에서 치르지 않는 단계 (js/schedule.js DROPTAB)                                           # 동률 결정전 한 경기: 그때그때 순위로 (일반 규칙)
 TOP = {'lck-rtm': ['W2', 'W4', 'L4', 'L3']}                 # Road to MSI: 1·2위전 승자 · 최종전 승자가 MSI
@@ -79,6 +81,7 @@ for ev, e in TPL.items():
             t = tid(m, k); prev = [j for j in range(i) if t in (tid(ms[j], '1'), tid(ms[j], '2'))]
             if prev: j = prev[-1]; pair.append(('W' if winner(ms[j]) == t else 'L') + str(j)); continue
             if t in fteams: quals.append(t); pair.append('Q?'); seeds[(i, k)] = t; continue
+            if t == DEFENDER.get(ev): pair.append('DEF'); continue
             if intl and t not in GAME: pair.append('X'); continue
             if intl:
                 lg = GAME[t]; rk = ranks[lg].index(t) + 1 if t in ranks[lg] else None
@@ -104,6 +107,12 @@ for ev, e in TPL.items():
             nums = sorted(int(num[x[1]][1:]) for i in r0 for x in wire[i]); k = len(r0)
             for j, i in enumerate(r0): num[wire[i][0][1]], num[wire[i][1][1]] = f'R{nums[j]}', f'R{nums[2 * k - 1 - j]}'
         wire = [[num[x[1]] if isinstance(x, tuple) else x for x in p] for p in wire]
+    if intl and ev not in QUOTA:   # 리그별 순위는 빈틈 없이 (실제 예선 · 디펜딩 자리 때문에 5위 · 7위 같은 번호가 생기지 않게)
+        import re
+        for lg_ in ('LCK', 'LPL', 'LEC', 'LCS'):
+            olds = sorted({int(x[3:]) for p in wire for x in p if re.fullmatch(lg_ + r'\d+', x)})
+            ren = {f'{lg_}{o}': f'{lg_}{n + 1}' for n, o in enumerate(olds)}
+            wire = [[ren.get(x, x) for x in p] for p in wire]
     if ev in QUOTA:
         import re
         seat = [(i, j) for i, p in enumerate(wire) for j, x in enumerate(p) if not re.fullmatch(r'[WL]\d+', x)]
@@ -142,6 +151,7 @@ for ev, e in TPL.items():
         item['m'] = [[f'Q{next(qi)}' if x == 'Q?' else x for x in p] for p in wire]
         item['feed'] = feed
     if ev in TOP: item['top'] = TOP[ev]
+    if ev in DEFENDER: item['def'] = ranking(ev)[0]   # 게임 첫 해의 디펜딩 챔피언 = 2026 실제 우승팀
     out.setdefault(ev, {}).update(item)
 # 플레이-인 adv가 먼저 계산된 대회 순서와 무관하게 남도록 정리
 out = {k: v for k, v in out.items() if 'm' in v}

@@ -171,14 +171,18 @@ const Season = {
     const order = fixed.length ? this.standings(fixed, e.league === 'INTL' ? null : e.league) : this.pool(e);
     const f = this.wireFeed(e, Wd), feedT = new Set(f ? this.brk()[f.id] || [] : []);
     const out = {}, used = new Set(), lr = {}, xs = [];
-    Wd.m.forEach((p, i) => p.forEach((s, j) => {
-      if (this.isWL(s) || s[0] === 'Q') return;
-      const key = i + ':' + j, mm = s.match(/^([A-Z]+)(\d+)$/);
+    // DEF = 디펜딩 챔피언 (전년도 이 대회 우승팀, 게임 첫 해는 실제 우승팀)을 먼저 정한다. 순위로도 자격이 되면 그 리그는 다음 순위 팀이 한 자리 더 받는다
+    const seats = []; Wd.m.forEach((p, i) => p.forEach((s, j) => { if (!this.isWL(s) && s[0] !== 'Q') seats.push([i + ':' + j, s]); }));
+    seats.sort((a, c) => (c[1] === 'DEF') - (a[1] === 'DEF'));
+    for (const [key, s] of seats) {
+      const mm = s.match(/^([A-Z]+)(\d+)$/);
       let t = null;
-      if (mm) t = mm[1] === 'R' ? order[+mm[2] - 1] : (lr[mm[1]] ||= this.leagueRank(mm[1], e.year, e.start))[+mm[2] - 1];
-      if (!t || used.has(t) || feedT.has(t)) { xs.push(key); return; }   // X · 없는 순위 · 겹치는 팀은 남은 팀 중 다음 순위로
+      if (s === 'DEF') t = (App.state.champs || {})[`${e.year - 1}:${e.base}`] || Wd.def;
+      else if (mm && mm[1] === 'R') t = order[+mm[2] - 1];
+      else if (mm) { const L = (lr[mm[1]] ||= this.leagueRank(mm[1], e.year, e.start)); t = L.slice(+mm[2] - 1).find(x => !used.has(x) && !feedT.has(x)); }
+      if (!t || used.has(t) || feedT.has(t)) { xs.push(key); continue; }   // X · 없는 순위 · 겹치는 팀은 남은 팀 중 다음 순위로
       used.add(t); out[key] = t;
-    }));
+    }
     // X 채우기 — 리그 대회: 남은 팀 중 다음 순위. 국제대회: 출전 팀이 가장 적은 리그의 다음 순위 팀(같으면 LCK · LPL · LEC · LCS 순),
     //   이 대회가 진출팀을 보내는 본선에 직접 나가는 팀은 빼고 (예전에는 순위표 맨 위부터 채워 월즈에 LCK 6팀, 플레이-인에 LCK 1위가 들어갔다)
     if (e.league !== 'INTL') {
