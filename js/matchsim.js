@@ -1315,6 +1315,7 @@ const Sim = {
     if (g.over || g.t < 100) return;
     const busy = new Set(); g.fights.forEach(f => f.mem.forEach(p => busy.add(p)));
     const ok = p => !p.recall && !p.tpCh && !p.fled && !busy.has(p);
+    if (m >= 8) g.pl.forEach(p => { if (p.dead || !ok(p) || p.hold) return; const foes = this.near(g, this.other(p.side), p.pos, 13).length; if (foes < 3) return; const mates = this.near(g, p.side, p.pos, 12).length - 1; if (mates <= 1 && !/nexus|inhib/.test(((this.threat(g, p.side) || {}).st || {}).kind || '')) this.retreat(g, p, 14); });   // 상대 본대 옆을 혼자 지나가지 않는다 (예전에는 상대 본대가 미드 포탑을 미는데 원딜이 그 앞을 지나갔다 — 베타 피드백)
     if (this.OVL_ON !== false) { const O = (g.ovl ||= {}), now = {};
       this.alive(g, 'B').forEach(a => { if (ok(a)) this.alive(g, 'R').forEach(b => { if (!ok(b) || this.dist(a.pos, b.pos) > 1.6) return; const key = a.p.id + '|' + b.p.id; now[key] = (O[key] || 0) + 1;
         if (now[key] >= 2 && this.fightAt(g, [(a.pos[0] + b.pos[0]) / 2, (a.pos[1] + b.pos[1]) / 2], 8, { where: '' })) now[key] = 0; }); });
@@ -1347,7 +1348,8 @@ const Sim = {
       if (A.length + Bp.length >= 4 && g.r() < .35) this.line(g, 'standoff', { t: g.side[weak].t.short });
       return;
     }
-    if (!kill && g.r() > this.MEET * (best.face ? .3 : 1 + tries) * this.agr(g)) { if (!best.face) this.standoff(g, A, Bp); return; }   // 서로 견제만 한다
+    if (!kill && !best.face && tries >= 3 && pw < .25 && !home) { (weak === 'B' ? A : Bp).forEach(p => this.retreat(g, p, 18)); return; }   // 세 번째 대치: 밀리는 쪽은 멀리 물러난다 (몇 분씩 마주 서 있기만 하던 문제 — 베타 피드백)
+    if (!kill && (best.face || tries < 3) && g.r() > this.MEET * (best.face ? .3 : 1 + tries) * this.agr(g)) { if (!best.face) this.standoff(g, A, Bp); return; }   // 서로 견제만 한다 (세 번째부터는 비슷하면 붙는다)
     const lane = ['top', 'mid', 'bot'].sort((x, y) => this.distLane(at, x) - this.distLane(at, y))[0];
     this.fightAt(g, at, 14, { where: home ? '본진' : this.distLane(at, lane) < 6 ? this.laneKo(lane) : '정글' });
   },
