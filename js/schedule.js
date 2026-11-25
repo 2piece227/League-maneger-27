@@ -109,9 +109,11 @@ const Schedule = {
     };
   },
 
+  // 게임에서 치르지 않는 대회: 월즈 플레이-인 (4대 리그만 있어 실제 플레이-인 자리 대부분이 다른 지역 팀이다 → 본선 16팀을 리그별 4팀으로 바로 채운다)
+  DROP: ['worlds-playin'],
   buildSeason(seed, Y) {
-    const shift = this.shiftFor(Y);
-    const evs = this.tpl.events.map(e => this.meta(e, Y, shift));
+    const shift = this.shiftFor(Y), tpl = this.tpl.events.filter(e => !this.DROP.includes(e.id));
+    const evs = tpl.map(e => this.meta(e, Y, shift));
     // 스토브리그: 전 시즌 월즈 결승 다음 날 ~ 첫 공식 경기 전날
     const first = evs.filter(e => e.kind !== 'event').map(e => e.start).sort()[0];
     const sStart = this.addDays(this.worldsEnd(Y - 1), 1);
@@ -120,6 +122,7 @@ const Schedule = {
 
     let n = 0;
     for (const e of this.tpl.events) {
+      if (this.DROP.includes(e.id)) { n += e.slots.length; continue; }   // 경기 번호는 건너뛴다 (뒤 대회의 경기 id가 바뀌면 저장된 결과가 엉뚱한 경기에 붙는다)
       // 이 단계의 팀 재배치 (리그별, 시즌·단계마다 새로 추첨)
       const ids = App.db.teams.filter(t => t.league === e.league).map(t => t.id).sort();
       const perm = this.shuffle(ids, this.rng(`perm:${seed}:${Y}:${e.id}`));

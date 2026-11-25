@@ -9,8 +9,10 @@ J = lambda f: json.load(open(os.path.join(ROOT, 'data', f), encoding='utf8'))
 R = J('results-2026.json')['matches']
 TPL = {e['id']: e for e in J('season-template.json')['events']}
 GAME = {t['id']: t['league'] for t in J('teams.json')['teams']}
-FEED = {'lck-po': 'lck-playin', 'worlds': 'worlds-playin'}   # 앞 플레이-인 → 본선
-SKIP = {'lpl-s1'}                                           # 동률 결정전 한 경기: 그때그때 순위로 (일반 규칙)
+FEED = {'lck-po': 'lck-playin'}                              # 앞 플레이-인 → 본선
+SKIP = {'lpl-s1', 'worlds-playin'}                          # worlds-playin: 게임에서 치르지 않는다 (js/schedule.js DROP)
+# 리그별 출전 쿼터: 다른 지역 팀 · 플레이-인 자리 없이 4대 리그 팀으로 채운다
+QUOTA = {'worlds': {'LCK': 4, 'LPL': 4, 'LEC': 4, 'LCS': 4}}                                           # 동률 결정전 한 경기: 그때그때 순위로 (일반 규칙)
 TOP = {'lck-rtm': ['W2', 'W4', 'L4', 'L3']}                 # Road to MSI: 1·2위전 승자 · 최종전 승자가 MSI
 
 tid = lambda m, k: m['t' + k] or m['n' + k]
@@ -100,6 +102,32 @@ for ev, e in TPL.items():
             nums = sorted(int(num[x[1]][1:]) for i in r0 for x in wire[i]); k = len(r0)
             for j, i in enumerate(r0): num[wire[i][0][1]], num[wire[i][1][1]] = f'R{nums[j]}', f'R{nums[2 * k - 1 - j]}'
         wire = [[num[x[1]] if isinstance(x, tuple) else x for x in p] for p in wire]
+    if ev in QUOTA:
+        import re
+        seat = [(i, j) for i, p in enumerate(wire) for j, x in enumerate(p) if not re.fullmatch(r'[WL]\d+', x)]
+        keep, want = {}, [f'{lg}{k}' for lg, n in QUOTA[ev].items() for k in range(1, n + 1)]
+        for i, j in seat:
+            x = wire[i][j]
+            if x in want and x not in keep.values(): keep[(i, j)] = x
+        rest = [x for x in want if x not in keep.values()]
+        free = [s_ for s_ in seat if s_ not in keep]
+        assert len(rest) == len(free), (ev, rest, free)
+        lg = lambda x: re.match(r'[A-Z]+', x).group(0)
+        for s_ in free:   # 1라운드에서 같은 리그끼리 붙지 않게: 상대와 리그가 다른 토큰 먼저
+            i, j = s_; opp = wire[i][1 - j]
+            pick = next((x for x in rest if not re.fullmatch(r'[A-Z]+\d+', opp) or lg(x) != lg(opp)), rest[0])
+            rest.remove(pick); wire[i][j] = pick
+        # 남은 충돌은 채운 자리끼리 맞바꿔 푼다
+        isS = lambda x: re.fullmatch(r'[A-Z]+\d+', x)
+        clash = lambda i: isS(wire[i][0]) and isS(wire[i][1]) and lg(wire[i][0]) == lg(wire[i][1])
+        for a_ in free:
+            if not clash(a_[0]): continue
+            for b_ in free:
+                if b_[0] == a_[0]: continue
+                wire[a_[0]][a_[1]], wire[b_[0]][b_[1]] = wire[b_[0]][b_[1]], wire[a_[0]][a_[1]]
+                if not clash(a_[0]) and not clash(b_[0]): break
+                wire[a_[0]][a_[1]], wire[b_[0]][b_[1]] = wire[b_[0]][b_[1]], wire[a_[0]][a_[1]]
+        assert not any(clash(i) for i in {x[0] for x in seat}), ('같은 리그 맞대결', ev)
     item = {'m': wire}
     if quals:   # 플레이-인 진출 순서 = 그 대회의 adv 순서
         fm = matches(feed)
