@@ -1373,8 +1373,9 @@ const Sim = {
     if (s.defT !== g.t) {
       s.defT = g.t; s.def = {};
       const used = new Set();
-      for (const lane of this.LANES3) {
-        const st = this.structOf(g, k, lane); if (!st || st.kind === 'nexus') continue;
+      const depth = l => { const x = this.structOf(g, k, l); return !x ? 0 : x.kind === 'nexus' ? 9 : x.kind === 'nexusT' ? 8 : x.kind === 'inhib' ? 7 : (x.i || 0) + 1; };
+      for (const lane of this.LANES3.slice().sort((a, b) => depth(b) - depth(a))) {   // 깊은 건물(넥서스 · 쌍둥이 · 억제기)부터 지킨다 (예전에는 탑부터 봐서 마지막 생존자가 넥서스를 두고 탑으로 갔다)
+        const st = this.structOf(g, k, lane); if (!st || (st.kind === 'nexus' && lane !== 'mid')) continue;   // 넥서스는 한 번만 본다 (세 라인 모두 넥서스를 가리킨다)
         const atk = this.near(g, o, st.pos, this.DEF_R).filter(q => !q.recall);
         if (!atk.length) {
           const w = this.frontW && this.frontW(g, lane, o), deep = st.kind === 'inhib' || st.i >= 1;
@@ -1387,7 +1388,7 @@ const Sim = {
         const cand = this.alive(g, k).filter(q => !q.recall && !q.tpCh && !used.has(q) && !here.includes(q) && this.dist(q.pos, st.pos) < 60 && !(this.objFor(g, q, this.min(g)) && this.dist(q.pos, st.pos) > 25))
           .sort((a, b) => this.dist(a.pos, st.pos) - this.dist(b.pos, st.pos)).slice(0, need);
         if (!cand.length) continue;
-        const important = st.kind === 'inhib' || st.i >= 1;   // 2차 포탑 · 억제기는 웬만하면 지킨다
+        const important = st.kind === 'inhib' || st.kind === 'nexus' || st.kind === 'nexusT' || st.i >= 1;   // 2차 포탑 · 억제기 · 쌍둥이 · 넥서스는 웬만하면 지킨다 (예전에는 넥서스에 혼자 온 상대를 아무도 막지 않았다 — 베타 제보)
         if (!important && this.tpow(g, k, [...here, ...cand]) + (here.length + cand.length - atk.length) * 6 < this.tpow(g, o, atk) - 4) continue;   // 막을 수 없는 바깥 포탑에는 무리하게 가지 않는다
         cand.forEach(q => { used.add(q); s.def[q.p.id] = lane; });
       }
