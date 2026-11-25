@@ -2,7 +2,17 @@
 // 바이아웃 조항이 있으면 그 금액 이상 제안 시 구단은 거절할 수 없다. 다른 구단도 우리 선수에게 이적 제안을 보낸다.
 const Transfer = {
   bids() { return (Contract.st().bids ||= []); },
-  open$(pid) { return this.bids().find(b => b.pid === pid && b.dir === 'in' && ['talk', 'agreed'].includes(b.status)); },
+  open$(pid) { this.sweep(); return this.bids().find(b => b.pid === pid && b.dir === 'in' && ['talk', 'agreed'].includes(b.status)); },
+  // 선수가 다른 경로(FA 계약 등)로 팀을 옮기면 그 선수에 대한 진행 중 제안은 무효 (베타 제보: HLE에 보낸 제안이 남아, 선수가 우리 팀에 온 뒤 'T1 → T1' 협상이 열렸다)
+  sweep() {
+    const my = App.state.teamId;
+    this.bids().forEach(b => {
+      if (!['talk', 'agreed', 'pending'].includes(b.status)) return;
+      const hit = Player.find(b.pid), owner = b.dir === 'in' ? b.from : my;
+      if (hit && !hit.p.free && hit.t.id === owner) return;
+      b.status = 'void'; b.why = !hit ? '선수 정보 없음' : hit.t.id === my ? '이미 우리 선수' : hit.p.free ? '선수가 FA가 됨' : `${Sim.josa(hit.t.short, '으로', '로')} 이적`;
+    });
+  },
   gm(t) { const r = G.rand(t.id, 'gm'); return { name: `${t.short} 단장`, kind: r < .35 ? 'tough' : r < .85 ? 'normal' : 'kind' }; },
 
   // 구단이 생각하는 몸값

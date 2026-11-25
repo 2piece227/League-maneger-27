@@ -245,9 +245,10 @@ const Recruit = {
   // ---------- 이적 제안 ----------
   async offers(el) {
     await Promise.all([Portal.ready, Mastery.load()]);
-    const ST = { talk: ['협상 중', 'seeking'], agreed: ['구단 합의 · 개인 조건 남음', 'stable'], pending: ['답변 대기', 'seeking'], rejected: ['결렬', 'vacant'], done: ['완료', 'stable'] };
+    Transfer.sweep();
+    const ST = { talk: ['협상 중', 'seeking'], agreed: ['구단 합의 · 개인 조건 남음', 'stable'], pending: ['답변 대기', 'seeking'], rejected: ['결렬', 'vacant'], done: ['완료', 'stable'], void: ['무효', 'vacant'] };
     const tm = id => App.db.teams.find(t => t.id === id) || { short: id, name: id };
-    const row = b => { const hit = Player.find(b.pid); if (!hit) return ''; const o = tm(b.dir === 'in' ? b.from : b.to), st = ST[b.status] || [b.status, ''];
+    const row = b => { const hit = Player.find(b.pid); if (!hit) return ''; const o = tm(b.dir === 'in' ? b.from : b.to), st = b.status === 'void' ? [`무효 · ${b.why || '선수 이적'}`, 'vacant'] : ST[b.status] || [b.status, ''];
       return `<div class="of-row" data-pid="${b.pid}" data-dir="${b.dir}">${G.face(hit.p, 'pl-ph')}<div>${G.ovr(hit.p)}<b>${UI.esc(hit.p.name)}</b><span>${G.team(o, 'xs')} ${UI.esc(o.name)} · ${b.date.replace(/-/g, '.')}</span></div>
         <div class="of-fee"><b>${b.fee ? Player.money(b.fee) : b.ask ? Player.money(b.ask) : '-'}</b><small>${b.fee ? '이적료' : '구단 요구'}</small></div><span class="ot-st ${st[1]}">${st[0]}</span></div>`; };
     const all = Transfer.bids().slice().reverse(), recv = all.filter(b => b.dir === 'out'), sent = all.filter(b => b.dir === 'in');
