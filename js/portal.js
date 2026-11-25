@@ -262,7 +262,7 @@ const Portal = {
   // 선택지 / 고른 결과 / 처리하기 / 바로가기
   detailActions(m) {
     if (m.expired) return '<div class="md-answer"><small>지나간 제안</small><b>답하지 않아 기한이 지났습니다</b></div>';
-    if (m.choices && m.answered == null) return `
+    if (m.choices && m.answered == null) return `${m.ctx && m.ctx.on && !m.required ? `<small class="md-due">답변 기한: ${+m.ctx.on.slice(5, 7)}월 ${+m.ctx.on.slice(8)}일까지${m.ctx.on === Clock.today() ? ' (오늘)' : ''}</small>` : ''}
       <div class="md-choices">${m.choices.map((c, i) => `<button class="md-choice" data-i="${i}">${UI.esc(c.label)}</button>`).join('')}</div>`;
     if (m.choices) return `
       <div class="md-answer"><small>내 선택</small><b>${UI.esc(m.choices[m.answered].label)}</b>

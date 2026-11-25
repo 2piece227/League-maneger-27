@@ -498,7 +498,8 @@ Engine.on(today => {
     const bid = m.ctx && m.ctx.bid, ctx = m.ctx || {};
     // 기한: 날짜가 있는 요청은 그날, 경기 전 티저는 그 경기일, 그 밖에는 7일
     const mt = ctx.mid && (Schedule.all || []).find(x => x.id === ctx.mid);
-    if (today <= (ctx.on || (mt ? mt.t.slice(0, 10) : Store.addDays(m.date, 7)))) return;
+    const live = m.from && /기자회견|라커룸/.test(m.from.name || '');   // 예전 세이브의 경기 후 기자회견 · 선수단 한마디: 그날까지
+    if (today <= (ctx.on || (mt ? mt.t.slice(0, 10) : live ? m.date : Store.addDays(m.date, 7)))) return;
     m.expired = true; m.done = true;
     if (bid && typeof Transfer !== 'undefined') { const b = Transfer.bids().find(x => x.id === bid); if (b && b.status === 'pending') b.status = 'rejected'; }
   });

@@ -15,7 +15,7 @@ const Talk = {
     const o = Schedule.opponent(m, App.state.teamId); if (!o) return false;
     const rows = Results.table(o.league, Results.current(o.league).ids); return rows.slice(0, 3).some(x => x.t.id === o.id);
   },
-  push(msg) { Inbox.push({ priority: 'todo', ...msg }); },
+  push(msg) { const { due, ...m } = msg; if (due != null) m.ctx = { ...(m.ctx || {}), on: typeof due === 'string' ? due : Store.addDays(Clock.today(), due) }; Inbox.push({ priority: 'todo', ...m }); },   // due: 답변 기한 (일 수 또는 날짜). 지나면 답할 수 없다
 
   daily(today) {
     const t = this.my(); if (!t) return;
@@ -24,14 +24,14 @@ const Talk = {
     const first = Schedule.firstEvent(t.league, Store.addDays(today, -1));
     if (first && Fmt.daysBetween(today, first.start) === 7 && Engine.once('talk:season:' + Y)) {
       const rivals = App.db.teams.filter(x => x.league === t.league && x.id !== t.id).sort((a, b) => Season.power(b) - Season.power(a)).slice(0, 3);
-      this.push({ from: { name: '구단 홍보팀', role: 'board' }, subject: `${Y} 시즌 각오 인터뷰`, ctx: {},
+      this.push({ from: { name: '구단 홍보팀', role: 'board' }, subject: `${Y} 시즌 각오 인터뷰`, ctx: {}, due: Store.addDays(first.start, -1),
         body: `개막을 앞두고 방송사 인터뷰가 잡혔습니다. 기자가 이번 시즌 목표를 묻습니다.`,
         choices: [
           { label: '"우승 말고는 생각하지 않습니다"', fx: { fans: 4, media: 2, board: 1 }, reply: '팬들이 들끓습니다. 다만 결과가 따라오지 않으면 부담이 될 겁니다.' },
           { label: '"한 경기씩 차근차근 하겠습니다"', fx: { media: 1, squad: 1 }, reply: '무난한 답변이었습니다.' },
           { label: '"국제대회 진출이 첫 목표입니다"', fx: { fans: 2, board: 2 }, reply: '이사회가 현실적인 목표를 반겼습니다.' },
         ] });
-      this.push({ from: { name: '방송사 기자', role: 'media' }, subject: `우리 팀 말고 우승 후보를 꼽는다면?`, ctx: {},
+      this.push({ from: { name: '방송사 기자', role: 'media' }, subject: `우리 팀 말고 우승 후보를 꼽는다면?`, ctx: {}, due: Store.addDays(first.start, -1),
         body: `인터뷰 마지막 질문입니다. "${Sim.josa(t.short, '을', '를')} 빼고 이번 시즌 가장 강한 팀은 어디라고 보십니까?"`,
         choices: [...rivals.map(x => ({ label: x.name, act: 'predict', arg: x.id, fx: { media: 1 }, reply: `${Sim.josa(x.short, '을', '를')} 꼽았습니다. 상대 팀 팬들 사이에서 화제가 됐습니다.` })),
           { label: '"우리 팀 말고는 없습니다"', fx: { fans: 2, media: -1 }, reply: '자신감 있는 답변에 팬들이 환호했지만 다른 팀 팬들은 불편해합니다.' }] });
@@ -39,7 +39,7 @@ const Talk = {
     // 2. 개인 방송 요청 (한 달에 한 번쯤, 비시즌에 더 자주)
     if (this.r(today + 'stream') < (Market.stove(today) ? .06 : .025)) {
       const ps = t.players.filter(x => x.role !== 'COACH'), p = ps[Math.floor(this.r(today + 'sp') * ps.length)];
-      if (p && Engine.once('talk:stream:' + p.id + ':' + today.slice(0, 7))) this.push({ from: { name: p.name, role: 'player', photo: p.photo }, subject: `${p.name}, 개인 방송을 하고 싶다고 합니다`, ctx: { pid: p.id, player: p.name },
+      if (p && Engine.once('talk:stream:' + p.id + ':' + today.slice(0, 7))) this.push({ from: { name: p.name, role: 'player', photo: p.photo }, subject: `${p.name}, 개인 방송을 하고 싶다고 합니다`, due: 3, ctx: { pid: p.id, player: p.name },
         body: [`감독님, 쉬는 날 개인 방송을 좀 하고 싶습니다. 팬들이 계속 요청하기도 하고요. 연습에는 지장 없게 하겠습니다.`, `감독님, 팬분들이 방송 언제 하냐고 계속 물어보셔서요. 쉬는 날에 두세 시간 정도만 켜도 될까요?`, `감독님, 솔랭 방송을 해 보고 싶습니다. 연습 겸 할 수 있어서 손해는 없을 것 같아요.`][Math.floor(this.r(today + 'sv') * 3)],
         choices: [
           { label: '허락한다', fx: { fans: 2, morale: 1 }, act: 'condDelta', arg: -1, reply: '팬들이 반가워합니다. 다만 연습 시간이 조금 줄었습니다.' },
@@ -50,7 +50,7 @@ const Talk = {
     // 3. 스폰서 촬영 (두 달에 한 번쯤)
     if (this.r(today + 'spon') < .018 && Engine.once('talk:sponsor:' + today.slice(0, 7))) {
       const pay = Math.round((2 + (t.rep || 2)) * 1e7);
-      this.push({ from: { name: '구단 마케팅팀', role: 'board' }, subject: '스폰서 광고 촬영 요청', ctx: { ledger: '스폰서 촬영' },
+      this.push({ from: { name: '구단 마케팅팀', role: 'board' }, subject: '스폰서 광고 촬영 요청', due: 3, ctx: { ledger: '스폰서 촬영' },
         body: `스폰서가 선수단 광고 촬영을 요청했습니다. 하루 일정이 통째로 빠집니다. 촬영비는 약 ${Player.money(pay / 1e8)} 원입니다.`,
         choices: [
           { label: '촬영한다', fx: { money: pay, board: 2, fans: 1 }, act: 'condAll', arg: -.5, reply: '촬영을 마쳤습니다. 선수들이 조금 지쳤습니다.' },
@@ -72,7 +72,7 @@ const Talk = {
     const subs = t.players.filter(p => p.sub && p.role !== 'COACH');
     if (subs.length && !S.promise && this.r(today + 'sub') < .02) {
       const p = subs[Math.floor(this.r(today + 'sb') * subs.length)];
-      if (Engine.once('talk:sub:' + p.id + ':' + today.slice(0, 7))) this.push({ from: { name: p.name, role: 'player', photo: p.photo }, subject: `${p.name}, 출전 기회를 묻습니다`, ctx: { pid: p.id, player: p.name },
+      if (Engine.once('talk:sub:' + p.id + ':' + today.slice(0, 7))) this.push({ from: { name: p.name, role: 'player', photo: p.photo }, subject: `${p.name}, 출전 기회를 묻습니다`, due: 3, ctx: { pid: p.id, player: p.name },
         body: `감독님, 저도 준비는 되어 있습니다. 언제쯤 경기에 나갈 수 있을까요?`,
         choices: [
           { label: '2주 안에 기회를 주겠다고 약속한다', act: 'subPromise', arg: p.id, fx: { morale: 2 }, reply: '선수가 기대에 차 있습니다. 약속을 지키지 않으면 실망이 클 겁니다.' },
@@ -107,7 +107,7 @@ const Talk = {
     const best = Object.keys(pog).sort((a, b) => pog[b] - pog[a] || avg(b) - avg(a))[0] || Object.keys(rat).sort((a, b) => avg(b) - avg(a))[0];
     const worst = Object.keys(rat).sort((a, b) => avg(a) - avg(b))[0];
     const nm = id => (Player.find(id) || { p: { name: '' } }).p.name, sw = (sc[t.id] || 0), sl = (sc[o.id] || 0), clean = won ? sl === 0 : sw === 0;
-    if (Engine.once('talk:team:' + m.id)) this.push({ from: { name: '라커룸', role: 'coach' }, subject: `${o.short}전 ${won ? '승리' : '패배'} — 선수단에게 한마디`, priority: 'normal', ctx: { best, worst, won, clean },
+    if (Engine.once('talk:team:' + m.id)) this.push({ from: { name: '라커룸', role: 'coach' }, subject: `${o.short}전 ${won ? '승리' : '패배'} — 선수단에게 한마디`, priority: 'normal', due: 0, ctx: { best, worst, won, clean },
       body: `${o.name}전 ${sw}:${sl} ${won ? '승리' : '패배'}. 선수들이 라커룸에 모였습니다. 감독님의 한마디를 기다리고 있습니다.${best ? `\n\n이번 경기 가장 좋았던 선수: ${nm(best)}` : ''}`,
       choices: won ? [
         { label: '"잘했다. 오늘은 마음껏 즐겨라"', act: 'teamTalk', arg: 'enjoy', reply: '선수들이 환하게 웃습니다.' },
@@ -123,7 +123,7 @@ const Talk = {
     // 승리 기자회견: 중요한 경기 · 3연승 이상일 때, 일주일에 한 번까지
     const wstreak = Results.forTeam(t.id).slice(-3).length === 3 && Results.forTeam(t.id).slice(-3).every(x => Results.won(x, t.id));
     const wpress = won && (this.big(m) || wstreak) && !(S.wpress && Fmt.daysBetween(S.wpress, Clock.today()) < 7);
-    if (wpress && Engine.once('talk:win:' + m.id)) { S.wpress = Clock.today(); this.push({ from: { name: '경기 후 기자회견', role: 'media' }, subject: `${o.short}전 승리 — 소감을 묻습니다`, ctx: {},
+    if (wpress && Engine.once('talk:win:' + m.id)) { S.wpress = Clock.today(); this.push({ from: { name: '경기 후 기자회견', role: 'media' }, subject: `${o.short}전 승리 — 소감을 묻습니다`, ctx: {}, due: 0,
       body: `${o.name}${Sim.josa(o.name, '을', '를').slice(o.name.length)} ${sw}:${Sim.josa(sl, '으로', '로')} 꺾었습니다. ${wstreak ? '연승 행진에 기자들이 비결을 묻습니다.' : '중요한 경기를 잡자 기자들이 소감을 묻습니다.'}`,
       choices: [
         { label: '"선수들이 정말 잘해 줬습니다. 선수들 덕분입니다"', fx: { squad: 2, fans: 1 }, reply: '선수들이 기사를 보고 뿌듯해합니다.' },
@@ -136,7 +136,7 @@ const Talk = {
     const streak = Results.forTeam(t.id).slice(-2).every(x => !Results.won(x, t.id));
     const press = !won && (this.big(m) || streak) && !(S.press && Fmt.daysBetween(S.press, Clock.today()) < 7);
     if (press) S.press = Clock.today();
-    if (press && Engine.once('talk:loss:' + m.id)) this.push({ from: { name: '경기 후 기자회견', role: 'media' }, subject: `${o.short}전 패배 — 소감을 묻습니다`, ctx: {},
+    if (press && Engine.once('talk:loss:' + m.id)) this.push({ from: { name: '경기 후 기자회견', role: 'media' }, subject: `${o.short}전 패배 — 소감을 묻습니다`, ctx: {}, due: 0,
       body: `${o.name}에 ${sc[t.id] || 0}:${Sim.josa(sc[o.id] || 0, '으로', '로')} 졌습니다. ${streak ? '연패에 빠지자 기자들이 원인을 묻습니다.' : '중요한 경기를 내주자 기자들이 원인을 묻습니다.'}`,
       choices: [
         { label: '"상대가 준비를 잘해왔습니다"', fx: { media: 2 }, reply: '깔끔한 인정에 여론이 나쁘지 않습니다.' },
