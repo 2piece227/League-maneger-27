@@ -65,7 +65,7 @@ const CompResults = {
   },
 
   draw(el) {
-    const my = App.state.teamId, all = Schedule.all.filter(m => m.event === this.eventId && !m.dead);
+    const my = App.state.teamId, all = Schedule.all.filter(m => m.event === this.eventId && !m.dead && !m.void);
     let list = all.filter(m => this.teamId === 'all' || m.t1 === this.teamId || m.t2 === this.teamId);
     if (this.status === 'done') list = list.filter(m => this.rec(m));
     if (this.status === 'next') list = list.filter(m => !this.rec(m));

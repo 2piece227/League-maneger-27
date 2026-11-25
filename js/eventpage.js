@@ -19,7 +19,7 @@ const EventPage = {
   },
   rec(m) { return (App.state.season || {})[m.id]; },
   open(id) { if (!id || !Schedule.byEvent[id]) return; this.id = id; this.tab = 'over'; Router.go('match-event'); },
-  matches(id = this.id) { return Schedule.all.filter(m => m.event === id && !m.dead).sort((a, b) => a.t.localeCompare(b.t)); },
+  matches(id = this.id) { return Schedule.all.filter(m => m.event === id && !m.dead && !m.void).sort((a, b) => a.t.localeCompare(b.t)); },
   // 녹아웃(대진표)인 라운드: 주차 · 그룹 · 스위스가 아닌 것. 월즈 1~5라운드는 스위스
   knock(e, tab) { if (/Week|Groups? (Day|Stage)|Swiss|Tiebreak|Last Chance/i.test(tab)) return false; if (e.base === 'worlds' && /^Round \d/.test(tab)) return false; return true; },
   swiss(e) { return e.base === 'worlds' || e.base === 'lcs-lockin'; },

@@ -228,7 +228,16 @@ const Season = {
       if (seeds === undefined) seeds = this.wireSeeds(e, Wd, l); return seeds && seeds[i + ':' + j];
     };
     let ch = false;
-    ms.forEach((m, i) => { if (this.rec(m)) return; const a = src(Wd.m[i][0], i, 0), b = src(Wd.m[i][1], i, 1); if (a && b && a !== b && (m.t1 !== a || m.t2 !== b)) { m.t1 = a; m.t2 = b; ch = true; } });
+    const today = Clock.today();
+    ms.forEach((m, i) => {
+      if (this.rec(m) || m.void) return;
+      const a = src(Wd.m[i][0], i, 0), b = src(Wd.m[i][1], i, 1);
+      if (a && b && a !== b) { if (m.t1 !== a || m.t2 !== b) { m.t1 = a; m.t2 = b; ch = true; } return; }
+      // 성립할 수 없는 경기: 앞 경기(승자 · 패자 자리)가 모두 끝났는데 같은 팀이 되거나 앞 경기가 없어졌고 날짜가 지났으면 취소한다.
+      //   예전 규칙으로 치른 세이브(0.10.8 전)에서 LCK컵 결승이 성립하지 않아 '미정'으로 남고, 그 뒤 대회(Road to EWC · MSI · EWC)가 앞 대회를 기다리며 모두 멈췄다 (베타 제보)
+      const refs = Wd.m[i].filter(s => this.isWL(s)).map(s => ms[+s.slice(1)]);
+      if (refs.length === 2 && refs.every(r => r && (r.void || this.rec(r))) && m.t.slice(0, 10) < today) { m.void = true; m.t1 = m.t2 = null; ch = true; }   // void: 대진 자리는 남기고(연결표 경기 수 유지) 치른 것으로 본다
+    });
     if (seeds === undefined) seeds = this.wireSeeds(e, Wd, l);
     if (qual === undefined) qual = Wd.feed ? this.wireQual(e, Wd) : [];
     if (seeds) { const b = this.brk(), list = [...new Set([...Object.values(seeds), ...(qual || [])])]; if (JSON.stringify(b[e.id]) !== JSON.stringify(list)) b[e.id] = list; }
@@ -244,7 +253,7 @@ const Season = {
     return this._em[id] || [];
   },
   pw(id) { return ((this._pw ||= {})[id] ??= this.power(Schedule.team(id) || {})); },
-  done(id) { const l = this.evMatches(id); return l.length > 0 && l.every(m => m.dead || this.rec(m)); },
+  done(id) { const l = this.evMatches(id); return l.length > 0 && l.every(m => m.dead || m.void || this.rec(m)); },
   // 순위 (경기 승 → 세트 득실 → 전력)
   standings(matches, league) {
     const rows = {};
