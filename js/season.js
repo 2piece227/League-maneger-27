@@ -150,41 +150,68 @@ const Season = {
   Q: { 'lck-cup': 8, 'lck-rtm': 4, 'lck-playin': 4, 'lck-po': 6, 'lpl-s1': 2, 'lpl-s1po': 12, 'lpl-s2po': 10, 'lpl-gf': 8, 'lpl-rf': 4, 'lec-versuspo': 8, 'lec-springpo': 6, 'lec-summerpo': 6,
     'lcs-lockin': 8, 'lcs-springpo': 6, 'lcs-summerpo': 6, 'first-stand': 8, msi: 10, ewc: 16, 'worlds-playin': 4, worlds: 16, kespa: 10 },
   INTL: ['LCK', 'LPL', 'LEC', 'LCS', 'LCK', 'LPL', 'LEC', 'LCS', 'LCK', 'LPL'],
-  // 실제 대진 연결 (2026 실제 경기에서 뽑음). 경기 순서(시간순)마다 [팀1, 팀2]: 'S3' = 시드 3위, 'W0' / 'L0' = 0번 경기 승자 / 패자, 'Q1' = 앞 플레이-인 진출 1번
-  //   n: 시드 수, skip: 순위에서 건너뛸 수 (플레이-인은 5위부터), feed: 진출팀을 받는 플레이-인, adv: 이 대회의 진출팀, top: 최종 순위 앞자리
+  // 실제 대진 연결표 (tools/bracket-wire.py → js/brackets-data.js, 2026 실제 경기에서 뽑음). 경기 순서(시간순)마다 [팀1, 팀2]
+  //   R5 = 앞 단계 순위 5위(대회 안에 정해진 경기가 있으면 그 순위) · LCK2 = LCK 2위(국제대회) · X = 게임에 없는 팀 자리(남은 팀 중 다음 순위)
+  //   Q1 = 앞 플레이-인 진출 1번 · W3 / L3 = 3번 경기 승자 / 패자 · adv: 이 대회에서 본선에 올라가는 팀 · top: 최종 순위 앞자리
   //   예전에는 모든 대진을 '몇 패 전까지 살아남은 팀끼리'로 채워 Road to MSI(실제 6팀)를 4팀으로 치르고, 진 팀이 다음 라운드에 다시 나오기도 했다 (베타 제보)
-  WIRE: {
-    'lck-cup': { n: 9, m: [['S6', 'S9'], ['S7', 'S8'], ['S4', 'W0'], ['S5', 'W1'], ['L2', 'L3'], ['S3', 'W3'], ['W2', 'W4'], ['S1', 'W6'], ['S2', 'W5'], ['L5', 'L6'], ['L7', 'W9'], ['W7', 'W8'], ['L8', 'W10'], ['L11', 'W12'], ['W11', 'W13']] },
-    'lck-rtm': { n: 6, m: [['S5', 'S6'], ['S4', 'W0'], ['S1', 'S2'], ['S3', 'W1'], ['L2', 'W3']], top: ['W2', 'W4', 'L4', 'L3'] },
-    'lck-playin': { skip: 4, n: 4, m: [['S1', 'S2'], ['S3', 'S4'], ['L0', 'W1']], adv: ['W0', 'W2'] },
-    'lck-po': { n: 4, feed: 'lck-playin', m: [['S3', 'Q2'], ['S4', 'Q1'], ['S2', 'W1'], ['S1', 'W0'], ['L0', 'L1'], ['L2', 'W4'], ['W2', 'W3'], ['L3', 'W5'], ['L6', 'W7'], ['W6', 'W8']] },
-  },
+  get WIRE() { return typeof BRACKETS !== 'undefined' ? BRACKETS : {}; },
   byTime(l) { return [...l].sort((a, b) => a.t.localeCompare(b.t)); },
+  isWL(s) { return /^[WL]\d+$/.test(s); },
   wireAt(ms, s) { const m = ms[+s.slice(1)]; return m && this.rec(m) ? (s[0] === 'W' ? this.winner(m) : this.loser(m)) : null; },
+  wireFeed(e, Wd) { return Wd.feed && Schedule.events.find(x => x.base === Wd.feed && x.year === e.year); },
+  // 시드 칸('경기:쪽') → 팀
+  // 시드는 한 번 정해지면 고정한다 (App.state.wseed). 예전에는 날마다 다시 계산해, 동률 순서(전력)가 바뀌면 같은 팀이 한 라운드에 두 번 배정되고 대회가 멈췄다
   wireSeeds(e, Wd, l) {
-    let list;
+    const C = (App.state.wseed ||= {}); if (C[e.id]) return C[e.id];
+    const r = this.wireSeeds0(e, Wd, l); if (r) C[e.id] = r; return r;
+  },
+  wireSeeds0(e, Wd, l) {
     const fixed = l.filter(m => !m.open || m.seeds);
-    if (fixed.length) { if (!fixed.every(m => m.dead || this.rec(m))) return null; list = this.standings(fixed, e.league); }
-    else { if (!this.sourcesDone(e)) return null; list = this.pool(e); }
-    const s = Wd.skip || 0; list = list.slice(s, s + Wd.n);
-    return list.length === Wd.n ? list : null;
+    if (fixed.length ? !fixed.every(m => m.dead || this.rec(m)) : !this.sourcesDone(e)) return null;
+    const order = fixed.length ? this.standings(fixed, e.league === 'INTL' ? null : e.league) : this.pool(e);
+    const f = this.wireFeed(e, Wd), feedT = new Set(f ? this.brk()[f.id] || [] : []);
+    const out = {}, used = new Set(), lr = {}, xs = [];
+    Wd.m.forEach((p, i) => p.forEach((s, j) => {
+      if (this.isWL(s) || s[0] === 'Q') return;
+      const key = i + ':' + j, mm = s.match(/^([A-Z]+)(\d+)$/);
+      let t = null;
+      if (mm) t = mm[1] === 'R' ? order[+mm[2] - 1] : (lr[mm[1]] ||= this.leagueRank(mm[1], e.year, e.start))[+mm[2] - 1];
+      if (!t || used.has(t) || feedT.has(t)) { xs.push(key); return; }   // X · 없는 순위 · 겹치는 팀은 남은 팀 중 다음 순위로
+      used.add(t); out[key] = t;
+    }));
+    // X 채우기 — 리그 대회: 남은 팀 중 다음 순위. 국제대회: 출전 팀이 가장 적은 리그의 다음 순위 팀(같으면 LCK · LPL · LEC · LCS 순),
+    //   이 대회가 진출팀을 보내는 본선에 직접 나가는 팀은 빼고 (예전에는 순위표 맨 위부터 채워 월즈에 LCK 6팀, 플레이-인에 LCK 1위가 들어갔다)
+    if (e.league !== 'INTL') {
+      const fill = order.filter(t => !used.has(t) && !feedT.has(t));
+      for (const key of xs) { const t = fill.shift(); if (!t) return null; used.add(t); out[key] = t; }
+      return out;
+    }
+    const next = Schedule.events.find(x => x.year === e.year && (this.WIRE[x.base] || {}).feed === e.base), skip = new Set(feedT);
+    if (next) (this.WIRE[next.base].m.flat()).forEach(s => { const mm = /^(LCK|LPL|LEC|LCS)(\d+)$/.exec(s); if (mm) { const t = (lr[mm[1]] ||= this.leagueRank(mm[1], e.year, e.start))[+mm[2] - 1]; if (t) skip.add(t); } });
+    const LG = ['LCK', 'LPL', 'LEC', 'LCS'], cnt = lg => [...used].filter(t => (Schedule.team(t) || {}).league === lg).length;
+    for (const key of xs) {
+      const lg = LG.map(x => [x, cnt(x), (lr[x] ||= this.leagueRank(x, e.year, e.start)).find(t => !used.has(t) && !skip.has(t))]).filter(x => x[2]).sort((a, c) => a[1] - c[1])[0];
+      if (!lg) return null; used.add(lg[2]); out[key] = lg[2];
+    }
+    return out;
   },
   wireQual(e, Wd) {
-    if (!Wd.feed) return [];
-    const f = Schedule.events.find(x => x.base === Wd.feed && x.year === e.year), W = this.WIRE[Wd.feed]; if (!f || !W) return null;
-    const ms = this.byTime(this.bracket(f.id)); if (ms.length !== W.m.length) return null;
+    const f = this.wireFeed(e, Wd); if (!Wd.feed) return []; if (!f) return null;
+    const W = this.WIRE[Wd.feed], ms = this.byTime(this.bracket(f.id)); if (!W || ms.length !== W.m.length) return null;
     const q = W.adv.map(s => this.wireAt(ms, s)); return q.every(Boolean) ? q : null;
   },
   wire(e, br, Wd, l) {
     const ms = this.byTime(br); let seeds, qual;
-    const src = s => {
-      if (s[0] === 'S') { if (seeds === undefined) seeds = this.wireSeeds(e, Wd, l); return seeds && seeds[+s.slice(1) - 1]; }
+    const src = (s, i, j) => {
+      if (this.isWL(s)) return this.wireAt(ms, s);
       if (s[0] === 'Q') { if (qual === undefined) qual = this.wireQual(e, Wd); return qual && qual[+s.slice(1) - 1]; }
-      return this.wireAt(ms, s);
+      if (seeds === undefined) seeds = this.wireSeeds(e, Wd, l); return seeds && seeds[i + ':' + j];
     };
     let ch = false;
-    ms.forEach((m, i) => { if (this.rec(m)) return; const a = src(Wd.m[i][0]), b = src(Wd.m[i][1]); if (a && b && (m.t1 !== a || m.t2 !== b)) { m.t1 = a; m.t2 = b; ch = true; } });
-    if (seeds && (!Wd.feed || qual)) { const b = this.brk(), list = [...seeds, ...(qual || [])]; if (JSON.stringify(b[e.id]) !== JSON.stringify(list)) b[e.id] = list; }
+    ms.forEach((m, i) => { if (this.rec(m)) return; const a = src(Wd.m[i][0], i, 0), b = src(Wd.m[i][1], i, 1); if (a && b && a !== b && (m.t1 !== a || m.t2 !== b)) { m.t1 = a; m.t2 = b; ch = true; } });
+    if (seeds === undefined) seeds = this.wireSeeds(e, Wd, l);
+    if (qual === undefined) qual = Wd.feed ? this.wireQual(e, Wd) : [];
+    if (seeds) { const b = this.brk(), list = [...new Set([...Object.values(seeds), ...(qual || [])])]; if (JSON.stringify(b[e.id]) !== JSON.stringify(list)) b[e.id] = list; }
     return ch;
   },
   brk() { return (App.state.brk ||= {}); },
