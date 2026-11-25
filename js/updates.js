@@ -4,6 +4,16 @@ const Updates = {
   KEY: 'lm27.updSeen',
   LIST: [
     {
+      v: '0.10.13', date: '2026.11.26', title: 'Road to EWC',
+      sections: [
+        { h: '🏆 대회 · 대진', items: [
+          '새 대회 <b>LCK Road to EWC</b> (EWC 한국 예선, 5월 월 · 화요일): 디펜딩 챔피언을 뺀 9팀이 정규 시즌 1라운드 순위로 시드를 받아 더블 엘리미네이션으로 치릅니다. 8 · 9위는 플레이-인에서 1위 자리에 도전하고, 진출전은 Bo5입니다',
+          'EWC의 LCK 4자리: 디펜딩 챔피언 · Road to MSI 우승팀 · Road to EWC 진출 2팀 (승자조 결승 승자 · 최종전 승자). Road to EWC 진출팀이 Road to MSI 우승팀이면 그 자리는 최종전 패자에게 넘어갑니다',
+          '예전에는 EWC의 LCK 자리를 Road to MSI 순위로만 정해, Road to MSI에 못 나간 팀은 EWC에 갈 방법이 없었습니다',
+        ] },
+      ],
+    },
+    {
       v: '0.10.12', date: '2026.11.26', title: 'EWC 디펜딩 챔피언',
       sections: [
         { h: '🏆 대회 · 대진', items: [

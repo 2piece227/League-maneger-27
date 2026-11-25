@@ -21,7 +21,7 @@ const Schedule = {
   },
 
   load() {
-    if (!this._p) this._p = fetch('data/season-template.json').then(r => r.json()).then(d => { this.tpl = d; }).catch(e => console.warn('[schedule] 일정 없음', e));
+    if (!this._p) this._p = fetch('data/season-template.json').then(r => r.json()).then(d => { d.events.push(...this.EXTRA.filter(x => !d.events.some(e => e.id === x.id))); this.tpl = d; }).catch(e => console.warn('[schedule] 일정 없음', e));
     return this._p.then(() => this.ensure());
   },
 
@@ -111,6 +111,10 @@ const Schedule = {
 
   // 게임에서 치르지 않는 대회: 월즈 플레이-인 (4대 리그만 있어 실제 플레이-인 자리 대부분이 다른 지역 팀이다 → 본선 16팀을 리그별 4팀으로 바로 채운다)
   DROP: ['worlds-playin'],
+  // 수집 데이터에 없는 대회 (맨 뒤에 붙여 기존 경기 id가 바뀌지 않게). Road to EWC: LCK의 EWC 한국 예선 (2026 실제 형식 · 일정)
+  //   디펜딩 챔피언을 뺀 9팀 · 정규 시즌 1라운드 순위 시드 · 8 대 9 플레이-인 → 1번 시드, 2-7 · 3-6 · 4-5 · 더블 엘리미네이션 · 진출전 Bo5 · 상위 2팀 EWC
+  EXTRA: [{ id: 'lck-ewcq', league: 'LCK', name: 'Road to EWC', kind: 'playoffs', start: '2026-05-04', end: '2026-05-26', published: '2026-04-20T00:00:00Z', dependsOn: null,
+    slots: [{ t: '2026-05-04T07:00:00Z', bo: 3, tab: 'Play-In', a: null, b: null }, { t: '2026-05-04T09:00:00Z', bo: 3, tab: 'Round 1', a: null, b: null }, { t: '2026-05-04T11:00:00Z', bo: 3, tab: 'Round 1', a: null, b: null }, { t: '2026-05-05T08:00:00Z', bo: 3, tab: 'Round 1', a: null, b: null }, { t: '2026-05-05T10:00:00Z', bo: 3, tab: 'Round 1', a: null, b: null }, { t: '2026-05-12T08:00:00Z', bo: 3, tab: 'Round 2', a: null, b: null }, { t: '2026-05-12T10:00:00Z', bo: 3, tab: 'Round 2', a: null, b: null }, { t: '2026-05-18T08:00:00Z', bo: 3, tab: 'Round 1', a: null, b: null }, { t: '2026-05-18T10:00:00Z', bo: 3, tab: 'Round 1', a: null, b: null }, { t: '2026-05-19T08:00:00Z', bo: 3, tab: 'Round 2', a: null, b: null }, { t: '2026-05-19T10:00:00Z', bo: 3, tab: 'Round 2', a: null, b: null }, { t: '2026-05-25T07:00:00Z', bo: 5, tab: 'Round 4', a: null, b: null }, { t: '2026-05-25T10:00:00Z', bo: 3, tab: 'Round 3', a: null, b: null }, { t: '2026-05-26T07:00:00Z', bo: 5, tab: 'Round 4', a: null, b: null }] }],
   // 대회 안에서 치르지 않는 단계: MSI 플레이-인 (본선 8팀을 리그별 2팀으로 바로 채운다)
   DROPTAB: { msi: /^Play-In/ },
   buildSeason(seed, Y) {

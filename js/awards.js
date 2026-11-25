@@ -61,7 +61,7 @@ const Awards = {
     const e = Schedule.byEvent && Schedule.byEvent[eid], t = Schedule.team(tid); if (!e || !t) return;
     const Y = eid.slice(0, 4), b = e.base, k = this.KIND[b] || 'league', five = Draft.lineup(t).filter(Boolean);
     five.forEach(p => this.give(p.id, Y, k, `${e.label} 우승`));
-    const fm = /rtm|-rf$|playin/.test(b) ? null : this.finalsMvp(eid, tid);   // 선발전에는 파이널 MVP가 없다
+    const fm = /rtm|-rf$|playin|ewcq/.test(b) ? null : this.finalsMvp(eid, tid);   // 선발전에는 파이널 MVP가 없다
     if (fm) {
       this.st().fmvp[eid] = fm.id; this.give(fm.id, Y, 'fmvp', `${e.label} 파이널 MVP`);
       Market.post(`[파이널 MVP] ${e.label} — ${fm.name} (${t.short})`, `${e.label} 결승 MVP는 ${t.name}의 ${G.ROLE_KO[fm.role] || ''} ${Sim.josa(fm.name, '이', '가')} 차지했습니다. 결승 무대에서 팀 우승을 이끈 활약이었습니다.`, fm.id);

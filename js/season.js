@@ -154,7 +154,20 @@ const Season = {
   //   R5 = 앞 단계 순위 5위(대회 안에 정해진 경기가 있으면 그 순위) · LCK2 = LCK 2위(국제대회) · X = 게임에 없는 팀 자리(남은 팀 중 다음 순위)
   //   Q1 = 앞 플레이-인 진출 1번 · W3 / L3 = 3번 경기 승자 / 패자 · adv: 이 대회에서 본선에 올라가는 팀 · top: 최종 순위 앞자리
   //   예전에는 모든 대진을 '몇 패 전까지 살아남은 팀끼리'로 채워 Road to MSI(실제 6팀)를 4팀으로 치르고, 진 팀이 다음 라운드에 다시 나오기도 했다 (베타 제보)
-  get WIRE() { return typeof BRACKETS !== 'undefined' ? BRACKETS : {}; },
+  get WIRE() { return (this._wire ||= { ...(typeof BRACKETS !== 'undefined' ? BRACKETS : {}), ...this.WIRE_EXTRA }); },
+  // 수집 데이터에 없는 대회의 연결표 (Road to EWC 2026 실제 대진). seedFrom: 시드 = 그 대회의 지금까지 순위, 디펜딩 챔피언(전년도 EWC 우승팀)은 뺀다
+  WIRE_EXTRA: {
+    'lck-ewcq': { seedFrom: 'lck-r12', exclude: 'ewc', n: 9, adv: ['W11', 'W13', 'L13'],
+      m: [['R8', 'R9'], ['R2', 'R7'], ['R3', 'R6'], ['R1', 'W0'], ['R4', 'R5'], ['W1', 'W2'], ['W3', 'W4'], ['L1', 'L2'], ['L3', 'L4'], ['L6', 'W7'], ['L5', 'W8'], ['W5', 'W6'], ['W9', 'W10'], ['L11', 'W12']] },
+  },
+  defender(e, base) { return (App.state.champs || {})[`${e.year - 1}:${base}`] || (this.WIRE[base] || {}).def; },
+  // EWC의 LCK 자리: Road to MSI 우승팀 → Road to EWC 진출 2팀(승자조 결승 승자 · 최종전 승자, Road to MSI 우승팀과 겹치면 최종전 패자) → 나머지 순위
+  lckEwc(e) {
+    const rk = this.leagueRank('LCK', e.year, e.start), q = Schedule.events.find(x => x.base === 'lck-ewcq' && x.year === e.year), W = this.WIRE['lck-ewcq'];
+    const ms = q ? this.byTime(this.bracket(q.id)) : [], adv = ms.length === W.m.length ? W.adv.map(s => this.wireAt(ms, s)).filter(Boolean) : [];
+    const rtm = Schedule.events.find(x => x.base === 'lck-rtm' && x.year === e.year), top = rtm ? this.ranking(rtm)[0] : rk[0];
+    return [...new Set([top, ...adv.filter(t => t !== top).slice(0, 2), ...adv, ...rk])].filter(Boolean);
+  },
   byTime(l) { return [...l].sort((a, b) => a.t.localeCompare(b.t)); },
   isWL(s) { return /^[WL]\d+$/.test(s); },
   wireAt(ms, s) { const m = ms[+s.slice(1)]; return m && this.rec(m) ? (s[0] === 'W' ? this.winner(m) : this.loser(m)) : null; },
@@ -168,7 +181,10 @@ const Season = {
   wireSeeds0(e, Wd, l) {
     const fixed = l.filter(m => !m.open || m.seeds);
     if (fixed.length ? !fixed.every(m => m.dead || this.rec(m)) : !this.sourcesDone(e)) return null;
-    const order = fixed.length ? this.standings(fixed, e.league === 'INTL' ? null : e.league) : this.pool(e);
+    let order = fixed.length ? this.standings(fixed, e.league === 'INTL' ? null : e.league) : this.pool(e);
+    if (Wd.seedFrom && Clock.today() < e.start) return null;   // 시드는 대회가 시작되는 날의 순위로 (그 전에 고정되지 않게)
+    if (Wd.seedFrom) { const src = Schedule.events.find(x => x.base === Wd.seedFrom && x.year === e.year), def = Wd.exclude && this.defender(e, Wd.exclude);
+      order = this.standings(Schedule.all.filter(m => src && m.event === src.id && m.t.slice(0, 10) < e.start), e.league).filter(t => t !== def).slice(0, Wd.n); }
     const f = this.wireFeed(e, Wd), feedT = new Set(f ? this.brk()[f.id] || [] : []);
     const out = {}, used = new Set(), lr = {}, xs = [];
     // DEF = 디펜딩 챔피언 (전년도 이 대회 우승팀, 게임 첫 해는 실제 우승팀)을 먼저 정한다. 순위로도 자격이 되면 그 리그는 다음 순위 팀이 한 자리 더 받는다
@@ -177,9 +193,9 @@ const Season = {
     for (const [key, s] of seats) {
       const mm = s.match(/^([A-Z]+)(\d+)$/);
       let t = null;
-      if (s === 'DEF') t = (App.state.champs || {})[`${e.year - 1}:${e.base}`] || Wd.def;
+      if (s === 'DEF') t = this.defender(e, e.base);
       else if (mm && mm[1] === 'R') t = order[+mm[2] - 1];
-      else if (mm) { const L = (lr[mm[1]] ||= this.leagueRank(mm[1], e.year, e.start)); t = L.slice(+mm[2] - 1).find(x => !used.has(x) && !feedT.has(x)); }
+      else if (mm) { const L = (lr[mm[1]] ||= e.base === 'ewc' && mm[1] === 'LCK' ? this.lckEwc(e) : this.leagueRank(mm[1], e.year, e.start)); t = L.slice(+mm[2] - 1).find(x => !used.has(x) && !feedT.has(x)); }
       if (!t || used.has(t) || feedT.has(t)) { xs.push(key); continue; }   // X · 없는 순위 · 겹치는 팀은 남은 팀 중 다음 순위로
       used.add(t); out[key] = t;
     }
@@ -382,7 +398,7 @@ const Season = {
   // 우승 소식 (한 번만)
   champions() {
     const c = (App.state.champs ||= {});
-    Schedule.events.filter(e => !e.past && e.kind !== 'stove' && !c[e.id] && this.bracket(e.id).length >= 3 && !/playin/.test(e.base) && this.done(e.id)).forEach(e => {
+    Schedule.events.filter(e => !e.past && e.kind !== 'stove' && !c[e.id] && this.bracket(e.id).length >= 3 && !/playin|ewcq/.test(e.base) && this.done(e.id)).forEach(e => {   /* 예선(Road to EWC)은 우승 소식 없음 */
       const id = this.ranking(e)[0], t = Schedule.team(id); if (!t) return;
       c[e.id] = id;
       if (typeof Market !== 'undefined' && Market.post) Market.post(`[우승] ${t.short} ${e.label} 우승`, `${Sim.josa(t.name, '이', '가')} ${e.label} 정상에 올랐습니다.`, null);
