@@ -151,7 +151,7 @@ const CompResults = {
       </div>`;
     }).join('');
     UI.modal({
-      title: `<div class="cr-mh"><b>${UI.esc(t1.name)}</b><span class="num">${r.s1} : ${r.s2}</span><b>${UI.esc(t2.name)}</b></div><small class="cr-msub">${ev ? `<span class="ev-link" data-ev="${ev.id}">${UI.esc(ev.label)}</span>` : ''}} · ${UI.esc(G.tab(m.tab))} · ${m.t.slice(0, 10).replace(/-/g, '.')} · Bo${m.bo}${this.upset(m) ? ' · <em class="cr-upset">이변</em>' : ''}</small>`,
+      title: `<div class="cr-mh"><b>${UI.esc(t1.name)}</b><span class="num">${r.s1} : ${r.s2}</span><b>${UI.esc(t2.name)}</b></div><small class="cr-msub">${ev ? `<span class="ev-link" data-ev="${ev.id}">${UI.esc(ev.label)}</span>` : ''} · ${UI.esc(G.tab(m.tab))} · ${m.t.slice(0, 10).replace(/-/g, '.')} · Bo${m.bo}${this.upset(m) ? ' · <em class="cr-upset">이변</em>' : ''}</small>`,
       body: `<div class="cr-report">${sets || '<p class="ms-none">세트 기록이 없습니다.</p>'}</div>`,
     });
   },

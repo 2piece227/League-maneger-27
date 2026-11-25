@@ -3,6 +3,14 @@
 const EventPage = {
   id: null, tab: 'over',
   ev() { return Schedule.byEvent && Schedule.byEvent[this.id]; },
+  // 탭에서 바로 열면: 우리 팀이 나가는 진행 중 대회 → 다음 대회 → 마지막 대회 (예전에는 탭이 숨겨져 다른 화면을 거쳐야 했다 — 베타 제보)
+  pick() {
+    const my = App.state.teamId, t = Roster.team(), today = Clock.today(), Y = Schedule.season();
+    const mine = e => Schedule.all.some(m => m.event === e.id && (m.t1 === my || m.t2 === my)) || (e.league === (t && t.league));
+    const evs = Schedule.events.filter(e => e.year === Y && e.kind !== 'stove' && e.kind !== 'event' && mine(e)).sort((a, b) => a.start.localeCompare(b.start));
+    const e = evs.find(x => x.start <= today && x.end >= today) || evs.find(x => x.start > today) || evs.at(-1);
+    return e && e.id;
+  },
   rec(m) { return (App.state.season || {})[m.id]; },
   open(id) { if (!id || !Schedule.byEvent[id]) return; this.id = id; this.tab = 'over'; Router.go('match-event'); },
   matches(id = this.id) { return Schedule.all.filter(m => m.event === id && !m.dead).sort((a, b) => a.t.localeCompare(b.t)); },
@@ -26,6 +34,7 @@ const EventPage = {
 
   async view(el) {
     await Portal.ready; await Schedule.load();
+    if (!this.ev()) this.id = this.pick();
     const e = this.ev(); if (!e) { el.innerHTML = '<div class="card fx-empty"><b>대회를 찾을 수 없습니다</b></div>'; return; }
     const ms = this.matches(), done = ms.filter(m => this.rec(m)), my = App.state.teamId, ko = ms.filter(m => this.knock(e, m.tab)), grp = ms.filter(m => !this.knock(e, m.tab));
     const tabs = [['over', '개요'], ...(grp.length ? [['table', this.swiss(e) ? '스위스' : '순위']] : []), ...(ko.length ? [['bracket', '대진표']] : []), ['games', '일정 · 결과'], ['stats', '선수 통계']];

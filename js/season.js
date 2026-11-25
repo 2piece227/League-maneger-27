@@ -150,6 +150,43 @@ const Season = {
   Q: { 'lck-cup': 8, 'lck-rtm': 4, 'lck-playin': 4, 'lck-po': 6, 'lpl-s1': 2, 'lpl-s1po': 12, 'lpl-s2po': 10, 'lpl-gf': 8, 'lpl-rf': 4, 'lec-versuspo': 8, 'lec-springpo': 6, 'lec-summerpo': 6,
     'lcs-lockin': 8, 'lcs-springpo': 6, 'lcs-summerpo': 6, 'first-stand': 8, msi: 10, ewc: 16, 'worlds-playin': 4, worlds: 16, kespa: 10 },
   INTL: ['LCK', 'LPL', 'LEC', 'LCS', 'LCK', 'LPL', 'LEC', 'LCS', 'LCK', 'LPL'],
+  // 실제 대진 연결 (2026 실제 경기에서 뽑음). 경기 순서(시간순)마다 [팀1, 팀2]: 'S3' = 시드 3위, 'W0' / 'L0' = 0번 경기 승자 / 패자, 'Q1' = 앞 플레이-인 진출 1번
+  //   n: 시드 수, skip: 순위에서 건너뛸 수 (플레이-인은 5위부터), feed: 진출팀을 받는 플레이-인, adv: 이 대회의 진출팀, top: 최종 순위 앞자리
+  //   예전에는 모든 대진을 '몇 패 전까지 살아남은 팀끼리'로 채워 Road to MSI(실제 6팀)를 4팀으로 치르고, 진 팀이 다음 라운드에 다시 나오기도 했다 (베타 제보)
+  WIRE: {
+    'lck-cup': { n: 9, m: [['S6', 'S9'], ['S7', 'S8'], ['S4', 'W0'], ['S5', 'W1'], ['L2', 'L3'], ['S3', 'W3'], ['W2', 'W4'], ['S1', 'W6'], ['S2', 'W5'], ['L5', 'L6'], ['L7', 'W9'], ['W7', 'W8'], ['L8', 'W10'], ['L11', 'W12'], ['W11', 'W13']] },
+    'lck-rtm': { n: 6, m: [['S5', 'S6'], ['S4', 'W0'], ['S1', 'S2'], ['S3', 'W1'], ['L2', 'W3']], top: ['W2', 'W4', 'L4', 'L3'] },
+    'lck-playin': { skip: 4, n: 4, m: [['S1', 'S2'], ['S3', 'S4'], ['L0', 'W1']], adv: ['W0', 'W2'] },
+    'lck-po': { n: 4, feed: 'lck-playin', m: [['S3', 'Q2'], ['S4', 'Q1'], ['S2', 'W1'], ['S1', 'W0'], ['L0', 'L1'], ['L2', 'W4'], ['W2', 'W3'], ['L3', 'W5'], ['L6', 'W7'], ['W6', 'W8']] },
+  },
+  byTime(l) { return [...l].sort((a, b) => a.t.localeCompare(b.t)); },
+  wireAt(ms, s) { const m = ms[+s.slice(1)]; return m && this.rec(m) ? (s[0] === 'W' ? this.winner(m) : this.loser(m)) : null; },
+  wireSeeds(e, Wd, l) {
+    let list;
+    const fixed = l.filter(m => !m.open || m.seeds);
+    if (fixed.length) { if (!fixed.every(m => m.dead || this.rec(m))) return null; list = this.standings(fixed, e.league); }
+    else { if (!this.sourcesDone(e)) return null; list = this.pool(e); }
+    const s = Wd.skip || 0; list = list.slice(s, s + Wd.n);
+    return list.length === Wd.n ? list : null;
+  },
+  wireQual(e, Wd) {
+    if (!Wd.feed) return [];
+    const f = Schedule.events.find(x => x.base === Wd.feed && x.year === e.year), W = this.WIRE[Wd.feed]; if (!f || !W) return null;
+    const ms = this.byTime(this.bracket(f.id)); if (ms.length !== W.m.length) return null;
+    const q = W.adv.map(s => this.wireAt(ms, s)); return q.every(Boolean) ? q : null;
+  },
+  wire(e, br, Wd, l) {
+    const ms = this.byTime(br); let seeds, qual;
+    const src = s => {
+      if (s[0] === 'S') { if (seeds === undefined) seeds = this.wireSeeds(e, Wd, l); return seeds && seeds[+s.slice(1) - 1]; }
+      if (s[0] === 'Q') { if (qual === undefined) qual = this.wireQual(e, Wd); return qual && qual[+s.slice(1) - 1]; }
+      return this.wireAt(ms, s);
+    };
+    let ch = false;
+    ms.forEach((m, i) => { if (this.rec(m)) return; const a = src(Wd.m[i][0]), b = src(Wd.m[i][1]); if (a && b && (m.t1 !== a || m.t2 !== b)) { m.t1 = a; m.t2 = b; ch = true; } });
+    if (seeds && (!Wd.feed || qual)) { const b = this.brk(), list = [...seeds, ...(qual || [])]; if (JSON.stringify(b[e.id]) !== JSON.stringify(list)) b[e.id] = list; }
+    return ch;
+  },
   brk() { return (App.state.brk ||= {}); },
   rec(m) { return this.st()[m.id]; },
   pair(m) { const r = this.rec(m); return r && r.t1 ? [r.t1, r.t2] : [m.t1, m.t2]; },
@@ -175,7 +212,8 @@ const Season = {
   bracket(id) { return this.evMatches(id).filter(m => m.open && !m.seeds && !m.dead); },
   // 대회 최종 순위: 우승 · 준우승 · 나머지는 승패 (대진이 없으면 순위표)
   ranking(e) {
-    const br = this.bracket(e.id);
+    const br = this.bracket(e.id), Wd = this.WIRE[e.base];
+    if (Wd && Wd.top && br.length === Wd.m.length) { const ms = this.byTime(br), top = Wd.top.map(s => this.wireAt(ms, s)).filter(Boolean); return [...new Set([...top, ...this.standings(br).filter(id => !top.includes(id))])]; }
     if (!br.length) return this.standings(this.evMatches(e.id).filter(m => !m.dead), e.league === 'INTL' ? null : e.league);
     const fin = br.filter(m => this.rec(m)).at(-1), champ = fin && this.winner(fin), ru = fin && this.loser(fin);
     return [champ, ru, ...this.standings(br).filter(id => id !== champ && id !== ru)].filter(Boolean);
@@ -246,6 +284,11 @@ const Season = {
       for (let i = pick.length - 1; i >= 0; i--) if (pick[i].l === a.l) { j = i; break; }
       pairs.push([a.id, pick.splice(j, 1)[0].id]);
     }
+    if (W !== Infinity) {   // 스위스: 진출 · 탈락이 걸린 경기(2승끼리 · 2패끼리)는 Bo3 자리, 나머지는 Bo1 자리 (예전에는 시간순이라 2승 팀 진출전이 Bo1이었다 — 베타 제보)
+      const dec = p => rec[p[0]].w === W - 1 || rec[p[0]].l === L - 1, d = pairs.filter(dec), n = pairs.filter(p => !dec(p));
+      round.forEach(m => { const p = m.bo > 1 ? (d.shift() || n.shift()) : (n.shift() || d.shift()); if (p) { m.t1 = p[0]; m.t2 = p[1]; } else m.dead = true; });
+      return;
+    }
     round.forEach((m, i) => { if (pairs[i]) { m.t1 = pairs[i][0]; m.t2 = pairs[i][1]; } else m.dead = true; });
   },
   resolve() {
@@ -267,6 +310,7 @@ const Season = {
         }
         // 대진 (라운드 = 탭)
         const br = this.bracket(e.id); if (!br.length) continue;
+        const Wd = this.WIRE[e.base]; if (Wd && Wd.m.length === br.length) { if (this.wire(e, br, Wd, l)) changed = true; continue; }
         const inEvent = l.some(m => !m.open || m.seeds);
         // 라운드: 시간순으로 탭이 바뀔 때마다 새 라운드 (승자조·패자조의 같은 이름 라운드는 따로)
         const rounds = []; [...br].sort((a, b) => a.t.localeCompare(b.t)).forEach(m => { const r = rounds.at(-1); r && r.tab === (m.tab || '') ? r.list.push(m) : rounds.push({ tab: m.tab || '', list: [m] }); });
