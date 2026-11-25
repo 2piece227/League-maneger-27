@@ -12,7 +12,8 @@ GAME = {t['id']: t['league'] for t in J('teams.json')['teams']}
 FEED = {'lck-po': 'lck-playin'}                              # 앞 플레이-인 → 본선
 SKIP = {'lpl-s1', 'worlds-playin'}                          # worlds-playin: 게임에서 치르지 않는다 (js/schedule.js DROP)
 # 리그별 출전 쿼터: 다른 지역 팀 · 플레이-인 자리 없이 4대 리그 팀으로 채운다
-QUOTA = {'worlds': {'LCK': 4, 'LPL': 4, 'LEC': 4, 'LCS': 4}}                                           # 동률 결정전 한 경기: 그때그때 순위로 (일반 규칙)
+QUOTA = {'worlds': {'LCK': 4, 'LPL': 4, 'LEC': 4, 'LCS': 4}, 'msi': {'LCK': 2, 'LPL': 2, 'LEC': 2, 'LCS': 2}}
+DROPTAB = {'msi': 'Play-In'}                                # 대회 안에서 치르지 않는 단계 (js/schedule.js DROPTAB)                                           # 동률 결정전 한 경기: 그때그때 순위로 (일반 규칙)
 TOP = {'lck-rtm': ['W2', 'W4', 'L4', 'L3']}                 # Road to MSI: 1·2위전 승자 · 최종전 승자가 MSI
 
 tid = lambda m, k: m['t' + k] or m['n' + k]
@@ -20,6 +21,7 @@ tid = lambda m, k: m['t' + k] or m['n' + k]
 def slotted(ev):
     left = [m for m in R if m['e'] == ev]; out = []
     for s in TPL[ev]['slots']:
+        if ev in DROPTAB and s['tab'].startswith(DROPTAB[ev]): continue
         m = next((x for x in left if x['t'] == s['t'] and x['bo'] == s['bo']), None) or next((x for x in left if x['t'] == s['t']), None)
         if m: left.remove(m)
         out.append((s, m))

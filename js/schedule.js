@@ -111,6 +111,8 @@ const Schedule = {
 
   // 게임에서 치르지 않는 대회: 월즈 플레이-인 (4대 리그만 있어 실제 플레이-인 자리 대부분이 다른 지역 팀이다 → 본선 16팀을 리그별 4팀으로 바로 채운다)
   DROP: ['worlds-playin'],
+  // 대회 안에서 치르지 않는 단계: MSI 플레이-인 (본선 8팀을 리그별 2팀으로 바로 채운다)
+  DROPTAB: { msi: /^Play-In/ },
   buildSeason(seed, Y) {
     const shift = this.shiftFor(Y), tpl = this.tpl.events.filter(e => !this.DROP.includes(e.id));
     const evs = tpl.map(e => this.meta(e, Y, shift));
@@ -137,6 +139,7 @@ const Schedule = {
         return i < 0 ? null : perm[i];
       };
       for (const s of e.slots) {
+        if (this.DROPTAB[e.id] && this.DROPTAB[e.id].test(s.tab || '')) { n++; continue; }   // 경기 번호는 그대로 건너뛴다
         const t1 = map(s.a), t2 = map(s.b);
         if (t1 === false || t2 === false) continue;
         this.all.push({
