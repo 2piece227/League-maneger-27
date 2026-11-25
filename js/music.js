@@ -70,7 +70,7 @@ const Music = {
   EXT: /\.(mp3|m4a|aac|ogg|opus|wav|flac)$/i,
   IMG: /\.(jpe?g|png|webp)$/i,
   async scan() {
-    const KEY = 'lm27.music.files2', now = Date.now();
+    const KEY = 'lm27.music.files3', now = Date.now();
     let got = null;
     try { const c = JSON.parse(localStorage.getItem(KEY) || 'null'); if (c && now - c.t < 30 * 60 * 1000) got = c.d; } catch (e) {}   // 30분 캐시 (GitHub API는 시간당 60번 제한)
     if (!got) {
@@ -84,10 +84,11 @@ const Music = {
           } catch (e) {}
         }
       }
-      if (!got.worlds && !got.draft) {   // API가 안 되면(로컬 · 제한 초과) 목록 파일
-        try { const r = await fetch('assets/music/playlist.json', { cache: 'no-cache' }); if (r.ok) got = await r.json(); } catch (e) {}
-      }
-      try { localStorage.setItem(KEY, JSON.stringify({ t: now, d: got })); } catch (e) {}
+      // 폴더마다 API가 실패하면(로컬 · 시간당 60번 제한 초과) 그 폴더만 목록 파일로 채운다.
+      //   예전에는 메뉴 · 밴픽이 둘 다 실패할 때만 목록 파일을 읽어, 밴픽만 실패하면 밴픽 곡이 사운드클라우드 기본 곡으로 바뀌고 그 상태로 30분 저장됐다 (베타 제보)
+      const K4 = ['worlds', 'draft', 'victory', 'decider'], full = K4.every(k => got[k]);
+      if (!full) { try { const r = await fetch('assets/music/playlist.json', { cache: 'no-cache' }); if (r.ok) { const pl = await r.json(); K4.forEach(k => { if (!got[k] && pl[k]) got[k] = pl[k]; }); } } catch (e) {} }
+      if (full) try { localStorage.setItem(KEY, JSON.stringify({ t: now, d: got })); } catch (e) {}   // 다 읽었을 때만 저장
     }
     for (const k of ['worlds', 'draft', 'victory', 'decider']) {
       const names = (got[k] || []).filter(n => this.EXT.test(n));
