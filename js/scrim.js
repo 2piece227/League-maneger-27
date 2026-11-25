@@ -2,7 +2,7 @@
 // 판수는 승패와 상관없이 정한 만큼(series.fixed). 공식 기록·순위에는 들어가지 않는다. 코치에게 맡기면 정식 엔진으로 대신 치른다.
 // 저장: App.state.scrims[] = { id, team, date(신청일), on(스크림 날), sets, status, incoming, result, games }
 const Scrim = {
-  list() { return (App.state.scrims ||= []); },
+  list() { const L = (App.state.scrims ||= []); L.forEach((s, i) => { s.id ||= 's' + i + ':' + s.date + ':' + s.team; }); return L; },   /* id 없는 예전 세이브도 여기서 붙여 막힌 진행을 푼다 */
   // 공식전이 있는 날 (우리 · 상대)
   busy(teamId, ymd) { return Schedule.all.some(m => (m.t1 === teamId || m.t2 === teamId) && m.t.slice(0, 10) === ymd); },
   days(oppId) { const out = []; for (let i = 1; i <= 7; i++) { const d = Store.addDays(Clock.today(), i); if (!this.busy(App.state.teamId, d) && !this.busy(oppId, d) && !this.list().some(s => s.on === d && s.status !== 'declined')) out.push(d); } return out; },

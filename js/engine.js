@@ -162,7 +162,7 @@ const Engine = {
   // 선택지에 붙는 코드 동작
   ACTS: {
     link(m, route) { Router.go(route); },
-    scrimAccept(m, a) { (App.state.scrims ||= []).push({ team: a.team, date: Clock.today(), sets: 3, status: 'accepted', on: a.on, incoming: true }); },
+    scrimAccept(m, a) { (App.state.scrims ||= []).push({ id: 's' + Date.now().toString(36) + a.team, team: a.team, date: Clock.today(), sets: 3, status: 'accepted', on: a.on, incoming: true }); },   /* id를 바로 붙인다: 예전에는 다음 날 처리 때 붙어서, 당일 수락한 스크림은 [스크림으로]를 눌러도 밴픽에 못 들어가고 날짜도 못 넘겼다 (베타 제보) */
     promise(m, a) { (App.state.promises ||= []).push({ pid: m.ctx.pid, kind: a, date: Clock.today(), due: Store.addDays(Clock.today(), 60) }); },
     budgetAsk(m, ok) { if (ok) World.ledger().push({ date: Clock.today(), label: '이사회 추가 예산', amount: 500000000 }); },
     academy(m) { Squad.addGen(JSON.parse(JSON.stringify(m.ctx.acc)), 'academy'); Squad.apply(); },
