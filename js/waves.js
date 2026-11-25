@@ -118,17 +118,22 @@ Object.assign(Sim, {
     if (this.SIEGE_GO === false) return false;
     if (m < 20 || !(st.kind === 'tower' || st.kind === 'nexusT' || st.kind === 'inhib' || st.kind === 'nexus')) return false;
     if (this.objUp(g, 'baron') && this.baronCall(g, k) && !/nexus/.test(st.kind)) return false;   // 바론을 칠 수 있으면 바론 먼저 (본진 앞이 아니면)
-    const o = this.other(k), atk = this.alive(g, k).filter(p => !p.recall && !p.tpCh && this.dist(p.pos, st.pos) <= 14 && p.hp > .35), def = this.alive(g, o).filter(p => !p.recall && this.dist(p.pos, st.pos) <= 16);
-    if (atk.length < 3) return false;
+    const o = this.other(k), atk = this.alive(g, k).filter(p => !p.recall && !p.tpCh && this.dist(p.pos, st.pos) <= (/nexus/.test(st.kind) ? 16 : 14) && p.hp > .35), def = this.alive(g, o).filter(p => !p.recall && this.dist(p.pos, st.pos) <= 16);
     const deep = /nexus/.test(st.kind) || st.kind === 'inhib' || st.i >= 2;   // 본진 · 억제기 포탑
-    // 본진 앞 결단: 쌍둥이 · 넥서스 앞에 3명 이상 모인 지 40초가 지나면, 인원이 밀리지 않는 한 들어간다 (장로 버프 · 1,500 이상 앞서면 바로)
-    //   예전에는 골드가 비슷하면 쌍둥이 포탑 앞에서 몇 분씩 서성이다 빠지고 미니언이 넥서스를 끝냈다 (베타 제보)
+    // 본진 앞 결단: 장로 버프 · 1,500 이상 앞서면 바로 들어간다. 모인 지 40초가 지나면 크게 뒤지지 않는 한(-500 이상) 1명 적어도 들어가고,
+    //   그래도 못 들어가는 채로 90초가 지나면 빠진다 (60초 동안 다시 오지 않는다).
+    //   예전에는 수비 5명이 포탑 아래, 공격 4~5명이 그 앞에 선 채 5분 넘게 아무 일도 없는 경기가 있었다 (베타 제보)
     const nx = /nexus/.test(st.kind), W = (g.nxW ||= {});
     if (nx) { if (!W[k] || g.t - W[k].last > 15) W[k] = { t0: g.t }; W[k].last = g.t; }
-    const commit = nx && atk.length >= def.length && ((g.side[k].elderUntil || 0) > g.t || this.lead(g, k) >= 1500 || g.t - W[k].t0 >= 40);
+    const wait = nx ? g.t - W[k].t0 : 0;
+    const giveUp = () => { W[k] = { t0: g.t, last: 0, give: g.t + 60 }; this.alive(g, k).filter(p => this.dist(p.pos, st.pos) <= 30).forEach(p => this.retreat(g, p, 24)); };
+    // 본진 앞에서 확실히 밀리면(들어갈 수 있는 인원이 수비보다 2명 이상 적음) 15초 안에 빠진다. 다친 3명이 상대 5명 앞에 서 있기만 하던 문제
+    if (nx && wait >= 15 && def.length - atk.length >= 2) { giveUp(); return false; }
+    if (atk.length < 3) return false;
+    const commit = nx && ((atk.length >= def.length && ((g.side[k].elderUntil || 0) > g.t || this.lead(g, k) >= 1500)) || (wait >= 40 && atk.length >= def.length - 1 && this.lead(g, k) >= -500));
     const go = commit || (deep && this.lead(g, k) >= 3000 && atk.length >= def.length && atk.length >= 3)   // 상대 본진 · 억제기 앞: 크게 앞서면 들어간다 (앞에서 가만히 서 있다 미니언이 끝내던 문제)
       || (atk.length - def.length >= 2 && (m >= 22 || deep)) || (!def.length && atk.length >= (deep ? 3 : 4)) || (atk.filter(p => this.baronOn(g, p)).length >= 2 && atk.length >= def.length);   // 바론 버프가 남은 선수가 둘 이상
-    if (!go) return false;
+    if (!go) { if (nx && wait >= 90) giveUp(); return false; }
     const front = ['tank', 'bruiser', 'dive'];
     atk.forEach(p => { const lead = front.includes(p.kind); const d = this.dist(p.pos, st.pos) || 1, r = lead ? 2.2 : 4.6;   // 앞라인은 포탑 가까이, 딜러는 사거리 끝에서
       const to = [st.pos[0] + (p.pos[0] - st.pos[0]) / d * r, st.pos[1] + (p.pos[1] - st.pos[1]) / d * r];

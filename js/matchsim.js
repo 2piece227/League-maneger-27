@@ -1081,8 +1081,9 @@ const Sim = {
     const th = this.threat(g, p.side);
     if (th) { const q = this.toward(th.st.pos, p.side, 4); return this.clampP([q[0] + p.off[0], q[1] + p.off[1]]); }
     const ex = this.threat(g, this.other(p.side));
-    if (ex && m >= 20) return this.siegeSpot(g, p, ex.lane);
-    if (m >= 20) { const fin = this.finish(g, p.side); if (fin) return this.siegeSpot(g, p, fin); }   /* 끝낼 수 있으면 끝내러 간다 */
+    const gave = ((g.nxW || {})[p.side] || {}).give > g.t;   /* 본진 앞에서 못 들어가고 빠진 뒤 잠시는 다시 오지 않는다 */
+    if (ex && m >= 20 && !gave) return this.siegeSpot(g, p, ex.lane);
+    if (m >= 20 && !gave) { const fin = this.finish(g, p.side); if (fin) return this.siegeSpot(g, p, fin); }   /* 끝낼 수 있으면 끝내러 간다 */
     if (s.push && s.push.until > g.t) {
       const st = this.structOf(g, this.other(p.side), s.push.lane), deep = st.kind !== 'tower' || st.i === 2;
       if (!(deep && m < 14)) return this.siegeSpot(g, p, s.push.lane);           // 14분 전에는 억제기 쪽까지 밀고 들어가지 않는다
