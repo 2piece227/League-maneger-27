@@ -877,7 +877,7 @@ const Sim = {
     const contest = this.near(g, this.other(k), Rift.pos('BAR'), 18).length >= 3 && this.lead(g, k) > -6000;
     return mine || contest;
   },
-  OBJ_SETUP: 75,
+  OBJ_SETUP: 75, OBJ_EARLY: 45, OBJ_EARLY_LANER: 30,
   JGL_TAKE: 1,   // 정글이 받는 교전 피해 배율 (데스 비중 33%로 실제 약 20%보다 높다 — .82로 낮춰도 그대로라 원인이 다른 곳: 보류)
   KILL_CR: { mage: 1.45, dive: 1.45, arti: 1.15, bruiser: 1.05, adc: .75, tank: .75, ench: .55 },
   MID_DIVE: .5,   // 14~30분(바론 버프 없을 때) 미드 포탑 앞 이니시 배율 (예전에는 한타 절반이 미드 포탑 앞이었다)   // 오브젝트 생성 몇 초 전부터 자리를 잡나 (예전 60)
@@ -886,12 +886,13 @@ const Sim = {
       const ob = g.obj[o]; if (!ob.at || (ob.until && g.t >= ob.until)) continue;
       const pri = this.objPri(g, p.side, o), vis = { deep: 20, norm: 0, home: -20 }[g.side[p.side].ins.vision];
       const go = (ob.go && ob.go[p.side]) || ob.at, early = ((p.role === 'JGL' && p.tac === 'obj') || (p.role === 'MID' && p.tac === 'join') ? 40 : 0) + pri * 30 + vis;   // 우선 오브젝트·깊은 시야는 먼저 자리 잡는다
-      if (o === 'baron' ? !this.baronCall(g, p.side) || g.t < go - 30 - early : go - g.t > this.OBJ_SETUP + early) continue;
+      const win = m < 14 ? (['TOP', 'MID', 'BOT'].includes(p.role) ? this.OBJ_EARLY_LANER : this.OBJ_EARLY) : this.OBJ_SETUP + early;   // 14분 전에는 라인을 오래 비우지 않는다 (예전에는 교전 중시면 첫 용 2분 30초 전부터 다 모여 라인을 버렸다 — 베타 피드백)
+      if (o === 'baron' ? !this.baronCall(g, p.side) || g.t < go - 30 - early : go - g.t > win) continue;
       const roles = m >= 20 && o === 'drag' ? ['JGL', 'MID', 'BOT', 'SUP', p.tac === 'split' ? '' : 'TOP'] : this.OBJ_ROLES[o];
       if (!roles.includes(p.role)) continue;
       // 많이 밀리거나 2명 이상 죽었으면 내준다
       const k = p.side, deadK = g.pl.filter(q => q.side === k && q.dead).length, deadO = g.pl.filter(q => q.side !== k && q.dead).length;
-      if (o !== 'baron' && (deadK - deadO >= 2 + (pri > 0 ? 1 : 0) || (1 / (1 + Math.exp(-(this.tpow(g, k) - this.tpow(g, this.other(k))) / 13)) < (pri > 0 ? .17 : pri < 0 ? .36 : .24)))) continue;   // 우선 오브젝트는 끝까지, 나머지는 쉽게 내준다
+      if (o !== 'baron' && (deadK - deadO >= 2 || (1 / (1 + Math.exp(-(this.tpow(g, k) - this.tpow(g, this.other(k))) / 13)) < (pri > 0 ? .17 : pri < 0 ? .36 : .24)))) continue;   // 우선 오브젝트는 끝까지, 나머지는 쉽게 내준다
       const pit = Rift.pos(this.PIT[o]), spot = [pit[0] + p.off[0], pit[1] + p.off[1]];
       const door = Rift.MOUTH[this.PIT[o]] || pit;
       return g.t >= go ? spot : this.objWait(o, p.side, p.off);             // 준비가 끝나기 전에는 둥지 입구 앞 강가에서 대기 (둥지 뒤 정글 벽 너머가 아니라)
@@ -1137,7 +1138,8 @@ const Sim = {
       if (this.near(g, this.other(p.side), p.pos, 14).length) return;            // 적이 근처에 있으면 못 탄다
       if (this.danger(g, p.side, p.pos, 3, true)) return;                        // 상대 포탑 앞에서는 안 탄다 (먼저 빠진다)
       const th = this.threat(g, p.side), rush = th && this.dist(p.pos, th.st.pos) > 45;   // 본진이 위험한데 멀리 있으면 바로 귀환
-      const busy = !rush && ((s.push && s.push.until > g.t) || this.objFor(g, p, m) || (p.jq[0] && p.jq[0].kind === 'gank') || this.threat(g, this.other(p.side)));
+      const hurt = p.hp < .45 && !g.fights.some(f => this.dist(f.at, p.pos) < 20);   // 싸움 뒤 체력이 없으면 오브젝트를 기다리지 않고 귀환
+      const busy = !rush && !hurt && ((s.push && s.push.until > g.t) || this.objFor(g, p, m) || (p.jq[0] && p.jq[0].kind === 'gank') || this.threat(g, this.other(p.side)));
       const money = this.free(p) >= Math.max(m < 14 ? 1250 : 1100, this.nextCost(p)) && g.t - p.lastBack >= (m < 14 ? 180 : 210) && m >= 3.3;
       const reset = g.t - s.reset < 25 && g.t - p.lastBack > 60;
       const oom = p.mpMax && p.mpCur < p.mpMax * .15 && m >= 3;   // 마나가 바닥나면 귀환
@@ -1371,7 +1373,14 @@ const Sim = {
       const used = new Set();
       for (const lane of this.LANES3) {
         const st = this.structOf(g, k, lane); if (!st || st.kind === 'nexus') continue;
-        const atk = this.near(g, o, st.pos, this.DEF_R).filter(q => !q.recall); if (!atk.length) continue;
+        const atk = this.near(g, o, st.pos, this.DEF_R).filter(q => !q.recall);
+        if (!atk.length) {
+          const w = this.frontW && this.frontW(g, lane, o), deep = st.kind === 'inhib' || st.i >= 1;
+          if (!deep || !w || w.n < 3 || this.dist(w.p, st.pos) > 14 || this.near(g, k, w.p, 16).length) continue;
+          const c = this.alive(g, k).filter(q => q.role !== 'SUP' && !q.recall && !q.tpCh && !used.has(q)).sort((a, b) => this.dist(a.pos, w.p) - this.dist(b.pos, w.p))[0];
+          if (c && this.dist(c.pos, w.p) < 70) { used.add(c); s.def[c.p.id] = lane; }   // 억제기 쪽 웨이브는 오브젝트보다 먼저 지운다 (베타 피드백: 미니언이 억제기를 미는데 팀원만 따라갔다)
+          continue;
+        }
         const here = this.near(g, k, st.pos, 16).filter(q => !q.recall), need = atk.length - here.length; if (need <= 0) continue;
         const cand = this.alive(g, k).filter(q => !q.recall && !q.tpCh && !used.has(q) && !here.includes(q) && this.dist(q.pos, st.pos) < 60 && !(this.objFor(g, q, this.min(g)) && this.dist(q.pos, st.pos) > 25))
           .sort((a, b) => this.dist(a.pos, st.pos) - this.dist(b.pos, st.pos)).slice(0, need);
