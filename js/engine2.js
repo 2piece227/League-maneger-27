@@ -10,9 +10,9 @@
 //   능력치 선수 세부 능력치가 행동에 닿는다 (피지컬: 명중 · 반응속도: 회피 · 한타: 대상 선택 · 라인전: 견제 · 성장: 막타 · 침착함: 후퇴 판단 · 생존 · 이니쉬 · 보호 …)
 const Sim2 = {
   DT: .25,            // 교전 쪼개기 (초)
-  K: 1.3,             // 전체 피해 배율 (보정용)
+  K: 1.2,             // 전체 피해 배율 (보정용)
   FORM: .6,           // 싸움마다 그날 손이 얼마나 잘 풀리나 (침착함이 높을수록 덜 흔들린다)
-  EXE_S: 60,          // 선수 · 팀 수행력 차이 → 피해 배율 (exp(차이 / EXE_S))
+  EXE_S: 90,          // 선수 · 팀 수행력 차이 → 피해 배율 (exp(차이 / EXE_S))
   G: 1.6,             // 예측 승률의 날카로움 (힘 비율^G)
   CC: { stun: 1.25, up: 1, pull: .75, back: .6 },
   HIT0: { line: .66, cone: .86, circle: .6, global: .5, target: 1, '': 1 },
@@ -588,8 +588,45 @@ const Sim2 = {
       if (m >= 6 && !soon && safe && (hp < .5 || oom >= 3) && g.t - (s.reset2 || -99) > 60) { s.reset = g.t; s.reset2 = g.t; s.plan = 'RESET'; }
     });
   },
+  // 접촉 (1초마다): 평타 사거리 안에 보이는 적이 들어오면 그냥 지나치지 않는다 — 친다(견제). 맞은 쪽은 싸우거나 물러난다. 둘 다 이길 만하면 교전
+  //   (예전에는 마주침을 5.5 안에서만 보고, 그마저 확률로 '대치'로 넘겨 사거리 안에서 서로 요리조리 움직이기만 하는 장면이 있었다 — 베타 피드백)
+  CONTACT_GO: .9,
+  contact(g) {
+    const S = Sim, m = S.min(g); if (g.t < 100 || g.over) return;
+    const busy = S.busySet(g), free = p => !p.dead && !p.recall && !p.tpCh && !p.fled && !busy.has(p) && !((p.cc || 0) > g.t);
+    for (const a of g.pl) {
+      if (!free(a) || a.hp < .3 || (a.cT || 0) > g.t || S.danger(g, a.side, a.pos, 0)) continue;
+      const foes = g.pl.filter(q => q.side !== a.side && free(q) && S.dist(q.pos, a.pos) <= a.rng + .3 && Rift.los(a.pos, q.pos) && this.known(g, a.side, q)
+        && !(m < 14 && S.inLane(a) && S.inLane(q) && S.LANE_OF[a.role] === S.LANE_OF[q.role]));   // 라인전 맞상대는 견제(laneTick)에서
+      if (!foes.length) continue;
+      const v = foes.sort((x, y) => x.hp - y.hp)[0];
+      if (v.hold && v.hold.until > g.t + 1 && S.dist(v.hold.to, a.pos) > S.dist(v.pos, a.pos)) continue;   /* 이미 물러나는 중이면 쫓지 않는다 */
+      a.cT = g.t + 4;
+      this.deal(g, a, v, this.frac(a, v, this.autoRaw(a, v)) * .6 * this.mul(g, a, v), null, { floor: .4 }); a.hitTo = v; a.hitAt = g.t;   /* 한두 대 (견제로는 40% 아래로 안 깎는다) */
+      if (S.dist(a.pos, v.pos) <= v.rng + .3) this.deal(g, v, a, this.frac(v, a, this.autoRaw(v, a)) * .5 * this.mul(g, v, a), null, { floor: .4 });
+      const at = [(a.pos[0] + v.pos[0]) / 2, (a.pos[1] + v.pos[1]) / 2];
+      const A = S.near(g, a.side, at, 12).filter(free), Bv = S.near(g, v.side, at, 12).filter(free);
+      const home = k => ['top', 'mid', 'bot'].some(l => /nexus|inhib/.test(S.structOf(g, k, l).kind) && S.dist(S.structOf(g, k, l).pos, at) < 20);
+      const eA = this.pWin(g, A, Bv.filter(q => this.known(g, a.side, q))), eV = this.pWin(g, Bv, A.filter(q => this.known(g, v.side, q)));
+      // 확실히 강한 쪽만 들어간다 (교전 성향 · 이니쉬 능력치). 비슷하면 약한 쪽이 거리를 벌린다 — 사거리 안에서 그냥 서 있지 않는다
+      const ag = k => ({ safe: .05, norm: 0, aggr: -.05 })[g.side[k].ins.aggr] || 0, eng = ps => ps.reduce((s, q) => s + this.A(q, 'engage') + this.A(q, 'crack') * .5, 0) * .02;
+      const edge = (us, them) => us.length > them.length || Math.min(...them.map(q => q.hp)) < .5;   /* 끊기는 인원 우위나 빈사 상대가 있을 때만 (골드 차이만으로는 아니다) */
+      const goA = eA >= this.CONTACT_GO + ag(a.side) - eng(A) && edge(A, Bv), goV = eV >= this.CONTACT_GO + ag(v.side) - eng(Bv) && edge(Bv, A);
+      if (!goA && !goV) { const [ps, k] = eA < eV ? [A, a.side] : [Bv, v.side]; if (!home(k)) ps.forEach(q => S.retreat(g, q, 12)); continue; }
+      // 밀리는 쪽은 보자마자 빠진다. 잡히는 건 강한 쪽에 붙을 수단(돌진기 · 묶기)이 준비됐거나 약한 쪽이 맵을 못 볼 때
+      { const [hs, ws, wk] = goA ? [A, Bv, v.side] : [Bv, A, a.side];
+        if (!home(wk)) {
+          const tool = hs.some(q => this.kit(q).some(x => (['dash', 'init'].includes(x.kind) || ['stun', 'up', 'pull'].includes(x.cc)) && this.ready(g, q, x) && this.range(q, x) >= S.dist(q.pos, ws[0].pos)));
+          const catchP = .06 + (tool ? .14 : 0) - ws.reduce((s2, q) => s2 + this.A(q, 'mapAwareness'), 0) / Math.max(1, ws.length) * .12 + (ws.some(q => (q.slow || 0) > g.t) ? .15 : 0);
+          ws.forEach(q => S.retreat(g, q, 14));
+          if (g.r() > catchP) continue;
+        } }
+      const lane = ['top', 'mid', 'bot'].sort((x, y) => S.distLane(at, x) - S.distLane(at, y))[0];
+      S.fightAt(g, at, 12, { where: home('B') || home('R') ? '본진' : S.distLane(at, lane) < 6 ? S.laneKo(lane) : '정글' });
+    }
+  },
   // 매초 (Sim.step 뒤)
-  tick(g) { this.see(g); if (g.t % 5 === 0) this.brain(g); },
+  tick(g) { this.see(g); this.contact(g); if (g.t % 5 === 0) this.brain(g); },
   // 10초마다 (Sim.decide 앞): 수행력 다시 계산 (시기 곡선 · 조합 시기 · 클러치)
   tick10(g) { g.pl.forEach(p => this.exeOf(g, p)); },
 };

@@ -177,15 +177,34 @@ const Sim = {
   objNeed(g, o) {
     if (typeof CStats === 'undefined' || !Object.keys(CStats.base).length) return this.OBJ_NEED[o];
     const m = this.min(g);
-    return o === 'baron' ? 9000 + 180 * Math.max(0, m - 20) : o === 'herald' ? 6000 + 150 * Math.max(0, m - 14) : o === 'grubs' ? 1400 + 40 * Math.max(0, m - 5)
-      : (this.elder(g) ? 7000 + 150 * Math.max(0, m - 30) : Math.min(6500, 3500 + 110 * m));
+    return o === 'baron' ? 12000 + 180 * Math.max(0, m - 20) : o === 'herald' ? 6500 + 120 * Math.max(0, m - 14) : o === 'grubs' ? 2000 + 40 * Math.max(0, m - 6)
+      : (this.elder(g) ? 9000 + 150 * Math.max(0, m - 30) : Math.min(6500, 3500 + 110 * Math.max(0, m - 5)));
   },
-  OBJ_ARM: { drag: .8, grubs: .85, herald: .75, baron: .6 },
+  // 오브젝트 방어력 · 마법 저항력 (실제 수치)
+  OBJ_DEF: { drag: [21, 30], grubs: [20, 20], herald: [60, 50], baron: [120, 70], elder: [120, 70] },
+  // 1초(실제 1초) 피해: 평타 + 스킬(재사용 대기마다 한 번, 70%)을 오브젝트 방어로 깎아서. 정글은 강타 몫을 조금 더
+  //   (예전에는 '엔진 1초 = 실제 2초' 시절 값 그대로 2배였고 방어도 약하게 깎아, 바론이 2~3초 · 유충이 1초 만에 녹았다 — 베타 피드백)
+  objDps(g, p, o) {
+    const key = o + '|' + p.lvl + '|' + p.inv.length; if (p._od && p._od.k === key) return p._od.v;
+    const A = CStats.now(p); if (!A) return 150;
+    let ph = A.ad * A.as * (1 + A.crit * .75), mg = 0, tr = 0;
+    (typeof Skills !== 'undefined' ? Skills.of(p.c) : []).forEach(s => { if (s.key === 'R') return; const d = CStats.skillDmg(p, s.key, p), cd = CStats.cd(p, s.key); if (!d || !cd) return; const n = .7 / (cd * .85); ph += (d.p || 0) * n; mg += (d.m || 0) * n; tr += (d.t || 0) * n; });
+    const [arm, mr] = this.OBJ_DEF[o === 'drag' && this.elder(g) ? 'elder' : o];
+    const v = ph * 100 / (100 + Math.max(0, arm * (1 - A.armPen) - A.leth)) + mg * 100 / (100 + Math.max(0, mr * (1 - A.mpenP) - A.mpen)) + tr + (p.role === 'JGL' ? 25 + p.lvl * 3 : 0);
+    p._od = { k: key, v }; return v;
+  },
   objHit(g, o, ps) {
     if (typeof CStats === 'undefined' || !Object.keys(CStats.base).length) return 10 * ps.length;
-    return ps.reduce((a, p) => { const A = CStats.now(p); if (!A) return a + 300;
-      const dps = A.ad * A.as * (1 + A.crit * .75) + .5 * (9 * p.lvl + .6 * A.ap + .35 * A.bonusAD + 20);
-      return a + dps * 2 * this.OBJ_ARM[o] * (p.role === 'JGL' ? 1.3 : 1); }, 0);
+    if (ps.length) this.objBite(g, o, ps);
+    return ps.reduce((a, p) => a + this.objDps(g, p, o) * Math.max(.5, p.hp > .3 ? 1 : .7), 0);
+  },
+  // 오브젝트도 때린다: 앞에서 받는 선수(앞라인 · 정글 · 체력 많은 쪽)에게, 바론은 산성 웅덩이로 주변에도 조금. 오브젝트에 죽지는 않는다(체력 20% 아래로는 안 깎음)
+  objBite(g, o, ps) {
+    const m = this.min(g), base = o === 'baron' || (o === 'drag' && this.elder(g)) ? 260 + 10 * Math.max(0, m - 20) : o === 'drag' ? 110 + 7 * m : o === 'herald' ? 150 + 6 * m : 45 + 3 * m;
+    const tk = ps.slice().sort((a, b) => ((b.kind === 'tank') - (a.kind === 'tank')) || ((b.role === 'JGL') - (a.role === 'JGL')) || b.hp - a.hp)[0];
+    const bite = (p, d) => { const S = CStats.now(p); if (!S) return; const fr = d * 100 / (100 + S.arm) / S.maxHP; p.hp = Math.max(Math.min(p.hp, .2), p.hp - fr); };
+    bite(tk, base);
+    if (o === 'baron') ps.forEach(p => { if (p !== tk) bite(p, base * .25); });
   },
   LANE_OF: { TOP: 'top', MID: 'mid', BOT: 'bot', SUP: 'bot' },
   DRAGONS: [['화염', 'dragon_infernal'], ['바다', 'dragon_ocean'], ['바람', 'dragon_cloud'], ['대지', 'dragon_mountain'], ['마법공학', 'dragon_hextech'], ['화학공학', 'dragon_chemtech']],
@@ -955,7 +974,7 @@ const Sim = {
       }
       else if (o === 'herald') { s.herald++; s.heraldReady = g.t + 150; this.mark(g, wk, 'herald', 'riftherald', '전령 처치'); ob.at = null; s.push = { lane: g.r() < .5 ? 'top' : 'mid', until: g.t + 60 }; s.heraldLane = s.push.lane; this.line(g, 'herald', { t: s.t.short, lane: this.laneKo(s.push.lane) }); }
       else {
-        s.baron++; s.baronUntil = g.t + 180; g.pl.forEach(p => { if (p.side === wk && !p.dead) p.baronUntil = g.t + 180; });   // 살아 있던 선수만 (죽으면 사라진다) this.mark(g, wk, 'baron', 'baron', '바론 처치'); ob.at = g.t + 420; this.objGo(g, ob);
+        s.baron++; s.baronUntil = g.t + 180; g.pl.forEach(p => { if (p.side === wk && !p.dead) p.baronUntil = g.t + 180; });   /* 살아 있던 선수만 (죽으면 사라진다) */ this.mark(g, wk, 'baron', 'baron', '바론 처치'); ob.at = g.t + 420; this.objGo(g, ob);
         // 사람을 잃어 가며 먹은 바론이면 '상처뿐인 바론'
         const hurt = g.pl.filter(p => p.side === wk && p.dead).length >= 2;
         (this.line(g, hurt ? 'baronHurt' : 'baron', { t: s.t.short }), !hurt && g.r() < .5 && this.line(g, 'baronWhy', { l: g.side[this.other(wk)].t.short }));
