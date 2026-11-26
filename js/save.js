@@ -2,13 +2,14 @@
 const Store = {
   // 세이브 슬롯은 압축해서 둔다 (localStorage는 사이트당 약 5MB: 슬롯 3개 + 자동 저장이 시즌이 길어지면 넘칠 수 있었다)
   LZ: 'LZ1:',
-  get(k) { try { let s = localStorage.getItem(k); if (s && s.startsWith(this.LZ)) s = LZString.decompressFromUTF16(s.slice(this.LZ.length)); return JSON.parse(s); } catch { return null; } },
+  get(k) { try { let s = this.big(k) && BigStore.ok ? BigStore.cache[k] ?? null : localStorage.getItem(k); if (s && s.startsWith(this.LZ)) s = LZString.decompressFromUTF16(s.slice(this.LZ.length)); return JSON.parse(s); } catch { return null; } },
   // 큰 키(세이브 슬롯 · 자동 저장 · 새로고침 대비 사본)는 압축한다. 공간이 모자라면 새로고침 대비 사본을 먼저 비우고 한 번 더 시도
   //   (예전에는 새로고침 대비 사본만 압축하지 않아, 몇 시즌이 지나면 그 사본 하나가 공간을 다 차지해 저장이 실패했다 — 베타 제보)
   big(k) { return k.startsWith('lm27.save.') || k === 'lm27.resume'; },
   set(k, v) {
     let s;
     try { s = JSON.stringify(v); if (this.big(k) && typeof LZString !== 'undefined') s = this.LZ + LZString.compressToUTF16(s); } catch (e) { console.warn('[save] 저장 실패', e); return false; }
+    if (this.big(k) && BigStore.ok) { BigStore.cache[k] = s; BigStore.put(k, s).then(ok => { if (!ok && k !== 'lm27.resume' && typeof UI !== 'undefined' && UI.toast) UI.toast('저장하지 못했습니다. 기기 저장 공간을 확인해 주세요.', 5000); }); return true; }
     for (let i = 0; i < 2; i++) {
       try { localStorage.setItem(k, s); return true; }
       catch (e) { if (i === 0 && k !== 'lm27.resume' && localStorage.getItem('lm27.resume') != null) { this.del('lm27.resume'); continue; } console.warn('[save] 저장 실패', e); }
@@ -18,7 +19,7 @@ const Store = {
   },
   pack(v) { const s = JSON.stringify(v); return typeof LZString !== 'undefined' ? this.LZ + LZString.compressToUTF16(s) : s; },
   unpack(s) { if (s && s.startsWith(this.LZ)) s = LZString.decompressFromUTF16(s.slice(this.LZ.length)); return JSON.parse(s); },
-  del(k) { try { localStorage.removeItem(k); } catch {} },
+  del(k) { if (this.big(k) && BigStore.ok) { delete BigStore.cache[k]; BigStore.del(k); } try { localStorage.removeItem(k); } catch {} },
   ageOn(birth, date) {
     const b = new Date(birth), d = new Date(date);
     return d.getFullYear() - b.getFullYear() - (d < new Date(d.getFullYear(), b.getMonth(), b.getDate()) ? 1 : 0);
@@ -40,6 +41,32 @@ const Settings = {
   },
   load() { return { ...this.defaults, ...(Store.get(this.KEY) || {}) }; },
   save(settings) { Store.set(this.KEY, settings); },
+};
+
+// 큰 저장본(세이브 슬롯 · 자동 저장 · 새로고침 대비 사본)은 IndexedDB에 둔다. localStorage는 사이트당 약 5MB라 시즌이 쌓이면 저장이 실패했다 (모바일은 더 작다 — 베타 제보)
+//   시작할 때 전부 메모리로 읽어 두고(읽기는 바로), 쓰기는 메모리에 바로 + IndexedDB에 비동기로. localStorage에 있던 저장본은 처음 한 번 옮기고 지운다
+//   IndexedDB를 쓸 수 없는 브라우저(일부 사생활 보호 모드)에서는 예전처럼 localStorage
+const BigStore = {
+  db: null, cache: {}, ok: false,
+  req(r) { return new Promise((res, rej) => { r.onsuccess = () => res(r.result); r.onerror = () => rej(r.error); }); },
+  async init() {
+    try {
+      if (typeof indexedDB === 'undefined') return;
+      const op = indexedDB.open('lm27', 1); op.onupgradeneeded = () => op.result.createObjectStore('kv');
+      this.db = await this.req(op);
+      const st = this.db.transaction('kv').objectStore('kv'), keys = await this.req(st.getAllKeys()), vals = await this.req(st.getAll());
+      keys.forEach((k, i) => { this.cache[k] = vals[i]; });
+      this.ok = true;
+      for (let i = localStorage.length - 1; i >= 0; i--) {
+        const k = localStorage.key(i); if (!k || !Store.big(k)) continue;
+        const v = localStorage.getItem(k);
+        if (!(k in this.cache)) { if (!(await this.put(k, v))) continue; this.cache[k] = v; }
+        localStorage.removeItem(k);
+      }
+    } catch (e) { console.warn('[save] IndexedDB를 쓸 수 없어 localStorage에 저장합니다', e); this.ok = false; }
+  },
+  put(k, v) { return new Promise(res => { try { const tx = this.db.transaction('kv', 'readwrite'); tx.objectStore('kv').put(v, k); tx.oncomplete = () => res(true); tx.onerror = tx.onabort = () => { console.warn('[save] IndexedDB 저장 실패', tx.error); res(false); }; } catch (e) { console.warn(e); res(false); } }); },
+  del(k) { try { const tx = this.db.transaction('kv', 'readwrite'); tx.objectStore('kv').delete(k); } catch (e) {} },
 };
 
 const SaveSystem = {

@@ -831,7 +831,7 @@ const Sim = {
   teleport(g, p, to) {
     to = this.clampP(to);
     g.fx.push({ type: 'tp', side: p.side, at: to, from: [...p.pos], t: g.t, dur: this.TP_CH });
-    p.tpCh = { to, at: g.t + this.TP_CH }; p.tpReady = g.t + (this.min(g) < 14 ? 360 : 240); p.hold = null;
+    p.tpCh = { to, at: g.t + this.TP_CH }; p.tpReady = g.t + (this.min(g) < 14 ? 360 : 240); p.hold = null; (p.ssCd ||= {}).Teleport = p.tpReady;   /* 중계 화면의 주문 쿨타임 표시 (예전에는 텔레포트만 늘 준비로 보였다) */
   },
   // 교전 자리로 다가간다 (평소 속도, 몇 초 동안)
   engage(g, p, at, sec = 5) { p.hold = { to: this.clampP([at[0] + p.off[0] * .7, at[1] + p.off[1] * .7]), until: g.t + sec }; },

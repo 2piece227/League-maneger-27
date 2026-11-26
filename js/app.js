@@ -25,7 +25,7 @@ const App = {
 };
 
 document.addEventListener('DOMContentLoaded', async () => {
-  App.db = await Data.loadDatabase();
+  [App.db] = await Promise.all([Data.loadDatabase(), BigStore.init()]);   // 저장본(IndexedDB)도 같이 읽어 둔다
   Object.values(Screens).forEach(s => s.init && s.init());
 
   // data-nav="화면id" 버튼은 해당 화면으로 이동

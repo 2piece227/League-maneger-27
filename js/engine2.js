@@ -706,6 +706,63 @@ const Sim2 = {
     if (!g.siegeSaid || g.t - g.siegeSaid > 60) { g.siegeSaid = g.t; if (g.r() < .6) S.line(g, 'siegeDive', { t: g.side[k].t.short }); }
     return true;
   },
+  // ---------- 다이브 ----------
+  //   상대가 포탑 아래에 있으면, 포탑 피해까지 넣은 예측으로 확실히 이길 때만 들어간다 (미니언이 포탑을 받아 주면 포탑 몫이 작다)
+  //   예전에는 예측값이 커진 만큼 다이브 문턱(0.7)을 쉽게 넘어, 무리한 다이브와 포탑에 죽는 장면이 많았다 — 베타 피드백
+  DIVE_NEED: .72,
+  towerAt(g, k, at) { return Sim.twList(g, Sim.other(k)).filter(t => Sim.dist(t.pos, at) < Sim.TW_R + 4).sort((a, b) => Sim.dist(a.pos, at) - Sim.dist(b.pos, at))[0]; },
+  diveOk(g, k, us, foes, at) {
+    const S = Sim, under = foes.filter(q => S.danger(g, k, q.pos, .6, true));
+    if (!under.length && !S.danger(g, k, at, .6, true)) return null;   // 포탑과 상관없는 싸움
+    const tw = this.towerAt(g, k, at) || this.towerAt(g, k, under[0] ? under[0].pos : at); if (!tw) return null;
+    const tb = (S.tanked(g, tw) ? .3 : .8) * (tw.i >= 1 ? 1.15 : 1);
+    const m = S.min(g), ag = ({ safe: .06, norm: 0, aggr: -.06 })[g.side[k].ins.aggr] || 0;
+    const need = this.DIVE_NEED + ag + (m < 10 ? .08 : 0) - us.reduce((a, p) => a + this.A(p, 'objective') + this.A(p, 'teamfight'), 0) / Math.max(1, us.length) * .02;
+    return this.pWin(g, us, foes, -tb) >= need;
+  },
+  fightAt(g, at, radius, opt, old) {
+    const S = Sim, pick = k => S.alive(g, k).filter(p => !p.recall && !p.tpCh && !p.fled && S.dist(p.pos, at) <= S.joinR(p, at, radius) && S.reach(p.pos, at, S.joinR(p, at, radius)));
+    const A = pick('B'), Bp = pick('R'); if (!A.length || !Bp.length) return old(g, at, radius, opt);
+    const dv = {};
+    for (const k of ['B', 'R']) {
+      const us = k === 'B' ? A : Bp, foes = k === 'B' ? Bp : A, ok = opt.dive === k ? true : this.diveOk(g, k, us, foes, at);
+      dv[k] = ok === true;
+      if (ok === false && foes.every(q => S.danger(g, k, q.pos, .6, true)) && opt.dive !== S.other(k)) return null;   // 상대가 전부 포탑 아래인데 못 들어가면 싸움이 나지 않는다
+    }
+    const f = old(g, at, radius, opt); if (f) f.dive = dv;
+    return f;
+  },
+  // 포탑 앞 대치에서 공격 쪽이 들어갈지 (구버전 skirmish의 v2): 포탑까지 넣은 예측으로
+  skirmish(g, m) {
+    const S = Sim; if (g.over || g.t < g.calm || m < 14) return;
+    for (const k of (g.r() < .5 ? ['B', 'R'] : ['R', 'B'])) {
+      const o = S.other(k);
+      for (const lane of S.LANES3.slice().sort(() => g.r() - .5)) {
+        const st = S.structOf(g, o, lane), atk = S.near(g, k, st.pos, 20).filter(q => !q.goal || S.dist(q.goal, st.pos) < 24), def = S.near(g, o, st.pos, 15);
+        if (atk.length < 3 || def.length < 1) continue;
+        const deep = /nexus/.test(st.kind), ok = this.diveOk(g, k, atk, def, st.pos);
+        if (ok === false) continue;
+        const pw = this.pWin(g, atk, def), base = deep ? .5 : m >= 28 ? .3 : .18;
+        if (g.r() < base * Math.min(1, Math.max(0, (pw - .55) * 4))) {
+          S.fightAt(g, S.toward ? [def.reduce((a, q) => a + q.pos[0], 0) / def.length, def.reduce((a, q) => a + q.pos[1], 0) / def.length] : st.pos, 18, { where: `${S.laneKo(lane)} 포탑 앞`, dive: ok ? k : undefined });
+          return;
+        }
+      }
+    }
+  },
+  // 포탑 탈출: 다이브 중이 아닌데 체력이 낮은 채 상대 포탑 사거리 안이면, 사거리 밖으로 가장 짧은 방향(포탑 반대편)으로 바로 빠진다
+  //   (예전에는 본진 쪽으로 천천히 빠지다 사거리 끝에서 마지막 한두 대를 맞고 처형되는 일이 많았다)
+  towerEscape(g) {
+    const S = Sim;
+    for (const p of g.pl) {
+      if (p.dead || p.recall || p.tpCh || (p.cc || 0) > g.t || p.hp > .4 || (p.dive > g.t && p.hp > .25)) continue;
+      const tw = S.danger(g, p.side, p.pos, .8, true); if (!tw) continue;
+      const d = S.dist(p.pos, tw.pos) || .1, out = S.TW_R + 2.5 - d;
+      const to = S.clampP([p.pos[0] + (p.pos[0] - tw.pos[0]) / d * out, p.pos[1] + (p.pos[1] - tw.pos[1]) / d * out]);
+      if (S.danger(g, p.side, to, 0, true)) continue;
+      p.hold = { to, until: g.t + 3 }; p.dash = g.t + 1; p.dive = 0; p.noDive = g.t + 15; p.pass = g.t + 3;
+    }
+  },
   // ---------- 강타 ----------
   //   오브젝트 체력이 강타 피해 아래로 내려오면 우리 정글이 강타로 마무리한다. 상대 정글이 둥지 곁(10 안)에 있으면 스틸을 노린다
   //   (우리 강타가 빠졌으면 크게, 아니면 강타 능력치 싸움 · 근처에서 싸우는 중이면 조금 더)
@@ -786,7 +843,7 @@ const Sim2 = {
     });
   },
   // 매초 (Sim.step 뒤)
-  tick(g) { this.see(g); this.ambushTick(g); this.contact(g); this.objFight(g); if (g.t % 5 === 0) { this.brain(g); this.macro(g); this.ambushPlan(g); } },
+  tick(g) { this.see(g); this.towerEscape(g); this.ambushTick(g); this.contact(g); this.objFight(g); if (g.t % 5 === 0) { this.brain(g); this.macro(g); this.ambushPlan(g); } },
   // 10초마다 (Sim.decide 앞): 수행력 다시 계산 (시기 곡선 · 조합 시기 · 클러치)
   tick10(g) { g.pl.forEach(p => this.exeOf(g, p)); },
 };
@@ -805,6 +862,8 @@ const Sim2 = {
   W('ultReady', (old, g, p) => g.v2 ? !p.dead && !p.recall && !p.tpCh && p.lvl >= 6 && g.t >= ((p.cd2 || {}).R || 0) : old(g, p));
   W('useUlt', (old, g, p) => { if (!g.v2) return old(g, p); p.cd2.R = g.t + Sim2.cdReal(p, 'R'); p.ultAt = p.cd2.R; });
   W('target', (old, g, p, m) => g.v2 ? Sim2.target(g, p, m, old) : old(g, p, m));
+  W('fightAt', (old, g, at, radius, opt = {}) => g.v2 ? Sim2.fightAt(g, at, radius, opt, old) : old(g, at, radius, opt));
+  W('skirmish', (old, g, m) => g.v2 ? Sim2.skirmish(g, m) : old(g, m));
   W('siegeGo', (old, g, m, k, st) => g.v2 ? Sim2.siegeGo(g, m, k, st) : old(g, m, k, st));
   W('objHit', (old, g, o, ps) => g.v2 ? Sim2.objHit(g, o, ps, old) : old(g, o, ps));
   W('objAward', (old, g, o, wk, t0) => g.v2 ? Sim2.objAward(g, o, wk, t0, old) : old(g, o, wk, t0));
