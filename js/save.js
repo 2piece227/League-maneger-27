@@ -3,7 +3,21 @@ const Store = {
   // 세이브 슬롯은 압축해서 둔다 (localStorage는 사이트당 약 5MB: 슬롯 3개 + 자동 저장이 시즌이 길어지면 넘칠 수 있었다)
   LZ: 'LZ1:',
   get(k) { try { let s = localStorage.getItem(k); if (s && s.startsWith(this.LZ)) s = LZString.decompressFromUTF16(s.slice(this.LZ.length)); return JSON.parse(s); } catch { return null; } },
-  set(k, v) { try { let s = JSON.stringify(v); if (k.startsWith('lm27.save.') && typeof LZString !== 'undefined') s = this.LZ + LZString.compressToUTF16(s); localStorage.setItem(k, s); return true; } catch (e) { console.warn('[save] 저장 실패', e); if (typeof UI !== 'undefined' && UI.toast) UI.toast('저장 공간이 부족해 저장하지 못했습니다. 안 쓰는 슬롯을 지워 주세요.', 5000); return false; } },
+  // 큰 키(세이브 슬롯 · 자동 저장 · 새로고침 대비 사본)는 압축한다. 공간이 모자라면 새로고침 대비 사본을 먼저 비우고 한 번 더 시도
+  //   (예전에는 새로고침 대비 사본만 압축하지 않아, 몇 시즌이 지나면 그 사본 하나가 공간을 다 차지해 저장이 실패했다 — 베타 제보)
+  big(k) { return k.startsWith('lm27.save.') || k === 'lm27.resume'; },
+  set(k, v) {
+    let s;
+    try { s = JSON.stringify(v); if (this.big(k) && typeof LZString !== 'undefined') s = this.LZ + LZString.compressToUTF16(s); } catch (e) { console.warn('[save] 저장 실패', e); return false; }
+    for (let i = 0; i < 2; i++) {
+      try { localStorage.setItem(k, s); return true; }
+      catch (e) { if (i === 0 && k !== 'lm27.resume' && localStorage.getItem('lm27.resume') != null) { this.del('lm27.resume'); continue; } console.warn('[save] 저장 실패', e); }
+    }
+    if (typeof UI !== 'undefined' && UI.toast && k !== 'lm27.resume') UI.toast('저장 공간이 부족해 저장하지 못했습니다. 안 쓰는 슬롯을 지워 주세요.', 5000);
+    return false;
+  },
+  pack(v) { const s = JSON.stringify(v); return typeof LZString !== 'undefined' ? this.LZ + LZString.compressToUTF16(s) : s; },
+  unpack(s) { if (s && s.startsWith(this.LZ)) s = LZString.decompressFromUTF16(s.slice(this.LZ.length)); return JSON.parse(s); },
   del(k) { try { localStorage.removeItem(k); } catch {} },
   ageOn(birth, date) {
     const b = new Date(birth), d = new Date(date);
@@ -23,7 +37,6 @@ const Settings = {
     simSpeed: 'normal',
     volume: 70,
     autosave: true,       // 하루가 지날 때마다 자동 저장
-    engineV2: false,      // 개발자 테스트: 신버전 경기 엔진 (js/engine2.js)
   },
   load() { return { ...this.defaults, ...(Store.get(this.KEY) || {}) }; },
   save(settings) { Store.set(this.KEY, settings); },
@@ -62,7 +75,7 @@ const SaveSystem = {
   // 커리어를 바꿀 때(불러오기 · 새 커리어)는 페이지를 새로 읽어 메모리의 선수 데이터까지 원본으로 되돌린 뒤 그 상태로 들어간다
   PENDING: 'lm27.pending',
   // 주소의 화면(#match-draft 등)을 지우고 새로 읽는다: 이전 커리어의 화면 주소가 새 커리어에 남지 않게
-  restart(p) { try { sessionStorage.setItem(this.PENDING, JSON.stringify(p)); } catch (e) { console.warn(e); } try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {} location.reload(); },
+  restart(p) { try { sessionStorage.setItem(this.PENDING, Store.pack(p)); } catch (e) { console.warn(e); } try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {} location.reload(); },
   // ── 갑작스런 새로고침 대비 ──
   // 게임 화면에 있는 동안 이 탭에 표시(sessionStorage)를 남기고, 화면이 가려지거나 페이지가 내려갈 때 · 날짜가 넘어갈 때(20초에 한 번까지) 진행을 RESUME 키에 저장한다.
   // 같은 탭이 다시 열리면(당겨서 새로고침 · 메모리 부족으로 브라우저가 다시 읽음) 그 진행으로 바로 들어간다. 메인 화면으로 직접 나가면 표시를 지운다
@@ -75,7 +88,7 @@ const SaveSystem = {
   },
   // 새로 읽은 페이지에서: 미뤄 둔 커리어로 바로 들어간다
   resume() {
-    let p = null; try { p = JSON.parse(sessionStorage.getItem(this.PENDING)); sessionStorage.removeItem(this.PENDING); } catch {}
+    let p = null; try { p = Store.unpack(sessionStorage.getItem(this.PENDING)); sessionStorage.removeItem(this.PENDING); } catch {}
     if (!p) { let tab = null; try { tab = sessionStorage.getItem(this.TAB); } catch (e) {} const r = tab && Store.get(this.RESUME); if (r && r.state) { p = { state: r.state }; setTimeout(() => UI.toast('페이지가 새로 열려서, 직전 진행 상태에서 이어 갑니다', 4000), 800); } }
     if (!p || !p.state) return false;
     App.state = { ...p.state, settings: App.state.settings };

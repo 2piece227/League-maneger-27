@@ -121,6 +121,9 @@ const Market = {
       if (stove && this.upgrade(t, sty, today)) { changed = true; return; }
       const g = gaps[0]; if (!g) return;
       const empty = !g.cur;
+      // 빈자리가 2주 넘게 이어지면(스토브 중에는 4주) 제안을 기다리지 않고 바로 콜업 · 계약 (안전장치)
+      const VS = (Contract.st().vac ||= {}), vk = t.id + ':' + g.role; if (empty) VS[vk] ||= today; else delete VS[vk];
+      const stale = empty && Fmt.daysBetween(VS[vk], today) >= (stove ? 28 : 14);
       // 빈자리는 매일 찾는다. 주전이 팀 수준보다 크게 처지면(2군 콜업 등) 스토브 동안 적극적으로 보강. 그 밖에는 1군은 주전 5명 + 후보 1명까지
       if (!empty && !(g.weak && stove && t.players.length < 7 && this.rnd(t.id, today, 'shopw') < (sty === 'contend' ? .8 : sty === 'stable' ? .5 : .25)) && (t.players.length >= 6 || this.rnd(t.id, today, 'shop') > (stove ? .35 : .08))) return;
       if (!stove && !empty) return;
@@ -136,7 +139,7 @@ const Market = {
       const late = !st || Fmt.daysBetween(st.start, today) >= { contend: 21, stable: 10, develop: 4, austerity: 6 }[sty];   // 이만큼 지나도 빈자리면 2군에서 올린다 (우승 도전 팀은 3주까지 영입을 노린다)
       if (!cands.some(x => !Persona.refuses(x.p, t, today)) && stove && (empty || g.weak) && sty === 'contend' && this.poach(t, g, today)) { changed = true; return; }   // FA에 없으면 다른 팀 선수를 이적료로
       // 이 팀과 이야기하지 않는 선수(친정 거부 등)는 건너뛰고 다음 후보 (예전에는 1순위가 거절하면 그날은 포기해, Zeus를 놓친 HLE가 Kiin도 안 보고 2군을 올렸다)
-      const pick = empty && late && (t.cl || []).some(p => p.role === g.role) ? null : cands.find(x => !Persona.refuses(x.p, t, today));
+      const pick = stale || (empty && late && (t.cl || []).some(p => p.role === g.role)) ? null : cands.find(x => !Persona.refuses(x.p, t, today));
       if (pick) {
         (F[pick.p.id] ||= []).push({ team: t.id, mult: 1.02 + this.rnd(pick.p.id, t.id, 'm') * .2, until: Store.addDays(today, 2 + Math.floor(this.rnd(pick.p.id, 'u') * 3)) });
         this.deadline(pick.p, today); this.buzz(pick.p, t, today);
@@ -145,7 +148,7 @@ const Market = {
       if (empty) {
         const up = (t.cl || []).filter(p => p.role === g.role).sort((a, b) => (b.ca || 0) - (a.ca || 0))[0];
         if (up) { Contract.st().moves[up.id] = t.id; changed = true; this.post(`${t.short}, 2군 ${up.name} 1군 콜업`, `${Sim.josa(t.name, '이', '가')} 비어 있던 ${G.ROLE_KO[g.role]} 자리에 2군 ${Sim.josa(up.name, '을', '를')} 올렸습니다.`, up.id); }
-        else if (!stove || (st && Fmt.daysBetween(st.start, today) >= 14)) {   // 스토브 2주는 정상 경쟁(고민 기간)을 거친다. 그 뒤에도 비어 있으면 바로 계약
+        else if (!stove || stale || (st && Fmt.daysBetween(st.start, today) >= 14)) {   // 스토브 2주는 정상 경쟁(고민 기간)을 거친다. 그 뒤에도 비어 있으면 바로 계약
           // 2군도 없으면 그 포지션 FA 중 가장 나은 선수와 바로 계약 (주전 없이 공식전에 나가지 않게)
           // 연봉 여력 안에서 가장 나은 선수 (예전에는 연봉을 보지 않아, 돈 때문에 놓아준 선수를 바로 다시 데려왔다). 그런 선수가 없으면 가장 싼 선수
           const pool = free.filter(p => p.role === g.role && !Neg.held(Contract.st().neg[p.id])), fit = pool.filter(p => this.affords(t, p, Contract.pay(p, Contract.score(p, t), t.league)));
@@ -168,7 +171,7 @@ const Market = {
       if (typeof Lapse !== 'undefined' && Lapse.waits(Player.find(pid).p) && Lapse.of(pid).team === App.state.teamId) return;   // 만료 열흘: 원 소속팀(우리) 제안을 기다린다
       const p = hit.p;
       // 아직 자리가 있고 선수가 이야기할 마음이 있는 팀의 제안만 · 우리 입찰도 같은 저울 (js/persona.js appeal)
-      const ok = this.ranked(p).filter(({ o }) => { if (o.mine) return true; const t = App.db.teams.find(y => y.id === o.team); return t && t.players.length < 6 && t.players.filter(y => y.role === p.role).length < 2 && !Persona.refuses(p, t, today); });
+      const ok = this.ranked(p).filter(({ o }) => { if (o.mine) return true; const t = App.db.teams.find(y => y.id === o.team); return t && (t.players.length < 6 || !t.players.some(y => y.role === p.role)) && t.players.filter(y => y.role === p.role).length < 2 && !Persona.refuses(p, t, today); });   /* 빈 포지션은 인원과 상관없이 (예전에는 6명인 팀의 빈자리 제안이 늘 무효라, 한 시즌 내내 공석이었다 — 베타 제보) */
       const o = ok.length ? ok[0].o : null, n = ok.length;
       delete F[pid]; delete D[pid];
       if (mine) {

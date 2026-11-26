@@ -73,6 +73,13 @@ Engine.on(() => {
   (Schedule.all || []).forEach(m => { if (m.year >= Y || m.t1 === my || m.t2 === my) return; const r = S[m.id]; if (r && r.games) r.games.forEach(g => { delete g.s; delete g.picks; delete g.pp; }); });
   App.state.pruned = Y - 1;
 });
+// 2시즌 전보다 오래된 다른 팀 경기는 시리즈 점수만 남긴다 (세트 상세 삭제). 저장 공간: 시즌이 쌓이면 브라우저 한도(약 5MB)를 넘어 저장이 실패했다 — 베타 제보
+Engine.on(() => {
+  const Y = Schedule.season && Schedule.season(); if (!Y || (App.state.pruned2 || 0) >= Y - 2) return;
+  const my = App.state.teamId, S = App.state.season || {};
+  (Schedule.all || []).forEach(m => { if (m.year >= Y - 1 || m.t1 === my || m.t2 === my) return; const r = S[m.id]; if (r && r.games) delete r.games; });
+  App.state.pruned2 = Y - 2;
+});
 
 // Season.rate 뒤에 대회별 기록을 쌓는다 (Awards 보강 다음)
 (() => { const rate = Season.rate.bind(Season); Season.rate = (series, m) => { rate(series, m); try { PStats.add(series, m); } catch (e) { console.warn('[pstats]', e); } }; })();
