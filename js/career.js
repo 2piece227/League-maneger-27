@@ -402,6 +402,7 @@ const Career = {
               <div class="set-row"><div>배경 음악<small>밴픽에서는 밴픽 음악, 그 밖의 화면에서는 월즈 주제가 (상단바 재생기)</small></div><input type="checkbox" id="st-music" ${typeof Music !== 'undefined' && Music.pref.on ? 'checked' : ''}></div>
               <div class="set-row"><div>음악 재생기 숨기기<small>화면 아래 음악 버튼과 재생기를 아예 없앱니다 (음악도 꺼집니다)</small></div><input type="checkbox" id="st-muhide" ${typeof Music !== 'undefined' && Music.pref.hide ? 'checked' : ''}></div>
               <div class="set-row"><div>튜토리얼<small>코치진이 화면마다 처음 들어갈 때 안내합니다</small></div><button class="btn-ghost sm" id="st-tut">처음부터 다시 보기</button></div>
+              <div class="set-row"><div>개발자 테스트: 신버전 경기 엔진<small>켜면 이후 시작하는 경기(관전 · 자동 진행 · 스크림)를 새 판단 · 전투 엔진으로 계산합니다. 시험용이라 결과가 크게 다를 수 있습니다</small></div><input type="checkbox" id="st-v2" ${s.engineV2 ? 'checked' : ''}></div>
               <div class="sv-foot"><button class="btn-ghost" id="st-title">메인 화면으로</button></div>
             </div>
           </div>
@@ -410,6 +411,7 @@ const Career = {
       const persist = () => Settings.save(s);
       $('#sv-auto', el).onchange = e => { s.autosave = e.target.checked; persist(); UI.toast(s.autosave ? '자동 저장 켜짐' : '자동 저장 꺼짐'); };
       $('#st-skip', el).onchange = e => { s.skipIntro = e.target.checked; persist(); };
+      $('#st-v2', el).onchange = e => { s.engineV2 = e.target.checked; persist(); UI.toast(s.engineV2 ? '신버전 경기 엔진 켜짐 (다음 경기부터)' : '구버전 경기 엔진으로 돌아왔습니다'); };
       $('#st-speed', el).onchange = e => { s.simSpeed = e.target.value; persist(); };
       $('#st-vol', el).onchange = e => { s.volume = +e.target.value; persist(); };
       $('#st-title', el).onclick = () => App.show('title');

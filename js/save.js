@@ -23,6 +23,7 @@ const Settings = {
     simSpeed: 'normal',
     volume: 70,
     autosave: true,       // 하루가 지날 때마다 자동 저장
+    engineV2: false,      // 개발자 테스트: 신버전 경기 엔진 (js/engine2.js)
   },
   load() { return { ...this.defaults, ...(Store.get(this.KEY) || {}) }; },
   save(settings) { Store.set(this.KEY, settings); },
