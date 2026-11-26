@@ -943,45 +943,51 @@ const Sim = {
         if (ob.prog[k] >= this.objNeed(g, o)) { wk = k; if (g.r() < .5 && !(o === 'grubs' && (ob.left ?? 3) > 1)) this.line(g, 'objFree', { w: g.side[k].t.short, l: g.side[this.other(k)].t.short, o: this.OBJ[o] }); }
       }
       if (!wk) continue;
-      // 오브젝트 도둑: 상대가 치는 걸 가로챈다
-      const thief = this.near(g, this.other(wk), pit, 12).find(p => Rift.los(p.pos, pit) && (p.fx || {}).steal && g.r() < p.fx.steal);
-      if (thief) { (this.line(g, 'steal', { p: thief.name, o: this.OBJ[o] }), this.line(g, 'stealHype', { p: thief.name })); wk = thief.side; }
-      const s = g.side[wk];
-      ob.prog = {}; ob.hitT = {}; if (o !== 'grubs' || (ob.left ?? 3) <= 1) ob.fought = false;
-      if (o === 'drag') {
-        if (this.elder(g)) {
-          // 영혼이 나온 뒤에는 장로 드래곤: 2분 30초 동안 강력한 버프
-          s.elder = (s.elder || 0) + 1; s.elderUntil = g.t + 150;
-          this.mark(g, wk, 'drag', 'dragon_elder', '장로 드래곤 처치');
-          (this.line(g, 'elder', { t: s.t.short }), this.crisis(g, 'elderLost', { d: g.side[this.other(wk)].t.short }));
-          ob.at = g.t + 360; this.objGo(g, ob);
-        } else {
-          const n = g.side.B.drag.length + g.side.R.drag.length, d = g.dragSeq[Math.min(n, 2)]; s.drag.push(d);
-          this.mark(g, wk, 'drag', d[1], `${d[0]} 드래곤 처치`);
-          if (s.drag.length === 3) this.line(g, 'drag3', { t: s.t.short });
-          if (s.drag.length === 4) { (this.line(g, 'soul', { t: s.t.short, d: d[0] }), this.line(g, 'soulWhy', { t: s.t.short })); ob.at = g.t + 360; }
-          else ob.at = g.t + 330;
-          this.objGo(g, ob);
-        }
-      } else if (o === 'grubs') {
-        // 유충 3마리는 한 마리씩: 상대가 오면 나눠 먹기도 한다
-        ob.left = (ob.left ?? 3) - 1; s.grubs++;
-        this.mark(g, wk, 'grubs', 'grub', `공허 유충 처치 (${3 - ob.left}/3)`);
-        if (ob.left > 0) continue;
-        const o2 = g.side[this.other(wk)];
-        if (o2.grubs) this.line(g, 'grubs', { a: s.t.short, an: s.grubs, b: o2.t.short, bn: o2.grubs });
-        ob.at = null;
-      }
-      else if (o === 'herald') { s.herald++; s.heraldReady = g.t + 150; this.mark(g, wk, 'herald', 'riftherald', '전령 처치'); ob.at = null; s.push = { lane: g.r() < .5 ? 'top' : 'mid', until: g.t + 60 }; s.heraldLane = s.push.lane; this.line(g, 'herald', { t: s.t.short, lane: this.laneKo(s.push.lane) }); }
-      else {
-        s.baron++; s.baronUntil = g.t + 180; g.pl.forEach(p => { if (p.side === wk && !p.dead) p.baronUntil = g.t + 180; });   /* 살아 있던 선수만 (죽으면 사라진다) */ this.mark(g, wk, 'baron', 'baron', '바론 처치'); ob.at = g.t + 420; this.objGo(g, ob);
-        // 사람을 잃어 가며 먹은 바론이면 '상처뿐인 바론'
-        const hurt = g.pl.filter(p => p.side === wk && p.dead).length >= 2;
-        (this.line(g, hurt ? 'baronHurt' : 'baron', { t: s.t.short }), !hurt && g.r() < .5 && this.line(g, 'baronWhy', { l: g.side[this.other(wk)].t.short }));
-        s.push = { lane: ['mid', 'bot', 'top'].sort((a, b) => g.side[this.other(wk)].towers[a] - g.side[this.other(wk)].towers[b])[0], until: g.t + 170 };
-      }
-      s.reset = g.t;   // 오브젝트 뒤에는 다 같이 귀환해서 정비
+      this.objAward(g, o, wk);
     }
+  },
+  // 오브젝트 처치 보상 (도둑 · 드래곤 · 장로 · 유충 · 전령 · 바론). wk: 마지막 일격을 한 팀. 실제로 가져간 팀을 돌려준다
+  objAward(g, o, wk, thief0) {
+    const ob = g.obj[o], pit = Rift.pos(this.PIT[o]);
+    // 오브젝트 도둑: 상대가 치는 걸 가로챈다
+    const thief = thief0 || this.near(g, this.other(wk), pit, 12).find(p => Rift.los(p.pos, pit) && (p.fx || {}).steal && g.r() < p.fx.steal);   /* thief0: 강타 스틸 (v2) */
+    if (thief) { (this.line(g, 'steal', { p: thief.name, o: this.OBJ[o] }), this.line(g, 'stealHype', { p: thief.name })); wk = thief.side; }
+    const s = g.side[wk];
+    ob.prog = {}; ob.hitT = {}; if (o !== 'grubs' || (ob.left ?? 3) <= 1) ob.fought = false;
+    if (o === 'drag') {
+      if (this.elder(g)) {
+        // 영혼이 나온 뒤에는 장로 드래곤: 2분 30초 동안 강력한 버프
+        s.elder = (s.elder || 0) + 1; s.elderUntil = g.t + 150;
+        this.mark(g, wk, 'drag', 'dragon_elder', '장로 드래곤 처치');
+        (this.line(g, 'elder', { t: s.t.short }), this.crisis(g, 'elderLost', { d: g.side[this.other(wk)].t.short }));
+        ob.at = g.t + 360; this.objGo(g, ob);
+      } else {
+        const n = g.side.B.drag.length + g.side.R.drag.length, d = g.dragSeq[Math.min(n, 2)]; s.drag.push(d);
+        this.mark(g, wk, 'drag', d[1], `${d[0]} 드래곤 처치`);
+        if (s.drag.length === 3) this.line(g, 'drag3', { t: s.t.short });
+        if (s.drag.length === 4) { (this.line(g, 'soul', { t: s.t.short, d: d[0] }), this.line(g, 'soulWhy', { t: s.t.short })); ob.at = g.t + 360; }
+        else ob.at = g.t + 330;
+        this.objGo(g, ob);
+      }
+    } else if (o === 'grubs') {
+      // 유충 3마리는 한 마리씩: 상대가 오면 나눠 먹기도 한다
+      ob.left = (ob.left ?? 3) - 1; s.grubs++;
+      this.mark(g, wk, 'grubs', 'grub', `공허 유충 처치 (${3 - ob.left}/3)`);
+      if (ob.left > 0) return wk;
+      const o2 = g.side[this.other(wk)];
+      if (o2.grubs) this.line(g, 'grubs', { a: s.t.short, an: s.grubs, b: o2.t.short, bn: o2.grubs });
+      ob.at = null;
+    }
+    else if (o === 'herald') { s.herald++; s.heraldReady = g.t + 150; this.mark(g, wk, 'herald', 'riftherald', '전령 처치'); ob.at = null; s.push = { lane: g.r() < .5 ? 'top' : 'mid', until: g.t + 60 }; s.heraldLane = s.push.lane; this.line(g, 'herald', { t: s.t.short, lane: this.laneKo(s.push.lane) }); }
+    else {
+      s.baron++; s.baronUntil = g.t + 180; g.pl.forEach(p => { if (p.side === wk && !p.dead) p.baronUntil = g.t + 180; });   /* 살아 있던 선수만 (죽으면 사라진다) */ this.mark(g, wk, 'baron', 'baron', '바론 처치'); ob.at = g.t + 420; this.objGo(g, ob);
+      // 사람을 잃어 가며 먹은 바론이면 '상처뿐인 바론'
+      const hurt = g.pl.filter(p => p.side === wk && p.dead).length >= 2;
+      (this.line(g, hurt ? 'baronHurt' : 'baron', { t: s.t.short }), !hurt && g.r() < .5 && this.line(g, 'baronWhy', { l: g.side[this.other(wk)].t.short }));
+      s.push = { lane: ['mid', 'bot', 'top'].sort((a, b) => g.side[this.other(wk)].towers[a] - g.side[this.other(wk)].towers[b])[0], until: g.t + 170 };
+    }
+    s.reset = g.t;   // 오브젝트 뒤에는 다 같이 귀환해서 정비
+    return wk;
   },
 
   // ---------- 정글러 ----------

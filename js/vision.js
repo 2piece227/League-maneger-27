@@ -23,6 +23,18 @@ const Vision = {
     g.wards.push({ side: p.side, type, at: [at[0] + (g.r() - .5) * 2, at[1] + (g.r() - .5) * 2], t: g.t, until: type === 'control' ? 1e9 : g.t + life, by: p });
     p.wardsPlaced = (p.wardsPlaced || 0) + 1;
   },
+  // 사람이 떠나도 남는 시야(와드 · 포탑 · 우물)가 이미 비추는 자리인가. 예전에는 '내 와드가 7 안에 있나'만 봐서 포탑 · 팀원 와드가 이미 비추는 곳에 박곤 했다 (베타 피드백)
+  lit(g, k, at, exact) {
+    if ((g.wards || []).some(w => w.side === k && Sim.dist(w.at, at) < (w.type === 'control' ? 8 : 9) - (exact ? 0 : 2))) return true;
+    if (['top', 'mid', 'bot'].some(l => Rift.TOWER[k][l].some((n, i) => g.side[k].thp[l][i] > 0 && Sim.dist(Rift.pos(n), at) < 10))) return true;
+    return Sim.dist(Sim.fountain(k), at) < 16;
+  },
+  // 그 자리에 와드를 박으면 새로 밝아지는 비율 (와드 시야 원 안 13점 중 아직 어두운 점)
+  gain(g, k, at) {
+    let n = 0, d = 0;
+    for (let i = -1; i < 12; i++) { const q = i < 0 ? at : [at[0] + Math.cos(i * Math.PI / 6) * 6, at[1] + Math.sin(i * Math.PI / 6) * 6]; n++; if (!this.lit(g, k, q, true)) d++; }
+    return d / n;
+  },
   lens(p) { return p.trinket && p.trinket.n === 'Oracle Lens'; },
   glaive(p) { return p.inv.some(i => i.n === 'Umbral Glaive'); },
   kill(g, w, by) { g.wards = g.wards.filter(x => x !== w); const k = this.other(w.side); g.side[k].wardsKilled = (g.side[k].wardsKilled || 0) + 1; if (by) by.wardsKilled = (by.wardsKilled || 0) + 1; },
@@ -41,7 +53,9 @@ const Vision = {
       // 서폿 아이템 퀘스트 완료(7분쯤): 우물에 안 가도 자동으로 바뀐다
       if (p.role === 'SUP' && m >= 7 && p.build.sup && p.build.start && p.inv.some(i => i.n === p.build.start.n)) { const i = p.inv.findIndex(x => x.n === p.build.start.n); p.inv[i] = p.build.sup; }
       // 서폿은 와드 자리를 찾아 넓게(14), 다른 포지션은 지나가는 길에(10)
-      const free = pref.find(s => Sim.dist(s, p.pos) < (p.role === 'SUP' ? 18 : 10) && !this.near(mine, s, 7));
+      // 새로 밝아지는 면적이 가장 큰 자리 (우리 와드 · 포탑 · 우물이 이미 비추는 곳과 절반 넘게 겹치면 박지 않는다). 우선 자리(오브젝트 입구 등)는 조금 더 쳐준다
+      const cand = pref.filter(s => Sim.dist(s, p.pos) < (p.role === 'SUP' ? 18 : 10)).map((s, i) => ({ s, v: this.gain(g, p.side, s) + (objK && i === 0 ? .2 : 0) - i * .005 })).filter(x => x.v >= .5).sort((a, b) => b.v - a.v);
+      const free = cand.length ? cand[0].s : null;
       if (!free) return;
       if (p.role === 'SUP' && m >= 2 && g.t >= (p.supCd || 0)) { this.place(g, p, 'stealth', free, 150); p.supCd = g.t + 18 + g.r() * 10; return; }
       if (p.wards > 0 && (obj || !g.wards.some(w => w.by === p && w.type === 'control')) && (obj || g.r() < .55)) { this.place(g, p, 'control', free); p.wards--; return; }

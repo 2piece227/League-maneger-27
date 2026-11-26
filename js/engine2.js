@@ -10,7 +10,7 @@
 //   능력치 선수 세부 능력치가 행동에 닿는다 (피지컬: 명중 · 반응속도: 회피 · 한타: 대상 선택 · 라인전: 견제 · 성장: 막타 · 침착함: 후퇴 판단 · 생존 · 이니쉬 · 보호 …)
 const Sim2 = {
   DT: .25,            // 교전 쪼개기 (초)
-  K: 1.2,             // 전체 피해 배율 (보정용)
+  K: 1.1,             // 전체 피해 배율 (보정용)
   FORM: .6,           // 싸움마다 그날 손이 얼마나 잘 풀리나 (침착함이 높을수록 덜 흔들린다)
   EXE_S: 90,          // 선수 · 팀 수행력 차이 → 피해 배율 (exp(차이 / EXE_S))
   G: 1.6,             // 예측 승률의 날카로움 (힘 비율^G)
@@ -226,13 +226,14 @@ const Sim2 = {
       if (!chase && (!B.length || !R.length || g.t - f.t0 > 25)) { f.quiet++; if (f.quiet >= 2 || g.t - f.t0 > 25) f.done = true; continue; }
       f.quiet = 0;
       if (chase) chase.hunters.forEach(p => { const t = chase.prey.slice().sort((a, b) => (a.hp - b.hp) + (S.dist(a.pos, p.pos) - S.dist(b.pos, p.pos)) * .05)[0]; p.hold = { to: S.clampP(t.pos), until: g.t + 2 }; p.dash = g.t + 1; });
-      this.summoners(g, f, mem);
+      this.summoners(g, f, g.r() < .5 ? mem : mem.slice().reverse());
       const act = mem.filter(p => !p.dead);
       act.forEach(p => { if (!p.ff || p.ff.id !== f.id) p.ff = { id: f.id, v: Math.exp((g.r() - .5) * this.FORM * (1 - this.A(p, 'composure') * .35 - this.A(p, 'focus') * (Sim.min(g) >= 30 ? .2 : 0))) }; });
       g.fNow = f.id;
       for (let i = 0; i < 4; i++) {
         g.tt = g.t - 1 + (i + 1) * this.DT;
-        for (const a of act) this.act(g, f, a, !!chase);
+        const ord = act.slice(); for (let j = ord.length - 1; j > 0; j--) { const r = Math.floor(g.r() * (j + 1)); [ord[j], ord[r]] = [ord[r], ord[j]]; }   /* 같은 0.25초 안에서는 순서를 섞는다 (늘 블루가 먼저 치던 편향) */
+        for (const a of ord) this.act(g, f, a, !!chase);
         if (!mem.some(p => p.side === 'B' && !p.dead) || !mem.some(p => p.side === 'R' && !p.dead)) break;
       }
       g.tt = null; g.fNow = 0;
@@ -640,11 +641,12 @@ const Sim2 = {
       if (S.threat(g, k) || S.finish(g, k)) return;   // 본진 위기 · 끝낼 기회는 다 같이 (구버전 규칙)
       const busy = S.busySet(g), used = new Set();
       for (const lane of S.LANES3) {
-        const st = S.structOf(g, k, lane); if (!st || /nexus/.test(st.kind)) continue;
+        const st = S.structOf(g, k, lane); if (!st || (st.kind === 'nexus' && lane !== 'mid')) continue;   /* 쌍둥이 · 넥서스도 (넥서스는 한 번만) */
         const atk = S.alive(g, o).filter(q => !q.recall && S.dist(q.pos, st.pos) < 18);
         if (!atk.length || atk.length > 2) continue;   // 3명 이상이면 본대 공성: 수비 규칙(defendSpot) 몫
         const here = S.alive(g, k).filter(q => !q.recall && S.dist(q.pos, st.pos) < 16);
         if (here.length && this.pWin(g, here, atk, .6) >= .5) continue;   // 이미 막고 있다
+        const base = /nexus/.test(st.kind);
         const val = this.structVal(st) * (atk.some(q => q.hp > .6) ? 1 : .8);
         const tf = (this.SETUP_COST[s.ins.setup] ?? 1) * (this.objSoon(g, k) ? 2 : 1) * (s.push && s.push.until > g.t ? 1.5 : 1);
         const soonO = this.objSoon(g, k), cands = S.alive(g, k).filter(q => !q.recall && !q.tpCh && !busy.has(q) && !used.has(q) && !here.includes(q) && S.dist(q.pos, st.pos) < 80 && !(soonO && S.objFor(g, q, m)))
@@ -655,7 +657,7 @@ const Sim2 = {
         for (const c of cands) { pick.push(c); if (this.pWin(g, [...here, ...pick], atk, .6) >= .55 || pick.length >= atk.length + 1) break; }
         const pw = pick.length ? this.pWin(g, [...here, ...pick], atk, .6) : 0, eta = pick.length ? Math.max(...pick.map(q => S.dist(q.pos, st.pos))) / 2.4 : 99;
         const cost = tf * pick.length * (eta > 35 ? 1.6 : 1) * (1 - this.A(pick[0] || {}, 'mapAwareness') * .15);
-        if (pw >= .45 && val * 1.6 >= cost) {
+        if (pick.length && (pw >= .45 || base) && (val * 1.6 >= cost || base)) {   /* 본진은 무조건 */
           pick.forEach(q => { used.add(q); s.asg[q.p.id] = { lane, kind: 'def', until: g.t + 15 }; q.goal = this.defSpot(g, q, lane); q.hold = null; });
           if (!prev[pick[0].p.id] && g.t - (s.defSay || -99) > 180 && g.r() < .5) { s.defSay = g.t; const n = pick[0].name; S.say(g, 'cast', g.r() < .5 ? `${S.josa(n, '이', '가')} ${S.laneKo(lane)} 포탑을 막으러 가는 것 같습니다.` : `${g.side[k].t.short}, ${S.laneKo(lane)} 포탑을 그냥 주지 않습니다. ${n} 이동합니다.`); }
           continue;
@@ -678,10 +680,113 @@ const Sim2 = {
   target(g, p, m, old) {
     const a = (g.side[p.side].asg || {})[p.p.id];
     if (a && a.until > g.t && !Sim.threat(g, p.side)) return this.defSpot(g, p, a.lane);
+    const amb = g.side[p.side].amb; if (amb && amb.id === p.p.id && amb.until > g.t && !Sim.threat(g, p.side)) return amb.at;
     return old(g, p, m);
   },
+  // ---------- 공성 (미니언 없이 포탑을 칠지): 포탑 피해를 넣은 예측으로 ----------
+  //   포탑 몫 = 수비 쪽 힘 보정 (미니언이 받아 주면 작다). 본진 앞은 오래 기다리면 문턱이 내려가고, 90초가 지나도 못 들어가면 빠진다
+  siegeGo(g, m, k, st) {
+    const S = Sim;
+    if (m < 14 || !['tower', 'nexusT', 'inhib', 'nexus'].includes(st.kind)) return false;
+    if (S.objUp(g, 'baron') && S.baronCall(g, k) && !/nexus/.test(st.kind)) return false;
+    const o = S.other(k), nx = /nexus/.test(st.kind), W = (g.nxW ||= {});
+    const atk = S.alive(g, k).filter(p => !p.recall && !p.tpCh && S.dist(p.pos, st.pos) <= (nx ? 16 : 14) && p.hp > .35), def = S.alive(g, o).filter(p => !p.recall && S.dist(p.pos, st.pos) <= 16);
+    if (nx) { if (!W[k] || g.t - W[k].last > 15) W[k] = { t0: g.t }; W[k].last = g.t; }
+    const wait = nx ? g.t - W[k].t0 : 0;
+    const giveUp = () => { W[k] = { t0: g.t, last: 0, give: g.t + 60 }; S.alive(g, k).filter(p => S.dist(p.pos, st.pos) <= 30).forEach(p => S.retreat(g, p, 24)); };
+    if (atk.length < 2) return false;
+    const tanked = S.minNear(g, k, st.pos, S.TW_R + .5).reduce((a, w) => a + w.n, 0) >= 2;
+    const tw = (tanked ? .25 : .75) * (st.kind === 'nexusT' || st.i >= 1 ? 1.15 : 1);
+    const pw = this.pWin(g, atk, def, -tw), ag = ({ safe: .05, norm: 0, aggr: -.05 })[g.side[k].ins.aggr] || 0;
+    const need = (nx ? .55 : .62) - (nx && wait >= 40 ? .08 : 0) + ag - atk.reduce((a, p) => a + this.A(p, 'objective'), 0) / atk.length * .04;
+    const go = pw >= need || (!def.length && atk.length >= 3);
+    if (!go) { if (nx && (wait >= 90 || (wait >= 15 && pw < .25))) giveUp(); return false; }
+    const front = ['tank', 'bruiser', 'dive'];
+    atk.forEach(p => { const d = S.dist(p.pos, st.pos) || 1, r = front.includes(p.kind) ? 2.2 : 4.6; p.dive = g.t + 2; p.hold = { to: S.clampP([st.pos[0] + (p.pos[0] - st.pos[0]) / d * r, st.pos[1] + (p.pos[1] - st.pos[1]) / d * r]), until: g.t + 2 }; });
+    if (!g.siegeSaid || g.t - g.siegeSaid > 60) { g.siegeSaid = g.t; if (g.r() < .6) S.line(g, 'siegeDive', { t: g.side[k].t.short }); }
+    return true;
+  },
+  // ---------- 강타 ----------
+  //   오브젝트 체력이 강타 피해 아래로 내려오면 우리 정글이 강타로 마무리한다. 상대 정글이 둥지 곁(10 안)에 있으면 스틸을 노린다
+  //   (우리 강타가 빠졌으면 크게, 아니면 강타 능력치 싸움 · 근처에서 싸우는 중이면 조금 더)
+  smiteDmg(p) { return [600, 900, 1200][Math.min(2, typeof JunglePet !== 'undefined' ? JunglePet.stage(p) : 0)]; },
+  canSmite(g, p, pit) { return p && !p.dead && !p.recall && !p.tpCh && !((p.cc || 0) > g.t) && typeof Spells !== 'undefined' && Spells.ready(g, p, 'Smite') && Sim.dist(p.pos, pit) < 10 && Rift.los(p.pos, pit); },
+  objHit(g, o, ps, old) {
+    let d = old(g, o, ps); if (!ps.length || typeof Spells === 'undefined') return d;
+    const S = Sim, k = ps[0].side, ob = g.obj[o], pit = Rift.pos(S.PIT[o]), R0 = S.objNeed(g, o) - (ob.prog[k] || 0);
+    const jg = g.pl.find(q => q.side === k && q.role === 'JGL'), en = g.pl.find(q => q.side !== k && q.role === 'JGL');
+    const mine = this.canSmite(g, jg, pit) && R0 <= this.smiteDmg(jg), theirs = this.canSmite(g, en, pit) && R0 <= this.smiteDmg(en);
+    if (!mine && !theirs) return d;
+    const fight = g.fights.some(f => S.dist(f.at, pit) < 22);
+    if (theirs) {
+      const ch = mine ? .06 + this.A(en, 'smite') * .12 - this.A(jg, 'smite') * .06 + (fight ? .06 : 0) : .3 + this.A(en, 'smite') * .2 + (fight ? .1 : 0);
+      if (g.r() < ch) { Spells.use(g, en, 'Smite', pit); g._steal = { o, thief: en }; return R0 + 1; }
+    }
+    if (mine && g.r() < .88 + this.A(jg, 'smite') * .1) {
+      Spells.use(g, jg, 'Smite', pit);
+      if ((theirs || fight) && g.r() < .6) S.say(g, 'cast', `${S.josa(jg.name, '이', '가')} 강타로 ${S.josa(S.OBJ[o], '을', '를')} 지켜 냅니다!`);
+      return R0 + 1;
+    }
+    return d;
+  },
+  objAward(g, o, wk, t0, old) { const st = g._steal && g._steal.o === o ? g._steal.thief : null; g._steal = null; return old(g, o, wk, st || t0); },
+  // 오브젝트 한타: 구버전은 둥지 앞에서 싸우는 동안 아무도 오브젝트를 치지 않았다. 이제 그 싸움에서 앞서는 쪽은 1~2명(정글 먼저)이 계속 치고, 강타로 마무리를 노린다
+  objFight(g) {
+    const S = Sim;
+    for (const o of ['drag', 'baron', 'herald', 'grubs']) {
+      if (!S.objUp(g, o) || g.over) continue;
+      const ob = g.obj[o], pit = Rift.pos(S.PIT[o]), f = g.fights.find(x => S.dist(x.at, pit) < 22); if (!f) continue;
+      const mem = [...f.mem].filter(p => !p.dead && !p.fled), B = mem.filter(p => p.side === 'B'), R = mem.filter(p => p.side === 'R'); if (!B.length && !R.length) continue;
+      const pB = this.pWin(g, B, R);
+      for (const [k, us, pw] of [['B', B, pB], ['R', R, 1 - pB]]) {
+        if (pw < .55 && us.length) continue;
+        const hs = S.alive(g, k).filter(p => !p.recall && !((p.cc || 0) > g.t) && S.dist(p.pos, pit) < 10 && Rift.los(p.pos, pit)).sort((a, b) => (b.role === 'JGL') - (a.role === 'JGL')).slice(0, 2);
+        if (!hs.length) continue;
+        ob.prog[k] = (ob.prog[k] || 0) + S.objHit(g, o, hs) * .7; (ob.hitT ||= {})[k] = g.t;
+        if (ob.prog[k] >= S.objNeed(g, o)) { S.objAward(g, o, k); break; }
+      }
+    }
+  },
+  // ---------- 매복 ----------
+  //   혼자 사이드 · 정글에 있는 상대 곁, 상대가 못 보는 부쉬에 정글(중반부터는 서폿도)이 숨어 기다린다. 다가오면 덮친다 (맵 리딩이 좋으면 눈치채고 빠진다)
+  ambushPlan(g) {
+    const S = Sim, m = S.min(g); if (m < 9 || typeof Vision === 'undefined') return;
+    ['B', 'R'].forEach(k => {
+      const s = g.side[k], o = S.other(k);
+      if (s.amb && s.amb.until > g.t) return; s.amb = null;
+      if (this.objSoon(g, k) || S.threat(g, k) || (s.push && s.push.until > g.t)) return;
+      const busy = S.busySet(g), ag = ({ safe: .6, norm: 1, aggr: 1.4 })[s.ins.aggr] || 1;
+      const hs = S.alive(g, k).filter(p => (p.role === 'JGL' || (p.role === 'SUP' && m >= 14)) && p.hp > .6 && !p.recall && !busy.has(p) && !(s.asg || {})[p.p.id] && !S.objFor(g, p, m));
+      for (const h of hs) {
+        if (g.r() > .25 * ag * (1 + this.A(h, 'pathing') * .4)) continue;
+        const vs = S.alive(g, o).filter(v => !v.recall && this.known(g, k, v) && !S.alive(g, o).some(q => q !== v && S.dist(q.pos, v.pos) < 15) && !S.danger(g, k, v.pos, 3) && S.dist(v.pos, h.pos) < 45);
+        for (const v of vs) {
+          const fo = S.fountain(o), bush = Vision.BUSH.filter(([x, y]) => { const b = [x, y], d = S.dist(b, v.pos); return d >= 4 && d <= 12 && !Vision.lit(g, o, b) && !Vision.seen(g, o, b) && S.dist(b, h.pos) < 40; })
+            .sort((a, b) => (S.dist(a, v.pos) + S.dist(a, h.pos) * .3 - (S.dist(a, fo) < S.dist(v.pos, fo) ? 3 : 0)) - (S.dist(b, v.pos) + S.dist(b, h.pos) * .3 - (S.dist(b, fo) < S.dist(v.pos, fo) ? 3 : 0)))[0];
+          if (!bush) continue;
+          s.amb = { id: h.p.id, v: v.p.id, at: [bush[0], bush[1]], until: g.t + 30 }; h.goal = s.amb.at; h.hold = null;
+          return;
+        }
+      }
+    });
+  },
+  ambushTick(g) {
+    const S = Sim;
+    ['B', 'R'].forEach(k => {
+      const s = g.side[k], a = s.amb; if (!a) return;
+      const h = g.pl.find(p => p.p.id === a.id), v = g.pl.find(p => p.p.id === a.v);
+      if (!h || !v || h.dead || v.dead || v.recall || a.until <= g.t || g.fights.some(f => f.mem.has(h))) { s.amb = null; return; }
+      if (S.dist(h.pos, a.at) > 2.2 || S.dist(v.pos, h.pos) > 7.5 || !Rift.los(h.pos, v.pos)) return;
+      if (typeof Vision !== 'undefined' && Vision.seen(g, v.side, h.pos)) { s.amb = null; return; }   // 들켰다
+      s.amb = null;
+      if (g.r() < .12 + this.A(v, 'mapAwareness') * .2) { S.retreat(g, v, 14); return; }   // 눈치채고 빠진다
+      v.cc = Math.max(v.cc || 0, g.t + .8); v.slow = g.t + 2; h.hold = { to: [...v.pos], until: g.t + 2 }; h.dash = g.t + 1;
+      const f = S.fightAt(g, [(h.pos[0] + v.pos[0]) / 2, (h.pos[1] + v.pos[1]) / 2], 10, { where: '매복' });
+      if (f && g.r() < .8) S.say(g, 'cast', `매복! ${S.josa(h.name, '이', '가')} 부쉬에서 ${S.josa(v.name, '을', '를')} 덮칩니다!`);
+    });
+  },
   // 매초 (Sim.step 뒤)
-  tick(g) { this.see(g); this.contact(g); if (g.t % 5 === 0) { this.brain(g); this.macro(g); } },
+  tick(g) { this.see(g); this.ambushTick(g); this.contact(g); this.objFight(g); if (g.t % 5 === 0) { this.brain(g); this.macro(g); this.ambushPlan(g); } },
   // 10초마다 (Sim.decide 앞): 수행력 다시 계산 (시기 곡선 · 조합 시기 · 클러치)
   tick10(g) { g.pl.forEach(p => this.exeOf(g, p)); },
 };
@@ -700,6 +805,9 @@ const Sim2 = {
   W('ultReady', (old, g, p) => g.v2 ? !p.dead && !p.recall && !p.tpCh && p.lvl >= 6 && g.t >= ((p.cd2 || {}).R || 0) : old(g, p));
   W('useUlt', (old, g, p) => { if (!g.v2) return old(g, p); p.cd2.R = g.t + Sim2.cdReal(p, 'R'); p.ultAt = p.cd2.R; });
   W('target', (old, g, p, m) => g.v2 ? Sim2.target(g, p, m, old) : old(g, p, m));
+  W('siegeGo', (old, g, m, k, st) => g.v2 ? Sim2.siegeGo(g, m, k, st) : old(g, m, k, st));
+  W('objHit', (old, g, o, ps) => g.v2 ? Sim2.objHit(g, o, ps, old) : old(g, o, ps));
+  W('objAward', (old, g, o, wk, t0) => g.v2 ? Sim2.objAward(g, o, wk, t0, old) : old(g, o, wk, t0));
   W('decide', (old, g, m) => { if (g.v2) Sim2.tick10(g, m); return old(g, m); });
   W('step', (old, g) => { old(g); if (g.v2 && !g.over) Sim2.tick(g); });
   if (typeof Kits !== 'undefined') { const kt = Kits.tick.bind(Kits); Kits.tick = g => g.v2 ? Sim2.laneTick(g) : kt(g); }
