@@ -594,7 +594,8 @@ const Sim2 = {
   contact(g) {
     const S = Sim, m = S.min(g); if (g.t < 100 || g.over) return;
     const busy = S.busySet(g), free = p => !p.dead && !p.recall && !p.tpCh && !p.fled && !busy.has(p) && !((p.cc || 0) > g.t);
-    for (const a of g.pl) {
+    const order = g.r() < .5 ? g.pl : g.pl.slice().reverse();   /* 매초 어느 쪽부터 볼지 섞는다 */
+    for (const a of order) {
       if (!free(a) || a.hp < .3 || (a.cT || 0) > g.t || S.danger(g, a.side, a.pos, 0)) continue;
       const foes = g.pl.filter(q => q.side !== a.side && free(q) && S.dist(q.pos, a.pos) <= a.rng + .3 && Rift.los(a.pos, q.pos) && this.known(g, a.side, q)
         && !(m < 14 && S.inLane(a) && S.inLane(q) && S.LANE_OF[a.role] === S.LANE_OF[q.role]));   // 라인전 맞상대는 견제(laneTick)에서
@@ -625,8 +626,62 @@ const Sim2 = {
       S.fightAt(g, at, 12, { where: home('B') || home('R') ? '본진' : S.distLane(at, lane) < 6 ? S.laneKo(lane) : '정글' });
     }
   },
+  // ---------- 팀 운영 (5초마다) ----------
+  // 전술은 명령이 아니라 성향: 고른 운영 구도는 '본대를 떠나 사이드에 답하러 가는 문턱'을 움직일 뿐이다.
+  //   사이드에서 상대가 우리 포탑을 칠 때(1~2명) — 막을 수 있는 선수를 보낸다 / 못 막으면 반대편에서 이득을 챙긴다(교환) / 정말 가치가 없으면 내준다
+  //   점수 = 지킬 건물 가치 × 위급함  vs  보내는 비용(인원 × 이동 시간 × 운영 구도 성향 × 곧 나올 오브젝트)
+  SETUP_COST: { five: 2, '14': .8, '131': .65 },
+  structVal(st) { return st.kind === 'inhib' ? 3.2 : st.kind === 'tower' ? [1, 1.6, 2.3][st.i] : 4; },
+  objSoon(g, k) { return ['drag', 'baron', 'herald'].some(o => { const ob = g.obj[o]; return ob && ob.at && (!ob.until || g.t < ob.until) && ob.at - g.t < 60 && (o !== 'baron' || Sim.min(g) >= 20); }); },
+  macro(g) {
+    const S = Sim, m = S.min(g); if (m < 12) return;
+    (g.r() < .5 ? ['B', 'R'] : ['R', 'B']).forEach(k => {
+      const s = g.side[k], o = S.other(k), prev = s.asg || {}; s.asg = {};
+      if (S.threat(g, k) || S.finish(g, k)) return;   // 본진 위기 · 끝낼 기회는 다 같이 (구버전 규칙)
+      const busy = S.busySet(g), used = new Set();
+      for (const lane of S.LANES3) {
+        const st = S.structOf(g, k, lane); if (!st || /nexus/.test(st.kind)) continue;
+        const atk = S.alive(g, o).filter(q => !q.recall && S.dist(q.pos, st.pos) < 18);
+        if (!atk.length || atk.length > 2) continue;   // 3명 이상이면 본대 공성: 수비 규칙(defendSpot) 몫
+        const here = S.alive(g, k).filter(q => !q.recall && S.dist(q.pos, st.pos) < 16);
+        if (here.length && this.pWin(g, here, atk, .6) >= .5) continue;   // 이미 막고 있다
+        const val = this.structVal(st) * (atk.some(q => q.hp > .6) ? 1 : .8);
+        const tf = (this.SETUP_COST[s.ins.setup] ?? 1) * (this.objSoon(g, k) ? 2 : 1) * (s.push && s.push.until > g.t ? 1.5 : 1);
+        const soonO = this.objSoon(g, k), cands = S.alive(g, k).filter(q => !q.recall && !q.tpCh && !busy.has(q) && !used.has(q) && !here.includes(q) && S.dist(q.pos, st.pos) < 80 && !(soonO && S.objFor(g, q, m)))
+          .map(q => ({ q, sc: S.dist(q.pos, st.pos) / 2.4 - this.A(q, 'splitPush') * 10 - this.A(q, 'rotation') * 4 - (['bruiser', 'tank', 'dive'].includes(q.kind) ? 6 : 0) - ((Style.of(q.c) || {}).split || .4) * 10
+            + (q.role === 'SUP' ? 18 : q.role === 'JGL' ? 6 : 0) + (prev[q.p.id] && prev[q.p.id].lane === lane ? -25 : 0) }))
+          .sort((x, y) => x.sc - y.sc).map(x => x.q);
+        const pick = [];
+        for (const c of cands) { pick.push(c); if (this.pWin(g, [...here, ...pick], atk, .6) >= .55 || pick.length >= atk.length + 1) break; }
+        const pw = pick.length ? this.pWin(g, [...here, ...pick], atk, .6) : 0, eta = pick.length ? Math.max(...pick.map(q => S.dist(q.pos, st.pos))) / 2.4 : 99;
+        const cost = tf * pick.length * (eta > 35 ? 1.6 : 1) * (1 - this.A(pick[0] || {}, 'mapAwareness') * .15);
+        if (pw >= .45 && val * 1.6 >= cost) {
+          pick.forEach(q => { used.add(q); s.asg[q.p.id] = { lane, kind: 'def', until: g.t + 15 }; q.goal = this.defSpot(g, q, lane); q.hold = null; });
+          if (!prev[pick[0].p.id] && g.t - (s.defSay || -99) > 180 && g.r() < .5) { s.defSay = g.t; const n = pick[0].name; S.say(g, 'cast', g.r() < .5 ? `${S.josa(n, '이', '가')} ${S.laneKo(lane)} 포탑을 막으러 가는 것 같습니다.` : `${g.side[k].t.short}, ${S.laneKo(lane)} 포탑을 그냥 주지 않습니다. ${n} 이동합니다.`); }
+          continue;
+        }
+        // 막을 수 없으면 반대편에서 이득 (교환): 스플릿 하나가 빠진 만큼 나머지가 숫자에서 앞설 때
+        if (m >= 14 && !(s.push && s.push.until > g.t) && !this.objSoon(g, k) && !Sim.objUp(g, 'baron')) {
+          const rest = S.alive(g, o).filter(q => !atk.includes(q)), us = S.alive(g, k).filter(q => !q.recall && !used.has(q));
+          const l2 = S.LANES3.filter(l => l !== lane).map(l => ({ l, st: S.structOf(g, o, l) })).filter(x => !/nexus/.test(x.st.kind)).sort((a2, b2) => S.dist(a2.st.pos, this.cen(us)) - S.dist(b2.st.pos, this.cen(us)))[0];
+          if (l2 && us.length >= 3 && this.pWin(g, us, rest.filter(q => this.known(g, k, q) || g.r() < .6)) >= .5) {
+            s.push = { lane: l2.l, until: g.t + 45 }; s.trade = g.t;
+            if (g.t - (s.trSay || -99) > 240 && g.r() < .5) { s.trSay = g.t; S.say(g, 'cast', `${s.t.short}, 상대 스플릿은 두고 ${S.laneKo(l2.l)} 쪽에서 이득을 챙기러 갑니다.`); }
+          }
+        }
+      }
+    });
+  },
+  cen(ps) { return ps.length ? [ps.reduce((a, p) => a + p.pos[0], 0) / ps.length, ps.reduce((a, p) => a + p.pos[1], 0) / ps.length] : [50, 50]; },
+  defSpot(g, p, lane) { const st = Sim.structOf(g, p.side, lane), q = Sim.toward(st.pos, p.side, 3); return Sim.clampP([q[0] + p.off[0] * .5, q[1] + p.off[1] * .5]); },
+  // 목적지: 팀 운영이 맡긴 일이 있으면 그것, 아니면 구버전 운영(포지션 · 운영 구도 성향)
+  target(g, p, m, old) {
+    const a = (g.side[p.side].asg || {})[p.p.id];
+    if (a && a.until > g.t && !Sim.threat(g, p.side)) return this.defSpot(g, p, a.lane);
+    return old(g, p, m);
+  },
   // 매초 (Sim.step 뒤)
-  tick(g) { this.see(g); this.contact(g); if (g.t % 5 === 0) this.brain(g); },
+  tick(g) { this.see(g); this.contact(g); if (g.t % 5 === 0) { this.brain(g); this.macro(g); } },
   // 10초마다 (Sim.decide 앞): 수행력 다시 계산 (시기 곡선 · 조합 시기 · 클러치)
   tick10(g) { g.pl.forEach(p => this.exeOf(g, p)); },
 };
@@ -644,6 +699,7 @@ const Sim2 = {
   W('csGive', (old, g, ...a) => g.v2 ? Sim2.csGive(g, ...a) : old(g, ...a));
   W('ultReady', (old, g, p) => g.v2 ? !p.dead && !p.recall && !p.tpCh && p.lvl >= 6 && g.t >= ((p.cd2 || {}).R || 0) : old(g, p));
   W('useUlt', (old, g, p) => { if (!g.v2) return old(g, p); p.cd2.R = g.t + Sim2.cdReal(p, 'R'); p.ultAt = p.cd2.R; });
+  W('target', (old, g, p, m) => g.v2 ? Sim2.target(g, p, m, old) : old(g, p, m));
   W('decide', (old, g, m) => { if (g.v2) Sim2.tick10(g, m); return old(g, m); });
   W('step', (old, g) => { old(g); if (g.v2 && !g.over) Sim2.tick(g); });
   if (typeof Kits !== 'undefined') { const kt = Kits.tick.bind(Kits); Kits.tick = g => g.v2 ? Sim2.laneTick(g) : kt(g); }
