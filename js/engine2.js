@@ -676,10 +676,65 @@ const Sim2 = {
   },
   cen(ps) { return ps.length ? [ps.reduce((a, p) => a + p.pos[0], 0) / ps.length, ps.reduce((a, p) => a + p.pos[1], 0) / ps.length] : [50, 50]; },
   defSpot(g, p, lane) { const st = Sim.structOf(g, p.side, lane), q = Sim.toward(st.pos, p.side, 3); return Sim.clampP([q[0] + p.off[0] * .5, q[1] + p.off[1] * .5]); },
+  // ---------- 웨이브 정리 (5초마다, 12분부터) ----------
+  //   우리 쪽으로 밀려오는 상대 웨이브는 반드시 누군가 지운다. 라인마다 위험도(웨이브 크기 · 슈퍼 미니언 · 노리는 건물 · 거리)를 보고
+  //   가장 알맞은 선수(가까움 · 라인 클리어 · 그 라인 담당 · 서폿은 마지막)를 보낸다. 내부 포탑 · 억제기 · 본진 쪽 웨이브는 오브젝트 · 대치보다 먼저.
+  //   예전에는 팀 운영이 상대 챔피언만 보고 웨이브는 보지 않아, 라인전 뒤 미드에 모여 있는 동안 사이드 웨이브가 쌓여 억제기 · 넥서스를 미니언이 깨는 경기가 많았다 (베타 피드백)
+  WAVE_R: 34,          // 우리 맨 앞 건물에서 이 거리 안으로 들어온 웨이브를 본다
+  waveSpot(g, p, w, lane) { const L = Rift.L[lane].len, sg = p.side === 'B' ? -1 : 1; return Sim.clampP(Rift.lane(lane, w.s + sg * 2.4 / L)); },
+  waveDuty(g) {
+    const S = Sim, m = S.min(g); if (m < 12) return;
+    ['B', 'R'].forEach(k => {
+      const s = g.side[k], o = S.other(k), prev = s.wasg || {}; s.wasg = {};
+      if (S.finish(g, k)) return;   // 끝낼 기회면 다 같이 끝내러 간다
+      const busy = S.busySet(g), def = s.asg || {}, used = new Set(), amb = s.amb && s.amb.until > g.t ? s.amb.id : null;
+      const jobs = [];
+      for (const lane of S.LANES3) {
+        const w = S.frontW(g, lane, o); if (!w || w.n < 1.5) continue;
+        const st = S.structOf(g, k, lane), d = S.dist(w.p, st.pos); if (d > this.WAVE_R && !w.sup) continue;
+        const inner = st.kind !== 'tower' || st.i >= 1, size = w.n * (w.sup ? 1.4 : 1) * (S.buffed(g, o, w.p) ? 1.5 : 1);
+        // 이미 지우고 있는 아군 (웨이브 곁 · 싸우는 중이 아님)
+        const on = S.alive(g, k).filter(q => !q.recall && !q.tpCh && !busy.has(q) && S.dist(q.pos, w.p) <= 9);
+        const clr = on.reduce((a, q) => a + S.pushRate(g, q, m), 0);
+        if (clr * 12 >= size) continue;   // 12초 안에 지울 수 있으면 충분
+        const must = inner || w.sup || size >= 9;   // 안쪽 건물 · 슈퍼 미니언 · 쌓인 웨이브는 반드시
+        jobs.push({ lane, w, st, inner, size, must, need: size - clr * 12, pri: this.structVal(st) * (1 + size / 8) * (1 + Math.max(0, this.WAVE_R - d) / this.WAVE_R) });
+      }
+      jobs.sort((a, b) => b.pri - a.pri);
+      const soon = this.objSoon(g, k), push = s.push && s.push.until > g.t;
+      for (const j of jobs) {
+        const enemies = S.alive(g, o).filter(q => !q.recall && S.dist(q.pos, j.w.p) < 16 && this.known(g, k, q));
+        let left = j.need;
+        const cands = S.alive(g, k).filter(q => !q.recall && !q.tpCh && !busy.has(q) && !used.has(q) && !def[q.p.id] && q.p.id !== amb && S.dist(q.pos, j.w.p) < 90
+            && (q.hp > .35 || (j.must && q.hp > .2))
+            && (j.must || !((soon || push) && S.objFor(g, q, m))))   // 바깥 포탑 웨이브는 오브젝트 · 공성을 깨면서까지 가지 않는다
+          .map(q => ({ q, sc: S.dist(q.pos, j.w.p) / 2.4 - (S.LANE_OF[q.role] === j.lane && q.role !== 'SUP' ? 8 : 0) - (typeof Kits !== 'undefined' ? (Kits.clearOf(q.c) - 1) * 10 : 0)
+            - (['mage', 'arti', 'adc'].includes(q.kind) ? 4 : 0) + (q.role === 'SUP' ? 22 : q.role === 'JGL' ? 6 : 0) - this.A(q, 'rotation') * 4 + (prev[q.p.id] && prev[q.p.id].lane === j.lane ? -20 : 0) }))
+          .sort((x, y) => x.sc - y.sc).map(x => x.q);
+        const pick = [];
+        for (const c of cands) {
+          if (!j.must && S.dist(c.pos, j.w.p) / 2.4 > 30) break;   // 바깥 웨이브는 30초 안에 닿는 선수만
+          pick.push(c); left -= S.pushRate(g, c, m) * 12;
+          if (left <= 0 || pick.length >= (j.must && j.size >= 14 ? 2 : 1)) break;
+        }
+        if (!pick.length) continue;
+        // 상대가 웨이브 곁에 지키고 있으면 혼자 들어가 죽지 않는다 (안쪽 건물은 우리 포탑을 끼고 받는다)
+        if (enemies.length && this.pWin(g, pick, enemies, j.inner ? .4 : 0) < (j.inner ? .3 : .45)) continue;
+        pick.forEach(q => { used.add(q); s.wasg[q.p.id] = { lane: j.lane, kind: 'wave', until: g.t + 12 }; q.goal = this.waveSpot(g, q, j.w, j.lane); q.hold = null; q.gl = null; });
+        s.waveN = (s.waveN || 0) + 1;
+        if (j.must && !prev[pick[0].p.id] && g.t - (s.waveSay || -99) > 150 && g.r() < .35) { s.waveSay = g.t; S.say(g, 'cast', `${S.josa(pick[0].name, '이', '가')} ${S.laneKo(j.lane)} 웨이브를 정리하러 갑니다.`); }
+      }
+    });
+  },
   // 목적지: 팀 운영이 맡긴 일이 있으면 그것, 아니면 구버전 운영(포지션 · 운영 구도 성향)
   target(g, p, m, old) {
     const a = (g.side[p.side].asg || {})[p.p.id];
     if (a && a.until > g.t && !Sim.threat(g, p.side)) return this.defSpot(g, p, a.lane);
+    const wv = (g.side[p.side].wasg || {})[p.p.id];
+    if (wv && wv.until > g.t) {
+      const th = Sim.threat(g, p.side), w = Sim.frontW(g, wv.lane, Sim.other(p.side));
+      if (w && w.n > .5 && (!th || th.lane === wv.lane)) return this.waveSpot(g, p, w, wv.lane);
+    }
     const amb = g.side[p.side].amb; if (amb && amb.id === p.p.id && amb.until > g.t && !Sim.threat(g, p.side)) return amb.at;
     return old(g, p, m);
   },
@@ -843,7 +898,16 @@ const Sim2 = {
     });
   },
   // 매초 (Sim.step 뒤)
-  tick(g) { this.see(g); this.towerEscape(g); this.ambushTick(g); this.contact(g); this.objFight(g); if (g.t % 5 === 0) { this.brain(g); this.macro(g); this.ambushPlan(g); } },
+  // 웨이브를 맡은 선수는 매초 웨이브를 따라간다 (목적지는 10초마다만 다시 정하므로)
+  waveFollow(g) {
+    ['B', 'R'].forEach(k => { const W = g.side[k].wasg; if (!W) return;
+      for (const id in W) { const a = W[id]; if (a.until <= g.t) continue;
+        const p = g.pl.find(q => q.p.id === id && q.side === k); if (!p || p.dead || p.recall || p.tpCh || (p.hold && p.hold.until > g.t)) continue;
+        const th = Sim.threat(g, k); if (th && th.lane !== a.lane) continue;
+        const w = Sim.frontW(g, a.lane, Sim.other(k)); if (!w || w.n <= .5) { delete W[id]; continue; }
+        p.goal = this.waveSpot(g, p, w, a.lane); p.gl = null; } });
+  },
+  tick(g) { this.see(g); this.waveFollow(g); this.towerEscape(g); this.ambushTick(g); this.contact(g); this.objFight(g); if (g.t % 5 === 0) { this.brain(g); this.macro(g); this.waveDuty(g); this.ambushPlan(g); } },
   // 10초마다 (Sim.decide 앞): 수행력 다시 계산 (시기 곡선 · 조합 시기 · 클러치)
   tick10(g) { g.pl.forEach(p => this.exeOf(g, p)); },
 };
