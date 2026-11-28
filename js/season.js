@@ -30,10 +30,11 @@ const Season = {
     return series;
   },
   // 경량 시뮬 (다른 팀끼리의 경기): 주전 평균 OVR + 코치 + 그날 컨디션으로 세트 승패만 빠르게 정한다
-  power(t) { const l = Draft.lineup(t).filter(Boolean), C = typeof Cond !== 'undefined'; return (l.reduce((a, p) => a + (p.ovr || 60) + (C ? Cond.ovr(p) : 0), 0) / (l.length || 1)) - (5 - l.length) * 4 + (Draft.coach(t).r - 10) * .25 + (C ? Cond.team(t, l) : 0); },
+  power(t) { const l = Draft.lineup(t).filter(Boolean), C = typeof Cond !== 'undefined'; return (l.reduce((a, p) => a + (p.ovr || 60) + (C ? Cond.ovr(p) : 0), 0) / (l.length || 1)) - (5 - l.length) * 4 + ((Coach.team(t).draft + Coach.team(t).tactic) / 2 - 10) * .25 + (C ? Cond.team(t, l) : 0); },
   lightSeries(m) {
     const r = Sim.rng((App.state.seed || '') + ':light:' + m.id), t1 = Schedule.team(m.t1), t2 = Schedule.team(m.t2);
-    const p1 = this.power(t1) + (r() - .5) * 5, p2 = this.power(t2) + (r() - .5) * 5, series = { key: m.id, bo: m.bo || 1, games: [] };
+    const cx = t => (Coach.tacticFor(t, m.id, m.bo) - Coach.team(t).tactic) * .25;   // 큰 무대 · 대대대 · 연승연패 특성
+    const p1 = this.power(t1) + cx(t1) + (r() - .5) * 5, p2 = this.power(t2) + cx(t2) + (r() - .5) * 5, series = { key: m.id, bo: m.bo || 1, games: [] };
     let guard = 0;
     while (!this.seriesOver(series) && guard++ < 7) {
       const w1 = r() < 1 / (1 + Math.exp(-(p1 - p2 + (r() - .5) * 4) / 8)), win = w1 ? m.t1 : m.t2, wt = w1 ? t1 : t2;

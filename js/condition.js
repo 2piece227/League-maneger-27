@@ -49,10 +49,11 @@ const Cond = {
         let d;
         if (played.has(p.id) || (!played.size && line.includes(p.id))) {
           // 주전: 이겼는지 · 연승/연패 흐름 · 강철 멘탈
-          const streak = S.streak[tid], iron = typeof Traits !== 'undefined' && Traits.has && Traits.has(p.id, 'iron-mind');
-          let up = .5 + (won ? .12 : -.12) + (streak <= -2 ? -.07 * Math.min(4, -streak - 1) : 0) * (iron ? .3 : 1);
+          const streak = S.streak[tid], iron = typeof Traits !== 'undefined' && Traits.has && Traits.has(p.id, 'iron-mind'), CT = Coach.team(t), cw = CT.traits.has('comeback-will'), ws = CT.traits.has('win-streak');
+          let up = .5 + (won ? .12 : -.12) + (streak <= -2 ? -.07 * Math.min(4, -streak - 1) : 0) * (iron ? .3 : 1) * (cw ? .3 : 1) + (cw && streak <= -2 ? .08 : 0) + (ws && streak >= 2 ? .08 : 0);   // 절치부심 · 승승장구 (코치 특성)
+          const keep = 1.25 - CT.manage / 20 * .5;   // 선수 관리: 떨어지는 폭
           const mag = .5 + Math.floor(r('m') * 5) * .5;                                      // 0.5 ~ 2.5
-          d = r('u') < up ? mag * (streak >= 2 ? 1 + .15 * Math.min(4, streak - 1) : 1) : -mag * (iron ? .5 : 1) * (!won && Traits.cfg ? Traits.fx(p.id, 'lossDrop', 1) : 1);
+          d = r('u') < up ? mag * (streak >= 2 ? 1 + .15 * Math.min(4, streak - 1) * (ws ? 1.5 : 1) : 1) : -mag * Math.max(.5, keep) * (iron ? .5 : 1) * (!won && Traits.cfg ? Traits.fx(p.id, 'lossDrop', 1) : 1);
         } else d = (Math.floor(r('s') * 9) - 4) * .5;                                          // 후보 · 2군: -2 ~ +2
         let nf = Math.max(-a, Math.min(a, this.half(cur * .95 + d)));
         // 통치자: 한 번은 바닥(0 아래)으로 떨어지지 않고 버틴다. 다시 폭의 절반 위로 올라오면 재충전

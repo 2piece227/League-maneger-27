@@ -70,14 +70,10 @@ const Draft = {
   side(S, k) { return this.team(S.teams[k]); },
 
   // ---------- 코치 ----------
-  // 밴픽 역량 1~20: 팀 평판 + 코치마다 고정된 편차. 스태프 중 밴픽 역량이 가장 높은 코치가 밴픽을 맡는다
-  coach(t) {
-    const l = (t.staff || []).map(s => ({ name: s.name, r: this.coachRating(s, t), p: s })).sort((a, b) => b.r - a.r);
-    return l[0] || { name: '코치 없음', r: 6, p: null };
-  },
-  // 직접 정한 밴픽 역량 (나머지 코치는 아래 자동 계산): 양대인(Daeny) 20 · 류(Ryu) 18 · 톰(Tom) 17
-  COACH_FIX: { daeny: 20, ryu: 18, 'tom-im-jae-hyeon': 17 },
-  coachRating(s, t) { if (s && this.COACH_FIX[s.id] != null) return this.COACH_FIX[s.id]; return Math.max(1, Math.min(20, Math.round(7 + Fame.team(t) / 100 * 8 + (G.rand(s.id, 'draft') - .5) * 8))); },
+  // 밴픽 역량: 스태프 중 밴픽 능력치가 가장 높은 코치가 밴픽을 맡는다 (헤드 코치는 ×1.15 — js/coaches.js). 세트 상황(특성)은 coachR
+  coach(t) { const c = Coach.team(t), p = c.by.draft; return p ? { name: p.name, r: c.draft, p } : { name: '코치 없음', r: 6, p: null }; },
+  coachR(S, k) { return Coach.draftR(S, k); },
+  coachRating(s, t) { return Math.round(Coach.val(s, t, 'draft')); },
   grade(r) { return r >= 17 ? '최상급' : r >= 13 ? '우수' : r >= 9 ? '보통' : r >= 5 ? '미흡' : '부족'; },
 
   // ---------- 평가 ----------
@@ -155,7 +151,7 @@ const Draft = {
     let syn = 0, synW = null; S.picks[k].forEach(x => { const v = M.pairs[[nm, Stats.name(x.c)].sort().join('|')] || 0; if (v > syn) { syn = v; synW = x.c; } });
     let counter = 0, cW = null; S.picks[o].forEach(x => { if (openK.includes(x.role) && this.fitsR(c, x.role)) { const m = Stats.matchup(x.role, c, x.c), v = m.wr - .5; if (v > counter) { counter = v; cW = { c: x.c, m }; } } });
     let threat = 0, tW = null; S.picks[k].forEach(x => { if (this.fitsR(c, x.role)) { const m = Stats.matchup(x.role, c, x.c), v = m.wr - .5; if (v > threat) { threat = v; tW = { c: x.c, m }; } } });
-    return { x: [this.metaNow(c), ck.v, co.v, flex, fit, fitO, syn, counter, threat, Stats.wr(c) - .5], ck, co, synW, cW, tW };
+    return { x: [Coach.has(this.side(S, k), 'insight') ? this.metaNow(c) : this.metaNow(c) * .6 + this.blend(nm) * .4, ck.v,   /* 통찰력이 없으면 패치 메타를 늦게 따라간다 */ co.v, flex, fit, fitO, syn, counter, threat, Stats.wr(c) - .5], ck, co, synW, cW, tW };
   },
   // 게임 안 메타: 시즌 전체 픽밴 비율을 기준으로, 2주마다 바뀌는 "패치"가 챔피언마다 위아래로 흔든다 (같은 메타가 시즌 내내 고정되지 않게)
   // 시즌 메타 = 2026 프로 밴픽률 70% + 상위권 솔랭 밴픽률 30% (솔랭 자료 data/soloq-meta.json 이 없으면 프로만)
@@ -199,20 +195,20 @@ const Draft = {
   suggest(S, k, n = 3) {
     if (!this.M) return this.suggestOld(S, k, n);
     const i = S.step, kind = this.ORDER[i][1], w = ((this.M.by_mode || {}).fearless || this.M.phases)[this.PHASE_OF(i)] || this.M.phases[this.PHASE_OF(i)],   // 게임은 피어리스 규칙이라 피어리스 시기 가중치
-      taken = this.taken(S), r20 = this.coach(this.side(S, k)).r / 20;
+      taken = this.taken(S), r20 = this.coachR(S, k) / 20, joker = Coach.has(this.side(S, k), 'joker');
     const insight = .5 + .5 * r20, W = w.map((v, j) => [2, 7, 8].includes(j) ? v * insight : v);
     const out = [];
     Champions.list.forEach(ch => {
       const c = ch.id; if (taken.has(c)) return;
       const f = this.feats(S, k, c); if (kind === 'pick' && !f.x[4]) return;
-      out.push({ c, f, s: W.reduce((a, v, j) => a + v * f.x[j], 0) + (kind === 'pick' ? this.slotRole(S, c, k) : 0) + (kind === 'ban' ? this.planBan(S, k, c) : 0) + (G.rand(`${S.id}:${i}:${k}:${c}`, 'cn') - .5) * (1 - r20) * 1.6 });
+      out.push({ c, f, s: W.reduce((a, v, j) => a + v * f.x[j], 0) + (kind === 'pick' ? this.slotRole(S, c, k) : 0) + (kind === 'ban' ? this.planBan(S, k, c) : 0) + (G.rand(`${S.id}:${i}:${k}:${c}`, 'cn') - .5) * Math.max(0, 1 - r20) * 1.6 + (joker && kind === 'pick' && f.x[0] < .08 ? f.x[1] * .5 : 0) });   // 조커픽: 메타 밖이어도 선수가 잘하는 챔피언
     });
     out.sort((a, b) => b.s - a.s);
     return out.slice(0, n).map(x => ({ c: x.c, s: x.s, role: kind === 'pick' ? this.bestRole(S, k, x.c) : undefined, why: this.reasons(x, W, kind) }));
   },
   // (모델 파일이 없을 때 쓰는 예전 규칙)
   suggestOld(S, k, n = 3) {
-    const step = this.ORDER[S.step], taken = this.taken(S), co = this.coach(this.side(S, k)), r20 = co.r / 20;
+    const step = this.ORDER[S.step], taken = this.taken(S), r20 = this.coachR(S, k) / 20;
     const noise = c => (G.rand(`${S.id}:${S.step}:${k}:${c}`, 'cn') - .5) * (1 - r20) * .5;
     const opp = k === 'B' ? 'R' : 'B', out = [];
     Champions.list.forEach(ch => {
@@ -271,7 +267,7 @@ const Draft = {
     let pick = list[0];
     if (this.M && list.length) {
       // 학습한 점수 = 프로가 고를 확률(로그). 그 확률대로 하나를 뽑아 실제처럼 매번 조금씩 다른 밴픽이 나온다. 코치 역량이 높을수록 1순위에 가깝게
-      const T = 1.15 - this.coach(this.side(S, k)).r / 20 * .25,   // 1.0 = 프로 선택 분포 그대로 (역량 13 코치 ≈ 1.0)
+      const T = 1.15 - this.coachR(S, k) / 20 * .25,   // 1.0 = 프로 선택 분포 그대로 (역량 13 코치 ≈ 1.0)
         mx = list[0].s, ws = list.map(x => Math.exp((x.s - mx) / T)), tot = ws.reduce((a, b) => a + b, 0);
       let r = G.rand(S.id + ':' + S.step, 'ai') * tot; for (let j = 0; j < list.length; j++) { r -= ws[j]; if (r <= 0) { pick = list[j]; break; } }
     } else if (G.rand(S.id + S.step, 'ai') < .2 && list[1]) pick = list[1];
@@ -343,7 +339,7 @@ const Draft = {
   // 코치가 고르는 전술: 적합도 1위 (역량이 낮으면 가끔 2위). 라커룸에서 정한 공략 라인이 있으면 정글은 갱킹, 그 라인은 압박
   coachTac(S, k) {
     const t = this.coachTac0(S, k), pl = this.plan(S, k), c = Style.comp(S.picks[k].map(x => x.c)), top = S.picks[k].find(x => x.role === 'TOP'), ts = top ? Style.of(top.c) : null;
-    const r20 = this.coach(this.side(S, k)).r / 20, sharp = G.rand(S.id + k, 'ins') < .4 + r20 * .6;     // 역량이 낮으면 세부 지시를 덜 맞춘다
+    const r20 = this.coachR(S, k) / 20, sharp = G.rand(S.id + k, 'ins') < .4 + r20 * .6;     // 역량이 낮으면 세부 지시를 덜 맞춘다
     const I = { ...this.PRESET[t.team], focus: 'none' };
     if (sharp) {
       if (ts) I.setup = ts.split > .55 ? (c.fight < .5 ? '131' : '14') : c.fight > .58 ? 'five' : I.setup;
@@ -358,7 +354,7 @@ const Draft = {
     return t;
   },
   coachTac0(S, k) {
-    const r20 = this.coach(this.side(S, k)).r / 20, best = (fits, key) => { const l = Object.entries(fits).sort((a, b) => b[1] - a[1]); return (G.rand(S.id + key + k, 'tac') < (1 - r20) * .6 && l[1] ? l[1] : l[0])[0]; };  // 역량 13이면 약 20% 확률로 2순위
+    const r20 = this.coachR(S, k) / 20, best = (fits, key) => { const l = Object.entries(fits).sort((a, b) => b[1] - a[1]); return (G.rand(S.id + key + k, 'tac') < (1 - r20) * .6 && l[1] ? l[1] : l[0])[0]; };  // 역량 13이면 약 20% 확률로 2순위
     return { team: best(this.teamFits(S, k), 'team'), roles: Object.fromEntries(G.ROLES.map(r => [r, best(this.roleFits(S, k, r), r)])) };
   },
   initTactics(S) {

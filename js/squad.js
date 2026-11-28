@@ -153,7 +153,7 @@ const Squad = {
     App.db.teams.filter(t => t.league === 'LCK' || t.id === App.state.teamId).forEach(t => {
       this.seedAcademy(t);
       const mine = t.id === App.state.teamId, list = () => Object.values(G2).filter(g => g.org === t.id && (!mine || (this.moves()[g.id] || 'academy') === 'academy'));
-      const n = 1 + (G.rand(t.id + today, 'yn') < .35 + this.q(t.id) / 400 ? 1 : 0);    // 수준 높은 아카데미는 2명 들어올 때가 많다
+      const n = 1 + (G.rand(t.id + today, 'yn') < .35 + this.q(t.id) / 400 + (Coach.has(t, 'scout-eye') ? .3 : 0) ? 1 : 0);   // 유망주 감별사: 유스가 더 자주    // 수준 높은 아카데미는 2명 들어올 때가 많다
       const added = Array.from({ length: n }, (_, i) => this.youth(t, today + i, [16, 17], [40, 55]));
       // 정리: 20세 이상인데 OVR 60 미만 · 18세 이상인데 성장이 멈췄고 OVR 58 미만 · 계약 만료(OVR 62 미만) · 정원(8명) 초과는 잠재력 낮은 순
       const out = [];
@@ -292,7 +292,7 @@ const Squad = {
   // 우리 코치는 ±3 안팎(폭 5), 다른 팀 선수는 스카우트 추정이라 폭이 넓다(10). FM처럼 정확한 잠재력 숫자는 보여 주지 않는다
   potRange(p, wide) {
     if (p.pa == null) return '-';
-    const v = Math.min(99, this.toOvr(p.pa, p.role)), w = wide ? 10 : 5, lo = Math.max(p.ovr || 0, v - Math.round(w * .6) - Math.round(G.rand(p.id, 'pe')));   // 실제 최고치를 가운데쯤 감싼다 (예전엔 위로 치우쳐 최고치보다 3~4 높게 보였다)
+    const v = Math.min(99, this.toOvr(p.pa, p.role)), w = wide ? 10 : Coach.has(Coach.teamOf(p), 'scout-eye') ? 2 : 5, lo = Math.max(p.ovr || 0, v - Math.round(w * .6) - Math.round(G.rand(p.id, 'pe')));   // 실제 최고치를 가운데쯤 감싼다 (예전엔 위로 치우쳐 최고치보다 3~4 높게 보였다)
     return lo >= 99 ? '99' : `${lo}~${Math.min(99, lo + w)}`;
   },
   stars(p) { return p.ca != null ? `${UI.stars(Attributes.stars(p.ca))}` : '-'; },
@@ -393,7 +393,7 @@ const Squad = {
   grow(p, lv, mult = 1) {
     if (p.ca == null || p.pa == null || !p.attributes) return;
     const ageMul = (p.age || 20) <= 18 ? 1.25 : (p.age || 20) <= 21 ? 1 : (p.age || 20) <= 24 ? .6 : (p.age || 20) <= 26 ? .3 : 0;
-    const d = Math.max(0, p.pa - p.ca) * (mult === 1 ? this.GROW[lv] * (.5 + G.rand(p.id + Clock.today(), 'grow')) : mult) * ageMul;
+    const d = Math.max(0, p.pa - p.ca) * (mult === 1 ? this.GROW[lv] * (.5 + G.rand(p.id + Clock.today(), 'grow')) : mult) * ageMul * Coach.devMul(p, lv);   // 육성 능력치 · 특성 (js/coaches.js)
     if (d <= 0) return;
     p.ca = Math.min(p.pa, p.ca + d);
     ['physical', 'macro', 'mental', 'role'].forEach(g => Object.keys(p.attributes[g] || {}).forEach(k => {
@@ -415,7 +415,7 @@ const Squad = {
     return lv === 'first' ? .5 : 1;                                                             // 1군 벤치는 느리다 (2군은 2군 경기로)
   },
   ageReal(p, age) {
-    const down = Math.min(1.2, (age - 26) * .3) / 365, up = age <= 31 ? .25 / 365 : 0;
+    const down = Math.min(1.2, (age - 26) * .3) / 365 * (Coach.has(Coach.teamOf(p), 'veteran-care') ? .6 : 1), up = age <= 31 ? .25 / 365 : 0;
     Attributes.AGE_DOWN.forEach(k => { if (p.attributes.physical && k in p.attributes.physical) p.attributes.physical[k] = Math.max(1, p.attributes.physical[k] - down); });
     if (up) Attributes.AGE_UP.forEach(k => { if (p.attributes.macro && k in p.attributes.macro) p.attributes.macro[k] = Math.min(20, p.attributes.macro[k] + up); });
     p.ovr = Attributes.overall(p.attributes, p.role); p.ca = this.round(Attributes.raw(p.attributes, p.role));

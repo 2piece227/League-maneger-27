@@ -97,12 +97,13 @@ const Club = {
     const t = this.team(), m = Career.m();
     el.innerHTML = `
       <div class="cr-page">
-        ${Career.head('코칭스태프', `${UI.esc(t.name)} 스태프 · 실제 코칭스태프 명단 기준`)}
+        ${Career.head('코칭스태프', `${UI.esc(t.name)} 스태프 · 능력치마다 가장 뛰어난 코치가 맡습니다 (헤드 코치 ×${Coach.HEAD}) · 특성은 모두 적용`)}
+        ${Coach.teamHtml(t)}
         <div class="sf-grid">
           <div class="card sf-card me"><div class="sf-av">${Faces.manager(m)}</div><b>${UI.esc(m.displayName || m.name)}</b><span>감독 (나)</span><small>${Career.contract(m, t).from.replace(/-/g, '.')} 부임</small></div>
-          ${(t.staff || []).map(s => { const [cs, cc] = Player.contractState(s); return `
-            <div class="card sf-card" data-pid="${s.id}">${G.face(s, 'sf-photo')}<b>${UI.esc(s.name)}</b><span>코치${Draft.coach(t).p === s ? ' · 밴픽 담당' : ''}</span>
-              <span class="sf-draft">밴픽 역량 <b>${Draft.coachRating(s, t)}</b>/20 · ${Draft.grade(Draft.coachRating(s, t))}</span>
+          ${(t.staff || []).map(s => { const [cs, cc] = Player.contractState(s), CT = Coach.team(t), lead = Coach.STATS.filter(([k]) => CT.by[k] === s).map(([, l]) => l); return `
+            <div class="card sf-card" data-pid="${s.id}">${G.face(s, 'sf-photo')}<b>${UI.esc(s.name)}</b><span>${CT.head === s ? '헤드 코치' : '코치'}${lead.length ? ' · ' + lead.join('·') + ' 담당' : ''}</span>
+              ${Coach.statsHtml(s, t)}
               <small>${G.flag(s.nation)} ${UI.esc(s.nativeName || s.realName || '')}</small>
               <span class="ct-st ${cc}">${cs}</span></div>`; }).join('')}
           ${this.VACANT.map(([r, d]) => `<div class="card sf-card empty"><div class="sf-photo pl-ph-empty">+</div><b>${r}</b><span>${d}</span><button class="btn-ghost sf-hire">채용 공고</button></div>`).join('')}
@@ -124,7 +125,7 @@ const Club = {
       return { slot, cat, st, value: B * (i === 0 ? .14 : .05) * (.7 + r * .6), end: `${Clock.year() + 1 + (i % 2)}-12-31` };
     });
   },
-  sponsorIncome(t) { return this.sponsorRows(t).filter(x => x.st !== 'vacant').reduce((s, x) => s + x.value, 0); },
+  sponsorIncome(t) { return this.sponsorRows(t).filter(x => x.st !== 'vacant').reduce((s, x) => s + x.value, 0) * (Coach.has(t, 'star') ? 1.08 : 1); },   // 스타 코치 (코치 특성)
   async sponsors(el) {
     await Portal.ready;
     const t = this.team(), rows = this.sponsorRows(t);

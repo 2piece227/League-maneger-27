@@ -62,7 +62,7 @@ const Persona = {
     const power = Math.pow(typeof Season !== 'undefined' ? Season.power(t) / best : (t.rep || 2) / 5, 6);   // 1위 팀과의 전력 차를 크게 벌려 본다
     const homeLg = p.nation === 'South Korea' ? 'LCK' : p.nation === 'China' ? 'LPL' : null;
     return w.money * pay + w.win * power * 1.4 + w.home * (homeLg ? (t.league === homeLg ? .6 : -.4) : 0) + (t.rep || 2) * .05
-      + (fromId && fromId === t.id ? w.loyal * .8 : 0) + this.likes(p, t) * 1.2;
+      + (fromId && fromId === t.id ? w.loyal * .8 : 0) + this.likes(p, t) * 1.2 + (Coach.has(t, 'network') ? .25 : 0);   // 인맥왕 (코치 특성)
   },
   // 지금 이 팀과는 이야기조차 하지 않는다: 'homecoming' 친정팀이 아직 그 자리를 비워 두고 있다 · 'oneclub' 원 소속팀과 먼저 ·
   //   'home' 스토브 초반엔 익숙한 리그만 · 'win' 우승을 노리는 최상위 선수가 리그 하위권 팀을 스토브 초반에 거절. 이유 키 또는 null
@@ -91,7 +91,7 @@ const Persona = {
     if (P.tag === 'oneclub' && P.club === t.id) return true;
     if (P.tag === 'career' || (P.tag === 'homecoming' && !P.fav.includes(t.id)) || (P.tag === 'coach' && !this.likes(p, t))) return false;
     const cl = p.level === 'cl', r = G.rand(p.id + key, 'stay');
-    return r < (cl ? .85 : .55 + P.w.loyal * .45 + ((t.rep || 2) - 3) * .05 - (P.w.win > .5 && (t.rep || 2) <= 3 ? .2 : 0));
+    return r < (cl ? .85 : (Coach.has(t, 'network') ? .08 : 0) + .55 + P.w.loyal * .45 + ((t.rep || 2) - 3) * .05 - (P.w.win > .5 && (t.rep || 2) <= 3 ? .2 : 0));
   },
   // 스카우트 보고 한 줄 (숫자 없이)
   line(p) {

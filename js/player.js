@@ -80,7 +80,7 @@ const Player = {
             ${p.role !== 'COACH' ? `<h4>특성</h4>${Traits.rows(p.id)}` : ''}
             ${p.role !== 'COACH' ? `<h4>챔피언 폭 <small>최근 3시즌 프로 경기</small></h4>
               ${pool.length ? `<div class="ms-sigs pp-pool">${pool.slice(0, 8).map(e => Mastery.chip(e, true)).join('')}</div>` : '<p class="ms-none">프로 경기 기록이 없습니다.</p>'}
-              <a class="pp-link" href="#roster-mastery">숙련도 자세히 →</a>` : `<h4>코칭 정보</h4><p class="ms-none">직책 구분 정보가 아직 없습니다.</p>`}
+              <a class="pp-link" href="#roster-mastery">숙련도 자세히 →</a>` : `<h4>코칭 정보</h4>${Coach.statsHtml(p, t, true)}`}
           </div>
         </div>
         ${p.attributes && p.role !== 'COACH' ? `<div class="pp-attrs"><h4>능력치 <small>OVR ${p.ovr} · 기술 40% 운영 30% 멘탈 10% 특화 20%</small></h4>${Attributes.table(p.attributes, p.role)}</div>` : ''}

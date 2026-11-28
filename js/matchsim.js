@@ -243,7 +243,8 @@ const Sim = {
     ['B', 'R'].forEach(k => {
       const t = Draft.side(S, k), co = Draft.coach(t), picks = S.picks[k];
       let syn = 0; picks.forEach((a, i) => picks.slice(i + 1).forEach(b => { const q = Stats.synergy(a.role, a.c, b.role, b.c); if (q) syn += q.wr - .5; }));
-      g.side[k] = { k, t, coach: co.r, kills: 0, syn, fit: Draft.fitTotal(S, k) || 50, form: (r() - .5) * 2,   // 그날의 작은 흔들림. 선수 컨디션 · 팀합 · 소통은 js/condition.js
+      g.side[k] = { k, t, coach: Coach.tacticFor(t, S.series && S.series.key, S.series && S.series.bo), ct: Coach.team(t), kills: 0,   // 전술 능력치 (js/coaches.js)
+        syn, fit: Draft.fitTotal(S, k) || 50, form: (r() - .5) * 2,   // 그날의 작은 흔들림. 선수 컨디션 · 팀합 · 소통은 js/condition.js
         tac: (S.tactics[k] || {}).team || 'bal', comp: Style.comp(picks.map(x => x.c)),
         towers: { top: 3, mid: 3, bot: 3 }, inhib: { top: 1, mid: 1, bot: 1 }, nexusT: 2, down: 0,
         thp: { top: [1, 1, 1], mid: [1, 1, 1], bot: [1, 1, 1] }, ihp: { top: 1, mid: 1, bot: 1 }, ntp: [1, 1], nxhp: 1,
@@ -360,7 +361,7 @@ const Sim = {
     // 클러치 · 중꺾마: 지고 있을 때 오른다 (OVR 환산 → 전투력 0.6배)
     const ld = this.lead(g, k); if (ld < -3000) v += ps.reduce((a, p) => a + ((p.fx || {}).behindOvr || 0) + Math.min(((p.fx || {}).behindScale || 0), -ld / 2000), 0) / ps.length * .6;
     v += m < 14 ? (c.early - .4) * 10 : m < 26 ? ((c.fight + c.engage) / 2 - .4) * 9 : (c.late - .4) * 10;
-    v += (s.coach - 10) * .15;   // 전술 적합도 보너스는 없다: 전술은 경기 중 판단(교전·오브젝트·운영·목표·시야)으로만 결과에 닿는다
+    v += (s.coach - 10) * .2;   // 전술 적합도 보너스는 없다: 전술은 경기 중 판단(교전·오브젝트·운영·목표·시야)으로만 결과에 닿는다
     v += Math.max(-this.SNOW_MAX, Math.min(this.SNOW_MAX, this.lead(g, k) / 1000 * this.SNOW));   // 스노우볼 (실제: 이긴 팀 골드 +1만, 킬 2배)
     v += 6 * ps.filter(p => this.baronOn(g, p)).length / ps.length;   // 바론 버프는 가진 선수만큼
     v += this.dragPow(s);

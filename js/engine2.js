@@ -45,7 +45,8 @@ const Sim2 = {
   // 팀 수행력: 그날 컨디션 · 시너지 · 팀합 · 코치 · 조합의 시기
   teamPP(g, k) {
     const s = g.side[k], c = s.comp, m = Sim.min(g);
-    let v = s.form + s.syn * 8 + (s.team || 0) + (s.coach - 10) * .15;
+    let v = s.form + s.syn * 8 + (s.team || 0) + (s.coach - 10) * .2;
+    if (s.ct && s.ct.traits.has('comeback-arch') && Sim.lead(g, k) < -2000) v += 1.5;   // 역전의 설계자 (코치 특성)
     v += m < 14 ? (c.early - .4) * 10 : m < 26 ? ((c.fight + c.engage) / 2 - .4) * 9 : (c.late - .4) * 10;
     return v;
   },
@@ -115,7 +116,8 @@ const Sim2 = {
     return this.K * (a.exe || 1) * (a.ff && a.ff.id === g.fNow ? a.ff.v : 1) * this.buff(g, a) * (af.dmg || 1) * (af.finish && v.hp < .35 ? af.finish : 1) * (af.firstBlood && !g.kills.length ? af.firstBlood : 1)
       * (vf.lateGuard && m >= 25 ? vf.lateGuard : 1) * (kit ? .88 : 1) * guard * (v.role === 'TOP' ? 1 - this.A(v, 'durability') * .05 : 1)
       * (a.km && a.km.until > t ? a.km.v : 1) * (v.vuln && v.vuln.until > t ? v.vuln.v : 1) * ((a.exh || 0) > t ? .6 : 1)
-      * (!skill && v.fled ? .7 : 1);
+      * (!skill && v.fled ? .7 : 1)
+      * (g.side[a.side].ct && g.side[a.side].ct.traits.has('teamfight') && ((g.fights.find(f => f.id === g.fNow) || {}).size || 0) >= 8 ? 1.05 : 1);   // 한타 설계자 (코치 특성)
   },
   // 피해 주기: 보호막 → 체력 → 처치 (킬은 그 싸움에서 준 피해 비중대로, 구버전과 같은 기준)
   deal(g, a, v, fr, f, opt = {}) {
@@ -753,7 +755,7 @@ const Sim2 = {
     const tanked = S.minNear(g, k, st.pos, S.TW_R + .5).reduce((a, w) => a + w.n, 0) >= 2;
     const tw = (tanked ? .25 : .75) * (st.kind === 'nexusT' || st.i >= 1 ? 1.15 : 1);
     const pw = this.pWin(g, atk, def, -tw), ag = ({ safe: .05, norm: 0, aggr: -.05 })[g.side[k].ins.aggr] || 0;
-    const need = (nx ? .55 : .62) - (nx && wait >= 40 ? .08 : 0) + ag - atk.reduce((a, p) => a + this.A(p, 'objective'), 0) / atk.length * .04;
+    const need = (nx ? .55 : .62) - (nx && wait >= 40 ? .08 : 0) - (g.side[k].ct && g.side[k].ct.traits.has('macro-god') ? .04 : 0) + ag - atk.reduce((a, p) => a + this.A(p, 'objective'), 0) / atk.length * .04;
     const go = pw >= need || (!def.length && atk.length >= 3);
     if (!go) { if (nx && (wait >= 90 || (wait >= 15 && pw < .25))) giveUp(); return false; }
     const front = ['tank', 'bruiser', 'dive'];

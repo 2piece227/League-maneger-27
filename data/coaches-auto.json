@@ -1,0 +1,1322 @@
+{
+ "_note": "tools/coach-auto.py가 만든 코치 능력치 · 특성. 수동 값(coaches.json)이 있으면 그쪽이 우선.",
+ "coaches": {
+  "edo-park-jun-seok": {
+   "draft": 17,
+   "manage": 16,
+   "tactic": 13,
+   "develop": 13,
+   "traits": [
+    "red-side",
+    "win-streak"
+   ],
+   "head": true
+  },
+  "lira": {
+   "draft": 12,
+   "manage": 10,
+   "tactic": 14,
+   "develop": 12,
+   "traits": [],
+   "head": false
+  },
+  "rather": {
+   "draft": 14,
+   "manage": 13,
+   "tactic": 12,
+   "develop": 19,
+   "traits": [
+    "insight"
+   ],
+   "head": true
+  },
+  "ggoong": {
+   "draft": 12,
+   "manage": 13,
+   "tactic": 14,
+   "develop": 12,
+   "traits": [
+    "teamfight",
+    "scout-eye"
+   ],
+   "head": true
+  },
+  "minit": {
+   "draft": 17,
+   "manage": 11,
+   "tactic": 13,
+   "develop": 9,
+   "traits": [
+    "teamfight",
+    "macro-god",
+    "pillar"
+   ],
+   "head": false
+  },
+  "cvmax": {
+   "draft": 16,
+   "manage": 14,
+   "tactic": 19,
+   "develop": 17,
+   "traits": [
+    "comeback-will"
+   ],
+   "head": true
+  },
+  "hachani": {
+   "draft": 14,
+   "manage": 16,
+   "tactic": 13,
+   "develop": 12,
+   "traits": [
+    "dice",
+    "pillar"
+   ],
+   "head": false
+  },
+  "poohmandu": {
+   "draft": 13,
+   "manage": 10,
+   "tactic": 14,
+   "develop": 13,
+   "traits": [
+    "zhuge"
+   ],
+   "head": false
+  },
+  "lyn": {
+   "draft": 14,
+   "manage": 16,
+   "tactic": 16,
+   "develop": 12,
+   "traits": [
+    "scout-eye",
+    "win-streak"
+   ],
+   "head": false
+  },
+  "nova-park-chan-ho": {
+   "draft": 14,
+   "manage": 16,
+   "tactic": 15,
+   "develop": 16,
+   "traits": [
+    "pillar",
+    "network",
+    "comeback-will"
+   ],
+   "head": false
+  },
+  "ryu": {
+   "draft": 13,
+   "manage": 14,
+   "tactic": 19,
+   "develop": 14,
+   "traits": [
+    "macro-god"
+   ],
+   "head": true
+  },
+  "duke-lee-ho-seong": {
+   "draft": 11,
+   "manage": 12,
+   "tactic": 11,
+   "develop": 12,
+   "traits": [],
+   "head": false
+  },
+  "ssong": {
+   "draft": 11,
+   "manage": 16,
+   "tactic": 11,
+   "develop": 11,
+   "traits": [
+    "veteran-care",
+    "comeback-arch"
+   ],
+   "head": true
+  },
+  "homme": {
+   "draft": 16,
+   "manage": 12,
+   "tactic": 16,
+   "develop": 15,
+   "traits": [
+    "teamfight"
+   ],
+   "head": true
+  },
+  "mowgli": {
+   "draft": 14,
+   "manage": 19,
+   "tactic": 13,
+   "develop": 16,
+   "traits": [
+    "pillar",
+    "fearless-pro",
+    "comeback-will"
+   ],
+   "head": true
+  },
+  "sin-yeon-hyeong-mo": {
+   "draft": 19,
+   "manage": 12,
+   "tactic": 14,
+   "develop": 12,
+   "traits": [
+    "comeback-arch"
+   ],
+   "head": false
+  },
+  "joker-cho-jae-eup": {
+   "draft": 17,
+   "manage": 13,
+   "tactic": 11,
+   "develop": 16,
+   "traits": [
+    "comeback-will",
+    "red-side"
+   ],
+   "head": true
+  },
+  "naehyun": {
+   "draft": 14,
+   "manage": 15,
+   "tactic": 14,
+   "develop": 8,
+   "traits": [
+    "veteran-care"
+   ],
+   "head": false
+  },
+  "saroo": {
+   "draft": 15,
+   "manage": 14,
+   "tactic": 12,
+   "develop": 10,
+   "traits": [
+    "sure-plan"
+   ],
+   "head": false
+  },
+  "museong": {
+   "draft": 14,
+   "manage": 10,
+   "tactic": 15,
+   "develop": 16,
+   "traits": [
+    "scout-eye"
+   ],
+   "head": false
+  },
+  "score": {
+   "draft": 14,
+   "manage": 17,
+   "tactic": 14,
+   "develop": 17,
+   "traits": [],
+   "head": true
+  },
+  "sonstar": {
+   "draft": 16,
+   "manage": 13,
+   "tactic": 16,
+   "develop": 13,
+   "traits": [
+    "macro-god",
+    "cl-master"
+   ],
+   "head": false
+  },
+  "chelly-park-seung-jin": {
+   "draft": 16,
+   "manage": 13,
+   "tactic": 10,
+   "develop": 10,
+   "traits": [],
+   "head": false
+  },
+  "crazy-kim-jae-hee": {
+   "draft": 14,
+   "manage": 13,
+   "tactic": 16,
+   "develop": 12,
+   "traits": [
+    "cl-master"
+   ],
+   "head": false
+  },
+  "dandy": {
+   "draft": 14,
+   "manage": 11,
+   "tactic": 14,
+   "develop": 16,
+   "traits": [],
+   "head": true
+  },
+  "easyhoon": {
+   "draft": 13,
+   "manage": 11,
+   "tactic": 15,
+   "develop": 15,
+   "traits": [
+    "fearless-pro"
+   ],
+   "head": false
+  },
+  "mata": {
+   "draft": 15,
+   "manage": 16,
+   "tactic": 11,
+   "develop": 19,
+   "traits": [
+    "mood-maker",
+    "red-side"
+   ],
+   "head": false
+  },
+  "tom-im-jae-hyeon": {
+   "draft": 16,
+   "manage": 13,
+   "tactic": 14,
+   "develop": 15,
+   "traits": [
+    "dice",
+    "pillar",
+    "insight"
+   ],
+   "head": false
+  },
+  "bigwei": {
+   "draft": 17,
+   "manage": 19,
+   "tactic": 16,
+   "develop": 16,
+   "traits": [
+    "macro-god"
+   ],
+   "head": true
+  },
+  "despa1r": {
+   "draft": 9,
+   "manage": 18,
+   "tactic": 14,
+   "develop": 15,
+   "traits": [
+    "scout-eye"
+   ],
+   "head": false
+  },
+  "teacherma": {
+   "draft": 11,
+   "manage": 12,
+   "tactic": 10,
+   "develop": 15,
+   "traits": [],
+   "head": false
+  },
+  "ben": {
+   "draft": 17,
+   "manage": 15,
+   "tactic": 15,
+   "develop": 15,
+   "traits": [
+    "veteran-care",
+    "teamfight",
+    "comeback-will"
+   ],
+   "head": false
+  },
+  "chieh": {
+   "draft": 14,
+   "manage": 15,
+   "tactic": 16,
+   "develop": 11,
+   "traits": [
+    "veteran-care",
+    "sure-plan"
+   ],
+   "head": false
+  },
+  "daeny": {
+   "draft": 14,
+   "manage": 15,
+   "tactic": 17,
+   "develop": 17,
+   "traits": [
+    "insight"
+   ],
+   "head": true
+  },
+  "zyb": {
+   "draft": 19,
+   "manage": 14,
+   "tactic": 12,
+   "develop": 15,
+   "traits": [
+    "sure-plan",
+    "pool-wide",
+    "joker"
+   ],
+   "head": false
+  },
+  "liet": {
+   "draft": 15,
+   "manage": 11,
+   "tactic": 15,
+   "develop": 9,
+   "traits": [
+    "sure-plan"
+   ],
+   "head": false
+  },
+  "maokai-yang-ji-song": {
+   "draft": 11,
+   "manage": 16,
+   "tactic": 15,
+   "develop": 13,
+   "traits": [
+    "macro-god",
+    "pool-wide"
+   ],
+   "head": true
+  },
+  "mni": {
+   "draft": 11,
+   "manage": 15,
+   "tactic": 11,
+   "develop": 18,
+   "traits": [
+    "pool-wide"
+   ],
+   "head": false
+  },
+  "chengz": {
+   "draft": 11,
+   "manage": 12,
+   "tactic": 14,
+   "develop": 8,
+   "traits": [],
+   "head": false
+  },
+  "fury-lee-jin-yong": {
+   "draft": 15,
+   "manage": 12,
+   "tactic": 12,
+   "develop": 13,
+   "traits": [
+    "joker"
+   ],
+   "head": false
+  },
+  "helper-kwon-yeong-jae": {
+   "draft": 15,
+   "manage": 9,
+   "tactic": 13,
+   "develop": 14,
+   "traits": [],
+   "head": true
+  },
+  "kezman": {
+   "draft": 16,
+   "manage": 17,
+   "tactic": 15,
+   "develop": 16,
+   "traits": [
+    "insight"
+   ],
+   "head": true
+  },
+  "tabe": {
+   "draft": 11,
+   "manage": 16,
+   "tactic": 15,
+   "develop": 19,
+   "traits": [
+    "pool-wide",
+    "cl-master"
+   ],
+   "head": true
+  },
+  "xiaobai": {
+   "draft": 14,
+   "manage": 16,
+   "tactic": 12,
+   "develop": 14,
+   "traits": [
+    "cl-master"
+   ],
+   "head": false
+  },
+  "zoom": {
+   "draft": 11,
+   "manage": 14,
+   "tactic": 12,
+   "develop": 17,
+   "traits": [
+    "scout-eye"
+   ],
+   "head": false
+  },
+  "1874": {
+   "draft": 12,
+   "manage": 11,
+   "tactic": 13,
+   "develop": 12,
+   "traits": [
+    "veteran-care"
+   ],
+   "head": true
+  },
+  "chelizi": {
+   "draft": 14,
+   "manage": 5,
+   "tactic": 10,
+   "develop": 12,
+   "traits": [],
+   "head": false
+  },
+  "lvmao": {
+   "draft": 11,
+   "manage": 11,
+   "tactic": 15,
+   "develop": 9,
+   "traits": [
+    "mood-maker"
+   ],
+   "head": true
+  },
+  "xiasu": {
+   "draft": 10,
+   "manage": 8,
+   "tactic": 12,
+   "develop": 14,
+   "traits": [],
+   "head": false
+  },
+  "maizijian": {
+   "draft": 13,
+   "manage": 13,
+   "tactic": 9,
+   "develop": 14,
+   "traits": [],
+   "head": true
+  },
+  "renzhe": {
+   "draft": 13,
+   "manage": 9,
+   "tactic": 8,
+   "develop": 8,
+   "traits": [],
+   "head": false
+  },
+  "694": {
+   "draft": 14,
+   "manage": 16,
+   "tactic": 15,
+   "develop": 9,
+   "traits": [
+    "comeback-will"
+   ],
+   "head": false
+  },
+  "jinjin-jin-guang-hua": {
+   "draft": 17,
+   "manage": 12,
+   "tactic": 12,
+   "develop": 15,
+   "traits": [
+    "scout-eye"
+   ],
+   "head": true
+  },
+  "benny-lien-hsiu-chi": {
+   "draft": 12,
+   "manage": 11,
+   "tactic": 14,
+   "develop": 6,
+   "traits": [],
+   "head": false
+  },
+  "noname-zhou-qi-lin": {
+   "draft": 16,
+   "manage": 12,
+   "tactic": 16,
+   "develop": 12,
+   "traits": [
+    "sure-plan",
+    "pool-wide"
+   ],
+   "head": true
+  },
+  "bobo-he-wen-bo": {
+   "draft": 13,
+   "manage": 14,
+   "tactic": 14,
+   "develop": 15,
+   "traits": [
+    "mood-maker",
+    "sure-plan"
+   ],
+   "head": false
+  },
+  "leo-li-yu-ming": {
+   "draft": 11,
+   "manage": 14,
+   "tactic": 12,
+   "develop": 14,
+   "traits": [
+    "pool-wide",
+    "comeback-will"
+   ],
+   "head": false
+  },
+  "poppy-chang-po-hao": {
+   "draft": 14,
+   "manage": 13,
+   "tactic": 13,
+   "develop": 16,
+   "traits": [
+    "macro-god"
+   ],
+   "head": true
+  },
+  "clearlove": {
+   "draft": 16,
+   "manage": 13,
+   "tactic": 10,
+   "develop": 16,
+   "traits": [],
+   "head": true
+  },
+  "shine-shin-dong-wook": {
+   "draft": 12,
+   "manage": 16,
+   "tactic": 12,
+   "develop": 11,
+   "traits": [],
+   "head": false
+  },
+  "tselin": {
+   "draft": 17,
+   "manage": 10,
+   "tactic": 8,
+   "develop": 14,
+   "traits": [
+    "pillar"
+   ],
+   "head": false
+  },
+  "gaax": {
+   "draft": 10,
+   "manage": 7,
+   "tactic": 14,
+   "develop": 10,
+   "traits": [
+    "dice",
+    "joker"
+   ],
+   "head": false
+  },
+  "grabbz": {
+   "draft": 18,
+   "manage": 13,
+   "tactic": 13,
+   "develop": 17,
+   "traits": [
+    "insight",
+    "cl-master",
+    "dice"
+   ],
+   "head": true
+  },
+  "odoamne": {
+   "draft": 13,
+   "manage": 17,
+   "tactic": 14,
+   "develop": 16,
+   "traits": [
+    "pillar"
+   ],
+   "head": false
+  },
+  "memento": {
+   "draft": 13,
+   "manage": 16,
+   "tactic": 11,
+   "develop": 12,
+   "traits": [
+    "joker",
+    "fearless-pro",
+    "scout-eye"
+   ],
+   "head": false
+  },
+  "perkz": {
+   "draft": 19,
+   "manage": 16,
+   "tactic": 9,
+   "develop": 18,
+   "traits": [
+    "win-streak",
+    "pool-wide"
+   ],
+   "head": true
+  },
+  "rodrigo": {
+   "draft": 15,
+   "manage": 17,
+   "tactic": 14,
+   "develop": 15,
+   "traits": [
+    "comeback-will",
+    "cl-master"
+   ],
+   "head": false
+  },
+  "guilhoto": {
+   "draft": 13,
+   "manage": 12,
+   "tactic": 16,
+   "develop": 13,
+   "traits": [
+    "zhuge",
+    "teamfight",
+    "network"
+   ],
+   "head": true
+  },
+  "maxlore": {
+   "draft": 13,
+   "manage": 11,
+   "tactic": 9,
+   "develop": 13,
+   "traits": [],
+   "head": false
+  },
+  "rhuckz": {
+   "draft": 11,
+   "manage": 13,
+   "tactic": 11,
+   "develop": 9,
+   "traits": [
+    "fearless-pro"
+   ],
+   "head": false
+  },
+  "reapered": {
+   "draft": 10,
+   "manage": 13,
+   "tactic": 13,
+   "develop": 12,
+   "traits": [],
+   "head": true
+  },
+  "zeph": {
+   "draft": 13,
+   "manage": 10,
+   "tactic": 10,
+   "develop": 15,
+   "traits": [
+    "sure-plan"
+   ],
+   "head": false
+  },
+  "alphari": {
+   "draft": 11,
+   "manage": 13,
+   "tactic": 13,
+   "develop": 13,
+   "traits": [
+    "teamfight",
+    "pool-wide",
+    "scout-eye"
+   ],
+   "head": false
+  },
+  "independent": {
+   "draft": 15,
+   "manage": 13,
+   "tactic": 13,
+   "develop": 10,
+   "traits": [
+    "fearless-pro"
+   ],
+   "head": false
+  },
+  "melzhet": {
+   "draft": 18,
+   "manage": 9,
+   "tactic": 14,
+   "develop": 13,
+   "traits": [
+    "scout-eye"
+   ],
+   "head": true
+  },
+  "gotoone": {
+   "draft": 10,
+   "manage": 12,
+   "tactic": 11,
+   "develop": 11,
+   "traits": [],
+   "head": false
+  },
+  "lopon": {
+   "draft": 10,
+   "manage": 11,
+   "tactic": 14,
+   "develop": 12,
+   "traits": [],
+   "head": false
+  },
+  "therock": {
+   "draft": 8,
+   "manage": 11,
+   "tactic": 13,
+   "develop": 18,
+   "traits": [
+    "macro-god",
+    "zhuge",
+    "pool-wide"
+   ],
+   "head": true
+  },
+  "cabochard": {
+   "draft": 10,
+   "manage": 15,
+   "tactic": 8,
+   "develop": 14,
+   "traits": [
+    "pool-wide"
+   ],
+   "head": false
+  },
+  "jujutw0": {
+   "draft": 9,
+   "manage": 11,
+   "tactic": 9,
+   "develop": 12,
+   "traits": [],
+   "head": false
+  },
+  "menq": {
+   "draft": 8,
+   "manage": 8,
+   "tactic": 14,
+   "develop": 14,
+   "traits": [
+    "pool-wide"
+   ],
+   "head": false
+  },
+  "striker-yanis-kella": {
+   "draft": 13,
+   "manage": 10,
+   "tactic": 12,
+   "develop": 9,
+   "traits": [
+    "pool-wide"
+   ],
+   "head": true
+  },
+  "baguette-coach": {
+   "draft": 15,
+   "manage": 14,
+   "tactic": 8,
+   "develop": 15,
+   "traits": [
+    "sure-plan"
+   ],
+   "head": true
+  },
+  "duffman": {
+   "draft": 10,
+   "manage": 13,
+   "tactic": 12,
+   "develop": 10,
+   "traits": [],
+   "head": false
+  },
+  "own3r-david-rodriguez-de-la-torre": {
+   "draft": 13,
+   "manage": 11,
+   "tactic": 6,
+   "develop": 11,
+   "traits": [],
+   "head": true
+  },
+  "hidon": {
+   "draft": 12,
+   "manage": 15,
+   "tactic": 9,
+   "develop": 9,
+   "traits": [],
+   "head": false
+  },
+  "mithy": {
+   "draft": 14,
+   "manage": 8,
+   "tactic": 14,
+   "develop": 9,
+   "traits": [],
+   "head": false
+  },
+  "nukeduck": {
+   "draft": 12,
+   "manage": 15,
+   "tactic": 10,
+   "develop": 12,
+   "traits": [
+    "mood-maker",
+    "veteran-care",
+    "red-side"
+   ],
+   "head": true
+  },
+  "arvindir": {
+   "draft": 13,
+   "manage": 9,
+   "tactic": 8,
+   "develop": 10,
+   "traits": [],
+   "head": false
+  },
+  "garih": {
+   "draft": 11,
+   "manage": 12,
+   "tactic": 9,
+   "develop": 11,
+   "traits": [],
+   "head": false
+  },
+  "pad": {
+   "draft": 14,
+   "manage": 17,
+   "tactic": 11,
+   "develop": 8,
+   "traits": [
+    "red-side"
+   ],
+   "head": true
+  },
+  "arrow": {
+   "draft": 16,
+   "manage": 9,
+   "tactic": 13,
+   "develop": 15,
+   "traits": [],
+   "head": false
+  },
+  "iwdominate": {
+   "draft": 15,
+   "manage": 11,
+   "tactic": 7,
+   "develop": 17,
+   "traits": [
+    "insight",
+    "star"
+   ],
+   "head": true
+  },
+  "veigar-v2": {
+   "draft": 8,
+   "manage": 14,
+   "tactic": 9,
+   "develop": 14,
+   "traits": [],
+   "head": false
+  },
+  "yamatocannon": {
+   "draft": 14,
+   "manage": 12,
+   "tactic": 12,
+   "develop": 15,
+   "traits": [
+    "scout-eye"
+   ],
+   "head": false
+  },
+  "emi": {
+   "draft": 14,
+   "manage": 5,
+   "tactic": 13,
+   "develop": 10,
+   "traits": [],
+   "head": false
+  },
+  "swiffer": {
+   "draft": 11,
+   "manage": 13,
+   "tactic": 15,
+   "develop": 12,
+   "traits": [
+    "big-stage"
+   ],
+   "head": true
+  },
+  "ido": {
+   "draft": 12,
+   "manage": 10,
+   "tactic": 16,
+   "develop": 12,
+   "traits": [
+    "pool-wide"
+   ],
+   "head": true
+  },
+  "apollo-apollo-price": {
+   "draft": 8,
+   "manage": 10,
+   "tactic": 11,
+   "develop": 13,
+   "traits": [
+    "big-stage"
+   ],
+   "head": false
+  },
+  "thinkcard": {
+   "draft": 12,
+   "manage": 15,
+   "tactic": 16,
+   "develop": 16,
+   "traits": [
+    "veteran-care",
+    "cl-master",
+    "teamfight"
+   ],
+   "head": true
+  },
+  "reignover": {
+   "draft": 15,
+   "manage": 15,
+   "tactic": 17,
+   "develop": 16,
+   "traits": [
+    "scout-eye"
+   ],
+   "head": true
+  },
+  "rigby": {
+   "draft": 13,
+   "manage": 13,
+   "tactic": 10,
+   "develop": 12,
+   "traits": [
+    "veteran-care"
+   ],
+   "head": false
+  },
+  "dayos": {
+   "draft": 11,
+   "manage": 15,
+   "tactic": 13,
+   "develop": 10,
+   "traits": [
+    "pillar",
+    "teamfight",
+    "big-stage"
+   ],
+   "head": false
+  },
+  "goldenglue": {
+   "draft": 10,
+   "manage": 12,
+   "tactic": 8,
+   "develop": 15,
+   "traits": [
+    "insight"
+   ],
+   "head": true
+  },
+  "damonte": {
+   "draft": 9,
+   "manage": 9,
+   "tactic": 10,
+   "develop": 11,
+   "traits": [
+    "mood-maker"
+   ],
+   "head": false
+  },
+  "reven-seong-sang-hyeon": {
+   "draft": 12,
+   "manage": 9,
+   "tactic": 16,
+   "develop": 12,
+   "traits": [
+    "big-stage",
+    "zhuge",
+    "teamfight"
+   ],
+   "head": true
+  },
+  "spawn-jake-tiberi": {
+   "draft": 17,
+   "manage": 13,
+   "tactic": 13,
+   "develop": 11,
+   "traits": [
+    "scout-eye",
+    "cl-master"
+   ],
+   "head": true
+  },
+  "spookz": {
+   "draft": 13,
+   "manage": 13,
+   "tactic": 10,
+   "develop": 12,
+   "traits": [],
+   "head": false
+  },
+  "key": {
+   "draft": 10,
+   "manage": 8,
+   "tactic": 6,
+   "develop": 12,
+   "traits": [
+    "red-side"
+   ],
+   "head": false
+  },
+  "cube-kim-chang-seong": {
+   "draft": 8,
+   "manage": 13,
+   "tactic": 11,
+   "develop": 11,
+   "traits": [
+    "comeback-arch"
+   ],
+   "head": false
+  },
+  "rapidstar": {
+   "draft": 11,
+   "manage": 9,
+   "tactic": 12,
+   "develop": 12,
+   "traits": [],
+   "head": true
+  },
+  "sungmin": {
+   "draft": 4,
+   "manage": 10,
+   "tactic": 9,
+   "develop": 9,
+   "traits": [],
+   "head": false
+  },
+  "woong-kim-sun-woong": {
+   "draft": 15,
+   "manage": 12,
+   "tactic": 10,
+   "develop": 9,
+   "traits": [
+    "pillar"
+   ],
+   "head": true
+  },
+  "jerry-kang-sung-jun": {
+   "draft": 9,
+   "manage": 11,
+   "tactic": 8,
+   "develop": 11,
+   "traits": [],
+   "head": false
+  },
+  "ssumday": {
+   "draft": 6,
+   "manage": 14,
+   "tactic": 13,
+   "develop": 12,
+   "traits": [
+    "pool-wide"
+   ],
+   "head": false
+  },
+  "sensation": {
+   "draft": 13,
+   "manage": 11,
+   "tactic": 11,
+   "develop": 13,
+   "traits": [],
+   "head": true
+  },
+  "catch-yun-sang-ho": {
+   "draft": 13,
+   "manage": 9,
+   "tactic": 10,
+   "develop": 10,
+   "traits": [],
+   "head": false
+  },
+  "frozen-kim-tae-il": {
+   "draft": 16,
+   "manage": 10,
+   "tactic": 13,
+   "develop": 9,
+   "traits": [],
+   "head": true
+  },
+  "lilac-jeon-ho-jin": {
+   "draft": 15,
+   "manage": 11,
+   "tactic": 9,
+   "develop": 10,
+   "traits": [],
+   "head": false
+  },
+  "spark-kang-byung-ryul": {
+   "draft": 15,
+   "manage": 10,
+   "tactic": 12,
+   "develop": 11,
+   "traits": [
+    "sure-plan"
+   ],
+   "head": true
+  },
+  "bon0": {
+   "draft": 12,
+   "manage": 10,
+   "tactic": 8,
+   "develop": 9,
+   "traits": [
+    "network"
+   ],
+   "head": false
+  },
+  "dooti": {
+   "draft": 14,
+   "manage": 18,
+   "tactic": 11,
+   "develop": 13,
+   "traits": [
+    "dice",
+    "teamfight",
+    "mood-maker"
+   ],
+   "head": true
+  },
+  "nagne": {
+   "draft": 14,
+   "manage": 11,
+   "tactic": 13,
+   "develop": 11,
+   "traits": [
+    "insight"
+   ],
+   "head": false
+  },
+  "hunter-zhan-xin": {
+   "draft": 10,
+   "manage": 12,
+   "tactic": 13,
+   "develop": 8,
+   "traits": [],
+   "head": false
+  },
+  "nick-zhang-yu": {
+   "draft": 5,
+   "manage": 18,
+   "tactic": 10,
+   "develop": 17,
+   "traits": [
+    "pillar"
+   ],
+   "head": true
+  },
+  "nicolas-perez": {
+   "draft": 6,
+   "manage": 14,
+   "tactic": 12,
+   "develop": 13,
+   "traits": [],
+   "head": true
+  },
+  "seryy": {
+   "draft": 10,
+   "manage": 13,
+   "tactic": 12,
+   "develop": 8,
+   "traits": [
+    "comeback-arch"
+   ],
+   "head": false
+  },
+  "fearlesss": {
+   "draft": 9,
+   "manage": 10,
+   "tactic": 6,
+   "develop": 14,
+   "traits": [],
+   "head": true
+  },
+  "th3antonio": {
+   "draft": 7,
+   "manage": 7,
+   "tactic": 6,
+   "develop": 11,
+   "traits": [],
+   "head": false
+  },
+  "blidzy": {
+   "draft": 14,
+   "manage": 11,
+   "tactic": 9,
+   "develop": 17,
+   "traits": [],
+   "head": true
+  },
+  "fara": {
+   "draft": 12,
+   "manage": 7,
+   "tactic": 9,
+   "develop": 9,
+   "traits": [],
+   "head": false
+  },
+  "nayas": {
+   "draft": 8,
+   "manage": 13,
+   "tactic": 10,
+   "develop": 9,
+   "traits": [],
+   "head": false
+  },
+  "disgrace": {
+   "draft": 7,
+   "manage": 13,
+   "tactic": 10,
+   "develop": 10,
+   "traits": [
+    "mood-maker"
+   ],
+   "head": true
+  },
+  "dan-daniel-hockley": {
+   "draft": 7,
+   "manage": 7,
+   "tactic": 11,
+   "develop": 10,
+   "traits": [],
+   "head": false
+  },
+  "kamikaze": {
+   "draft": 12,
+   "manage": 15,
+   "tactic": 7,
+   "develop": 10,
+   "traits": [],
+   "head": false
+  },
+  "nahovsky": {
+   "draft": 8,
+   "manage": 10,
+   "tactic": 13,
+   "develop": 12,
+   "traits": [],
+   "head": true
+  }
+ }
+}

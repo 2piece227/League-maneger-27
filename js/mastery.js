@@ -80,11 +80,11 @@ const Mastery = {
   // 솔랭: 1군 · 2군 선수가 매일 (시즌 중 3판 · 스토브 6판). 연습 지시를 내린 챔피언은 45%
   soloDay(today) {
     const stove = typeof Market !== 'undefined' && Market.stove(today), n = stove ? 6 : 3;
-    App.db.teams.forEach(t => [...t.players, ...(t.cl || [])].forEach(p => {
+    App.db.teams.forEach(t => { const wide = Coach.has(t, 'pool-wide') ? 1.4 : 1; [...t.players, ...(t.cl || [])].forEach(p => {   // 챔프폭 확장 (코치 특성)
       if (p.role === 'COACH' || p.free) return;
       const pc = typeof SoloQ !== 'undefined' && SoloQ.pracOn ? SoloQ.pracOn(p.id, today) : null, mains = this.mains(p);
-      for (let i = 0; i < n; i++) { const x = G.rand(p.id + today, 'mxs' + i); this.addSolo(p.id, pc && x < .45 ? pc : this.wpick(mains, G.rand(p.id + today, 'mxw' + i)), 1); }
-    }));
+      for (let i = 0; i < n; i++) { const x = G.rand(p.id + today, 'mxs' + i); this.addSolo(p.id, pc && x < .45 ? pc : this.wpick(mains, G.rand(p.id + today, 'mxw' + i)), wide); }
+    }); });
   },
 
   // 다른 화면(프로필·밴픽)에서도 쓰는 조회 함수

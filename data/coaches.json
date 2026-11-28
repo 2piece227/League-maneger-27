@@ -1,0 +1,9 @@
+{
+  "_note": "코치 능력치 수동 값 (1~20). draft 밴픽 · manage 선수 관리 · tactic 전술 · develop 육성. traits는 js/coaches.js의 Coach.TRAITS 키. 여기 있는 코치는 자동 산정(coaches-auto.json)보다 우선. head: 헤드 코치 여부(없으면 자동 산정 값)",
+  "coaches": {
+    "daeny": { "draft": 20, "manage": 17, "tactic": 19, "develop": 16, "traits": ["daedaedae"], "head": true },
+    "ryu": { "draft": 19, "manage": 18, "tactic": 19, "develop": 19, "traits": ["comeback-will"], "head": true },
+    "cvmax": { "draft": 17, "manage": 20, "tactic": 19, "develop": 20, "traits": ["c-lang"], "head": true },
+    "tom-im-jae-hyeon": { "draft": 18, "manage": 20, "tactic": 19, "develop": 17, "traits": ["dice"], "head": true }
+  }
+}

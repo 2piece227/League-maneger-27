@@ -69,8 +69,8 @@ const World = {
       if (k in this.KEYS) { r[k] = clamp(r[k] + v); out.push(`${this.KEYS[k]} ${sign}${v}`); }
       else if (k === 'rep' && App.state.manager) { App.state.manager.reputation = clamp(App.state.manager.reputation + v); out.push(`감독 평판 ${sign}${v}`); }
       else if (k === 'money') { this.ledger().push({ date: Clock.today(), label: ctx.ledger || '기타', amount: v }); out.push(`구단 수입 ${sign}${Player.money(v / 1e8)} 원`); }
-      else if (k === 'morale' && ctx.pid) { const m = this.morale(); m[ctx.pid] = (m[ctx.pid] || 0) + v; out.push(`${ctx.player} 사기 ${sign}${v}`); }
-      else if (k === 'moraleAll') { const m = this.morale(); Roster.team().players.forEach(p => m[p.id] = (m[p.id] || 0) + v); out.push(`선수단 사기 ${sign}${v}`); }
+      else if (k === 'morale' && ctx.pid) { const m = this.morale(); m[ctx.pid] = (m[ctx.pid] || 0) + v * Coach.moraleMul(Roster.team(), v);   /* 선수 관리 · 정신적 지주 */ out.push(`${ctx.player} 사기 ${sign}${v}`); }
+      else if (k === 'moraleAll') { const m = this.morale(), f = Coach.moraleMul(Roster.team(), v); Roster.team().players.forEach(p => m[p.id] = (m[p.id] || 0) + v * f); out.push(`선수단 사기 ${sign}${v}`); }
     });
     return out.join(' · ');
   },
