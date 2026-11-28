@@ -16,6 +16,9 @@ const Contract = {
   // 계약 기간 계산 기준일: 9월 이후(오프시즌) 계약은 올해 만료일부터, 시즌 중 계약은 작년 만료일부터 센다 → 1년 계약 = 다음 만료일까지
   seasonEnd(t) { const e = `${Clock.year()}-${this.endDay(t)}`; return +Clock.today().slice(5, 7) >= 9 ? e : this.addYears(e, -1); },
   addYears(ymd, n) { return `${+ymd.slice(0, 4) + n}${ymd.slice(4)}`; },
+  // 실제로 만료 처리하는 날의 기준: 가을(10월 이후) 만료 계약은 그 해 월즈 결승이 끝날 때까지 유지된다 (결승 다음 날 처리).
+  //   경기 일정은 요일을 맞추느라 해마다 밀려 결승이 11/12~11/18인데, 만료일은 매년 같은 날짜라 결승 전에 선수가 FA로 풀렸다 (베타 제보: 2030 월즈 결승 당일 로스터 공중분해)
+  due(end) { if (!end || end.slice(5) < '10-01' || typeof Schedule === 'undefined' || !Schedule.worldsEnd) return end; const w = Schedule.worldsEnd(+end.slice(0, 4)); return w > end ? w : end; },
 
   // ---------- 가치 ----------
   // 0~100 점수. 1군 주전 평균 60~70, 리그 정상급 85+, 페이커급 95+
@@ -143,7 +146,7 @@ Engine.on(today => {
   // 코칭스태프는 사무국이 1년씩 자동 연장한다 (코치 영입·해임은 추후)
   (t.staff || []).forEach(p => {
     const c = Contract.of(p, t);
-    if (!c.end || c.end >= today) return;
+    if (!c.end || Contract.due(c.end) >= today) return;
     const end = Contract.addYears(c.end, 1);
     Contract.st().contracts[p.id] = { ...c, end, signed: today }; p.contractEnd = end;
     Inbox.push({ from: board, subject: `${p.name} 코치 계약 1년 연장`, link: 'club-staff', body: `${p.name} 코치의 계약이 끝나 사무국이 같은 조건으로 1년 연장했습니다. 새 만료일은 ${Fmt.dayLabel(end)}입니다.` });
@@ -154,13 +157,13 @@ Engine.on(today => {
   const clRenew = [];
   (t.cl || []).forEach(p => {
     const c = Contract.of(p, t);
-    if (!c.end || c.end >= today || big(p)) return;
+    if (!c.end || Contract.due(c.end) >= today || big(p)) return;
     let end = Contract.addYears(c.end, 1); while (end < today) end = Contract.addYears(end, 1);
     Contract.st().contracts[p.id] = { ...c, end, signed: today }; p.contractEnd = end; clRenew.push(p.name);
   });
   if (clRenew.length) Inbox.push({ from: board, subject: `2군 계약 1년 연장 (${clRenew.length}명)`, link: 'roster-challengers', body: `계약이 끝난 2군 선수 ${clRenew.join(', ')}의 계약을 같은 조건으로 1년 연장했습니다.\n\n내보낼 선수는 챌린저스 화면에서 방출할 수 있습니다.` });
   [...t.players, ...(t.cl || []).filter(big)].forEach(p => {
-    const c = Contract.of(p, t), d = c.end ? Fmt.daysBetween(today, c.end) : null;
+    const c = Contract.of(p, t), d = c.end ? Fmt.daysBetween(today, Contract.due(c.end)) : null;   // 남은 날 = 실제 처리일(월즈 결승) 기준
     if (d == null) return;
     if (c.option === 'team' && d <= 7 && d >= 0 && Engine.once('topt:' + p.id + c.end)) Inbox.push({ from: board, subject: `${p.name} 구단 옵션 행사 여부`, priority: 'todo', ctx: { pid: p.id, player: p.name },
       body: `${p.name}의 계약(${c.end.replace(/-/g, '.')} 만료)에는 1년 연장 구단 옵션이 있습니다.\n\n옵션을 행사하면 지금 연봉(${Player.money(c.salary)} 원) 그대로 1년 더 함께합니다. 포기하면 계약 만료일에 FA로 풀립니다.`,

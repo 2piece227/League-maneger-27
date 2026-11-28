@@ -81,10 +81,10 @@ const Draft = {
   grade(r) { return r >= 17 ? '최상급' : r >= 13 ? '우수' : r >= 9 ? '보통' : r >= 5 ? '미흡' : '부족'; },
 
   // ---------- 평가 ----------
-  lineup(t) {
-    // 국제대회 기간: 우리 팀은 등록한 주전만
-    const reg = t && t.id === App.state.teamId && typeof Register !== 'undefined' && Register.active();
-    if (reg) return G.ROLES.map(r => { const id = reg.starters[r], hit = id && Player.find(id); return hit ? hit.p : null; });
+  lineup(t, raw) {
+    // 국제대회 기간: 등록한 선수만 (우리 팀 · AI 팀 모두 — js/register.js). raw면 등록 명단을 보지 않는다 (등록할 명단을 고를 때)
+    const reg = !raw && t && typeof Register !== 'undefined' && Register.forTeam(t);
+    if (reg) return Register.lineupOf(t, reg);
     return G.ROLES.map(r => { const ps = t.players.filter(p => p.role === r).sort((a, b) => (a.sub - b.sub) || (b.ovr || 0) - (a.ovr || 0)); return ps[0] || this.standIn(t, r); }); },
   // 상대 팀(AI) 1군에 빈 포지션이 있으면 경기 때만 대신 뛸 선수: 2군 · 아카데미 → 그 포지션 FA (스토브리그 트라이아웃처럼).
   // 계약은 하지 않는다 (빈자리는 Market.shop이 콜업 · 영입으로 채운다). 우리 팀은 대신 채우지 않는다 (출전 불가 안내)

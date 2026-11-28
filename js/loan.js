@@ -2,9 +2,19 @@
 //   임대 간 팀에서 실제로 경기에 나가고(출전 시간이 성장에 반영), 기간이 끝나면 돌아오며 임대 리포트를 받는다. 연봉은 임대 팀이 부담한다.
 //   App.state.loans[pid] = { to, from, start, until, ovr0, name }
 const Loan = {
+  // 잠정 중단 (베타 제보: 임대 종료일 · 시즌 일정이 엇갈려 대회 도중 로스터가 비는 문제). 다시 열려면 false
+  //   중단 중에는 새 임대가 없고, 진행 중이던 임대는 불러올 때 모두 원 소속팀으로 돌아온다
+  OFF: true,
   st() { return (App.state.loans ||= {}); },
+  // 중단: 진행 중인 임대를 모두 끝내고 한 번 알린다
+  recallAll() {
+    const S = this.st(), L = Object.entries(S); if (!L.length) return;
+    L.forEach(([pid]) => { const h = Player.find(pid); if (h) delete h.p.loan; delete S[pid]; });
+    if (typeof Inbox !== 'undefined') Inbox.push({ from: { name: '사무국장', role: 'board' }, subject: '임대 제도 잠정 중단 — 임대 선수 복귀', link: 'roster-first-team',
+      body: `임대 제도가 잠정 중단되어 임대 중이던 선수가 모두 돌아왔습니다.\n\n${L.map(([, l]) => `■ ${l.name}`).join('\n')}` });
+  },
   active(pid) { const l = this.st()[pid]; return l && Clock.today() < l.until ? l : null; },
-  can(p) { const lv = p.level || 'first'; return !App.state.unemployed && p.role !== 'COACH' && !this.active(p.id) && (lv !== 'first' || (p.sub && (p.age || 30) <= 23)); },
+  can(p) { if (this.OFF) return false; const lv = p.level || 'first'; return !App.state.unemployed && p.role !== 'COACH' && !this.active(p.id) && (lv !== 'first' || (p.sub && (p.age || 30) <= 23)); },
   // 행선지: 그 포지션에서 주전으로 뛸 수 있는 팀 (출전 가능성 = 이 선수 점수 − 그 팀 해당 포지션 최고 점수)
   dests(p) {
     const my = App.state.teamId, home = Roster.team();
@@ -42,6 +52,7 @@ const Loan = {
   // Squad.apply 뒤: 임대 중인 선수를 임대 팀 1군으로 옮긴다
   place() {
     const my = Roster.team(); if (!my) return;
+    if (this.OFF) { if (Object.keys(this.st()).length) { this.recallAll(); Squad.apply(); } return; }
     Object.entries(this.st()).forEach(([pid, l]) => {
       if (Clock.today() >= l.until) return;
       const lists = [my.players, my.cl || [], my.academy || []], hit = lists.find(L => L.some(p => p.id === pid)); if (!hit) return;
@@ -52,6 +63,7 @@ const Loan = {
   },
   // 매일: 생성 선수는 출전에 따라 성장 · 기간이 끝나면 복귀 + 리포트
   day(today) {
+    if (this.OFF) return;
     const S = this.st();
     Object.entries(S).forEach(([pid, l]) => {
       const h = Player.find(pid);

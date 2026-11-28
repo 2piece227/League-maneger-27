@@ -17,7 +17,7 @@ const Register = {
   pool() { const t = Roster.team(); return [...t.players, ...(t.cl || [])].filter(p => p.role !== 'COACH'); },
   // 자동 등록: 지금 주전 + 남은 선수 중 가장 높은 OVR 1명
   autoPick() {
-    const t = Roster.team(), line = Draft.lineup(t), starters = {};
+    const t = Roster.team(), line = Draft.lineup(t, true), starters = {};
     G.ROLES.forEach((r, i) => { if (line[i]) starters[r] = line[i].id; });
     const rest = this.pool().filter(p => !Object.values(starters).includes(p.id)).sort((a, b) => (b.ovr || 0) - (a.ovr || 0));
     return { starters, subs: rest.slice(0, 1).map(p => p.id) };
@@ -26,6 +26,34 @@ const Register = {
   active() {
     const d = Clock.today(), e = this.events().find(x => x.start <= d && d <= x.end);
     return e ? this.st()[this.key(e)] || null : null;
+  },
+  // ---------- AI 팀 등록 명단 ----------
+  // AI 팀도 국제대회 동안은 등록한 선수만 뛴다: 대회 기간에 처음 경기를 볼 때 그날 주전 5명 + 후보 2명으로 등록해 둔다.
+  //   예전에는 AI 팀은 등록 규칙이 없어, 대회 도중 선수가 빠지면 등록하지 않은 2군 · FA가 결승에 나왔다 (베타 제보)
+  aiSt() { return (App.state.regAI ||= {}); },
+  eventFor(t, d = Clock.today()) { const b = App.state.brk || {}; return (Schedule.events || []).find(e => e.league === 'INTL' && e.start <= d && d <= e.end && (b[e.id] || []).includes(t.id)) || null; },
+  forTeam(t) {
+    if (t.id === App.state.teamId) return this.active();
+    const e = this.eventFor(t); if (!e) return null;
+    const S = (this.aiSt()[this.key(e)] ||= {});
+    if (!S[t.id]) {
+      const line = Draft.lineup(t, true), starters = {};
+      G.ROLES.forEach((r, i) => { if (line[i]) starters[r] = line[i].id; });
+      const used = new Set(Object.values(starters)), subs = [...t.players, ...(t.cl || [])].filter(p => p.role !== 'COACH' && !used.has(p.id)).sort((a, b) => (b.ovr || 0) - (a.ovr || 0)).slice(0, 2).map(p => p.id);
+      S[t.id] = { starters, subs, auto: true };
+    }
+    return S[t.id];
+  },
+  // 등록 명단 → 경기 라인업: 등록 주전 (지금도 그 팀 소속일 때) → 같은 포지션 등록 후보. AI 팀은 그래도 비면 마지막 수단으로 대신 뛸 선수
+  lineupOf(t, reg) {
+    const mine = t.id === App.state.teamId, used = new Set();
+    const on = id => { const h = id && Player.find(id); return h && h.t.id === t.id && h.p.role !== 'COACH' ? h.p : null; };
+    return G.ROLES.map(r => {
+      let p = on(reg.starters[r]);
+      if (!p) p = (reg.subs || []).map(on).find(q => q && q.role === r && !used.has(q.id)) || null;
+      if (!p && !mine) p = Draft.standIn(t, r);
+      if (p) used.add(p.id); return p;
+    });
   },
   // 매일: 진출 확정 알림 · 마감일 자동 등록
   daily(today) {

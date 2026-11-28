@@ -77,9 +77,9 @@ const Market = {
   expire(today) {
     let changed = false;
     this.ai().forEach(t => {
-      (t.staff || []).forEach(p => { const c = Contract.of(p, t); if (c.end && c.end < today) { const end = Contract.addYears(c.end, 1); Contract.st().contracts[p.id] = { ...c, end, signed: today }; p.contractEnd = end; } });
+      (t.staff || []).forEach(p => { const c = Contract.of(p, t); if (c.end && Contract.due(c.end) < today) { const end = Contract.addYears(c.end, 1); Contract.st().contracts[p.id] = { ...c, end, signed: today }; p.contractEnd = end; } });
       [...t.players, ...(t.cl || [])].forEach(p => {
-        const c = Contract.of(p, t); if (!c.end || c.end >= today) return;
+        const c = Contract.of(p, t); if (!c.end || Contract.due(c.end) >= today) return;   // 월즈 결승이 끝난 다음 날부터 (Contract.due)
         changed = true;
         if (p.made) { Contract.st().contracts[p.id] = { ...c, end: Contract.addYears(c.end, 1 + (this.rnd(p.id, 'm') > .5 ? 1 : 0)) }; return; }
         const s = Contract.score(p, t), cl = p.level === 'cl', top = !cl && s >= this.best(t, p.role, p) - 3;
