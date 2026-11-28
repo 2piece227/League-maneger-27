@@ -42,13 +42,13 @@ imageRows.forEach(r => { if (!photo[r.Link] || better(r, photo[r.Link]) > 0) pho
 const urls = await imageUrls([...teamRows.map(t => t.Image), ...Object.values(photo).map(r => r.FileName)]);
 
 const tb = Object.fromEntries(teamRows.map(t => [t.OverviewPage, t]));
-const pb = Object.fromEntries(playerRows.map(p => [p.OverviewPage, p]));
+const pb = Object.fromEntries(playerRows.map(p => [p.OverviewPage.toLowerCase(), p]));   // 대소문자 무시 (scrape.mjs 참고)
 const teams = teamNames.map(n => ({ id: slug(n), name: (tb[n] || {}).Name || n, short: (tb[n] || {}).Short || n.slice(0, 4), logo: urls[(tb[n] || {}).Image] || null, sourcePage: n }));
 const players = current.map(r => {
-  const p = pb[r.Link] || {};
+  const p = pb[r.Link.toLowerCase()] || {};
   return {
     id: slug(r.Link), team: slug(r.Team), name: p.ID || r.Link, realName: (p.Name || '').replace(/&nbsp;| /g, ' '), nativeName: p.NativeName || '',
-    role: ROLE[r.Role] || (/coach/i.test(r.Role) ? 'COACH' : ROLE[p.Role] || r.Role || ''),
+    role: ROLE[r.Role] || (/coach/i.test(r.Role) ? 'COACH' : ROLE[p.Role] || ROLE[String(r.Role).split(',')[0]] || r.Role || ''),
     nation: p.NationalityPrimary || p.Country || '', birthdate: p.Birthdate || null, contractEnd: p.Contract || null,
     photo: urls[(photo[r.Link] || {}).FileName] || null, sourcePage: r.Link,
   };

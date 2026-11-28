@@ -102,6 +102,7 @@ const Squad = {
         ca: this.round(ca), pa: this.round(pa), attributes: Attributes.generate(role, ca, pa, r),
       };
       if (p.nation === 'South Korea') p.military = 'none';
+      Ident.fill(p, { ref: Clock.START }); p.age = Data.ageOn(p.birthdate, Clock.today());   // 가상 생년월일 · 본명 (커리어 시작일 기준으로 고정 — 불러올 때마다 같다)
       p.ovr = Attributes.overall(p.attributes, p.role); delete p.pa; this.rate(p, this.q(t.id));
       t.cl.push(p);
     });
@@ -117,6 +118,7 @@ const Squad = {
       attributes: acc.attrs || Attributes.create(acc.role), grade: acc.grade || '',
       joined: acc.date || today, contractEnd: Store.addDays(today, 730), military: 'none', org: App.state.teamId,
     };
+    Ident.fill(this.gen()[id], { ref: acc.date || today, age: acc.age });   // 입단일에 그 나이가 되는 가상 생년월일 · 본명 (예전에는 나이가 입단 나이에서 멈춰 있었다)
     this.gen()[id].ovr = Attributes.overall(this.gen()[id].attributes, acc.role);
     this.moves()[id] = level;
     return id;
@@ -131,6 +133,7 @@ const Squad = {
     const age = ages[0] + Math.floor(r() * (ages[1] - ages[0] + 1)), ca = Attributes.caFor(ovr[0] + r() * (ovr[1] - ovr[0]), role), id = `gen-ac-${t.id}-${key}-${Math.floor(r() * 1e6)}`;
     const g = { id, gen: true, org: t.id, name: this.uniqueName(r, t.league), role, age, age0: age, nation: this.NATION[t.league || 'LCK'][0], photo: null,
       attributes: Attributes.generate(role, ca, ca, r), grade: '', joined: Clock.today(), contractEnd: Store.addDays(Clock.today(), 730), military: 'none' };
+    Ident.fill(g, { ref: Clock.today(), age });   // 가상 생년월일 · 본명
     g.ovr = Attributes.overall(g.attributes, role); this.rate(g, q); g.ca0 = g.ca; g.evalCa = g.ca;
     this.gen()[id] = g; if (t.id === App.state.teamId) this.moves()[id] = 'academy';
     return g;
@@ -169,8 +172,13 @@ const Squad = {
   },
   drop(g, out) { delete this.gen()[g.id]; delete this.moves()[g.id]; if (out) out.push(g); },
   // 생일이 지나면 나이를 올린다 (생성 선수는 입단일 기준 1년마다)
+  //   예전 저장의 생성 선수(생년월일 없음)는 입단일에 입단 나이였던 것으로 보고 생년월일을 만든다 — 테스트 합격자는 age0가 없어 나이가 멈춰 있었다 (베타 제보: 2027년에 16세로 뽑은 선수가 2031년에도 16세)
   ageGen(today) {
-    Object.values(this.gen()).forEach(g => { if (g.joined && g.age0 != null) { const a = g.age0 + Math.floor(Fmt.daysBetween(g.joined, today) / 365); if (a !== g.age) g.age = a; } });
+    Object.values(this.gen()).forEach(g => {
+      if (!g.birthdate) Ident.fill(g, { ref: g.joined || today, age: g.age0 ?? g.age ?? 17 });
+      else if (!g.realName && !g.nativeName) Ident.fill(g);
+      const a = Data.ageOn(g.birthdate, today); if (a !== g.age) g.age = a;
+    });
   },
 
   // 다른 팀 아카데미 유망주 영입: 육성 보상금을 내고 데려온다.
@@ -223,7 +231,7 @@ const Squad = {
     { const dev = this.dev(); App.db.teams.forEach(x => [...x.players, ...(x.cl || [])].forEach(p => { if (dev[p.id] && !p.gen) Object.assign(p, dev[p.id]); })); }   // 성장 · 노쇠 기록 (모든 팀)
     App.db.teams.forEach(x => { x.players.forEach(p => this.rate(p)); (x.cl || []).forEach(p => this.rate(p, this.q(x.id))); });
     const t = this.team(); if (!t) return;
-    this.migrate();
+    this.migrate(); this.ageGen(Clock.today());   // 예전 저장의 생성 선수에게도 생년월일 · 본명을 붙이고 나이를 오늘 기준으로
     Object.values(this.gen()).forEach(g => { g.org ||= t.id; });           // 예전 저장의 연습생은 지금 팀 소속
     this.seedAcademy(t);
     // 다른 LCK 팀 아카데미 (생성 유스): 화면 · 영입 제안용

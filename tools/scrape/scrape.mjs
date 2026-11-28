@@ -225,17 +225,18 @@ async function main() {
     };
   }).sort((a, b) => LEAGUES.indexOf(a.league) - LEAGUES.indexOf(b.league) || a.name.localeCompare(b.name));
 
-  const playerByPage = Object.fromEntries(playerRows.map(p => [p.OverviewPage, p]));
+  // 위키 페이지명은 첫 글자가 대문자(Kyeahoo)인데 로스터 링크는 소문자(kyeahoo)일 때가 있다 — 대소문자 무시하고 맞춘다 (예전에는 이런 선수의 생년월일 · 국적 · 본명이 통째로 빠졌다)
+  const playerByPage = Object.fromEntries(playerRows.map(p => [p.OverviewPage.toLowerCase(), p]));
   const ROLE = { Top: 'TOP', Jungle: 'JGL', Mid: 'MID', Bot: 'BOT', Support: 'SUP' };
   const players = current.map(r => {
-    const p = playerByPage[r.Link] || {};
+    const p = playerByPage[r.Link.toLowerCase()] || {};
     return {
       id: slug(r.Link),
       team: slug(r.Team),
       name: p.ID || r.Link,
       realName: (p.Name || '').replace(/&nbsp;| /g, ' '),
       nativeName: p.NativeName || '',
-      role: ROLE[r.Role] || (/coach/i.test(r.Role) ? 'COACH' : ROLE[p.Role] || r.Role || ''),
+      role: ROLE[r.Role] || (/coach/i.test(r.Role) ? 'COACH' : ROLE[p.Role] || ROLE[String(r.Role).split(',')[0]] || r.Role || ''),   // 'Bot,Support' 같은 겸직 표기는 첫 포지션
       nation: p.NationalityPrimary || p.Country || '',
       birthdate: p.Birthdate || null,
       contractEnd: p.Contract || null,

@@ -47,10 +47,10 @@ const Data = {
       };
       team.boardGoal = MOCK.boardGoals[team.rep];
       team.budget = MOCK.budgetLabel(team.league, team.fin);
-      const people = players.filter(p => p.team === t.id).map(p => ({
+      const people = players.filter(p => p.team === t.id).map(p => Ident.fill({ ...p }, { level: 'first' })).map(p => ({   // 생년월일 · 본명이 없으면 가상 신상 (js/identity.js)
         ...p,
         contractEnd: p.contractEnd || this.guessContract(p, t),
-        age: p.birthdate ? this.ageOn(p.birthdate, Clock.today()) : null,
+        age: this.ageOn(p.birthdate, Clock.today()),
         sub: false,
       }));
       team.staff = people.filter(p => p.role === 'COACH');
@@ -69,7 +69,7 @@ const Data = {
       t.clTeam = { ...ct, color: t.color };
       const seen = new Set();
       cl.players.filter(p => p.team === ct.id && !main.has(p.id) && !seen.has(p.id) && seen.add(p.id)).forEach(p => {
-        const q = { ...p, team: t.id, contractEnd: p.contractEnd || this.guessContract(p, t), age: p.birthdate ? this.ageOn(p.birthdate, Clock.today()) : null, sub: false, level: 'cl' };
+        const q = Ident.fill({ ...p, team: t.id, contractEnd: p.contractEnd || this.guessContract(p, t), sub: false, level: 'cl' }, { level: 'cl' }); q.age = this.ageOn(q.birthdate, Clock.today());
         (q.role === 'COACH' ? t.clStaff : t.cl).push(q);
       });
     });
@@ -77,7 +77,7 @@ const Data = {
 
   // 소속팀 없는 선수(직접 추가). 팀 목록에는 넣지 않고 '무소속' 가상 팀으로 묶는다.
   freeTeam(list) {
-    const people = list.map(p => ({ ...p, team: 'free', free: true, contractEnd: null, age: p.birthdate ? this.ageOn(p.birthdate, Clock.today()) : null, sub: false }));
+    const people = list.map(p => Ident.fill({ ...p, team: 'free', free: true, contractEnd: null, sub: false })).map(p => ({ ...p, age: this.ageOn(p.birthdate, Clock.today()) }));
     return { id: 'free', name: '무소속', short: '무소속', league: null, color: '#4a5568', rep: 1, fin: 2, tags: [], players: people.filter(p => p.role !== 'COACH'), staff: people.filter(p => p.role === 'COACH') };
   },
 
