@@ -21,6 +21,19 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+      # 베타: 개발 브랜치를 숨김 경로(/beta-lmswurlh/)에 같이 올린다. 세이브는 js/beta.js가 실제 사이트와 분리한다.
+      #   베타만 갱신하려면 Actions에서 이 워크플로를 수동 실행(workflow_dispatch)한다. 브랜치가 없으면 건너뛴다
+      - uses: actions/checkout@v4
+        continue-on-error: true
+        with:
+          ref: claude/gracious-carson-t4o42k
+          path: beta-lmswurlh
+      - name: Prepare beta
+        run: |
+          if [ -d beta-lmswurlh ]; then
+            rm -rf beta-lmswurlh/.git beta-lmswurlh/.github
+            sed -i 's#<head>#<head><meta name="robots" content="noindex,nofollow">#' beta-lmswurlh/index.html
+          fi
       - uses: actions/configure-pages@v5
       - uses: actions/upload-pages-artifact@v3
         with:
