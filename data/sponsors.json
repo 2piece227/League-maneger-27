@@ -2,7 +2,7 @@
  "meta": {
   "source": "Leaguepedia (lol.fandom.com) team infobox, CC BY-SA 3.0",
   "scrapedAt": "2026-11-25",
-  "note": "Reference only, not used in game"
+  "note": "게임에서 사용: 구단 스폰서 슬롯에 순서대로 배치 (js/finance.js)"
  },
  "teams": {
   "bnk-fearx": {

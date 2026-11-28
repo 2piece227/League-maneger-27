@@ -6,7 +6,7 @@ const Club = {
   r(t, k) { return G.rand(t.id, k); },
   // 시즌 예산(억 원): 재정 등급·리그 기준, 시작 시점 선수 연봉의 1.5배 이상
   // 재정 등급이 기준. 시작 연봉이 그보다 크면 그 연봉의 1.1배까지만 인정한다 (예전에는 1.5배라 연봉이 큰 팀일수록 예산도 커졌다)
-  budget(t) { return Math.round(Math.max(((t.fin || 2) * 40 + 30) * ({ LCK: 1, LPL: 1.3, LEC: .6, LCS: .7 }[t.league] || 1), (t._pay0 ||= (t._base ? t._base.players : t.players).reduce((s, p) => s + Contract.base(p, t).salary, 0)) / .65 * 1.02)); },
+  budget(t) { return Math.round((Math.round(Math.max(((t.fin || 2) * 40 + 30) * ({ LCK: 1, LPL: 1.3, LEC: .6, LCS: .7 }[t.league] || 1), (t._pay0 ||= (t._base ? t._base.players : t.players).reduce((s, p) => s + Contract.base(p, t).salary, 0)) / .65 * 1.02))) * (typeof Fin !== 'undefined' ? Fin.budgetMul(t) : 1)); },   // 잔고 배율 (js/finance.js): 적자면 줄고 넉넉하면 는다
   wageRoom(t) { return this.budget(t) * .65 - this.payroll(t); },
   payroll(t) { return t.players.reduce((s, p) => s + Player.salary(p, t), 0); },
   staffPay(t) { return (t.staff || []).reduce((s, p) => s + Player.salary(p, t), 0); },
@@ -15,38 +15,33 @@ const Club = {
     return `<div class="cr-meter"><span>${label}</span><div class="cr-bar"><i style="width:${Math.min(100, v / max * 100)}%;background:${color}"></i></div><b class="num">${Player.money(v)}</b></div>`;
   },
 
-  // ---------- 재정 ----------
+  // ---------- 재정 ---------- (js/finance.js)
   async finance(el) {
     await Promise.all([Portal.ready, Mastery.load()]);
-    const t = this.team(), B = this.budget(t);
-    const inc = [['리그 분배금', B * .28], ['스폰서', this.sponsorIncome(t)], ['스트리밍·굿즈', B * (.08 + (t.rep || 2) * .03)], ['상금', B * .04 * (t.rep || 2)]];
-    const exp = [['선수 연봉', this.payroll(t)], ['스태프 인건비', this.staffPay(t)], ['숙소·운영', B * .12], ['마케팅·콘텐츠', B * .06]];
-    const ti = inc.reduce((s, x) => s + x[1], 0), te = exp.reduce((s, x) => s + x[1], 0);
-    // 월별 수지: 시즌 예상 수지를 12로 나눈 기본값 + 장부(이적료 · 계약금 · 부담금 · 이벤트 수입)를 그 달에 더한다
-    const [cy, cm] = this.today().split('-').map(Number), led = World.ledger(), base = (ti - te) / 12;
-    const mk = Array.from({ length: 12 }, (_, i) => { const d = new Date(cy, cm - 12 + i, 1); return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`; });
-    const months = mk.map((k, i) => base * (.85 + this.r(t, 'm' + k) * .3) + led.filter(x => (x.date || '').slice(0, 7) === k).reduce((s, x) => s + x.amount / 1e8, 0));
-    const max = Math.max(...months.map(Math.abs)) || 1;
+    const t = this.team(), A = Fin.annual(t), bal = Fin.bal(t), S = Fin.st(), hist = (S.hist || []).slice(-12), net = A.ti - A.te;
+    const bars = hist.length ? hist : [{ m: Clock.today().slice(0, 7), net: net / 12 }];
+    const max = Math.max(...bars.map(x => Math.abs(x.net))) || 1;
     el.innerHTML = `
       <div class="cr-page">
         <div class="card rs-head">
-          <div class="rs-title"><h2>재정 <small>${UI.esc(t.name)}</small></h2><span>금액은 모두 억 원 환산 · 시즌 기준</span></div>
+          <div class="rs-title"><h2>재정 <small>${UI.esc(t.name)}</small></h2><span>${Fin.OWNER_KO[Fin.owner(t)]} · 금액은 억 원 환산 · 매달 1일 정산</span></div>
           <div class="rs-stats">
-            <div><span class="k">시즌 예산</span><b>${this.money(B)}</b></div>
-            <div><span class="k">예상 수입</span><b>${this.money(ti)}</b></div>
-            <div><span class="k">예상 지출</span><b>${this.money(te)}</b></div>
-            <div><span class="k">예상 수지</span><b class="${ti - te < 0 ? 'warn' : ''}">${ti - te >= 0 ? '+' : '−'}${this.money(Math.abs(ti - te))}</b></div>
+            <div><span class="k">구단 잔고</span><b class="${bal < 0 ? 'warn' : ''}">${Fin.money(bal)}</b></div>
+            <div><span class="k">연 예상 수입</span><b>${this.money(A.ti)}</b></div>
+            <div><span class="k">연 예상 지출</span><b>${this.money(A.te)}</b></div>
+            <div><span class="k">연 예상 수지</span><b class="${net < 0 ? 'warn' : ''}">${net >= 0 ? '+' : '−'}${this.money(Math.abs(net))}</b></div>
           </div>
         </div>
         <div class="cr-grid">
-          <div class="card"><div class="card-head"><h3>수입 <small>시즌 예상</small></h3></div>${inc.map(([l, v]) => this.bar(l, v, ti, '#3fbf7f')).join('')}</div>
-          <div class="card"><div class="card-head"><h3>지출 <small>시즌 예상</small></h3></div>${exp.map(([l, v]) => this.bar(l, v, te, '#e2575c')).join('')}</div>
+          <div class="card"><div class="card-head"><h3>수입 <small>연간 예상 · 상금 · 보너스 · 이적료는 생길 때</small></h3></div>${Object.entries(A.inc).map(([k, v]) => this.bar(Fin.INC_KO[k], v, A.ti, '#3fbf7f')).join('')}</div>
+          <div class="card"><div class="card-head"><h3>지출 <small>연간 예상</small></h3></div>${Object.entries(A.exp).filter(([, v]) => v > 0).map(([k, v]) => this.bar(Fin.EXP_KO[k], v, A.te, '#e2575c')).join('')}</div>
         </div>
-        <div class="card"><div class="card-head"><h3>월별 수지 <small>지난 12개월 · 이적료·계약금 등 장부 반영</small></h3></div>
+        <div class="card"><div class="card-head"><h3>월별 수지 <small>${hist.length ? `최근 ${hist.length}개월 실제 정산` : '첫 정산 전 · 예상치'}${S.neg[t.id] ? ` · 적자 ${S.neg[t.id]}개월째` : ''}</small></h3></div>
           <svg class="fn-chart" viewBox="0 0 240 80" preserveAspectRatio="none">
             <line x1="0" y1="40" x2="240" y2="40" stroke="#2a3550"/>
-            ${months.map((v, i) => { const h = Math.abs(v) / max * 36; return `<rect x="${i * 20 + 4}" y="${v >= 0 ? 40 - h : 40}" width="12" height="${Math.max(.5, h)}" fill="${v >= 0 ? '#3fbf7f' : '#e2575c'}" rx="1.5"><title>${mk[i].replace('-', '년 ')}월 ${v >= 0 ? '+' : '−'}${this.money(Math.abs(v))}</title></rect>`; }).join('')}
+            ${bars.map((x, i) => { const h = Math.abs(x.net) / max * 36, w = 240 / Math.max(12, bars.length); return `<rect x="${i * w + w * .2}" y="${x.net >= 0 ? 40 - h : 40}" width="${w * .6}" height="${Math.max(.5, h)}" fill="${x.net >= 0 ? '#3fbf7f' : '#e2575c'}"><title>${x.m} ${Fin.money(x.net)}</title></rect>`; }).join('')}
           </svg>
+          ${hist.length ? `<p class="cr-dim">최근 정산 ${hist.at(-1).m}: ${Fin.money(hist.at(-1).net)} → 잔고 ${Fin.money(hist.at(-1).bal)}</p>` : ''}
         </div>
       </div>`;
   },
@@ -115,36 +110,35 @@ const Club = {
     });
   },
 
-  // ---------- 스폰서 ----------
-  SLOTS: [['메인 파트너', '통신·금융'], ['유니폼 스폰서', '자동차·식품'], ['장비 파트너', '주변기기'], ['음료 파트너', '에너지 음료'], ['가구 파트너', '게이밍 의자'], ['디지털 파트너', '플랫폼·앱']],
-  // 스폰서 목록 (재정 화면의 스폰서 수입도 여기서 계산한다). 재계약 협상 중인 곳도 아직 계약 기간이라 수입에 넣는다
-  sponsorRows(t) {
-    const B = this.budget(t);
-    return this.SLOTS.map(([slot, cat], i) => {
-      const r = this.r(t, 'spn' + i), st = r < .12 ? 'vacant' : r < .3 ? 'talk' : 'ok';
-      return { slot, cat, st, value: B * (i === 0 ? .14 : .05) * (.7 + r * .6), end: `${Clock.year() + 1 + (i % 2)}-12-31` };
-    });
-  },
-  sponsorIncome(t) { return this.sponsorRows(t).filter(x => x.st !== 'vacant').reduce((s, x) => s + x.value, 0) * (Coach.has(t, 'star') ? 1.08 : 1); },   // 스타 코치 (코치 특성)
+  // ---------- 스폰서 ---------- (js/finance.js)
+  get SLOTS() { return Fin.SLOTS; },
+  sponsorRows(t) { return Fin.ensure(t).map((d, i) => d ? { slot: Fin.SLOTS[i][0], cat: Fin.SLOTS[i][1], st: d.end.slice(0, 4) <= Clock.today().slice(0, 4) ? 'talk' : 'ok', value: d.value, end: d.end, name: Fin.label(t, d), d } : { slot: Fin.SLOTS[i][0], cat: Fin.SLOTS[i][1], st: 'vacant', value: 0 }); },
+  sponsorIncome(t) { return Fin.sponsorIncome(t); },
   async sponsors(el) {
     await Portal.ready;
-    const t = this.team(), rows = this.sponsorRows(t);
-    const total = this.sponsorIncome(t);
-    const ST = { ok: ['계약 중', 'stable'], talk: ['재계약 협상', 'unstable'], vacant: ['공석', 'vacant'] };
+    const t = this.team(), rows = this.sponsorRows(t), total = this.sponsorIncome(t), pend = Fin.st().pend || {};
+    const ST = { ok: ['계약 중', 'stable'], talk: ['올해 만료', 'unstable'], vacant: ['공석', 'vacant'] };
     el.innerHTML = `
       <div class="cr-page">
         <div class="card rs-head">
-          <div class="rs-title"><h2>스폰서</h2><span>스폰서 금액은 구단 평판·성적에 따라 달라집니다</span></div>
+          <div class="rs-title"><h2>스폰서</h2><span>금액은 구단 명성 · 성적에 따라 정해지고, 국제대회 진출 · 우승 때 성과 보너스가 나옵니다</span></div>
           <div class="rs-stats"><div><span class="k">연간 스폰서 수입</span><b>${this.money(total)}</b></div><div><span class="k">스폰서</span><b>${rows.filter(x => x.st !== 'vacant').length}/${rows.length}</b></div></div>
         </div>
-        <div class="sp-grid">${rows.map(x => `
+        <div class="sp-grid">${rows.map((x, i) => `
           <div class="card sp-card ${x.st}">
-            <span class="ot-st ${ST[x.st][1]}">${ST[x.st][0]}</span>
-            <b>${x.slot}</b><span class="sp-cat">${x.cat}</span>
-            ${x.st === 'vacant' ? '<button class="btn-ghost sp-btn">스폰서 찾기</button>' : `<div class="sp-val"><b>${this.money(x.value)}</b><small>연 · ${x.end.slice(0, 4)}년 말까지</small></div>`}
+            <span class="ot-st ${ST[x.st][1]}">${pend[i] ? '재계약 제안 도착' : ST[x.st][0]}</span>
+            <b>${UI.esc(x.st === 'vacant' ? x.slot : x.name)}</b><span class="sp-cat">${x.st === 'vacant' ? x.cat : x.slot}</span>
+            ${x.st === 'vacant' ? `<button class="btn-ghost sp-btn" data-slot="${i}">스폰서 찾기</button>` : `<div class="sp-val"><b>${this.money(x.value)}</b><small>연 · ${x.end.slice(0, 4)}년 말까지</small><small>보너스 국제대회 ${this.money(x.d.bonus.intl)} · 우승 ${this.money(x.d.bonus.won)}</small></div>`}
           </div>`).join('')}</div>
       </div>`;
-    el.addEventListener('click', e => { if (e.target.closest('.sp-btn')) UI.toast('스폰서 협상 기능 준비 중'); }); // TODO: 기능 연결 — 스폰서 협상
+    el.onclick = e => {
+      const b = e.target.closest('.sp-btn'); if (!b) return;
+      const i = +b.dataset.slot, L = Fin.offers(t, i);
+      if (!L) { UI.toast('이 자리는 최근에 알아봤습니다. 30일 뒤 다시 찾을 수 있습니다'); return; }
+      UI.modal({ title: `${Fin.SLOTS[i][0]} 스폰서 제안`, body: `<p class="cr-dim">${Fin.SLOTS[i][1]} 업계에서 제안 ${L.length}건이 왔습니다. 하나를 고르세요.</p>
+        <div class="ln-list">${L.map((d, k) => `<label class="ln-row"><input type="radio" name="sp" value="${k}" ${k ? '' : 'checked'}><b>연 ${this.money(d.value)}</b><small>${d.end.slice(0, 4)}년 말까지 · 보너스 국제대회 ${this.money(d.bonus.intl)} · 우승 ${this.money(d.bonus.won)}</small></label>`).join('')}</div>`,
+        actions: [{ label: '나중에' }, { label: '계약', primary: true, onClick: back => { const k = +(($('input[name="sp"]:checked', back) || {}).value || 0); Fin.ensure(t)[i] = L[k]; UI.toast('스폰서 계약을 맺었습니다'); this.sponsors(el); } }] });
+    };
   },
 
   // ---------- 이사회 기대치 ----------

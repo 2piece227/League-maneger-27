@@ -27,7 +27,7 @@ const Contract = {
     let s;
     if (this.stars[p.id]) s = this.stars[p.id];
     else if (p.ca != null || p.level === 'cl' || p.level === 'academy' || p.gen || p.made) s = 26 + (p.ca || 8) * 2.2; // 2군 출신은 현재 기량으로
-    else if (p.role === 'COACH') { const c = Coach.of(p, t); s = 30 + (c.draft + c.manage + c.tactic + c.develop) / 4 * 3 + (c.head ? 6 : 0) + (c.traits || []).length * 2; }   // 코치 가치: 능력치 · 헤드 · 특성 (계약은 추후 개편)
+    else if (p.role === 'COACH') { const c = Coach.of(p, t); s = 22 + (c.draft + c.manage + c.tactic + c.develop) / 4 * 2.6 + (c.head ? 5 : 0) + (c.traits || []).length * 1.5; }   // 코치 가치: 능력치 · 헤드 · 특성 (계약은 추후 개편)
     else {
       const pool = (typeof Mastery !== 'undefined' && Mastery.pools) ? Mastery.pool(p.id) : [];
       const g = pool.reduce((a, e) => a + e.g, 0), sig = pool.filter(e => e.sig).length;
