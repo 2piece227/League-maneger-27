@@ -68,7 +68,7 @@ const Market = {
   write(p, t, c) { const M = Contract.st(); M.contracts[p.id] = { ...c, signed: Clock.today() }; if (p._o && p._o.team === t.id && !p.free) delete M.moves[p.id]; else M.moves[p.id] = t.id; },
   free(p) { const M = Contract.st(); M.moves[p.id] = 'free'; delete M.contracts[p.id]; },
   deal(p, t, mult = 1) {
-    const s = Contract.score(p, t), yrs = s >= 80 ? 2 + (this.rnd(p.id, 'y') > .5 ? 1 : 0) : 1 + (this.rnd(p.id, 'y') > .55 ? 1 : 0);
+    const s = Contract.score(p, t), mx = typeof Life !== 'undefined' ? Life.maxYears(p) : null, yrs = Math.max(1, Math.min(mx ?? 9, s >= 80 ? 2 + (this.rnd(p.id, 'y') > .5 ? 1 : 0) : 1 + (this.rnd(p.id, 'y') > .55 ? 1 : 0)));   // 입대 기한까지
     const r = this.rnd(p.id, 'o');
     return { salary: Contract.r1(Contract.pay(p, s, t.league) * mult), end: Contract.addYears(Contract.seasonEnd(t), yrs), years: yrs, option: r < .2 ? (s >= 78 ? 'player' : 'team') : null, bonus: [] };
   },

@@ -112,7 +112,7 @@ const Contract = {
   // 계약 확정 (재계약 · FA 영입 · 이적)
   sign(pid, teamId, c) {
     const M = this.st(), hit = Player.find(pid);
-    M.contracts[pid] = { ...c, signed: Clock.today() };
+    M.contracts[pid] = { ...c, end: hit && typeof Life !== 'undefined' ? Life.capEnd(hit.p, c.end) : c.end, signed: Clock.today() };   // 계약은 입대 시점을 넘길 수 없다 (js/life.js)
     if (hit && hit.t.id !== teamId) M.moves[pid] = teamId;
     if (hit && hit.p._o && hit.p._o.team === teamId) delete M.moves[pid];
     if (teamId !== App.state.teamId) delete Squad.moves()[pid];

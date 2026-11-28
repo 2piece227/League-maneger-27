@@ -23,7 +23,8 @@ const Neg = {
   wants(p) {
     const r = k => G.rand(p.id, 'w' + k), s = Contract.score(p, Player.find(p.id)?.t || {}), age = p.age || 22;
     const w = typeof Persona !== 'undefined' ? { ...Persona.of(p).w } : { money: .3 + r(1) * .35, play: .15 + r(2) * .25 + (s >= 70 ? .1 : 0), win: .15 + r(3) * .2 + (s >= 80 ? .15 : 0), home: (p.nation === 'South Korea' ? .3 : .15) + r(4) * .2, loyal: r(5) * .35 };   // 성향 (js/persona.js)
-    const years = age >= 27 ? 2 + (r(6) > .5 ? 1 : 0) : age <= 20 ? 1 + (r(6) > .6 ? 1 : 0) : s >= 85 ? 2 : 1 + (r(6) > .4 ? 1 : 0);
+    const mx = typeof Life !== 'undefined' ? Life.maxYears(p) : null;   // 입대 기한까지
+    const years = Math.max(1, Math.min(mx ?? 9, age >= 27 ? 2 + (r(6) > .5 ? 1 : 0) : age <= 20 ? 1 + (r(6) > .6 ? 1 : 0) : s >= 85 ? 2 : 1 + (r(6) > .4 ? 1 : 0)));
     const opt = s >= 80 ? 'player' : s < 65 ? 'any' : 'none';
     return { w, years, opt, role: p.sub ? 'rotation' : 'starter', s };
   },
@@ -223,7 +224,7 @@ const Neg = {
           <div class="ng-qs"></div>
           <form class="ng-form">
             <label><span>연봉 (억 원)</span><input name="salary" type="number" step="0.1" min="0.1"></label>
-            <label><span>보장 기간</span><select name="years"><option value="1">1년</option><option value="2">2년</option><option value="3">3년</option></select></label>
+            <label><span>보장 기간${typeof Life !== 'undefined' && Life.maxYears(p) != null ? ` <small>입대 기한까지 최대 ${Math.max(1, Life.maxYears(p))}년</small>` : ''}</span><select name="years">${[1, 2, 3].filter(y => y === 1 || typeof Life === 'undefined' || Life.maxYears(p) == null || y <= Life.maxYears(p)).map(y => `<option value="${y}">${y}년</option>`).join('')}</select></label>
             <label><span>+1년 연장 옵션</span><select name="option"><option value="">없음</option><option value="player">+1년 · 선수가 결정</option><option value="team">+1년 · 구단이 결정</option></select></label>
             <div class="ng-term"><span>계약 형태</span><b></b></div>
             <label><span>계약금 (억 원)</span><input name="signing" type="number" step="0.1" min="0" value="0"></label>
