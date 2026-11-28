@@ -8,8 +8,8 @@ const Fin = {
   // 모기업 형태: parent 대기업 지원형 · investor 투자 유치형 · self 자립형
   OWNER: { t1: 'parent', 'gen-g': 'investor', 'hanwha-life-esports': 'parent', 'kt-rolster': 'parent', 'dplus-kia': 'investor', 'nongshim-redforce': 'parent', 'hanjin-brion': 'parent', 'kiwoom-drx': 'investor', 'bnk-fearx': 'parent', 'dn-soopers': 'parent' },
   OWNER_KO: { parent: '대기업 지원형', investor: '투자 유치형', self: '자립형' },
-  LG: { LCK: 1, LPL: 1.2, LEC: .7, LCS: .8 },
-  SHARE: { LCK: 12, LPL: 14, LEC: 7, LCS: 7 },
+  LG: { LCK: 1, LPL: 1.1, LEC: .7, LCS: .8 },
+  SHARE: { LCK: 8, LPL: 9, LEC: 5, LCS: 5 },
   SLOTS: [['메인 파트너', '통신·금융'], ['유니폼 스폰서', '자동차·식품'], ['장비 파트너', '주변기기'], ['음료 파트너', '에너지 음료'], ['가구 파트너', '게이밍 의자'], ['디지털 파트너', '플랫폼·앱']],
   names: {},
   st() { const s = (App.state.fin ||= {}); ['bal', 'last', 'neg', 'spon', 'srch'].forEach(k => s[k] ||= {}); return s; },
@@ -20,14 +20,14 @@ const Fin = {
   // ---------- 연간 수입 · 지출 (억 원) ----------
   annual(t) {
     const L = this.LG[t.league] || 1, f = this.fame(t), fin = t.fin || 2, own = this.owner(t);
-    const stars = t.players.filter(p => typeof Fame !== 'undefined' && Fame.player && Fame.player(p) >= 80).length;
+    const stars = t.players.filter(p => typeof Fame !== 'undefined' && Fame.player && Fame.player(p) >= 80).length, pay = Club.payroll(t);
     const inc = {
       league: this.SHARE[t.league] || 8,
-      parent: own === 'parent' ? 18 + fin * 10 : own === 'investor' ? 6 + fin * 5 : 0,
+      parent: own === 'parent' ? 6 + fin * 5 + pay * .35 : own === 'investor' ? 3 + fin * 3 + pay * .3 : 0,   // 고정 지원 + 연봉 일부 부담
       sponsor: this.sponsorIncome(t),
-      stream: (Math.pow(f / 100, 1.5) * 28 + stars * 2) * L,
+      stream: (Math.pow(f / 100, 1.5) * 14 + stars * 4) * L,
     };
-    const exp = { pay: Club.payroll(t), staff: Club.staffPay(t), ops: (4 + f * .06) * L, tax: t.league === 'LCK' ? (Club.tax(t).tax || 0) : 0 };
+    const exp = { pay, staff: Club.staffPay(t), ops: (10 + f * .15) * L, tax: t.league === 'LCK' ? (Club.tax(t).tax || 0) : 0 };
     return { inc, exp, ti: Object.values(inc).reduce((a, b) => a + b, 0), te: Object.values(exp).reduce((a, b) => a + b, 0) };
   },
   INC_KO: { league: '리그 분배금', parent: '모기업 지원', sponsor: '스폰서', stream: '스트리밍·굿즈', prize: '상금', bonus: '스폰서 보너스', ledger: '이적료·계약금 등' },
@@ -64,7 +64,7 @@ const Fin = {
   // ---------- 스폰서 ----------
   load(d) { this.names = Object.fromEntries(Object.entries((d && d.teams) || {}).map(([id, v]) => [id, (v.sponsors || []).map(x => x.name)])); },
   appeal(t) { return this.fame(t); },
-  slotValue(t, i, perf = 1) { const f = this.appeal(t), L = this.LG[t.league] || 1; return Math.round((i === 0 ? 3 + f * .15 : .6 + f * .04) * L * perf * 10) / 10; },
+  slotValue(t, i, perf = 1) { const f = this.appeal(t), L = this.LG[t.league] || 1; return Math.round((i === 0 ? 2 + f * .09 : .4 + f * .025) * L * perf * 10) / 10; },
   // 성과 지수: 올해 국제대회 진출 · 우승
   perf(t, Y) {
     const b = App.state.brk || {}, intl = Object.entries(b).some(([id, l]) => id.startsWith(Y + ':') && (Schedule.byEvent[id] || {}).league === 'INTL' && l.includes(t.id));
