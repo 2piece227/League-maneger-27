@@ -45,9 +45,11 @@ const Coach = {
     const o = { traits: [], head: false }; this.STATS.forEach(([k]) => { o[k] = Math.max(3, Math.min(18, Math.round(base + (r() - .5) * 6))); });
     return (this.data[s.id] = o);
   },
-  // 헤드 코치: 헤드 표시가 있는 코치(여럿이면 능력치 합이 큰 쪽), 없으면 명단 첫 번째
+  // 헤드 코치: 헤드 표시가 있는 코치(여럿이면 능력치 합이 큰 쪽), 없으면 명단 첫 번째.
+  //   플레이어 팀은 감독(플레이어)이 헤드 코치 자리라 스태프는 모두 일반 코치 (헤드 보정은 AI 구단만 — 난이도)
+  mine(t) { return !!t && t.id === App.state.teamId && !App.state.unemployed; },
   headOf(t) {
-    const st = (t && t.staff) || []; if (!st.length) return null;
+    const st = (t && t.staff) || []; if (!st.length || this.mine(t)) return null;
     const sum = s => { const c = this.of(s, t); return this.STATS.reduce((a, [k]) => a + c[k], 0); };
     const hs = st.filter(s => this.of(s, t).head); return (hs.length ? hs : [st[0]]).sort((a, b) => sum(b) - sum(a))[0];
   },
@@ -55,7 +57,7 @@ const Coach = {
   // 팀 코칭 (분업): { draft, manage, tactic, develop, by: { k: 코치 }, traits: Set, head }
   team(t) {
     if (!t) return { draft: 6, manage: 8, tactic: 8, develop: 8, by: {}, traits: new Set(), head: null };
-    const key = t.id + ':' + ((t.staff || []).map(s => s.id).join(','));
+    const key = t.id + ':' + (this.mine(t) ? 'me' : '') + ':' + ((t.staff || []).map(s => s.id).join(','));
     if (this._c[key]) return this._c[key];
     const o = { by: {}, traits: new Set(), head: this.headOf(t) };
     this.STATS.forEach(([k]) => { let best = null, v = 6; (t.staff || []).forEach(s => { const x = this.val(s, t, k); if (x > v) { v = x; best = s; } }); o[k] = Math.round(v * 10) / 10; o.by[k] = best; });
@@ -116,7 +118,7 @@ Object.assign(Coach, {
   // 팀 코칭 요약 (분업 결과)
   teamHtml(t) {
     const c = this.team(t);
-    return `<div class="card co-team"><div class="card-head"><h3>팀 코칭 <small>분업 · 헤드 코치 ×${this.HEAD}</small></h3></div>
+    return `<div class="card co-team"><div class="card-head"><h3>팀 코칭 <small>${this.mine(t) ? '분업 · 헤드 코치 자리는 감독(나)' : `분업 · 헤드 코치 ×${this.HEAD}`}</small></h3></div>
       <div class="co-st">${this.STATS.map(([k, l]) => `<div class="co-row"><span>${l}</span>${this.bar(c[k])}<b>${c[k]}</b><small>${c.by[k] ? UI.esc(c.by[k].name) : '-'}</small></div>`).join('')}</div>
       ${c.traits.size ? `<div class="co-trs">${[...c.traits].map(x => this.chip(x)).join('')}</div>` : '<p class="ms-none">적용 중인 특성 없음</p>'}</div>`;
   },

@@ -97,7 +97,7 @@ const Club = {
     const t = this.team(), m = Career.m();
     el.innerHTML = `
       <div class="cr-page">
-        ${Career.head('코칭스태프', `${UI.esc(t.name)} 스태프 · 능력치마다 가장 뛰어난 코치가 맡습니다 (헤드 코치 ×${Coach.HEAD}) · 특성은 모두 적용`)}
+        ${Career.head('코칭스태프', `${UI.esc(t.name)} 스태프 · 능력치마다 가장 뛰어난 코치가 맡습니다 · 특성은 코치 전원 것을 모두 적용`)}
         ${Coach.teamHtml(t)}
         <div class="sf-grid">
           <div class="card sf-card me"><div class="sf-av">${Faces.manager(m)}</div><b>${UI.esc(m.displayName || m.name)}</b><span>감독 (나)</span><small>${Career.contract(m, t).from.replace(/-/g, '.')} 부임</small></div>
