@@ -3,7 +3,8 @@
 const Player = {
   all() { return [...App.db.teams, ...(App.db.free ? [App.db.free] : [])].flatMap(t => [...t.players, ...(t.cl || []), ...(t.academy || []), ...(t.staff || [])].map(p => ({ p, t }))); },
   MILITARY: { exempt: ['병역 혜택', 'ok'], served: ['군필', 'ok'], none: ['미필', 'soon'] },
-  military(p) { const m = this.MILITARY[p.military]; return m ? `<span class="ct-st ${m[1]}">${m[0]}</span>` : ''; },
+  MIL_WHY: { ag2022: '2022 아시안게임', ag2026: '2026 아시안게임', special: '특수 사유', abroad: '해외 리그 5년 이상' },
+  military(p) { const m = this.MILITARY[p.military]; return m ? `<span class="ct-st ${m[1]}">${p.military === 'exempt' && this.MIL_WHY[p.militaryWhy] ? `면제 · ${this.MIL_WHY[p.militaryWhy]}` : m[0]}</span>` : ''; },
   find(id) { return this.all().find(x => x.p.id === id) || null; },
   team() { return Roster.team(); },
   today() { return Clock.today(); },

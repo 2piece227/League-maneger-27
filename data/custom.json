@@ -38,16 +38,51 @@
   ],
   "military": {
     "exempt": [
-      "zeus",
-      "kanavi",
-      "faker",
+      "bdd",
+      "bvoy",
+      "canyon",
       "chovy",
+      "corejj",
+      "faker",
+      "gumayusi",
+      "hoya",
+      "ignar",
+      "impact",
+      "kanavi",
+      "keria",
+      "rookie",
       "ruler",
-      "keria"
+      "scout",
+      "slowq",
+      "tarzan-lee-seung-yong",
+      "theshy",
+      "zeus"
     ],
     "served": [
       "deft"
-    ]
+    ],
+    "why": {
+      "zeus": "ag2022",
+      "kanavi": "ag2022",
+      "faker": "ag2022",
+      "chovy": "ag2022",
+      "ruler": "ag2022",
+      "keria": "ag2022",
+      "gumayusi": "ag2026",
+      "canyon": "ag2026",
+      "bdd": "special",
+      "impact": "abroad",
+      "rookie": "abroad",
+      "bvoy": "abroad",
+      "scout": "abroad",
+      "theshy": "abroad",
+      "ignar": "abroad",
+      "corejj": "abroad",
+      "slowq": "abroad",
+      "tarzan-lee-seung-yong": "abroad",
+      "hoya": "abroad"
+    },
+    "_note": "병역: exempt 면제(why: ag2022 · ag2026 아시안게임 금메달, special 장기대기 소집해제 등 특수 사유, abroad 해외 리그 5년 이상) · served 군필. 나머지 한국 선수는 미필"
   },
   "stars": {
     "faker": 96,

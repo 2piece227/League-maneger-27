@@ -81,12 +81,14 @@ const Data = {
     return { id: 'free', name: '무소속', short: '무소속', league: null, color: '#4a5568', rep: 1, fin: 2, tags: [], players: people.filter(p => p.role !== 'COACH'), staff: people.filter(p => p.role === 'COACH') };
   },
 
-  // 한국 선수 병역: exempt(혜택) / served(군필) / none(미필)
+  // 한국 선수 병역: exempt(면제 — why: ag2022 · ag2026 아시안게임, special 특수 사유, abroad 해외 리그 5년) / served(군필) / none(미필)
+  //   예전에는 2군(t.cl) 선수를 빠뜨려 2군 한국 선수에게 병역 정보가 없었다
   applyMilitary(teams, m) {
-    const ex = new Set(m.exempt || []), sv = new Set(m.served || []);
-    teams.forEach(t => [...t.players, ...(t.staff || [])].forEach(p => {
+    const ex = new Set(m.exempt || []), sv = new Set(m.served || []), why = m.why || {};
+    teams.forEach(t => [...t.players, ...(t.cl || []), ...(t.staff || [])].forEach(p => {
       if (p.nation !== 'South Korea' || p.role === 'COACH') return;
       p.military = ex.has(p.id) ? 'exempt' : sv.has(p.id) ? 'served' : 'none';
+      if (why[p.id]) p.militaryWhy = why[p.id];
     }));
   },
 
